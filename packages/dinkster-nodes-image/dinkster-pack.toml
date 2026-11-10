@@ -1,0 +1,34 @@
+[pack]
+name = "dinkster-image"
+version = "0.0.3"
+engine = ">=0.0.2.dev0,<0.1"
+publisher = "dinkster"
+requires = [
+    "comfy-angle==0.1.1; sys_platform != 'darwin' or platform_machine == 'arm64'",
+    "numpy>=1.26",
+    "opencv-contrib-python-headless>=5.0,<5.1",
+    "pillow>=10",
+    "PyOpenGL>=3.1.8,<4",
+    "av==18.1.0",
+    "torch",
+    "torchvision",
+    "scipy",
+    "kornia",
+    "dinkster-inference==0.1.1",
+]
+namespaces = ["dinkster.image"]
+
+[pack.inference]
+imports = ["cli_args", "model_management", "utils"]
+tested-version = "0.1.1"
+
+[pack.sandbox]
+writable-mounts = true
+
+[pack.contracts]
+host = "dinkster-pack-host/1"
+api = "dinkster-api/v1"
+
+[pack.entry]
+nodes = "dinkster_image:NODES"
+types = "dinkster_image:register_types"
