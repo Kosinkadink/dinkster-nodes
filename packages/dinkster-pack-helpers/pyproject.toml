@@ -20,6 +20,3 @@ packages = ["src/dinkster_pack_helpers"]
 
 [tool.dinkster]
 official-library = true
-
-[tool.uv.sources]
-dinkster-api = { workspace = true }

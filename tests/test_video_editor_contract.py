@@ -41,9 +41,9 @@ from dinkster_workers import (
     load_manifest,
 )
 from dinkster_workers.host import load_pack
-from test_remote import TOKEN, start_service, stop_service
 
 from tests.async_scenarios import run_scenario
+from tests.media_fixtures import TOKEN, start_service, stop_service
 
 MEDIA_MANIFEST = (
     Path(__file__).resolve().parents[1] / "packages/dinkster-nodes-video/dinkster-pack.toml"

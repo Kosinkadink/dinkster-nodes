@@ -22,7 +22,7 @@ from dinkster_assets import (
 from dinkster_schema.reporting import capture_saved_artifacts
 from dinkster_values import render_splat_ply
 
-from tests.test_splat_codec import splat_value
+from tests.splat_fixtures import splat_value
 
 pytestmark = pytest.mark.usefixtures("saved_artifact_context")
 

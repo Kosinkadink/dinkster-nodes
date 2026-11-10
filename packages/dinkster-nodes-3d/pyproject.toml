@@ -30,5 +30,4 @@ packages = ["src/dinkster_3d"]
 "locales" = "dinkster_3d/locales"
 
 [tool.uv.sources]
-dinkster-api = { workspace = true }
 dinkster-image = { workspace = true }

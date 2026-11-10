@@ -3,10 +3,8 @@
 from __future__ import annotations
 
 import io
-import sys
 from collections.abc import Mapping
 from fractions import Fraction
-from types import SimpleNamespace
 from typing import Any, cast
 
 import av
@@ -32,7 +30,6 @@ from dinkster_assets import (
 )
 from dinkster_assets.audio import bind_audio_value, register_audio_value_type
 from dinkster_assets.value import bind_video_value
-from dinkster_native.video import _VideoValue
 from dinkster_protocol import Invocation
 from dinkster_values import (
     TypeRegistry,
@@ -56,11 +53,17 @@ from dinkster_video.video_components import GetVideoComponents
 from dinkster_video_runtime import assemble_video, disassemble_video
 from dinkster_workers import RemoteWorker
 from dinkster_workers.devices import DeviceMap
-from test_av_codec import FakeTensor, mp4_bytes
-from test_remote import TOKEN, start_service, stop_service
-from test_remote_asset_staging import ENDPOINT_TOKEN, AssetHost
 
 from tests.async_scenarios import run_scenario
+from tests.media_fixtures import (
+    ENDPOINT_TOKEN,
+    TOKEN,
+    AssetHost,
+    FakeTensor,
+    mp4_bytes,
+    start_service,
+    stop_service,
+)
 
 
 def _encoded_video_audio(
@@ -138,22 +141,9 @@ def decoded_audio_samples(monkeypatch, tmp_path):
     return samples
 
 
-@pytest.fixture(params=["node", "native-value"])
-def extraction_kind(request):
-    return request.param
-
-
 @pytest.fixture
-def extract_audio(extraction_kind, monkeypatch):
-    if extraction_kind == "node":
-        return lambda video: GetVideoComponents.execute(video=video)["audio"]
-    monkeypatch.setitem(sys.modules, "torch", SimpleNamespace(from_numpy=FakeTensor))
-    monkeypatch.setitem(
-        sys.modules,
-        "comfy_api.latest",
-        SimpleNamespace(Types=SimpleNamespace(VideoComponents=SimpleNamespace)),
-    )
-    return lambda video: cast(Any, _VideoValue(video).get_components()).audio
+def extract_audio():
+    return lambda video: GetVideoComponents.execute(video=video)["audio"]
 
 
 @pytest.mark.parametrize("concat", [False, True])
@@ -224,7 +214,7 @@ def test_extraction_callers_publish_inline_video_before_lazy_audio(
 
 @pytest.mark.parametrize("components", [False, True])
 def test_silent_video_extraction_needs_no_vault(
-    monkeypatch, extract_audio, extraction_kind, decoded_audio_samples, components
+    monkeypatch, extract_audio, decoded_audio_samples, components
 ) -> None:
     monkeypatch.delenv("DINKSTER_ASSET_VAULT")
     video = (
@@ -233,7 +223,7 @@ def test_silent_video_extraction_needs_no_vault(
         else video_from_source(mp4_bytes())
     )
     audio = extract_audio(video)
-    assert audio is (ABSENT if extraction_kind == "node" else None)
+    assert audio is ABSENT
     assert disassemble_video(video)["audio"] is None
     assert decoded_audio_samples == []
 
