@@ -38,14 +38,12 @@ import csv
 import json
 import re
 from collections import Counter
+from importlib.resources import files
 from pathlib import Path
 from typing import Any, cast
 
 FORBIDDEN_PREFIXES = ("dinkster.", "comfy.")
-ID_TABLE = (
-    Path(__file__).resolve().parents[1]
-    / "packages/dinkster-schema/src/dinkster_schema/comfy_node_ids.json"
-)
+ID_TABLE = files("dinkster_schema").joinpath("comfy_node_ids.json")
 SCOPE_RULES = Path(__file__).with_name("node_comparison_scope.json")
 INPUT_ROLES = {"input", "inputFamily", "dynamicCombo", "dynamicSlot"}
 VALUE_OPTIONS = (

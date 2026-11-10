@@ -34,6 +34,7 @@ dev = [
     "hypothesis>=6",
     "ruff>=0.8",
     "pyright>=1.1.390",
+    "scipy-stubs>=1.18.1.0",
 ]
 
 [tool.ruff]
@@ -50,3 +51,49 @@ known-first-party = ["dinkster", "tests", "tools"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = [".", "tests/first_party_runtime"]
+
+[tool.pyright]
+pythonVersion = "3.12"
+venvPath = "."
+venv = ".venv"
+include = ["packages", "tests"]
+# Torch execution tests run in the worker runtime, outside the static check.
+exclude = [
+    "tests/first_party_runtime",
+    "packages/dinkster-nodes-sampling/tests",
+    "packages/dinkster-nodes-models/tests",
+    "packages/dinkster-nodes-conditioning/tests",
+    "packages/dinkster-nodes-latent/tests",
+    "packages/dinkster-nodes-audio/tests",
+    "packages/dinkster-nodes-video/tests",
+    "packages/dinkster-nodes-sd/tests",
+    "packages/dinkster-nodes-flux/tests",
+    "packages/dinkster-nodes-qwen/tests",
+    "packages/dinkster-nodes-hidream/tests",
+    "packages/dinkster-nodes-audio-models/tests",
+    "packages/dinkster-nodes-misc-models/tests",
+    "packages/dinkster-nodes-llm/tests",
+    "packages/dinkster-nodes-upscale/tests",
+    "packages/dinkster-nodes-cosmos/tests",
+    "packages/dinkster-nodes-hunyuan/tests",
+    "packages/dinkster-nodes-ltx/tests",
+    "packages/dinkster-nodes-minimax/tests",
+    "packages/dinkster-nodes-seedvr/tests",
+    "packages/dinkster-nodes-void/tests",
+    "packages/dinkster-nodes-wan/tests",
+    "packages/dinkster-nodes-image/tests",
+    "packages/dinkster-nodes-utilities/tests",
+    "packages/dinkster-nodes-3d/tests",
+    "packages/dinkster-nodes-3d-models/tests",
+    "packages/dinkster-nodes-vision-background-removal/tests",
+    "packages/dinkster-nodes-vision-depth-anything-3/tests",
+    "packages/dinkster-nodes-vision-marigold/tests",
+    "packages/dinkster-nodes-vision-mediapipe/tests",
+    "packages/dinkster-nodes-vision-moge/tests",
+    "packages/dinkster-nodes-vision-rtdetr/tests",
+    "packages/dinkster-nodes-vision-sam3/tests",
+    "packages/dinkster-nodes-vision-sam3d-body/tests",
+    "packages/dinkster-nodes-vision-sdpose/tests",
+]
+strict = ["packages"]
+typeCheckingMode = "standard"
