@@ -22,9 +22,10 @@ from dinkster_api.v1 import (
 )
 from dinkster_graph import Graph, GraphNode, Link
 from dinkster_ltx import register_types
+from dinkster_server import PackInfo
 from dinkster_values import EncodedLatentTensor, encode_latent
 
-from dinkster.compose import PackInfo, PackSpec, ServingComposer
+from dinkster.compose import PackSpec, ServingComposer
 from tests.async_scenarios import run_scenario
 
 
