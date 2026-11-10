@@ -1,0 +1,80 @@
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  merge_group:
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    name: format, lint, types
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+      - run: uv sync --locked --all-packages
+      - run: uv run --no-sync ruff format --check .
+      - run: uv run --no-sync ruff check .
+      - run: uv run --no-sync pyright
+      - run: uv run --no-sync pyright --pythonplatform Windows
+
+  tests:
+    name: CPU ${{ matrix.suite }} tests (${{ matrix.shard }}/4)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        suite: [root, packages]
+        shard: [1, 2, 3, 4]
+    env:
+      CUDA_VISIBLE_DEVICES: ""
+      DINKSTER_ACCELERATOR: cpu
+      OMP_NUM_THREADS: "4"
+      MKL_NUM_THREADS: "4"
+      LIBGL_ALWAYS_SOFTWARE: "1"
+      PYOPENGL_PLATFORM: egl
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+      - run: uv sync --locked --all-packages
+      - name: Install the CPU software shader renderer
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libegl1 libgles2 libvulkan1 mesa-vulkan-drivers
+          lvp=$(find /usr/share/vulkan/icd.d -name 'lvp_icd*.json' -print -quit)
+          test -n "$lvp"
+          echo "VK_ICD_FILENAMES=$lvp" >> "$GITHUB_ENV"
+      - name: Run root tests
+        if: matrix.suite == 'root'
+        run: >-
+          uv run --no-sync pytest -q tests --timeout=180
+          -p tools.pytest_file_shard --file-shard ${{ matrix.shard }}/4
+      - name: Run each package in a separate process
+        if: matrix.suite == 'packages'
+        run: |
+          status=0
+          for package in packages/dinkster-nodes-*; do
+            if [ -d "$package/tests" ]; then
+              uv run --no-sync pytest -q "$package/tests" --timeout=180 \
+                -p tools.pytest_file_shard --file-shard ${{ matrix.shard }}/4 || status=$?
+            fi
+          done
+          exit "$status"

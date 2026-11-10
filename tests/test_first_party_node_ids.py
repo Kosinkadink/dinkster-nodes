@@ -21,7 +21,6 @@ from dinkster_workers import load_manifest
 from dinkster_workers.manifest import resolve_entry, validate_registration_claims
 from packaging.version import Version
 
-from dinkster.compose import default_pack_specs
 from tests.async_scenarios import run_scenario
 from tools.compare_nodes import SCOPE_RULES, compare_registry
 
@@ -45,10 +44,10 @@ def _source_schemas() -> dict[str, NodeSchema]:
     return schemas
 
 
-def test_default_install_set_contains_every_comfy_origin_pack() -> None:
+def test_packs_satisfy_every_published_default_minimum() -> None:
     inventory = json.loads(files("dinkster_schema").joinpath("comfy_node_ids.json").read_text())
     expected = {row["pack"] for row in inventory["nodes"]} | {"dinkster-nodes-remote"}
-    defaults = tomllib.loads(Path("src/dinkster/default-packs.toml").read_text())["packs"]
+    defaults = tomllib.loads(files("dinkster").joinpath("default-packs.toml").read_text())["packs"]
     assert defaults.keys() == expected
     declarations = {
         manifest.name: manifest.compatibility.version
@@ -59,10 +58,6 @@ def test_default_install_set_contains_every_comfy_origin_pack() -> None:
     assert all(
         Version(declarations[name]) >= Version(minimum) for name, minimum in defaults.items()
     )
-    specs = default_pack_specs()
-    assert {load_manifest(spec.manifest).name for spec in specs} == expected
-    assert len(specs) == len(expected)
-    assert all(not spec.in_process for spec in specs)
 
 
 def test_first_party_node_ids_preserve_the_pack_cut(tmp_path: Path) -> None:

@@ -14,6 +14,8 @@ Install uv, then run:
 uv sync --locked --all-packages
 uv run --no-sync ruff check .
 uv run --no-sync ruff format --check .
+uv run --no-sync pyright
+uv run --no-sync pyright --pythonplatform Windows
 CUDA_VISIBLE_DEVICES="" DINKSTER_ACCELERATOR=cpu uv run --no-sync pytest tests
 ```
 
@@ -28,6 +30,10 @@ collecting every package in one pytest process creates import collisions.
 The workspace selects CPU PyTorch wheels on Linux and Windows. Installed engine
 dependencies are ordinary wheels; local editable installs are limited to packs
 and the helper library in `packages/`.
+
+Hosted pull-request and main checks use the same locked workspace. Root and
+package tests each run in four disjoint file shards, with each package in its
+own pytest process. Shader tests use the CPU software renderer.
 
 There is no production publication workflow in this repository. Building or
 testing a pack does not submit it to the public registry.
