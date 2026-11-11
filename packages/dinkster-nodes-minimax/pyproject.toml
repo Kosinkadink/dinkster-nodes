@@ -6,7 +6,7 @@ requires-python = ">=3.12"
 dependencies = [
     "dinkster-api",
     "torch",
-    "dinkster-inference==0.1.1",
+    "dinkster-inference",
     "dinkster-pack-helpers>=0.0.2,<1",
 ]
 
@@ -23,4 +23,5 @@ packages = ["src/dinkster_minimax"]
 "locales" = "dinkster_minimax/locales"
 
 [tool.uv.sources]
+dinkster-api = { workspace = true }
 dinkster-pack-helpers = { workspace = true }

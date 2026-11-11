@@ -6,7 +6,7 @@ requires-python = ">=3.12"
 dependencies = [
     "dinkster-api",
     "torch",
-    "dinkster-inference==0.1.1",
+    "dinkster-inference",
     "dinkster-latent>=0.0.1",
     "dinkster-llm>=0.0.1",
     "dinkster-models>=0.0.1",
@@ -26,6 +26,7 @@ packages = ["src/dinkster_ltx"]
 "locales" = "dinkster_ltx/locales"
 
 [tool.uv.sources]
+dinkster-api = { workspace = true }
 dinkster-latent = { workspace = true }
 dinkster-llm = { workspace = true }
 dinkster-models = { workspace = true }
