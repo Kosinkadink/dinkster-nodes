@@ -4,18 +4,22 @@ from __future__ import annotations
 
 import asyncio
 import os
+import subprocess
 import sys
+import tomllib
+from collections.abc import Mapping
 from dataclasses import replace
 from pathlib import Path
 from typing import cast
 
 import pytest
 from aiohttp.test_utils import TestClient, TestServer
-from dinkster_assets import AssetRef, AssetVault, LibraryStore, digest_bytes
+from dinkster_assets import AssetError, AssetRef, AssetVault, LibraryStore, digest_bytes
+from dinkster_assets.scratch import claim_inactive_produced_job
 from dinkster_graph import Graph, GraphNode, Link, TypedLiteral, graph_to_wire
 from dinkster_registry import Lockfile
 from dinkster_server import ServerLibrary, create_app
-from dinkster_values import TypeRegistry
+from dinkster_values import TypeRegistry, Value
 from dinkster_values.storage import image_input
 from dinkster_workers import load_manifest
 from dinkster_workers.doctor import prepare_catalog
@@ -27,6 +31,7 @@ from dinkster.compose import (
     compose_serving,
     default_pack_spec,
 )
+from dinkster.packs import first_party_pack_metadata
 from tests.async_scenarios import run_scenario
 
 TESTS_DIR = Path(__file__).parent
@@ -42,6 +47,77 @@ def first_party_specs() -> tuple[PackSpec, ...]:
     lock = Lockfile.from_record_json(catalog.read_text(encoding="utf-8"))
     assert lock.packs
     return tuple(default_pack_spec(pack.pack) for pack in lock.packs)
+
+
+def test_default_pack_artifact_files_have_explicit_line_ending_policy() -> None:
+    repo_root = TESTS_DIR.parent
+    listed = subprocess.run(
+        ["git", "ls-files", "-z", "--", "packages"],
+        cwd=repo_root,
+        check=True,
+        capture_output=True,
+    ).stdout
+    tracked_paths = {Path(raw.decode("utf-8")) for raw in listed.split(b"\0") if raw}
+    artifact_paths: set[Path] = set()
+    metadata = first_party_pack_metadata(repo_root)
+    assert metadata
+    for pack_id, (module_name, _) in metadata.items():
+        pack_root = next(
+            path.parent.relative_to(repo_root)
+            for path in (repo_root / "packages").glob("dinkster-nodes-*/dinkster-pack.toml")
+            if tomllib.loads(path.read_text(encoding="utf-8"))["pack"]["name"] == pack_id
+        )
+        sidecar_root = pack_root
+        manifest_path = sidecar_root / "dinkster-pack.toml"
+        manifest = tomllib.loads((repo_root / manifest_path).read_text(encoding="utf-8"))
+        docs = manifest.get("pack", {}).get("docs", {})
+        docs_dir = docs.get("dir") if isinstance(docs, dict) else None
+        module_root = pack_root / "src" / Path(*module_name.split("."))
+        prefixes = [module_root, sidecar_root / "locales"]
+        if isinstance(docs_dir, str):
+            prefixes.append(sidecar_root / docs_dir)
+        artifact_paths.add(manifest_path)
+        module_init = module_root.parent / "__init__.py"
+        if module_init in tracked_paths:
+            artifact_paths.add(module_init)
+        if module_root.parent.name == "dinkster_nodes_vision":
+            artifact_paths.update(path for path in tracked_paths if path.parent == sidecar_root)
+        artifact_paths.update(
+            path
+            for path in tracked_paths
+            if any(path.is_relative_to(prefix) for prefix in prefixes)
+        )
+
+    checked = subprocess.run(
+        [
+            "git",
+            "check-attr",
+            "-z",
+            "--stdin",
+            "text",
+            "eol",
+            "--",
+        ],
+        cwd=repo_root,
+        check=True,
+        capture_output=True,
+        input=b"".join(path.as_posix().encode("utf-8") + b"\0" for path in sorted(artifact_paths)),
+    ).stdout.split(b"\0")
+    attributes: dict[str, dict[str, str]] = {}
+    for index in range(0, len(checked) - 1, 3):
+        path, attribute, value = (part.decode("utf-8") for part in checked[index : index + 3])
+        attributes.setdefault(path, {})[attribute] = value
+
+    uncovered = [
+        path.as_posix()
+        for path in sorted(artifact_paths)
+        if attributes[path.as_posix()]["eol"] != "lf"
+        and attributes[path.as_posix()]["text"] != "unset"
+    ]
+    assert uncovered == [], (
+        "pack artifact files must declare eol=lf for text or -text for binary: "
+        + ", ".join(uncovered)
+    )
 
 
 @pytest.mark.parametrize("in_process", (False, True))
@@ -159,6 +235,124 @@ def test_pack_namespace_compose_reload_execute_and_reject_second_owner(
                 await composer.add_pack(PackSpec(manifest=other_manifest, trust_reserved=True))
             assert set(composer.composition.schemas) == combined_claims
         finally:
+            await composer.close()
+
+    run_scenario(scenario())
+
+
+@pytest.mark.parametrize("ending", ["success", "failure", "cancel", "native failure"])
+@pytest.mark.parametrize("other_job", ["other job", "../main job"])
+def test_composed_job_scratch_stays_live_between_nodes_until_run_settles(
+    tmp_path: Path, ending: str, other_job: str
+) -> None:
+    async def scenario() -> None:
+        scratch = tmp_path / "scratch"
+        entered = {job: asyncio.Event() for job in ("main", "other")}
+        resume = {job: asyncio.Event() for job in entered}
+        released: list[str] = []
+
+        class Policy:
+            async def select(
+                self,
+                node_type: str,
+                inputs: Mapping[str, Value],
+                candidates: tuple[str, Mapping[str, str]],
+                **context: object,
+            ) -> None:
+                value = inputs["string_a"].resolve()
+                if value in ("first-second", "other"):
+                    label = "other" if value == "other" else "main"
+                    entered[label].set()
+                    await resume[label].wait()
+                    if label == "main" and ending == "failure":
+                        raise RuntimeError("dispatch failed")
+
+            def release_run(self, run_id: str) -> None:
+                with claim_inactive_produced_job(scratch, run_id) as inactive:
+                    assert not inactive, "scratch released before native run settlement"
+                released.append(run_id)
+                if len(released) == 1 and ending == "native failure":
+                    raise RuntimeError("native settlement failed")
+
+        composer = ServingComposer(pack_scratch_root=scratch, native_policy=Policy())
+        tasks: list[asyncio.Task[object]] = []
+        try:
+            await composer.add_pack(default_pack_spec("dinkster-text"))
+            engine = composer.composition.make_engine(lambda event: None)
+            with pytest.raises(AssetError, match="ownership state is unavailable"):
+                with claim_inactive_produced_job(scratch, "unknown job"):
+                    pytest.fail("missing ownership state was treated as an idle job")
+            main = asyncio.create_task(
+                engine.run(
+                    Graph(
+                        nodes={
+                            "first": GraphNode(
+                                "dinkster.text.string_concatenate",
+                                {"string_a": "first", "string_b": "second", "delimiter": "-"},
+                            ),
+                            "second": GraphNode(
+                                "dinkster.text.string_concatenate",
+                                {
+                                    "string_a": Link("first", "STRING"),
+                                    "string_b": "third",
+                                    "delimiter": ":",
+                                },
+                            ),
+                        }
+                    ),
+                    ["second"],
+                    run_id="../main job",
+                    attempt_id=2,
+                )
+            )
+            other = asyncio.create_task(
+                composer.composition.make_engine(lambda event: None).run(
+                    Graph(
+                        nodes={
+                            "other": GraphNode(
+                                "dinkster.text.string_concatenate",
+                                {"string_a": "other", "string_b": "job", "delimiter": "/"},
+                            )
+                        }
+                    ),
+                    ["other"],
+                    run_id=other_job,
+                )
+            )
+            tasks.extend((main, other))
+            async with asyncio.timeout(20):
+                await asyncio.gather(*(event.wait() for event in entered.values()))
+                for job in ("../main job", other_job):
+                    with claim_inactive_produced_job(scratch, job) as inactive:
+                        assert not inactive
+                if ending == "cancel":
+                    main.cancel()
+                    with pytest.raises(asyncio.CancelledError):
+                        await main
+                else:
+                    resume["main"].set()
+                    if ending in ("failure", "native failure"):
+                        with pytest.raises(
+                            Exception, match="dispatch failed|native settlement failed"
+                        ):
+                            await main
+                    else:
+                        assert (await main).outputs["second"][
+                            "STRING"
+                        ].resolve() == "first-second:third"
+                with claim_inactive_produced_job(scratch, "../main job") as inactive:
+                    assert inactive == (other_job != "../main job")
+                with claim_inactive_produced_job(scratch, other_job) as inactive:
+                    assert not inactive
+                assert released == ["../main job"]
+                resume["other"].set()
+                assert (await other).outputs["other"]["STRING"].resolve() == "other/job"
+                with claim_inactive_produced_job(scratch, other_job) as inactive:
+                    assert inactive
+        finally:
+            for task in tasks:
+                task.cancel()
+            await asyncio.gather(*tasks, return_exceptions=True)
             await composer.close()
 
     run_scenario(scenario())
