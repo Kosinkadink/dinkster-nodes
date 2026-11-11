@@ -25,7 +25,6 @@ packages = ["src/dinkster_sd"]
 "locales" = "dinkster_sd/locales"
 
 [tool.uv.sources]
-dinkster-api = { workspace = true }
 dinkster-conditioning = { workspace = true }
 dinkster-sampling = { workspace = true }
 dinkster-pack-helpers = { workspace = true }
