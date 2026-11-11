@@ -97,8 +97,13 @@ jobs:
           status=0
           for package in packages/dinkster-nodes-*; do
             if [ -d "$package/tests" ]; then
+              case_shards=()
+              if [ "$package" = packages/dinkster-nodes-image ]; then
+                case_shards+=(--case-shard-file "$package/tests/test_save_image_torch.py")
+              fi
               uv run --no-sync pytest -q "$package/tests" --timeout=180 \
-                -p tools.pytest_file_shard --file-shard ${{ matrix.shard }}/4 || status=$?
+                -p tools.pytest_file_shard --file-shard ${{ matrix.shard }}/4 \
+                "${case_shards[@]}" || status=$?
             fi
           done
           exit "$status"
