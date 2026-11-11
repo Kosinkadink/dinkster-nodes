@@ -131,6 +131,84 @@ def test_compose_defaults_only(
     run_scenario(scenario())
 
 
+def test_serving_composer_incremental(
+    tmp_path: Path,
+    first_party_specs: tuple[PackSpec, ...],
+    first_party_node_packs: dict[str, str],
+) -> None:
+    """The diagnostic host starts empty and grows through ordinary pack deltas."""
+    manifest = tmp_path / "dinkster-pack.toml"
+    manifest.write_text(
+        '[pack]\nname = "isopack"\npublisher = "dinkster"\nnamespaces = ["iso"]\n'
+        '[pack.entry]\nnodes = "isopack_nodes:NODES"\n'
+        '[pack.presentation]\ndisplay_name = "Iso Pack"\n'
+        'abbr = "ISO"\nmark = "\\U0001F9EA"\ncolor = "#336699"\n',
+        encoding="utf-8",
+    )
+
+    async def scenario() -> None:
+        composer = ServingComposer(worker_env=WORKER_ENV)
+        try:
+            composition = composer.composition
+            assert composition.schemas == {}
+            assert composition.packs == {}
+            engine = composition.make_engine(lambda event: None)
+
+            app = create_app(composition.make_engine, composition.schemas)
+            client = TestClient(TestServer(app))
+            await client.start_server()
+            try:
+                assert await (await client.get("/api/health")).json() == {"ok": True}
+                nodes = await (await client.get("/api/nodes")).json()
+                assert nodes["nodes"] == {}
+            finally:
+                await client.close()
+
+            standard_deltas = [
+                await composer.add_pack(standard)
+                for standard in composer.order_pack_entries(first_party_specs)
+            ]
+            assert set().union(*(delta.schemas for delta in standard_deltas)) == set(
+                first_party_node_packs
+            )
+            for standard_delta in standard_deltas:
+                engine.announce_schemas(standard_delta.schemas)
+            result = await engine.run(
+                Graph(
+                    nodes={
+                        "g": GraphNode(
+                            "dinkster.text.string_concatenate",
+                            {"string_a": "left", "string_b": "right", "delimiter": ":"},
+                        )
+                    }
+                ),
+                ["g"],
+            )
+            assert result.outputs["g"]["STRING"].resolve() == "left:right"
+
+            delta = await composer.add_pack(manifest)
+            assert delta.pack == "isopack"
+            assert "iso.chatty" in delta.schemas
+            assert delta.node_packs["iso.chatty"] == "isopack"
+            assert delta.packs["isopack"].display_name == "Iso Pack"
+            # Merged into the shared composition too (the all-at-once path).
+            assert composition.schemas["iso.chatty"] is delta.schemas["iso.chatty"]
+            assert composition.node_packs["iso.chatty"] == "isopack"
+
+            # The engine made BEFORE the pack composed executes it after
+            # announcement - no rebuild, no restart.
+            engine.announce_schemas(delta.schemas)
+            result = await engine.run(
+                Graph(nodes={"c": GraphNode("iso.chatty", {"value": "hi"})}),
+                ["c"],
+            )
+            assert result.outputs["c"]["value"].resolve() == "HI"
+        finally:
+            await composer.close()
+
+    run_scenario(scenario())
+
+
 def test_default_pack_artifact_files_have_explicit_line_ending_policy() -> None:
     repo_root = TESTS_DIR.parent
     listed = subprocess.run(
