@@ -30,7 +30,7 @@ jobs:
       - run: uv run --no-sync pyright --pythonplatform Windows
 
   tests:
-    name: CPU ${{ matrix.suite }} tests (${{ matrix.shard }}/4)
+    name: CPU ${{ matrix.suite }} tests (${{ matrix.shard }}/4)${{ matrix.suite == 'packages' && format(' group {0}/2', matrix.package-group) || '' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     strategy:
@@ -38,6 +38,10 @@ jobs:
       matrix:
         suite: [root, packages]
         shard: [1, 2, 3, 4]
+        package-group: [1, 2]
+        exclude:
+          - suite: root
+            package-group: 2
     env:
       CUDA_VISIBLE_DEVICES: ""
       DINKSTER_ACCELERATOR: cpu
@@ -95,8 +99,13 @@ jobs:
         if: matrix.suite == 'packages'
         run: |
           status=0
+          package_index=0
           for package in packages/dinkster-nodes-*; do
             if [ -d "$package/tests" ]; then
+              package_index=$((package_index + 1))
+              if [ "$(((package_index - 1) % 2 + 1))" -ne '${{ matrix.package-group }}' ]; then
+                continue
+              fi
               case_shards=()
               if [ "$package" = packages/dinkster-nodes-image ]; then
                 case_shards+=(--case-shard-file "$package/tests/test_save_image_torch.py")
