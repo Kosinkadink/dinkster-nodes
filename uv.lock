@@ -839,8 +839,8 @@ wheels = [
 
 [[package]]
 name = "dinkster"
-version = "0.0.4.dev297+gd715697a2cb63b1b82c8fd40ebd732f10ccd64bf"
-source = { url = "https://github.com/Kosinkadink/Dinkster/releases/download/main-2026-11-11-0.0.4.dev297-48906117/dinkster-0.0.4.dev297%2Bgd715697a2cb63b1b82c8fd40ebd732f10ccd64bf-py3-none-any.whl" }
+version = "0.0.4.dev305+g10edf73da3e055c2da9da04c4f0cf88819b4883d"
+source = { url = "https://github.com/Kosinkadink/Dinkster/releases/download/main-2026-11-11-0.0.4.dev305-dd39c7b2/dinkster-0.0.4.dev305%2Bg10edf73da3e055c2da9da04c4f0cf88819b4883d-py3-none-any.whl" }
 dependencies = [
     { name = "aiohttp" },
     { name = "blake3" },
@@ -863,7 +863,7 @@ dependencies = [
     { name = "zeroconf" },
 ]
 wheels = [
-    { url = "https://github.com/Kosinkadink/Dinkster/releases/download/main-2026-11-11-0.0.4.dev297-48906117/dinkster-0.0.4.dev297%2Bgd715697a2cb63b1b82c8fd40ebd732f10ccd64bf-py3-none-any.whl", hash = "sha256:46a1099fbb68341761d30846883db9802f772b78a65d4ae1e389db1636249b97" },
+    { url = "https://github.com/Kosinkadink/Dinkster/releases/download/main-2026-11-11-0.0.4.dev305-dd39c7b2/dinkster-0.0.4.dev305%2Bg10edf73da3e055c2da9da04c4f0cf88819b4883d-py3-none-any.whl", hash = "sha256:d3aabd5a82c73bff170fb8ec9bbb7b8cdb431aef49e25d60dc741d73b5bdbc9c" },
 ]
 
 [package.metadata]
@@ -873,8 +873,8 @@ requires-dist = [
     { name = "comfy-aimdo", specifier = "==0.6.0" },
     { name = "comfy-angle", marker = "platform_machine == 'arm64' or sys_platform != 'darwin'", specifier = "==0.1.1" },
     { name = "comfy-kitchen", specifier = "==0.2.40" },
-    { name = "dinkster-api", specifier = "==0.0.4.dev297+gd715697a2cb63b1b82c8fd40ebd732f10ccd64bf" },
-    { name = "dinkster-engine", specifier = "==0.0.4.dev297+gd715697a2cb63b1b82c8fd40ebd732f10ccd64bf" },
+    { name = "dinkster-api", specifier = "==0.0.4.dev305+g10edf73da3e055c2da9da04c4f0cf88819b4883d" },
+    { name = "dinkster-engine", specifier = "==0.0.4.dev305+g10edf73da3e055c2da9da04c4f0cf88819b4883d" },
     { name = "dinkster-inference", marker = "extra == 'inference'", specifier = "==0.1.1" },
     { name = "dinkster-supervisor", specifier = "==0.0.3" },
     { name = "dinkster-supervisor", marker = "extra == 'default'", specifier = "==0.0.3" },
@@ -895,7 +895,7 @@ provides-extras = ["collab", "default", "inference", "supervisor"]
 
 [[package]]
 name = "dinkster-3d"
-version = "0.0.3"
+version = "0.0.4"
 source = { editable = "packages/dinkster-nodes-3d" }
 dependencies = [
     { name = "dinkster-api" },
@@ -916,9 +916,9 @@ numba = [
 
 [package.metadata]
 requires-dist = [
-    { name = "dinkster-api", url = "https://github.com/Kosinkadink/Dinkster/releases/download/main-2026-11-11-0.0.4.dev297-48906117/dinkster_api-0.0.4.dev297%2Bgd715697a2cb63b1b82c8fd40ebd732f10ccd64bf-py3-none-any.whl" },
+    { name = "dinkster-api", url = "https://github.com/Kosinkadink/Dinkster/releases/download/main-2026-11-11-0.0.4.dev305-dd39c7b2/dinkster_api-0.0.4.dev305%2Bg10edf73da3e055c2da9da04c4f0cf88819b4883d-py3-none-any.whl" },
     { name = "dinkster-image", editable = "packages/dinkster-nodes-image" },
-    { name = "dinkster-inference", specifier = "==0.1.1" },
+    { name = "dinkster-inference" },
     { name = "numba", marker = "extra == 'numba'", specifier = ">=0.67" },
     { name = "numpy", specifier = ">=1.26" },
     { name = "pillow", specifier = ">=10" },
@@ -943,8 +943,8 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "dinkster-api", url = "https://github.com/Kosinkadink/Dinkster/releases/download/main-2026-11-11-0.0.4.dev297-48906117/dinkster_api-0.0.4.dev297%2Bgd715697a2cb63b1b82c8fd40ebd732f10ccd64bf-py3-none-any.whl" },
-    { name = "dinkster-inference", specifier = "==0.1.1" },
+    { name = "dinkster-api", url = "https://github.com/Kosinkadink/Dinkster/releases/download/main-2026-11-11-0.0.4.dev305-dd39c7b2/dinkster_api-0.0.4.dev305%2Bg10edf73da3e055c2da9da04c4f0cf88819b4883d-py3-none-any.whl" },
+    { name = "dinkster-inference" },
     { name = "pillow", specifier = ">=10" },
     { name = "torch", marker = "sys_platform != 'darwin'", index = "https://download.pytorch.org/whl/cpu" },
     { name = "torch", marker = "sys_platform == 'darwin'" },
@@ -952,13 +952,14 @@ requires-dist = [
 
 [[package]]
 name = "dinkster-api"
-version = "0.0.4.dev297+gd715697a2cb63b1b82c8fd40ebd732f10ccd64bf"
-source = { url = "https://github.com/Kosinkadink/Dinkster/releases/download/main-2026-11-11-0.0.4.dev297-48906117/dinkster_api-0.0.4.dev297%2Bgd715697a2cb63b1b82c8fd40ebd732f10ccd64bf-py3-none-any.whl" }
+version = "0.0.4.dev305+g10edf73da3e055c2da9da04c4f0cf88819b4883d"
+source = { url = "https://github.com/Kosinkadink/Dinkster/releases/download/main-2026-11-11-0.0.4.dev305-dd39c7b2/dinkster_api-0.0.4.dev305%2Bg10edf73da3e055c2da9da04c4f0cf88819b4883d-py3-none-any.whl" }
 dependencies = [
     { name = "aiohttp" },
     { name = "alembic" },
     { name = "av" },
     { name = "blake3" },
+    { name = "cryptography" },
     { name = "dinkster-opentimelineio" },
     { name = "filelock" },
     { name = "numpy" },
@@ -966,10 +967,11 @@ dependencies = [
     { name = "pillow" },
     { name = "psd-tools" },
     { name = "psutil" },
+    { name = "pydantic" },
     { name = "sqlalchemy" },
 ]
 wheels = [
-    { url = "https://github.com/Kosinkadink/Dinkster/releases/download/main-2026-11-11-0.0.4.dev297-48906117/dinkster_api-0.0.4.dev297%2Bgd715697a2cb63b1b82c8fd40ebd732f10ccd64bf-py3-none-any.whl", hash = "sha256:48d03d9ff6e1e3738c7daa0ddd7b0f89e7fa409619ef5536ed1cf52f964f6e94" },
+    { url = "https://github.com/Kosinkadink/Dinkster/releases/download/main-2026-11-11-0.0.4.dev305-dd39c7b2/dinkster_api-0.0.4.dev305%2Bg10edf73da3e055c2da9da04c4f0cf88819b4883d-py3-none-any.whl", hash = "sha256:2714a33cb78fa31d5201a12f3bc83135143c8a6e9e2ec8927c7f5d78af252172" },
 ]
 
 [package.metadata]
@@ -978,6 +980,7 @@ requires-dist = [
     { name = "alembic", specifier = ">=1.16,<2" },
     { name = "av", specifier = "==18.1.0" },
     { name = "blake3", specifier = ">=0.4" },
+    { name = "cryptography", specifier = ">=44" },
     { name = "dinkster-opentimelineio", specifier = "==0.19.0" },
     { name = "filelock", specifier = ">=4.2.4,<5" },
     { name = "numpy", specifier = ">=1.26" },
@@ -985,12 +988,13 @@ requires-dist = [
     { name = "pillow", specifier = ">=10" },
     { name = "psd-tools", specifier = ">=1.14.3,<1.20" },
     { name = "psutil", specifier = ">=5.9" },
+    { name = "pydantic", specifier = ">=2.10,<3" },
     { name = "sqlalchemy", specifier = ">=2.0,<3" },
 ]
 
 [[package]]
 name = "dinkster-audio"
-version = "0.0.3"
+version = "0.0.4"
 source = { editable = "packages/dinkster-nodes-audio" }
 dependencies = [
     { name = "av" },
@@ -1004,8 +1008,8 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "av", specifier = ">=14" },
-    { name = "dinkster-api", url = "https://github.com/Kosinkadink/Dinkster/releases/download/main-2026-11-11-0.0.4.dev297-48906117/dinkster_api-0.0.4.dev297%2Bgd715697a2cb63b1b82c8fd40ebd732f10ccd64bf-py3-none-any.whl" },
-    { name = "dinkster-inference", specifier = "==0.1.1" },
+    { name = "dinkster-api", url = "https://github.com/Kosinkadink/Dinkster/releases/download/main-2026-11-11-0.0.4.dev305-dd39c7b2/dinkster_api-0.0.4.dev305%2Bg10edf73da3e055c2da9da04c4f0cf88819b4883d-py3-none-any.whl" },
+    { name = "dinkster-inference" },
     { name = "numpy", specifier = ">=1.26" },
     { name = "torch", marker = "sys_platform != 'darwin'", index = "https://download.pytorch.org/whl/cpu" },
     { name = "torch", marker = "sys_platform == 'darwin'" },
@@ -1025,8 +1029,8 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "dinkster-api", url = "https://github.com/Kosinkadink/Dinkster/releases/download/main-2026-11-11-0.0.4.dev297-48906117/dinkster_api-0.0.4.dev297%2Bgd715697a2cb63b1b82c8fd40ebd732f10ccd64bf-py3-none-any.whl" },
-    { name = "dinkster-inference", specifier = "==0.1.1" },
+    { name = "dinkster-api", url = "https://github.com/Kosinkadink/Dinkster/releases/download/main-2026-11-11-0.0.4.dev305-dd39c7b2/dinkster_api-0.0.4.dev305%2Bg10edf73da3e055c2da9da04c4f0cf88819b4883d-py3-none-any.whl" },
+    { name = "dinkster-inference" },
     { name = "dinkster-pack-helpers", editable = "packages/dinkster-pack-helpers" },
     { name = "torch", marker = "sys_platform != 'darwin'", index = "https://download.pytorch.org/whl/cpu" },
     { name = "torch", marker = "sys_platform == 'darwin'" },
@@ -1048,8 +1052,8 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "dinkster-api", url = "https://github.com/Kosinkadink/Dinkster/releases/download/main-2026-11-11-0.0.4.dev297-48906117/dinkster_api-0.0.4.dev297%2Bgd715697a2cb63b1b82c8fd40ebd732f10ccd64bf-py3-none-any.whl" },
-    { name = "dinkster-inference", specifier = "==0.1.1" },
+    { name = "dinkster-api", url = "https://github.com/Kosinkadink/Dinkster/releases/download/main-2026-11-11-0.0.4.dev305-dd39c7b2/dinkster_api-0.0.4.dev305%2Bg10edf73da3e055c2da9da04c4f0cf88819b4883d-py3-none-any.whl" },
+    { name = "dinkster-inference" },
     { name = "dinkster-latent", editable = "packages/dinkster-nodes-latent" },
     { name = "dinkster-pack-helpers", editable = "packages/dinkster-pack-helpers" },
     { name = "safetensors" },
@@ -1071,8 +1075,8 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "dinkster-api", url = "https://github.com/Kosinkadink/Dinkster/releases/download/main-2026-11-11-0.0.4.dev297-48906117/dinkster_api-0.0.4.dev297%2Bgd715697a2cb63b1b82c8fd40ebd732f10ccd64bf-py3-none-any.whl" },
-    { name = "dinkster-inference", specifier = "==0.1.1" },
+    { name = "dinkster-api", url = "https://github.com/Kosinkadink/Dinkster/releases/download/main-2026-11-11-0.0.4.dev305-dd39c7b2/dinkster_api-0.0.4.dev305%2Bg10edf73da3e055c2da9da04c4f0cf88819b4883d-py3-none-any.whl" },
+    { name = "dinkster-inference" },
     { name = "dinkster-pack-helpers", editable = "packages/dinkster-pack-helpers" },
     { name = "torch", marker = "sys_platform != 'darwin'", index = "https://download.pytorch.org/whl/cpu" },
     { name = "torch", marker = "sys_platform == 'darwin'" },
@@ -1080,17 +1084,17 @@ requires-dist = [
 
 [[package]]
 name = "dinkster-engine"
-version = "0.0.4.dev297+gd715697a2cb63b1b82c8fd40ebd732f10ccd64bf"
-source = { url = "https://github.com/Kosinkadink/Dinkster/releases/download/main-2026-11-11-0.0.4.dev297-48906117/dinkster_engine-0.0.4.dev297%2Bgd715697a2cb63b1b82c8fd40ebd732f10ccd64bf-py3-none-any.whl" }
+version = "0.0.4.dev305+g10edf73da3e055c2da9da04c4f0cf88819b4883d"
+source = { url = "https://github.com/Kosinkadink/Dinkster/releases/download/main-2026-11-11-0.0.4.dev305-dd39c7b2/dinkster_engine-0.0.4.dev305%2Bg10edf73da3e055c2da9da04c4f0cf88819b4883d-py3-none-any.whl" }
 dependencies = [
     { name = "dinkster-api" },
 ]
 wheels = [
-    { url = "https://github.com/Kosinkadink/Dinkster/releases/download/main-2026-11-11-0.0.4.dev297-48906117/dinkster_engine-0.0.4.dev297%2Bgd715697a2cb63b1b82c8fd40ebd732f10ccd64bf-py3-none-any.whl", hash = "sha256:fdbfd4914d3cae5f9b521f4def3c978b404c275a7ec5fa115e86cf51b7d1b012" },
+    { url = "https://github.com/Kosinkadink/Dinkster/releases/download/main-2026-11-11-0.0.4.dev305-dd39c7b2/dinkster_engine-0.0.4.dev305%2Bg10edf73da3e055c2da9da04c4f0cf88819b4883d-py3-none-any.whl", hash = "sha256:46df2332adbd4b5511008e6743aeff9f38b93b0b8dcdb24d22585991a569b860" },
 ]
 
 [package.metadata]
-requires-dist = [{ name = "dinkster-api", specifier = "==0.0.4.dev297+gd715697a2cb63b1b82c8fd40ebd732f10ccd64bf" }]
+requires-dist = [{ name = "dinkster-api", specifier = "==0.0.4.dev305+g10edf73da3e055c2da9da04c4f0cf88819b4883d" }]
 
 [[package]]
 name = "dinkster-flux"
@@ -1106,8 +1110,8 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "dinkster-api", url = "https://github.com/Kosinkadink/Dinkster/releases/download/main-2026-11-11-0.0.4.dev297-48906117/dinkster_api-0.0.4.dev297%2Bgd715697a2cb63b1b82c8fd40ebd732f10ccd64bf-py3-none-any.whl" },
-    { name = "dinkster-inference", specifier = "==0.1.1" },
+    { name = "dinkster-api", url = "https://github.com/Kosinkadink/Dinkster/releases/download/main-2026-11-11-0.0.4.dev305-dd39c7b2/dinkster_api-0.0.4.dev305%2Bg10edf73da3e055c2da9da04c4f0cf88819b4883d-py3-none-any.whl" },
+    { name = "dinkster-inference" },
     { name = "dinkster-pack-helpers", editable = "packages/dinkster-pack-helpers" },
     { name = "torch", marker = "sys_platform != 'darwin'", index = "https://download.pytorch.org/whl/cpu" },
     { name = "torch", marker = "sys_platform == 'darwin'" },
@@ -1127,8 +1131,8 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "dinkster-api", url = "https://github.com/Kosinkadink/Dinkster/releases/download/main-2026-11-11-0.0.4.dev297-48906117/dinkster_api-0.0.4.dev297%2Bgd715697a2cb63b1b82c8fd40ebd732f10ccd64bf-py3-none-any.whl" },
-    { name = "dinkster-inference", specifier = "==0.1.1" },
+    { name = "dinkster-api", url = "https://github.com/Kosinkadink/Dinkster/releases/download/main-2026-11-11-0.0.4.dev305-dd39c7b2/dinkster_api-0.0.4.dev305%2Bg10edf73da3e055c2da9da04c4f0cf88819b4883d-py3-none-any.whl" },
+    { name = "dinkster-inference" },
     { name = "dinkster-pack-helpers", editable = "packages/dinkster-pack-helpers" },
     { name = "torch", marker = "sys_platform != 'darwin'", index = "https://download.pytorch.org/whl/cpu" },
     { name = "torch", marker = "sys_platform == 'darwin'" },
@@ -1148,8 +1152,8 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "dinkster-api", url = "https://github.com/Kosinkadink/Dinkster/releases/download/main-2026-11-11-0.0.4.dev297-48906117/dinkster_api-0.0.4.dev297%2Bgd715697a2cb63b1b82c8fd40ebd732f10ccd64bf-py3-none-any.whl" },
-    { name = "dinkster-inference", specifier = "==0.1.1" },
+    { name = "dinkster-api", url = "https://github.com/Kosinkadink/Dinkster/releases/download/main-2026-11-11-0.0.4.dev305-dd39c7b2/dinkster_api-0.0.4.dev305%2Bg10edf73da3e055c2da9da04c4f0cf88819b4883d-py3-none-any.whl" },
+    { name = "dinkster-inference" },
     { name = "dinkster-pack-helpers", editable = "packages/dinkster-pack-helpers" },
     { name = "torch", marker = "sys_platform != 'darwin'", index = "https://download.pytorch.org/whl/cpu" },
     { name = "torch", marker = "sys_platform == 'darwin'" },
@@ -1157,7 +1161,7 @@ requires-dist = [
 
 [[package]]
 name = "dinkster-image"
-version = "0.0.5"
+version = "0.0.7"
 source = { editable = "packages/dinkster-nodes-image" }
 dependencies = [
     { name = "av" },
@@ -1180,8 +1184,8 @@ dependencies = [
 requires-dist = [
     { name = "av", specifier = "==18.1.0" },
     { name = "comfy-angle", marker = "platform_machine == 'arm64' or sys_platform != 'darwin'", specifier = "==0.1.1" },
-    { name = "dinkster-api", url = "https://github.com/Kosinkadink/Dinkster/releases/download/main-2026-11-11-0.0.4.dev297-48906117/dinkster_api-0.0.4.dev297%2Bgd715697a2cb63b1b82c8fd40ebd732f10ccd64bf-py3-none-any.whl" },
-    { name = "dinkster-inference", specifier = "==0.1.1" },
+    { name = "dinkster-api", url = "https://github.com/Kosinkadink/Dinkster/releases/download/main-2026-11-11-0.0.4.dev305-dd39c7b2/dinkster_api-0.0.4.dev305%2Bg10edf73da3e055c2da9da04c4f0cf88819b4883d-py3-none-any.whl" },
+    { name = "dinkster-inference" },
     { name = "kornia" },
     { name = "numpy", specifier = ">=1.26" },
     { name = "opencv-contrib-python-headless", specifier = ">=5.0,<5.1" },
@@ -1250,8 +1254,8 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "dinkster-api", url = "https://github.com/Kosinkadink/Dinkster/releases/download/main-2026-11-11-0.0.4.dev297-48906117/dinkster_api-0.0.4.dev297%2Bgd715697a2cb63b1b82c8fd40ebd732f10ccd64bf-py3-none-any.whl" },
-    { name = "dinkster-inference", specifier = "==0.1.1" },
+    { name = "dinkster-api", url = "https://github.com/Kosinkadink/Dinkster/releases/download/main-2026-11-11-0.0.4.dev305-dd39c7b2/dinkster_api-0.0.4.dev305%2Bg10edf73da3e055c2da9da04c4f0cf88819b4883d-py3-none-any.whl" },
+    { name = "dinkster-inference" },
     { name = "safetensors" },
     { name = "torch", marker = "sys_platform != 'darwin'", index = "https://download.pytorch.org/whl/cpu" },
     { name = "torch", marker = "sys_platform == 'darwin'" },
@@ -1269,7 +1273,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "dinkster-api", url = "https://github.com/Kosinkadink/Dinkster/releases/download/main-2026-11-11-0.0.4.dev297-48906117/dinkster_api-0.0.4.dev297%2Bgd715697a2cb63b1b82c8fd40ebd732f10ccd64bf-py3-none-any.whl" },
+    { name = "dinkster-api", url = "https://github.com/Kosinkadink/Dinkster/releases/download/main-2026-11-11-0.0.4.dev305-dd39c7b2/dinkster_api-0.0.4.dev305%2Bg10edf73da3e055c2da9da04c4f0cf88819b4883d-py3-none-any.whl" },
     { name = "torch", marker = "sys_platform != 'darwin'", index = "https://download.pytorch.org/whl/cpu" },
     { name = "torch", marker = "sys_platform == 'darwin'" },
 ]
@@ -1291,8 +1295,8 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "dinkster-api", url = "https://github.com/Kosinkadink/Dinkster/releases/download/main-2026-11-11-0.0.4.dev297-48906117/dinkster_api-0.0.4.dev297%2Bgd715697a2cb63b1b82c8fd40ebd732f10ccd64bf-py3-none-any.whl" },
-    { name = "dinkster-inference", specifier = "==0.1.1" },
+    { name = "dinkster-api", url = "https://github.com/Kosinkadink/Dinkster/releases/download/main-2026-11-11-0.0.4.dev305-dd39c7b2/dinkster_api-0.0.4.dev305%2Bg10edf73da3e055c2da9da04c4f0cf88819b4883d-py3-none-any.whl" },
+    { name = "dinkster-inference" },
     { name = "dinkster-latent", editable = "packages/dinkster-nodes-latent" },
     { name = "dinkster-llm", editable = "packages/dinkster-nodes-llm" },
     { name = "dinkster-models", editable = "packages/dinkster-nodes-models" },
@@ -1315,8 +1319,8 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "dinkster-api", url = "https://github.com/Kosinkadink/Dinkster/releases/download/main-2026-11-11-0.0.4.dev297-48906117/dinkster_api-0.0.4.dev297%2Bgd715697a2cb63b1b82c8fd40ebd732f10ccd64bf-py3-none-any.whl" },
-    { name = "dinkster-inference", specifier = "==0.1.1" },
+    { name = "dinkster-api", url = "https://github.com/Kosinkadink/Dinkster/releases/download/main-2026-11-11-0.0.4.dev305-dd39c7b2/dinkster_api-0.0.4.dev305%2Bg10edf73da3e055c2da9da04c4f0cf88819b4883d-py3-none-any.whl" },
+    { name = "dinkster-inference" },
     { name = "dinkster-pack-helpers", editable = "packages/dinkster-pack-helpers" },
     { name = "torch", marker = "sys_platform != 'darwin'", index = "https://download.pytorch.org/whl/cpu" },
     { name = "torch", marker = "sys_platform == 'darwin'" },
@@ -1337,8 +1341,8 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "dinkster-api", url = "https://github.com/Kosinkadink/Dinkster/releases/download/main-2026-11-11-0.0.4.dev297-48906117/dinkster_api-0.0.4.dev297%2Bgd715697a2cb63b1b82c8fd40ebd732f10ccd64bf-py3-none-any.whl" },
-    { name = "dinkster-inference", specifier = "==0.1.1" },
+    { name = "dinkster-api", url = "https://github.com/Kosinkadink/Dinkster/releases/download/main-2026-11-11-0.0.4.dev305-dd39c7b2/dinkster_api-0.0.4.dev305%2Bg10edf73da3e055c2da9da04c4f0cf88819b4883d-py3-none-any.whl" },
+    { name = "dinkster-inference" },
     { name = "dinkster-pack-helpers", editable = "packages/dinkster-pack-helpers" },
     { name = "dinkster-qwen", editable = "packages/dinkster-nodes-qwen" },
     { name = "torch", marker = "sys_platform != 'darwin'", index = "https://download.pytorch.org/whl/cpu" },
@@ -1361,8 +1365,8 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "comfy-kitchen" },
-    { name = "dinkster-api", url = "https://github.com/Kosinkadink/Dinkster/releases/download/main-2026-11-11-0.0.4.dev297-48906117/dinkster_api-0.0.4.dev297%2Bgd715697a2cb63b1b82c8fd40ebd732f10ccd64bf-py3-none-any.whl" },
-    { name = "dinkster-inference", specifier = "==0.1.1" },
+    { name = "dinkster-api", url = "https://github.com/Kosinkadink/Dinkster/releases/download/main-2026-11-11-0.0.4.dev305-dd39c7b2/dinkster_api-0.0.4.dev305%2Bg10edf73da3e055c2da9da04c4f0cf88819b4883d-py3-none-any.whl" },
+    { name = "dinkster-inference" },
     { name = "dinkster-pack-helpers", editable = "packages/dinkster-pack-helpers" },
     { name = "torch", marker = "sys_platform != 'darwin'", index = "https://download.pytorch.org/whl/cpu" },
     { name = "torch", marker = "sys_platform == 'darwin'" },
@@ -1379,7 +1383,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "dinkster-api", url = "https://github.com/Kosinkadink/Dinkster/releases/download/main-2026-11-11-0.0.4.dev297-48906117/dinkster_api-0.0.4.dev297%2Bgd715697a2cb63b1b82c8fd40ebd732f10ccd64bf-py3-none-any.whl" },
+    { name = "dinkster-api", url = "https://github.com/Kosinkadink/Dinkster/releases/download/main-2026-11-11-0.0.4.dev305-dd39c7b2/dinkster_api-0.0.4.dev305%2Bg10edf73da3e055c2da9da04c4f0cf88819b4883d-py3-none-any.whl" },
     { name = "httpx", specifier = ">=0.28,<1" },
 ]
 
@@ -1406,9 +1410,9 @@ dev = [
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "dinkster", url = "https://github.com/Kosinkadink/Dinkster/releases/download/main-2026-11-11-0.0.4.dev297-48906117/dinkster-0.0.4.dev297%2Bgd715697a2cb63b1b82c8fd40ebd732f10ccd64bf-py3-none-any.whl" },
-    { name = "dinkster-engine", url = "https://github.com/Kosinkadink/Dinkster/releases/download/main-2026-11-11-0.0.4.dev297-48906117/dinkster_engine-0.0.4.dev297%2Bgd715697a2cb63b1b82c8fd40ebd732f10ccd64bf-py3-none-any.whl" },
-    { name = "dinkster-supervisor", url = "https://github.com/Kosinkadink/Dinkster/releases/download/main-2026-11-11-0.0.4.dev297-48906117/dinkster_supervisor-0.0.3-py3-none-any.whl" },
+    { name = "dinkster", url = "https://github.com/Kosinkadink/Dinkster/releases/download/main-2026-11-11-0.0.4.dev305-dd39c7b2/dinkster-0.0.4.dev305%2Bg10edf73da3e055c2da9da04c4f0cf88819b4883d-py3-none-any.whl" },
+    { name = "dinkster-engine", url = "https://github.com/Kosinkadink/Dinkster/releases/download/main-2026-11-11-0.0.4.dev305-dd39c7b2/dinkster_engine-0.0.4.dev305%2Bg10edf73da3e055c2da9da04c4f0cf88819b4883d-py3-none-any.whl" },
+    { name = "dinkster-supervisor", url = "https://github.com/Kosinkadink/Dinkster/releases/download/main-2026-11-11-0.0.4.dev305-dd39c7b2/dinkster_supervisor-0.0.3-py3-none-any.whl" },
     { name = "hypothesis", specifier = ">=6" },
     { name = "pyright", specifier = ">=1.1.390" },
     { name = "pytest", specifier = ">=8" },
@@ -1442,7 +1446,7 @@ wheels = [
 
 [[package]]
 name = "dinkster-pack-helpers"
-version = "0.0.2"
+version = "0.0.3"
 source = { editable = "packages/dinkster-pack-helpers" }
 dependencies = [
     { name = "dinkster-api" },
@@ -1455,8 +1459,8 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "dinkster-api", url = "https://github.com/Kosinkadink/Dinkster/releases/download/main-2026-11-11-0.0.4.dev297-48906117/dinkster_api-0.0.4.dev297%2Bgd715697a2cb63b1b82c8fd40ebd732f10ccd64bf-py3-none-any.whl" },
-    { name = "dinkster-inference", specifier = "==0.1.1" },
+    { name = "dinkster-api", url = "https://github.com/Kosinkadink/Dinkster/releases/download/main-2026-11-11-0.0.4.dev305-dd39c7b2/dinkster_api-0.0.4.dev305%2Bg10edf73da3e055c2da9da04c4f0cf88819b4883d-py3-none-any.whl" },
+    { name = "dinkster-inference" },
     { name = "numpy", specifier = ">=1.26" },
     { name = "pillow", specifier = ">=10" },
     { name = "torch", marker = "sys_platform != 'darwin'", index = "https://download.pytorch.org/whl/cpu" },
@@ -1477,8 +1481,8 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "dinkster-api", url = "https://github.com/Kosinkadink/Dinkster/releases/download/main-2026-11-11-0.0.4.dev297-48906117/dinkster_api-0.0.4.dev297%2Bgd715697a2cb63b1b82c8fd40ebd732f10ccd64bf-py3-none-any.whl" },
-    { name = "dinkster-inference", specifier = "==0.1.1" },
+    { name = "dinkster-api", url = "https://github.com/Kosinkadink/Dinkster/releases/download/main-2026-11-11-0.0.4.dev305-dd39c7b2/dinkster_api-0.0.4.dev305%2Bg10edf73da3e055c2da9da04c4f0cf88819b4883d-py3-none-any.whl" },
+    { name = "dinkster-inference" },
     { name = "dinkster-pack-helpers", editable = "packages/dinkster-pack-helpers" },
     { name = "torch", marker = "sys_platform != 'darwin'", index = "https://download.pytorch.org/whl/cpu" },
     { name = "torch", marker = "sys_platform == 'darwin'" },
@@ -1500,8 +1504,8 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "dinkster-api", url = "https://github.com/Kosinkadink/Dinkster/releases/download/main-2026-11-11-0.0.4.dev297-48906117/dinkster_api-0.0.4.dev297%2Bgd715697a2cb63b1b82c8fd40ebd732f10ccd64bf-py3-none-any.whl" },
-    { name = "dinkster-inference", specifier = "==0.1.1" },
+    { name = "dinkster-api", url = "https://github.com/Kosinkadink/Dinkster/releases/download/main-2026-11-11-0.0.4.dev305-dd39c7b2/dinkster_api-0.0.4.dev305%2Bg10edf73da3e055c2da9da04c4f0cf88819b4883d-py3-none-any.whl" },
+    { name = "dinkster-inference" },
     { name = "dinkster-pack-helpers", editable = "packages/dinkster-pack-helpers" },
     { name = "numpy" },
     { name = "torch", marker = "sys_platform != 'darwin'", index = "https://download.pytorch.org/whl/cpu" },
@@ -1525,9 +1529,9 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "dinkster-api", url = "https://github.com/Kosinkadink/Dinkster/releases/download/main-2026-11-11-0.0.4.dev297-48906117/dinkster_api-0.0.4.dev297%2Bgd715697a2cb63b1b82c8fd40ebd732f10ccd64bf-py3-none-any.whl" },
+    { name = "dinkster-api", url = "https://github.com/Kosinkadink/Dinkster/releases/download/main-2026-11-11-0.0.4.dev305-dd39c7b2/dinkster_api-0.0.4.dev305%2Bg10edf73da3e055c2da9da04c4f0cf88819b4883d-py3-none-any.whl" },
     { name = "dinkster-conditioning", editable = "packages/dinkster-nodes-conditioning" },
-    { name = "dinkster-inference", specifier = "==0.1.1" },
+    { name = "dinkster-inference" },
     { name = "dinkster-pack-helpers", editable = "packages/dinkster-pack-helpers" },
     { name = "dinkster-sampling", editable = "packages/dinkster-nodes-sampling" },
     { name = "torch", marker = "sys_platform != 'darwin'", index = "https://download.pytorch.org/whl/cpu" },
@@ -1548,8 +1552,8 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "dinkster-api", url = "https://github.com/Kosinkadink/Dinkster/releases/download/main-2026-11-11-0.0.4.dev297-48906117/dinkster_api-0.0.4.dev297%2Bgd715697a2cb63b1b82c8fd40ebd732f10ccd64bf-py3-none-any.whl" },
-    { name = "dinkster-inference", specifier = "==0.1.1" },
+    { name = "dinkster-api", url = "https://github.com/Kosinkadink/Dinkster/releases/download/main-2026-11-11-0.0.4.dev305-dd39c7b2/dinkster_api-0.0.4.dev305%2Bg10edf73da3e055c2da9da04c4f0cf88819b4883d-py3-none-any.whl" },
+    { name = "dinkster-inference" },
     { name = "numpy" },
     { name = "torch", marker = "sys_platform != 'darwin'", index = "https://download.pytorch.org/whl/cpu" },
     { name = "torch", marker = "sys_platform == 'darwin'" },
@@ -1558,22 +1562,26 @@ requires-dist = [
 [[package]]
 name = "dinkster-supervisor"
 version = "0.0.3"
-source = { url = "https://github.com/Kosinkadink/Dinkster/releases/download/main-2026-11-11-0.0.4.dev297-48906117/dinkster_supervisor-0.0.3-py3-none-any.whl" }
+source = { url = "https://github.com/Kosinkadink/Dinkster/releases/download/main-2026-11-11-0.0.4.dev305-dd39c7b2/dinkster_supervisor-0.0.3-py3-none-any.whl" }
 dependencies = [
     { name = "aiohttp" },
     { name = "blake3" },
+    { name = "cryptography" },
     { name = "packaging" },
+    { name = "pydantic" },
     { name = "zstandard" },
 ]
 wheels = [
-    { url = "https://github.com/Kosinkadink/Dinkster/releases/download/main-2026-11-11-0.0.4.dev297-48906117/dinkster_supervisor-0.0.3-py3-none-any.whl", hash = "sha256:4e262c20b34021b1d79d66255d326c97203277ee76cd7d32c9a81bf42ef07057" },
+    { url = "https://github.com/Kosinkadink/Dinkster/releases/download/main-2026-11-11-0.0.4.dev305-dd39c7b2/dinkster_supervisor-0.0.3-py3-none-any.whl", hash = "sha256:e7a75de7fe054343a06af1459937766d789fa4e8bd5bf1020fb9e3bd6b0a6842" },
 ]
 
 [package.metadata]
 requires-dist = [
     { name = "aiohttp", specifier = ">=3.10" },
     { name = "blake3", specifier = ">=1.0" },
+    { name = "cryptography", specifier = ">=44" },
     { name = "packaging", specifier = ">=24" },
+    { name = "pydantic", specifier = ">=2.10,<3" },
     { name = "zstandard", specifier = ">=0.25" },
 ]
 
@@ -1586,7 +1594,7 @@ dependencies = [
 ]
 
 [package.metadata]
-requires-dist = [{ name = "dinkster-api", url = "https://github.com/Kosinkadink/Dinkster/releases/download/main-2026-11-11-0.0.4.dev297-48906117/dinkster_api-0.0.4.dev297%2Bgd715697a2cb63b1b82c8fd40ebd732f10ccd64bf-py3-none-any.whl" }]
+requires-dist = [{ name = "dinkster-api", url = "https://github.com/Kosinkadink/Dinkster/releases/download/main-2026-11-11-0.0.4.dev305-dd39c7b2/dinkster_api-0.0.4.dev305%2Bg10edf73da3e055c2da9da04c4f0cf88819b4883d-py3-none-any.whl" }]
 
 [[package]]
 name = "dinkster-token-verifier"
@@ -1617,8 +1625,8 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "dinkster-api", url = "https://github.com/Kosinkadink/Dinkster/releases/download/main-2026-11-11-0.0.4.dev297-48906117/dinkster_api-0.0.4.dev297%2Bgd715697a2cb63b1b82c8fd40ebd732f10ccd64bf-py3-none-any.whl" },
-    { name = "dinkster-inference", specifier = "==0.1.1" },
+    { name = "dinkster-api", url = "https://github.com/Kosinkadink/Dinkster/releases/download/main-2026-11-11-0.0.4.dev305-dd39c7b2/dinkster_api-0.0.4.dev305%2Bg10edf73da3e055c2da9da04c4f0cf88819b4883d-py3-none-any.whl" },
+    { name = "dinkster-inference" },
     { name = "spandrel" },
     { name = "torch", marker = "sys_platform != 'darwin'", index = "https://download.pytorch.org/whl/cpu" },
     { name = "torch", marker = "sys_platform == 'darwin'" },
@@ -1635,7 +1643,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "dinkster-api", url = "https://github.com/Kosinkadink/Dinkster/releases/download/main-2026-11-11-0.0.4.dev297-48906117/dinkster_api-0.0.4.dev297%2Bgd715697a2cb63b1b82c8fd40ebd732f10ccd64bf-py3-none-any.whl" },
+    { name = "dinkster-api", url = "https://github.com/Kosinkadink/Dinkster/releases/download/main-2026-11-11-0.0.4.dev305-dd39c7b2/dinkster_api-0.0.4.dev305%2Bg10edf73da3e055c2da9da04c4f0cf88819b4883d-py3-none-any.whl" },
     { name = "simpleeval", specifier = "==1.0.8" },
 ]
 
@@ -1657,8 +1665,8 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "av", specifier = ">=14" },
-    { name = "dinkster-api", url = "https://github.com/Kosinkadink/Dinkster/releases/download/main-2026-11-11-0.0.4.dev297-48906117/dinkster_api-0.0.4.dev297%2Bgd715697a2cb63b1b82c8fd40ebd732f10ccd64bf-py3-none-any.whl" },
-    { name = "dinkster-inference", specifier = "==0.1.1" },
+    { name = "dinkster-api", url = "https://github.com/Kosinkadink/Dinkster/releases/download/main-2026-11-11-0.0.4.dev305-dd39c7b2/dinkster_api-0.0.4.dev305%2Bg10edf73da3e055c2da9da04c4f0cf88819b4883d-py3-none-any.whl" },
+    { name = "dinkster-inference" },
     { name = "numpy", specifier = ">=1.26" },
     { name = "torch", marker = "sys_platform != 'darwin'", index = "https://download.pytorch.org/whl/cpu" },
     { name = "torch", marker = "sys_platform == 'darwin'" },
@@ -1679,8 +1687,8 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "dinkster-api", url = "https://github.com/Kosinkadink/Dinkster/releases/download/main-2026-11-11-0.0.4.dev297-48906117/dinkster_api-0.0.4.dev297%2Bgd715697a2cb63b1b82c8fd40ebd732f10ccd64bf-py3-none-any.whl" },
-    { name = "dinkster-inference", specifier = "==0.1.1" },
+    { name = "dinkster-api", url = "https://github.com/Kosinkadink/Dinkster/releases/download/main-2026-11-11-0.0.4.dev305-dd39c7b2/dinkster_api-0.0.4.dev305%2Bg10edf73da3e055c2da9da04c4f0cf88819b4883d-py3-none-any.whl" },
+    { name = "dinkster-inference" },
     { name = "torch", marker = "sys_platform != 'darwin'", index = "https://download.pytorch.org/whl/cpu" },
     { name = "torch", marker = "sys_platform == 'darwin'" },
 ]
@@ -1698,8 +1706,8 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "dinkster-api", url = "https://github.com/Kosinkadink/Dinkster/releases/download/main-2026-11-11-0.0.4.dev297-48906117/dinkster_api-0.0.4.dev297%2Bgd715697a2cb63b1b82c8fd40ebd732f10ccd64bf-py3-none-any.whl" },
-    { name = "dinkster-inference", specifier = "==0.1.1" },
+    { name = "dinkster-api", url = "https://github.com/Kosinkadink/Dinkster/releases/download/main-2026-11-11-0.0.4.dev305-dd39c7b2/dinkster_api-0.0.4.dev305%2Bg10edf73da3e055c2da9da04c4f0cf88819b4883d-py3-none-any.whl" },
+    { name = "dinkster-inference" },
     { name = "torch", marker = "sys_platform != 'darwin'", index = "https://download.pytorch.org/whl/cpu" },
     { name = "torch", marker = "sys_platform == 'darwin'" },
 ]
@@ -1717,8 +1725,8 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "dinkster-api", url = "https://github.com/Kosinkadink/Dinkster/releases/download/main-2026-11-11-0.0.4.dev297-48906117/dinkster_api-0.0.4.dev297%2Bgd715697a2cb63b1b82c8fd40ebd732f10ccd64bf-py3-none-any.whl" },
-    { name = "dinkster-inference", specifier = "==0.1.1" },
+    { name = "dinkster-api", url = "https://github.com/Kosinkadink/Dinkster/releases/download/main-2026-11-11-0.0.4.dev305-dd39c7b2/dinkster_api-0.0.4.dev305%2Bg10edf73da3e055c2da9da04c4f0cf88819b4883d-py3-none-any.whl" },
+    { name = "dinkster-inference" },
     { name = "torch", marker = "sys_platform != 'darwin'", index = "https://download.pytorch.org/whl/cpu" },
     { name = "torch", marker = "sys_platform == 'darwin'" },
 ]
@@ -1738,8 +1746,8 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "dinkster-api", url = "https://github.com/Kosinkadink/Dinkster/releases/download/main-2026-11-11-0.0.4.dev297-48906117/dinkster_api-0.0.4.dev297%2Bgd715697a2cb63b1b82c8fd40ebd732f10ccd64bf-py3-none-any.whl" },
-    { name = "dinkster-inference", specifier = "==0.1.1" },
+    { name = "dinkster-api", url = "https://github.com/Kosinkadink/Dinkster/releases/download/main-2026-11-11-0.0.4.dev305-dd39c7b2/dinkster_api-0.0.4.dev305%2Bg10edf73da3e055c2da9da04c4f0cf88819b4883d-py3-none-any.whl" },
+    { name = "dinkster-inference" },
     { name = "numpy", specifier = ">=1.26" },
     { name = "pillow", specifier = ">=10" },
     { name = "torch", marker = "sys_platform != 'darwin'", index = "https://download.pytorch.org/whl/cpu" },
@@ -1759,8 +1767,8 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "dinkster-api", url = "https://github.com/Kosinkadink/Dinkster/releases/download/main-2026-11-11-0.0.4.dev297-48906117/dinkster_api-0.0.4.dev297%2Bgd715697a2cb63b1b82c8fd40ebd732f10ccd64bf-py3-none-any.whl" },
-    { name = "dinkster-inference", specifier = "==0.1.1" },
+    { name = "dinkster-api", url = "https://github.com/Kosinkadink/Dinkster/releases/download/main-2026-11-11-0.0.4.dev305-dd39c7b2/dinkster_api-0.0.4.dev305%2Bg10edf73da3e055c2da9da04c4f0cf88819b4883d-py3-none-any.whl" },
+    { name = "dinkster-inference" },
     { name = "torch", marker = "sys_platform != 'darwin'", index = "https://download.pytorch.org/whl/cpu" },
     { name = "torch", marker = "sys_platform == 'darwin'" },
 ]
@@ -1781,8 +1789,8 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "dinkster-api", url = "https://github.com/Kosinkadink/Dinkster/releases/download/main-2026-11-11-0.0.4.dev297-48906117/dinkster_api-0.0.4.dev297%2Bgd715697a2cb63b1b82c8fd40ebd732f10ccd64bf-py3-none-any.whl" },
-    { name = "dinkster-inference", specifier = "==0.1.1" },
+    { name = "dinkster-api", url = "https://github.com/Kosinkadink/Dinkster/releases/download/main-2026-11-11-0.0.4.dev305-dd39c7b2/dinkster_api-0.0.4.dev305%2Bg10edf73da3e055c2da9da04c4f0cf88819b4883d-py3-none-any.whl" },
+    { name = "dinkster-inference" },
     { name = "pillow", specifier = ">=10" },
     { name = "torch", marker = "sys_platform != 'darwin'", index = "https://download.pytorch.org/whl/cpu" },
     { name = "torch", marker = "sys_platform == 'darwin'" },
@@ -1805,8 +1813,8 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "av", specifier = ">=14" },
-    { name = "dinkster-api", url = "https://github.com/Kosinkadink/Dinkster/releases/download/main-2026-11-11-0.0.4.dev297-48906117/dinkster_api-0.0.4.dev297%2Bgd715697a2cb63b1b82c8fd40ebd732f10ccd64bf-py3-none-any.whl" },
-    { name = "dinkster-inference", specifier = "==0.1.1" },
+    { name = "dinkster-api", url = "https://github.com/Kosinkadink/Dinkster/releases/download/main-2026-11-11-0.0.4.dev305-dd39c7b2/dinkster_api-0.0.4.dev305%2Bg10edf73da3e055c2da9da04c4f0cf88819b4883d-py3-none-any.whl" },
+    { name = "dinkster-inference" },
     { name = "torch", marker = "sys_platform != 'darwin'", index = "https://download.pytorch.org/whl/cpu" },
     { name = "torch", marker = "sys_platform == 'darwin'" },
 ]
@@ -1829,8 +1837,8 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "dinkster-api", url = "https://github.com/Kosinkadink/Dinkster/releases/download/main-2026-11-11-0.0.4.dev297-48906117/dinkster_api-0.0.4.dev297%2Bgd715697a2cb63b1b82c8fd40ebd732f10ccd64bf-py3-none-any.whl" },
-    { name = "dinkster-inference", specifier = "==0.1.1" },
+    { name = "dinkster-api", url = "https://github.com/Kosinkadink/Dinkster/releases/download/main-2026-11-11-0.0.4.dev305-dd39c7b2/dinkster_api-0.0.4.dev305%2Bg10edf73da3e055c2da9da04c4f0cf88819b4883d-py3-none-any.whl" },
+    { name = "dinkster-inference" },
     { name = "dinkster-pack-helpers", editable = "packages/dinkster-pack-helpers" },
     { name = "dinkster-vision-sam3", editable = "packages/dinkster-nodes-vision-sam3" },
     { name = "numpy", specifier = ">=1.26" },
@@ -1856,8 +1864,8 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "dinkster-api", url = "https://github.com/Kosinkadink/Dinkster/releases/download/main-2026-11-11-0.0.4.dev297-48906117/dinkster_api-0.0.4.dev297%2Bgd715697a2cb63b1b82c8fd40ebd732f10ccd64bf-py3-none-any.whl" },
-    { name = "dinkster-inference", specifier = "==0.1.1" },
+    { name = "dinkster-api", url = "https://github.com/Kosinkadink/Dinkster/releases/download/main-2026-11-11-0.0.4.dev305-dd39c7b2/dinkster_api-0.0.4.dev305%2Bg10edf73da3e055c2da9da04c4f0cf88819b4883d-py3-none-any.whl" },
+    { name = "dinkster-inference" },
     { name = "dinkster-misc-models", editable = "packages/dinkster-nodes-misc-models" },
     { name = "dinkster-pack-helpers", editable = "packages/dinkster-pack-helpers" },
     { name = "numpy", specifier = ">=1.26" },
@@ -1881,8 +1889,8 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "dinkster-api", url = "https://github.com/Kosinkadink/Dinkster/releases/download/main-2026-11-11-0.0.4.dev297-48906117/dinkster_api-0.0.4.dev297%2Bgd715697a2cb63b1b82c8fd40ebd732f10ccd64bf-py3-none-any.whl" },
-    { name = "dinkster-inference", specifier = "==0.1.1" },
+    { name = "dinkster-api", url = "https://github.com/Kosinkadink/Dinkster/releases/download/main-2026-11-11-0.0.4.dev305-dd39c7b2/dinkster_api-0.0.4.dev305%2Bg10edf73da3e055c2da9da04c4f0cf88819b4883d-py3-none-any.whl" },
+    { name = "dinkster-inference" },
     { name = "dinkster-pack-helpers", editable = "packages/dinkster-pack-helpers" },
     { name = "dinkster-video", editable = "packages/dinkster-nodes-video" },
     { name = "numpy" },
@@ -1909,8 +1917,8 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "dinkster-api", url = "https://github.com/Kosinkadink/Dinkster/releases/download/main-2026-11-11-0.0.4.dev297-48906117/dinkster_api-0.0.4.dev297%2Bgd715697a2cb63b1b82c8fd40ebd732f10ccd64bf-py3-none-any.whl" },
-    { name = "dinkster-inference", specifier = "==0.1.1" },
+    { name = "dinkster-api", url = "https://github.com/Kosinkadink/Dinkster/releases/download/main-2026-11-11-0.0.4.dev305-dd39c7b2/dinkster_api-0.0.4.dev305%2Bg10edf73da3e055c2da9da04c4f0cf88819b4883d-py3-none-any.whl" },
+    { name = "dinkster-inference" },
     { name = "dinkster-models", editable = "packages/dinkster-nodes-models" },
     { name = "dinkster-pack-helpers", editable = "packages/dinkster-pack-helpers" },
     { name = "dinkster-vision-sam3", editable = "packages/dinkster-nodes-vision-sam3" },

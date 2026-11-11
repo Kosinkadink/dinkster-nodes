@@ -23,5 +23,4 @@ packages = ["src/dinkster_audio_models"]
 "locales" = "dinkster_audio_models/locales"
 
 [tool.uv.sources]
-dinkster-api = { workspace = true }
 dinkster-pack-helpers = { workspace = true }
