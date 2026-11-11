@@ -27,5 +27,6 @@ packages = ["src/dinkster_vision_sam3d_body"]
 "locales" = "dinkster_vision_sam3d_body/locales"
 
 [tool.uv.sources]
+dinkster-api = { workspace = true }
 dinkster-vision-sam3 = { workspace = true }
 dinkster-pack-helpers = { workspace = true }

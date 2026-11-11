@@ -23,4 +23,5 @@ packages = ["src/dinkster_cosmos"]
 "locales" = "dinkster_cosmos/locales"
 
 [tool.uv.sources]
+dinkster-api = { workspace = true }
 dinkster-pack-helpers = { workspace = true }

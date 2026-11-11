@@ -28,6 +28,7 @@ packages = ["src/dinkster_wan"]
 "locales" = "dinkster_wan/locales"
 
 [tool.uv.sources]
+dinkster-api = { workspace = true }
 dinkster-models = { workspace = true }
 dinkster-vision-sam3 = { workspace = true }
 dinkster-pack-helpers = { workspace = true }

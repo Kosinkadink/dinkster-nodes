@@ -25,5 +25,6 @@ packages = ["src/dinkster_void"]
 "locales" = "dinkster_void/locales"
 
 [tool.uv.sources]
+dinkster-api = { workspace = true }
 dinkster-video = { workspace = true }
 dinkster-pack-helpers = { workspace = true }
