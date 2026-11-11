@@ -2,25 +2,46 @@
 
 from __future__ import annotations
 
+import asyncio
 import os
+import sys
 from dataclasses import replace
 from pathlib import Path
 from typing import cast
 
 import pytest
-from dinkster_assets import AssetRef, AssetVault, digest_bytes
-from dinkster_graph import Graph, GraphNode, Link, TypedLiteral
+from aiohttp.test_utils import TestClient, TestServer
+from dinkster_assets import AssetRef, AssetVault, LibraryStore, digest_bytes
+from dinkster_graph import Graph, GraphNode, Link, TypedLiteral, graph_to_wire
+from dinkster_registry import Lockfile
+from dinkster_server import ServerLibrary, create_app
 from dinkster_values import TypeRegistry
 from dinkster_values.storage import image_input
 from dinkster_workers import load_manifest
 from dinkster_workers.doctor import prepare_catalog
 
-from dinkster.compose import CompositionError, PackSpec, ServingComposer, default_pack_spec
+from dinkster.compose import (
+    CompositionError,
+    PackSpec,
+    ServingComposer,
+    compose_serving,
+    default_pack_spec,
+)
 from tests.async_scenarios import run_scenario
 
 TESTS_DIR = Path(__file__).parent
 ATTENTION_PROVIDER = TESTS_DIR / "fixtures/attention_provider"
 WORKER_ENV = {"PYTHONPATH": os.pathsep.join((str(ATTENTION_PROVIDER), str(TESTS_DIR)))}
+
+
+@pytest.fixture
+def first_party_specs() -> tuple[PackSpec, ...]:
+    from dinkster import compose
+
+    catalog = Path(compose.__file__).with_name("checkout-packs.lock")
+    lock = Lockfile.from_record_json(catalog.read_text(encoding="utf-8"))
+    assert lock.packs
+    return tuple(default_pack_spec(pack.pack) for pack in lock.packs)
 
 
 @pytest.mark.parametrize("in_process", (False, True))
@@ -291,6 +312,172 @@ def test_native_comfy_pack_registers_container_literals(in_process: bool) -> Non
             )
             assert result.outputs["dictionary"]["STRING"].resolve() == '{"key": [3, true]}'
             assert result.outputs["array"]["STRING"].resolve() == '[3, {"key": false}]'
+        finally:
+            await composer.close()
+
+    run_scenario(scenario())
+
+
+@pytest.mark.parametrize("source", ["image-list", "video-asset"])
+def test_subprocess_official_pack_values_through_jobs(tmp_path: Path, source: str) -> None:
+    import io
+
+    import av
+    import numpy as np
+    from PIL import Image
+
+    async def scenario() -> None:
+        vault = AssetVault(tmp_path / "vault")
+        specs = tuple(
+            replace(default_pack_spec(pack), in_process=False, python=sys.executable)
+            for pack in (
+                "dinkster-utilities",
+                "dinkster-video",
+                "dinkster-image",
+            )
+        )
+        composition = await compose_serving(
+            specs,
+            include_default_packs=False,
+            worker_env={"DINKSTER_ASSET_VAULT": str(tmp_path / "vault")},
+        )
+        try:
+            library = ServerLibrary(vault=vault, store=LibraryStore(tmp_path / "library.sqlite"))
+            app = create_app(
+                composition.make_engine,
+                composition.schemas,
+                library=library,
+                choices=composition.choices,
+                lazy_choices=composition.lazy_choices,
+            )
+            async with TestClient(TestServer(app)) as client:
+                if source == "image-list":
+                    nodes = {
+                        "source": GraphNode(
+                            "dinkster.image.empty_image",
+                            {"width": 7, "height": 3, "batch_size": 1},
+                        ),
+                        "other": GraphNode(
+                            "dinkster.image.empty_image",
+                            {"width": 11, "height": 5, "batch_size": 2},
+                        ),
+                        "list": GraphNode(
+                            "dinkster.utilities.make_list",
+                            {"items.0": Link("other", "IMAGE"), "items.1": Link("source", "IMAGE")},
+                        ),
+                        "select": GraphNode(
+                            "dinkster.utilities.list_element",
+                            {"list": Link("list", "list"), "index": -1},
+                        ),
+                        "info": GraphNode(
+                            "dinkster.image.get_image_size", {"image": Link("select", "item")}
+                        ),
+                    }
+                    expected = {"width": 7, "height": 3, "batch_size": 1}
+                else:
+                    path = tmp_path / "input.mp4"
+                    with av.open(str(path), "w") as container:
+                        stream = container.add_stream("libx264rgb", rate=2)
+                        stream.width, stream.height, stream.pix_fmt = 32, 16, "rgb24"
+                        stream.options = {"crf": "0"}
+                        for value in (31, 173):
+                            frame = av.VideoFrame.from_ndarray(
+                                np.full((16, 32, 3), value, dtype=np.uint8), format="rgb24"
+                            )
+                            container.mux(stream.encode(frame))
+                        container.mux(stream.encode())
+                    response = await client.post("/api/assets", data=path.read_bytes())
+                    assert response.status == 201
+                    uploaded = await response.json()
+                    nodes = {
+                        "source": GraphNode(
+                            "dinkster.video.load_video",
+                            {"file": TypedLiteral("ASSET", {"digest": uploaded["digest"]})},
+                        ),
+                        "frames": GraphNode(
+                            "dinkster.video.get_video_components",
+                            {"video": Link("source", "VIDEO")},
+                        ),
+                        "info": GraphNode(
+                            "dinkster.image.get_image_size", {"image": Link("frames", "images")}
+                        ),
+                    }
+                    expected = {"width": 32, "height": 16, "batch_size": 2}
+                response = await client.post(
+                    "/api/jobs",
+                    json={
+                        "clientId": "cross-pack",
+                        "jobId": source,
+                        "graph": graph_to_wire(Graph(nodes=nodes)),
+                        "targets": ["info", "frames"] if source == "video-asset" else ["info"],
+                    },
+                )
+                assert response.status == 202, await response.text()
+                async with asyncio.timeout(60):
+                    while True:
+                        result = await (await client.get(f"/api/jobs/cross-pack/{source}")).json()
+                        if result["state"] in {"completed", "failed", "cancelled"}:
+                            break
+                        await asyncio.sleep(0.01)
+                assert result["state"] == "completed", result.get("error", result)
+                assert {
+                    name: result["outputs"]["info"][name]["value"] for name in expected
+                } == expected
+                if source == "video-asset":
+                    response = await client.get(
+                        "/api/values",
+                        params={
+                            "clientId": "cross-pack",
+                            "jobId": source,
+                            "nodeId": "frames",
+                            "outputId": "images",
+                            "rendition": "png",
+                        },
+                    )
+                    assert response.status == 200, await response.text()
+                    pixels = np.array(Image.open(io.BytesIO(await response.read())))
+                    assert np.array_equal(pixels, np.full((16, 32, 3), 31, dtype=np.uint8))
+        finally:
+            await composition.close()
+
+    run_scenario(scenario())
+
+
+def test_image_pack_starts_with_canonical_inference_types(
+    first_party_specs: tuple[PackSpec, ...],
+) -> None:
+    async def scenario() -> None:
+        image = replace(default_pack_spec("dinkster-image"), require_catalog=True)
+        assert prepare_catalog(image.manifest, environment=os.environ).ok
+        composer = ServingComposer()
+        try:
+            specs = tuple(
+                image if load_manifest(spec.manifest).name == "dinkster-image" else spec
+                for spec in first_party_specs
+            )
+            for spec in composer.order_pack_entries(specs):
+                await composer.add_pack(spec)
+            result = await composer.composition.make_engine(lambda event: None).run(
+                Graph(
+                    nodes={
+                        "image": GraphNode(
+                            "dinkster.image.empty_image",
+                            {"width": 7, "height": 3, "batch_size": 2, "color": 0x123456},
+                        ),
+                        "size": GraphNode(
+                            "dinkster.image.get_image_size", {"image": Link("image", "IMAGE")}
+                        ),
+                    }
+                ),
+                ["size"],
+            )
+            assert result.executed == ("image", "size")
+            assert {name: value.resolve() for name, value in result.outputs["size"].items()} == {
+                "width": 7,
+                "height": 3,
+                "batch_size": 2,
+            }
+            assert result.diagnostics == ()
         finally:
             await composer.close()
 
