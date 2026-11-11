@@ -17,9 +17,10 @@ explicit = true
 [tool.uv.sources]
 torch = { index = "pytorch-cpu", marker = "sys_platform != 'darwin'" }
 torchvision = { index = "pytorch-cpu", marker = "sys_platform != 'darwin'" }
-dinkster = { url = "https://github.com/Kosinkadink/Dinkster/releases/download/main-2026-11-10-0.0.3.dev260-7f2e7591/dinkster-0.0.3.dev260%2Bg5657319e89756071684c2777efa9a0dd3310cb22-py3-none-any.whl" }
-dinkster-api = { url = "https://github.com/Kosinkadink/Dinkster/releases/download/main-2026-11-10-0.0.3.dev260-7f2e7591/dinkster_api-0.0.3.dev260%2Bg5657319e89756071684c2777efa9a0dd3310cb22-py3-none-any.whl" }
-dinkster-supervisor = { url = "https://github.com/Kosinkadink/Dinkster/releases/download/main-2026-11-10-0.0.3.dev260-7f2e7591/dinkster_supervisor-0.0.3-py3-none-any.whl" }
+dinkster = { url = "https://github.com/Kosinkadink/Dinkster/releases/download/main-2026-11-11-0.0.4.dev267-048e6260/dinkster-0.0.4.dev267%2Bg71017e836ee5473bdf7479c5b4f2ff3deb6827a1-py3-none-any.whl" }
+dinkster-api = { url = "https://github.com/Kosinkadink/Dinkster/releases/download/main-2026-11-11-0.0.4.dev267-048e6260/dinkster_api-0.0.4.dev267%2Bg71017e836ee5473bdf7479c5b4f2ff3deb6827a1-py3-none-any.whl" }
+dinkster-engine = { url = "https://github.com/Kosinkadink/Dinkster/releases/download/main-2026-11-11-0.0.4.dev267-048e6260/dinkster_engine-0.0.4.dev267%2Bg71017e836ee5473bdf7479c5b4f2ff3deb6827a1-py3-none-any.whl" }
+dinkster-supervisor = { url = "https://github.com/Kosinkadink/Dinkster/releases/download/main-2026-11-11-0.0.4.dev267-048e6260/dinkster_supervisor-0.0.3-py3-none-any.whl" }
 
 [tool.uv.workspace]
 members = ["packages/*"]
@@ -27,6 +28,7 @@ members = ["packages/*"]
 [dependency-groups]
 dev = [
     "dinkster>=0.0.2",
+    "dinkster-engine>=0.0.4.dev267",
     "dinkster-supervisor>=0.0.3",
     "pytest>=8",
     "pytest-cov>=6",
