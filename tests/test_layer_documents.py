@@ -13,10 +13,11 @@ from dinkster_api.v1 import Node, NodeSchema, OutputSpec, TypeExpr, register_med
 from dinkster_caches import MemoryLRUCache
 from dinkster_engine import Engine, ExecutionRuntime
 from dinkster_graph import Graph, GraphNode, Link, TypedLiteral
-from dinkster_image.compositor import AddLayer, CreateLayeredImage
+from dinkster_image.compositor import AddLayer, CreateLayeredImage, LayersFromBoundingBoxes
 from dinkster_image.layer_document import EditLayers, FlattenLayers, SplitLayers
 from dinkster_image.layer_io import LoadLayers, SaveLayers
 from dinkster_image.types import Region, register_image_types
+from dinkster_image_document.compat import from_comfy_layers, register_comfy_layers
 from dinkster_image_document.document import (
     ImageDocument,
     append_raster,
@@ -56,6 +57,161 @@ def document() -> ImageDocument:
         empty_document(2, 1),
         raster_png(np.array([[[1, 0, 0, 1], [0, 1, 0, 0.5]]], dtype=np.float32)),
     )
+
+
+def test_native_and_layer_wire_share_one_canonical_document() -> None:
+    value = document()
+    registry = TypeRegistry()
+    register_image_types(registry)
+    register_comfy_layers(registry)
+    for type_id in ("dinkster.layers", "comfy.LAYERS"):
+        spec = registry.spec(type_id)
+        encoded = spec.encode(value)
+        assert encoded == value.data
+        assert cast(ImageDocument, spec.decode(encoded)).data == encoded
+    assert registry.equivalent_type("comfy.LAYERS") == "dinkster.layers"
+    record = value.to_record()
+    record["canvas"]["width"] = 100
+    assert value.to_record()["canvas"]["width"] == 2
+
+
+@pytest.mark.parametrize("type_id", ["dinkster.layers", "comfy.LAYERS"])
+def test_document_boundary_preserves_external_and_auxiliary_references(
+    type_id, monkeypatch
+) -> None:
+    from dinkster_assets import AssetError, AssetRef, AssetVault, digest_bytes
+    from dinkster_assets.value import value_asset_references
+    from dinkster_values import default_encode
+
+    record = append_raster(
+        document(), raster_png(np.full((1, 2, 3), 0.25, dtype=np.float32))
+    ).to_record()
+    record["resources"]["r0"].pop("inline")
+    orphan = dict(record["resources"]["r0"], id="r4", digest=digest_bytes(b"orphan"), byteSize=6)
+    record["resources"]["r4"] = orphan
+    record["allocation"]["nextOrdinal"] = 5
+    expected = ImageDocument.from_record(record)
+
+    def forbid_io(*args, **kwargs):
+        pytest.fail("encoded document admission must not read, render or publish resources")
+
+    monkeypatch.setattr(ImageDocument, "read_resource", forbid_io)
+    monkeypatch.setattr(ImageDocument, "render", forbid_io)
+    monkeypatch.setattr(AssetVault, "writer", forbid_io)
+    registry = TypeRegistry()
+    register_image_types(registry)
+    wrapped = registry.wrap(type_id, expected)
+    codec = ValueCodec(registry)
+    blobs, segments = [], []
+    wire, _ = codec.encode(wrapped, blobs, segments)
+    auxiliary = AssetRef(digest_bytes(b"auxiliary"), "source.json", 9)
+    entries = {
+        **wrapped.meta.entries,
+        "asset_refs": [
+            auxiliary.to_wire(),
+            *reversed(cast(list[object], wrapped.meta.get("asset_refs"))),
+        ],
+    }
+    blobs[cast(int, wire["metaBlob"])] = default_encode(entries)
+    received, _ = codec.decode(wire, blobs, [])
+    assert cast(ImageDocument, received.resolve()).data == expected.data
+    assert received.fingerprint == wrapped.fingerprint
+    references = value_asset_references({"document": received})
+    assert {digest: ref.size for digest, ref in references.items()} == {
+        record["resources"]["r0"]["digest"]: record["resources"]["r0"]["byteSize"],
+        orphan["digest"]: 6,
+        auxiliary.digest: 9,
+    }
+    if type_id == "comfy.LAYERS":
+        assert (
+            value_asset_references({"document": received}, complete_registry=registry) == references
+        )
+    else:
+        with pytest.raises(AssetError, match="incomplete"):
+            value_asset_references({"document": received}, complete_registry=registry)
+    first = TypeRegistry()
+    first_spec = first.register(type_id)
+    register_image_types(first)
+    assert first.spec(type_id) is first_spec
+    assert not first.spec(type_id).asset_references_complete
+
+
+@pytest.mark.parametrize("type_id", ["dinkster.layers", "comfy.LAYERS"])
+@pytest.mark.parametrize(
+    "invalid",
+    ["omitted", "last", "size", "digest", "conflict", "malformed", "noncanonical", "payload"],
+)
+def test_document_boundary_refuses_uncovered_resources_before_exposure(type_id, invalid) -> None:
+    from dinkster_assets import digest_bytes
+    from dinkster_values import default_encode
+    from dinkster_workers.boundary import EncodedPayloadValidationError
+
+    record = document().to_record()
+    record["resources"]["r0"].pop("inline")
+    record["resources"]["r2"] = dict(
+        record["resources"]["r0"], id="r2", digest=digest_bytes(b"orphan"), byteSize=6
+    )
+    record["allocation"]["nextOrdinal"] = 3
+    registry = TypeRegistry()
+    register_image_types(registry)
+    wrapped = registry.wrap(type_id, ImageDocument.from_record(record))
+    codec = ValueCodec(registry)
+    blobs, segments = [], []
+    wire, _ = codec.encode(wrapped, blobs, segments)
+    metadata = dict(wrapped.meta.entries)
+    refs = [dict(ref) for ref in cast(list[dict[str, object]], metadata["asset_refs"])]
+    if invalid == "omitted":
+        refs.clear()
+    elif invalid == "last":
+        refs.pop()
+    elif invalid == "size":
+        refs[0]["size"] = cast(int, refs[0]["size"]) + 1
+    elif invalid == "digest":
+        refs[0]["digest"] = digest_bytes(b"wrong")
+    elif invalid == "conflict":
+        refs.append({**refs[0], "size": cast(int, refs[0]["size"]) + 1})
+    elif invalid == "malformed":
+        metadata["asset_refs"] = "not a list"
+    else:
+        payload = cast(dict[str, object], wire["payload"])
+        blobs[cast(int, payload["blob"])] = (
+            json.dumps(record, indent=2).encode()
+            if invalid == "noncanonical"
+            else b"not a document"
+        )
+    if invalid != "malformed":
+        metadata["asset_refs"] = refs
+    blobs[cast(int, wire["metaBlob"])] = default_encode(metadata)
+    with pytest.raises(EncodedPayloadValidationError):
+        codec.decode(wire, blobs, [])
+
+
+@pytest.mark.parametrize("type_id", ["dinkster.layers", "comfy.LAYERS"])
+def test_document_rendition_needs_no_raster_resources(
+    type_id: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    record = document().to_record()
+    for resource in record["resources"].values():
+        resource.pop("inline")
+    expected = ImageDocument.from_record(record)
+
+    def forbid_raster(*args, **kwargs):
+        pytest.fail("document retrieval must not render or read raster resources")
+
+    monkeypatch.setattr(ImageDocument, "render", forbid_raster)
+    monkeypatch.setattr(ImageDocument, "read_resource", forbid_raster)
+    registry = TypeRegistry()
+    register = register_image_types if type_id == "dinkster.layers" else register_comfy_layers
+    register(registry)
+    register(registry)
+    spec = registry.spec(type_id)
+    value = registry.wrap(type_id, spec.decode(spec.encode(expected)))
+    rendition = registry.render(value, "document")
+    assert rendition.mime == IMAGE_DOCUMENT_MEDIA_TYPE
+    assert rendition.data == expected.data
+    assert [s.kind for s in registry.renditions_of(type_id) if s.default] == [
+        "image" if type_id == "dinkster.layers" else "document"
+    ]
 
 
 class LayerNodeSource(Node):
@@ -531,6 +687,82 @@ def test_load_layers_node_creates_documents_from_raster_assets(
     )
     assert loaded.read_resource(resource) == payload
     assert flatten(loaded)[0].shape == (1, 2, 3, 4 if alpha_mode == "straight" else 3)
+
+
+def test_split_layers_uses_z_order_not_object_key_order() -> None:
+    value = append_raster(document(), raster_png(np.ones((1, 2, 3))), z_index=10)
+    record = value.to_record()
+    base, clipped = record["rootLayerIds"]
+    record["layers"][base]["z_index"] = -10
+    record["rootLayerIds"] = [clipped, base]
+    value = ImageDocument.from_record(record)
+    grouped = apply_commands(value, [{"op": "group", "ids": [clipped]}])
+    split = cast(dict[str, Any], SplitLayers.execute(layers=grouped))
+    np.testing.assert_array_equal(split["images"][0], flatten(value, f"layer:{base}")[0])
+
+
+def test_layer_aliases_execute() -> None:
+    fixture = json.loads(
+        (Path(__file__).parent / "fixtures/layer_document_goldens.json").read_text()
+    )
+    for case in fixture["cases"]:
+        value = from_comfy_layers(case["layers"])
+        assert value.to_record()["extensions"]["comfy"]["inputs"] == case["inputs"]
+        result = cast(dict[str, Any], CreateLayeredImage.execute(layers=value, compositor={}))
+        np.testing.assert_allclose(result["image"], case["image"], atol=1 / 255, rtol=0)
+        np.testing.assert_allclose(result["transparency_mask"], case["mask"], atol=1 / 255, rtol=0)
+        background, subject = case["layers"]["layers"]
+        built = AddLayer.execute(image=np.asarray(background["image"], dtype=np.float32))["layers"]
+        built = LayersFromBoundingBoxes.execute(
+            layers=built,
+            image=np.asarray(subject["image"], dtype=np.float32),
+            mask=np.asarray(subject["mask"], dtype=np.float32),
+            bboxes=json.dumps([{"x": 1, "y": 1, "width": 2, "height": 2}]),
+        )["layers"]
+        assert isinstance(built, ImageDocument)
+        identifier = built.to_record()["rootLayerIds"][-1]
+        built = apply_commands(
+            built,
+            [
+                {
+                    "op": "layer",
+                    "id": identifier,
+                    "changes": {"opacity": round(subject["opacity"] * 65535)},
+                }
+            ],
+        )
+        result = cast(
+            dict[str, Any],
+            CreateLayeredImage.execute(layers=built, compositor={}, color_space="linear"),
+        )
+        np.testing.assert_allclose(result["image"], case["image"], atol=1 / 255, rtol=0)
+        np.testing.assert_allclose(result["transparency_mask"], case["mask"], atol=1 / 255, rtol=0)
+
+
+@pytest.mark.parametrize("case_index", range(3))
+def test_layer_node_source_goldens(case_index: int) -> None:
+    fixture = json.loads(
+        (Path(__file__).parent / "fixtures/layer_document_goldens.json").read_text()
+    )
+    case = fixture["aliasCases"][case_index]
+    inputs = case["inputs"]
+    inputs["layers"] = from_comfy_layers(inputs["layers"])
+    for key in ("image", "mask"):
+        if key in inputs:
+            inputs[key] = np.asarray(inputs[key], dtype=np.float32)
+    if case["node"] == "AddLayer":
+        inputs["flip_horizontal"] = inputs.pop("flip_h")
+        value = AddLayer.execute(**inputs)["layers"]
+    elif case["node"] == "LayersFromBoundingBoxes":
+        value = LayersFromBoundingBoxes.execute(**inputs)["layers"]
+        assert isinstance(value, ImageDocument)
+        record = value.to_record()
+        assert record["layers"][record["rootLayerIds"][-1]]["z_index"] == 11
+    else:
+        value = inputs["layers"]
+    result = cast(dict[str, Any], CreateLayeredImage.execute(layers=value, color_space="linear"))
+    np.testing.assert_allclose(result["image"], case["image"], atol=1 / 255, rtol=0)
+    np.testing.assert_allclose(result["transparency_mask"], case["mask"], atol=1 / 255, rtol=0)
 
 
 def test_legacy_layer_admission_does_not_publish_migrated_rasters(monkeypatch) -> None:
