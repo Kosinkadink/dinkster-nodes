@@ -740,7 +740,7 @@ def test_default_doctor_uses_configured_remote_catalog(
     from dinkster_workers.catalog import read_catalog
 
     from dinkster import compose, manager, serve
-    from dinkster.installer import InstallError
+    from dinkster_registry import InstallError
 
     spec = compose.default_pack_spec("dinkster-nodes-remote")
     # Doctor scans sibling packs; keep that scan inside this test's tree.
