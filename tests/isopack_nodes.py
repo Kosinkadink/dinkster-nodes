@@ -15,10 +15,46 @@ from dinkster_schema import (
     report_preview,
     report_progress,
 )
-from dinkster_values import CORE_FLOAT, CORE_STRING
+from dinkster_values import CORE_FLOAT, CORE_INT, CORE_STRING, CustomWidgetDescriptor, TypeRegistry
 
 STRING = TypeExpr.concrete(CORE_STRING)
 FLOAT = TypeExpr.concrete(CORE_FLOAT)
+INT = TypeExpr.concrete(CORE_INT)
+BLOB = TypeExpr.concrete("iso.blob")
+
+
+def blob_rendition_parameters(
+    parameters: Mapping[str, str], _metadata: Mapping[str, object]
+) -> Mapping[str, str]:
+    prefix = parameters.get("prefix", "blob").strip()
+    if not prefix:
+        raise ValueError("prefix must be non-empty")
+    return {"prefix": prefix}
+
+
+def render_blob(blob: object, parameters: Mapping[str, str]) -> bytes:
+    assert isinstance(blob, Mapping)
+    return f"{parameters['prefix']}:{blob['n']}:{blob['data']}".encode()
+
+
+def blob_metadata(blob: object) -> Mapping[str, object]:
+    assert isinstance(blob, Mapping)
+    return {"size": blob["n"]}
+
+
+def register_types(registry: TypeRegistry) -> None:
+    registry.register("iso.blob", meta=blob_metadata)
+    registry.register_rendition(
+        "iso.blob",
+        "summary",
+        mime=lambda metadata: "text/plain" if metadata["size"] else "text/x-empty",
+        render=render_blob,
+        version="1",
+        parameters=("prefix",),
+        defaults={"prefix": "blob"},
+        limits={"prefixLength": 32},
+        normalize=blob_rendition_parameters,
+    )
 
 
 class Chatty(Node):
@@ -51,4 +87,33 @@ class Chatty(Node):
         return cls.outputs(value=value.upper())
 
 
+class BlobOut(Node):
+    """Produces a value of a type the engine process has not registered."""
+
+    @classmethod
+    def define_schema(cls) -> NodeSchema:
+        return NodeSchema(
+            node_type="iso.blob_out",
+            display_name="Blob Out",
+            category="test",
+            inputs=(
+                InputSpec(
+                    "size",
+                    INT,
+                    default=8,
+                    widget=CustomWidgetDescriptor(
+                        "isopack.size",
+                        {"min": 1, "max": 12, "unit": "bytes"},
+                    ),
+                ),
+            ),
+            outputs=(OutputSpec("blob", BLOB),),
+        )
+
+    @classmethod
+    def execute(cls, *, size: int) -> Mapping[str, object]:
+        return cls.outputs(blob={"n": size, "data": "x" * size})
+
+
 NODES = [Chatty]
+SERVER_NODES = [Chatty, BlobOut]
