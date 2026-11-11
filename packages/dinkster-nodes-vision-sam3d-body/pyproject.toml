@@ -1,6 +1,6 @@
 [project]
 name = "dinkster-vision-sam3d-body"
-version = "0.0.4"
+version = "0.0.5"
 description = "ComfyUI-origin vision-sam3d-body nodes"
 requires-python = ">=3.12"
 dependencies = [
@@ -27,5 +27,6 @@ packages = ["src/dinkster_vision_sam3d_body"]
 "locales" = "dinkster_vision_sam3d_body/locales"
 
 [tool.uv.sources]
+dinkster-api = { workspace = true }
 dinkster-vision-sam3 = { workspace = true }
 dinkster-pack-helpers = { workspace = true }

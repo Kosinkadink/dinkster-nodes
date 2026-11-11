@@ -1,6 +1,6 @@
 [project]
 name = "dinkster-hunyuan"
-version = "0.0.4"
+version = "0.0.5"
 description = "Dinkster hunyuan model nodes"
 requires-python = ">=3.12"
 dependencies = [
@@ -23,4 +23,5 @@ packages = ["src/dinkster_hunyuan"]
 "locales" = "dinkster_hunyuan/locales"
 
 [tool.uv.sources]
+dinkster-api = { workspace = true }
 dinkster-pack-helpers = { workspace = true }

@@ -1,6 +1,6 @@
 [project]
 name = "dinkster-vision-background-removal"
-version = "0.0.2"
+version = "0.0.3"
 description = "ComfyUI-origin vision-background-removal nodes"
 requires-python = ">=3.12"
 dependencies = [
@@ -20,3 +20,6 @@ packages = ["src/dinkster_vision_background_removal"]
 [tool.hatch.build.targets.wheel.force-include]
 "dinkster-pack.toml" = "dinkster_vision_background_removal/dinkster-pack.toml"
 "locales" = "dinkster_vision_background_removal/locales"
+
+[tool.uv.sources]
+dinkster-api = { workspace = true }

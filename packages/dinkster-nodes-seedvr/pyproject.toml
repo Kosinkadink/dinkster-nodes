@@ -1,6 +1,6 @@
 [project]
 name = "dinkster-seedvr"
-version = "0.0.2"
+version = "0.0.3"
 description = "Dinkster seedvr model nodes"
 requires-python = ">=3.12"
 dependencies = [
@@ -21,3 +21,6 @@ packages = ["src/dinkster_seedvr"]
 [tool.hatch.build.targets.wheel.force-include]
 "dinkster-pack.toml" = "dinkster_seedvr/dinkster-pack.toml"
 "locales" = "dinkster_seedvr/locales"
+
+[tool.uv.sources]
+dinkster-api = { workspace = true }

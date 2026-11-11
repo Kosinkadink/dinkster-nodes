@@ -1,6 +1,6 @@
 [project]
 name = "dinkster-conditioning"
-version = "0.0.4"
+version = "0.0.5"
 description = "First-party Dinkster conditioning nodes"
 requires-python = ">=3.12"
 dependencies = [
@@ -25,5 +25,6 @@ packages = ["src/dinkster_conditioning"]
 "locales" = "dinkster_conditioning/locales"
 
 [tool.uv.sources]
+dinkster-api = { workspace = true }
 dinkster-latent = { workspace = true }
 dinkster-pack-helpers = { workspace = true }
