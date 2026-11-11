@@ -18,11 +18,13 @@ from dinkster_assets import AssetError, AssetRef, AssetVault, LibraryStore, dige
 from dinkster_assets.scratch import claim_inactive_produced_job
 from dinkster_graph import Graph, GraphNode, Link, TypedLiteral, graph_to_wire
 from dinkster_registry import Lockfile
+from dinkster_schema import Node
 from dinkster_server import ServerLibrary, create_app
 from dinkster_values import TypeRegistry, Value
 from dinkster_values.storage import image_input
 from dinkster_workers import load_manifest
 from dinkster_workers.doctor import prepare_catalog
+from dinkster_workers.manifest import resolve_entry
 
 from dinkster.compose import (
     CompositionError,
@@ -47,6 +49,86 @@ def first_party_specs() -> tuple[PackSpec, ...]:
     lock = Lockfile.from_record_json(catalog.read_text(encoding="utf-8"))
     assert lock.packs
     return tuple(default_pack_spec(pack.pack) for pack in lock.packs)
+
+
+@pytest.fixture
+def first_party_node_packs(first_party_specs: tuple[PackSpec, ...]) -> dict[str, str]:
+    return {
+        node.schema().node_type: manifest.name
+        for spec in first_party_specs
+        if (manifest := load_manifest(spec.manifest)).nodes_entry
+        for node in cast("list[type[Node]]", resolve_entry(manifest.nodes_entry))
+    }
+
+
+def test_compose_defaults_only(
+    tmp_path: Path,
+    first_party_specs: tuple[PackSpec, ...],
+    first_party_node_packs: dict[str, str],
+) -> None:
+    """The explicit first-party selection provides the complete standard surface."""
+
+    async def scenario() -> None:
+        composition = await compose_serving(first_party_specs, include_default_packs=False)
+        try:
+            assert set(composition.schemas) == set(first_party_node_packs)
+            assert not any(t.startswith("dev.") for t in composition.schemas)
+            assert set(composition.packs) == (
+                set(first_party_node_packs.values()) | {"dinkster-nodes-remote"}
+            )
+            assert composition.node_packs == first_party_node_packs
+            locked = first_party_specs
+            assert {
+                next(iter(spec.packs))
+                for spec in locked
+                if spec.packs is not None and not spec.in_process
+            } == set(composition.packs)
+            expected_digests = {
+                pack_id: info.artifact_digest
+                for spec in locked
+                if spec.packs is not None
+                for pack_id, info in spec.packs.items()
+            }
+            assert {
+                pack.pack: pack.artifact_digest for pack in composition.generation.packs
+            } == expected_digests
+            engine = composition.make_engine(lambda event: None)
+            graph = Graph(
+                nodes={
+                    "g": GraphNode(
+                        "dinkster.text.string_concatenate",
+                        {"string_a": "left", "string_b": "right", "delimiter": ":"},
+                    )
+                }
+            )
+            result = await engine.run(graph, ["g"])
+            assert result.outputs["g"]["STRING"].resolve() == "left:right"
+
+            library = ServerLibrary(
+                vault=AssetVault(tmp_path / "vault"),
+                store=LibraryStore(tmp_path / "library.sqlite"),
+                pack_assets=composition.asset_catalog,
+            )
+            app = create_app(
+                composition.make_engine,
+                composition.schemas,
+                choices=composition.choices,
+                lazy_choices=composition.lazy_choices,
+                library=library,
+            )
+            client = TestClient(TestServer(app))
+            await client.start_server()
+            try:
+                response = await client.get("/api/nodes")
+                payload = await response.json()
+                assert response.status == 200, payload
+                assert set(payload["nodes"]) == set(first_party_node_packs)
+            finally:
+                await client.close()
+        finally:
+            await composition.close()
+
+    run_scenario(scenario())
 
 
 def test_default_pack_artifact_files_have_explicit_line_ending_policy() -> None:
