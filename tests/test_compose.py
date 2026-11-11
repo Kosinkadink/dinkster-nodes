@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import importlib.metadata
 import os
 import subprocess
 import sys
@@ -59,6 +60,29 @@ def first_party_node_packs(first_party_specs: tuple[PackSpec, ...]) -> dict[str,
         if (manifest := load_manifest(spec.manifest)).nodes_entry
         for node in cast("list[type[Node]]", resolve_entry(manifest.nodes_entry))
     }
+
+
+def test_first_party_packs_do_not_require_standard_suite_distribution(
+    monkeypatch: pytest.MonkeyPatch,
+    first_party_node_packs: dict[str, str],
+) -> None:
+    from dinkster import compose
+
+    real_distribution = importlib.metadata.distribution
+
+    def distribution(name: str):
+        if name == "dinkster-nodes-std":
+            raise importlib.metadata.PackageNotFoundError(name)
+        return real_distribution(name)
+
+    monkeypatch.setattr(importlib.metadata, "distribution", distribution)
+    expected = tuple(sorted(set(first_party_node_packs.values()) | {"dinkster-nodes-remote"}))
+    selected = tuple(sorted(first_party_pack_metadata(TESTS_DIR.parent)))
+    assert selected == expected
+    for pack_id in expected:
+        spec = compose.default_pack_spec(pack_id)
+        assert spec.packs is not None
+        assert load_manifest(spec.manifest).name == pack_id
 
 
 def test_compose_defaults_only(
