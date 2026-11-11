@@ -132,3 +132,24 @@ def test_pack_namespace_compose_reload_execute_and_reject_second_owner(
             await composer.close()
 
     run_scenario(scenario())
+
+
+def test_installed_pack_digest_matches_bundled_artifact(tmp_path: Path) -> None:
+    from dinkster_registry import artifact_digest, unpack_artifact
+    from dinkster_workers.pack_wheel import build_pack_archive
+
+    from dinkster import compose
+
+    source = Path(__file__).parent.parent / "packages/dinkster-nodes-image"
+    output = tmp_path / "wheel"
+    build_pack_archive(source, output)
+    archive = next(output.glob("*.whl"))
+    unpack_artifact(archive, tmp_path, artifact_digest(archive.read_bytes()))
+    bundled = tmp_path / "dinkster_image"
+
+    source_digest = compose._installed_pack_digest(
+        source / "dinkster-pack.toml", source / "src/dinkster_image"
+    )
+    bundled_digest = compose._installed_pack_digest(bundled / "dinkster-pack.toml", None)
+
+    assert source_digest == bundled_digest
