@@ -69,7 +69,12 @@ def published_generation(tmp_path_factory: pytest.TempPathFactory) -> Path:
     )
     # Managed interpreters can expose engine dependencies through site initialization.
     # Inspect the interpreter's effective metadata, not only its local site directory.
-    site = stdlib / "site-packages"
+    site = Path(
+        subprocess.check_output(
+            [str(python), "-I", "-c", "import sysconfig;print(sysconfig.get_path('purelib'))"],
+            text=True,
+        ).strip()
+    )
     inherited = generation / "engine-site"
     site.rename(inherited)
     site.mkdir()
