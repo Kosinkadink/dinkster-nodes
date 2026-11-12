@@ -282,6 +282,7 @@ def run_selected_tests(
             if relative.parts[0] not in {"tests", "tools", "packages"} and relative.name not in {
                 "pyproject.toml",
                 "uv.lock",
+                "conftest.py",
             }:
                 continue
             official = len(relative.parts) > 1 and relative.parts[1] in directories

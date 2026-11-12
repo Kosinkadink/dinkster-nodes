@@ -142,6 +142,9 @@ def test_selected_candidate_uses_published_engine_not_checkout_or_default_bytes(
     tests = checkout / "tests"
     tests.mkdir(parents=True)
     (checkout / "pyproject.toml").write_text("")
+    (checkout / "conftest.py").write_text(
+        "import pytest\n@pytest.fixture\ndef selected_context():\n    return 'selected-fixture'\n"
+    )
     poison = checkout / "packages/dinkster-nodes-text/src/dinkster_text"
     poison.mkdir(parents=True)
     (poison / "__init__.py").write_text("raise AssertionError('checkout pack imported')\n")
@@ -153,7 +156,8 @@ def test_selected_candidate_uses_published_engine_not_checkout_or_default_bytes(
         "import importlib.metadata\nfrom pathlib import Path\n"
         "import dinkster\nimport dinkster_text\n"
         "from dinkster.packs import first_party_pack_metadata\n"
-        "def test_selected_bytes():\n"
+        "def test_selected_bytes(selected_context):\n"
+        "    assert selected_context == 'selected-fixture'\n"
         "    assert first_party_pack_metadata(Path(dinkster.__file__).resolve().parents[2])"
         "['dinkster-text'] == ('dinkster_text', 'dinkster-text')\n"
         "    assert sum(d.metadata['Name'] == 'dinkster-text' "
