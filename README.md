@@ -42,8 +42,7 @@ testing a pack does not submit it to the public registry.
 
 First-party packs will use the same self-service credentials as third-party
 packs. The `dinkster` publisher is already bound to its Dinkster account; the
-first-party publication and credential cutover remain pending on
-[the cutover issue](https://github.com/Kosinkadink/comfy-vibe-station/issues/698).
+first-party publication and credential cutover are not complete.
 These instructions do not enable publication or complete that cutover.
 
 Open [publisher accounts](https://id.dinkster.org/registry), sign in with the
@@ -60,7 +59,8 @@ the page cannot recover the value.
 For cutover or rotation, install the replacement credential, confirm a
 publication through the normal workflow, then revoke the previous credential
 on the same page and remove its obsolete Actions secret. Record the first-party
-publication and retirement on the cutover issue. Do not revoke the existing
-credential before that confirmation or publish manually to demonstrate cutover.
+publication and retirement before declaring cutover complete. Do not revoke the
+existing credential before that confirmation or publish manually to demonstrate
+cutover.
 Expired and revoked tokens cannot publish. Publisher registration does not
 change admission, scanning or the official publisher tier.
