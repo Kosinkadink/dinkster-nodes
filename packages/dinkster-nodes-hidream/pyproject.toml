@@ -23,4 +23,5 @@ packages = ["src/dinkster_hidream"]
 "locales" = "dinkster_hidream/locales"
 
 [tool.uv.sources]
+dinkster-api = { workspace = true }
 dinkster-pack-helpers = { workspace = true }

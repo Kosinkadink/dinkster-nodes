@@ -23,4 +23,5 @@ packages = ["src/dinkster_hunyuan"]
 "locales" = "dinkster_hunyuan/locales"
 
 [tool.uv.sources]
+dinkster-api = { workspace = true }
 dinkster-pack-helpers = { workspace = true }

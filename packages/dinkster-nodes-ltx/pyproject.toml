@@ -26,6 +26,7 @@ packages = ["src/dinkster_ltx"]
 "locales" = "dinkster_ltx/locales"
 
 [tool.uv.sources]
+dinkster-api = { workspace = true }
 dinkster-latent = { workspace = true }
 dinkster-llm = { workspace = true }
 dinkster-models = { workspace = true }

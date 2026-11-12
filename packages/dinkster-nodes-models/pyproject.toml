@@ -1,6 +1,6 @@
 [project]
 name = "dinkster-models"
-version = "0.0.6"
+version = "0.0.7"
 description = "First-party Dinkster models nodes"
 requires-python = ">=3.12"
 dependencies = [
@@ -24,4 +24,5 @@ packages = ["src/dinkster_models"]
 "locales" = "dinkster_models/locales"
 
 [tool.uv.sources]
+dinkster-api = { workspace = true }
 dinkster-pack-helpers = { workspace = true }

@@ -23,3 +23,6 @@ packages = ["src/dinkster_video"]
 [tool.hatch.build.targets.wheel.force-include]
 "dinkster-pack.toml" = "dinkster_video/dinkster-pack.toml"
 "locales" = "dinkster_video/locales"
+
+[tool.uv.sources]
+dinkster-api = { workspace = true }

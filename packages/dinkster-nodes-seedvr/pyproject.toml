@@ -21,3 +21,6 @@ packages = ["src/dinkster_seedvr"]
 [tool.hatch.build.targets.wheel.force-include]
 "dinkster-pack.toml" = "dinkster_seedvr/dinkster-pack.toml"
 "locales" = "dinkster_seedvr/locales"
+
+[tool.uv.sources]
+dinkster-api = { workspace = true }
