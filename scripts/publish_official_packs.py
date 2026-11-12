@@ -11,10 +11,13 @@ import urllib.request
 import zipfile
 from collections.abc import Sequence
 from pathlib import Path
+from typing import cast
 from urllib.parse import quote, urlsplit
 
 from blake3 import blake3
 from dinkster_registry import LockedPack, Lockfile, artifact_digest, unpack_artifact
+from dinkster_supervisor.environment_artifacts import validate_dependency_base, validate_manifest
+from dinkster_supervisor.environment_state import content_digest
 from dinkster_workers import load_manifest
 from dinkster_workers.manifest import PackDependency
 from dinkster_workers.pack_lock import PackLock
@@ -129,7 +132,7 @@ def _wait_active(
 
 
 def publish_official_packs(
-    root: Path,
+    release: Path,
     sources: Path,
     base_manifests: Sequence[Path],
     pack_locks: Sequence[Path],
@@ -147,15 +150,22 @@ def publish_official_packs(
     """
     if output.exists():
         raise ValueError("publication output must be a new directory")
-    supported = json.loads((root / "scripts/base_bundles.json").read_bytes())
+    engine_manifest = release / "release-manifest.json"
+    engine = validate_manifest(engine_manifest.read_bytes(), content_digest(engine_manifest), None)
+    if engine["repository"] != "Kosinkadink/Dinkster":
+        raise ValueError("official publication requires a published Dinkster engine")
+    supported = cast("dict[str, object]", engine.get("dependencies", {}))
     if not supported:
         raise ValueError("official publication requires supported bases")
     bases = {}
     for path in base_manifests:
         base = read_base_manifest(path)
         variant = base["variant"]
-        if variant in bases or base["id"] != "sha256:" + supported.get(variant, ""):
+        if variant in bases or variant not in supported:
             raise ValueError(f"unexpected or duplicate supported base: {variant}")
+        validate_dependency_base(supported[variant], base)
+        if base["workerProtocol"] != engine["workerProtocol"]:
+            raise ValueError("engine and selected base worker protocols differ")
         bases[variant] = base
     if bases.keys() != supported.keys():
         raise ValueError("official publication requires every supported base")
@@ -365,6 +375,10 @@ def publish_official_packs(
                     pack.pack,
                     pack.version,
                     locks=locks,
+                    engine={
+                        "commit": str(engine["commit"]),
+                        "manifestDigest": content_digest(engine_manifest),
+                    },
                 )
             except RegistryPublishError as exc:
                 raise RegistryPublishError(
@@ -405,6 +419,7 @@ def publish_official_packs(
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--release", required=True, type=Path)
     parser.add_argument("--sources", required=True, type=Path)
     parser.add_argument("--base-manifest", required=True, action="append", type=Path)
     parser.add_argument("--pack-lock", required=True, action="append", type=Path)
@@ -415,7 +430,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     try:
         result = publish_official_packs(
-            Path(__file__).resolve().parents[1],
+            args.release.resolve(),
             args.sources.resolve(),
             args.base_manifest,
             args.pack_lock,

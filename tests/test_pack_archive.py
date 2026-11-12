@@ -44,7 +44,7 @@ def test_official_publication_declarations_match_archive_admission(
         if pack.pack == "dinkster-pack-helpers":
             assert library_metadata(archive) == (
                 "dinkster-pack-helpers",
-                "0.0.3",
+                "0.0.4",
                 (
                     "dinkster-api<0.1,>=0.0.2.dev0",
                     "dinkster-inference",
@@ -152,7 +152,7 @@ def test_official_sources_prepare_catalogs_and_execute_existing_node_ids(
             assert composition.node_packs["dinkster.text.string_length"] == "dinkster-text"
             assert composition.node_packs["dinkster.image.empty_image"] == "dinkster-image"
             assert composition.packs["dinkster-text"].version == "0.0.3"
-            assert composition.packs["dinkster-image"].version == "0.0.7"
+            assert composition.packs["dinkster-image"].version == "0.0.9"
             result = await composition.make_engine(lambda _event: None).run(
                 graph_from_wire(json.loads(saved.read_bytes())), ["length", "size"]
             )
@@ -431,6 +431,8 @@ def test_official_publication_uses_selected_manifest_versions(
     ("changed", "expected"),
     [
         (("src/dinkster/serve.py", "pyproject.toml"), ()),
+        (("README.md",), ()),
+        ((".github/workflows/ci.yml",), ()),
         (("packages/dinkster-nodes-foundation/src/nodes.py",), ("foundation",)),
         (("packages/dinkster-nodes-image/deleted.py",), ("image",)),
         (("packages/dinkster-nodes-unlisted-family/src/nodes.py",), ("unlisted",)),
@@ -453,7 +455,7 @@ def test_official_publication_selects_only_changed_committed_packs(
     changed: tuple[str, ...],
     expected: tuple[str, ...],
 ) -> None:
-    from scripts.select_official_packs import select_packs
+    from scripts.select_official_packs import publication_selection, select_packs
 
     paths = {
         "foundation": "packages/dinkster-nodes-foundation/dinkster-pack.toml",
@@ -491,6 +493,8 @@ def test_official_publication_selects_only_changed_committed_packs(
                 else data
             )
         if "diff" in command:
+            if kwargs.get("text"):
+                return "\n".join(changed) + "\n"
             return ("\0".join(changed) + "\0").encode()
         raise AssertionError(command)
 
@@ -506,6 +510,16 @@ def test_official_publication_selects_only_changed_committed_packs(
         "image",
         "second",
         "unlisted",
+    )
+    assert publication_selection(tmp_path, "b" * 40) == (
+        ("first", "foundation", "image", "second", "unlisted")
+        if changed
+        in (
+            ("src/dinkster/serve.py", "pyproject.toml"),
+            (".github/workflows/ci.yml",),
+            ("packages/dinkster-nodes-vision/pyproject.toml",),
+        )
+        else expected
     )
     assert select_packs(tmp_path, tag="pack/unlisted/v4.2.1") == ("unlisted",)
     assert select_packs(tmp_path, tag="pack/first/v3.4rc1") == ("first",)
@@ -704,8 +718,25 @@ def test_official_library_selection_and_build(
     base["archive"]["parts"] = []
     base_path = tmp_path / "base.json"
     base_path.write_text(json.dumps(base))
-    (tmp_path / "scripts").mkdir()
-    (tmp_path / "scripts/base_bundles.json").write_text(json.dumps({"linux-cpu": identity}))
+    (tmp_path / "release-manifest.json").write_text(
+        json.dumps(
+            {
+                "format": "dinkster.engine/1",
+                "repository": "Kosinkadink/Dinkster",
+                "version": "0.0.4.dev123",
+                "commit": "c" * 40,
+                "workerProtocol": 11,
+                "artifacts": [
+                    {
+                        "name": "constraints.txt",
+                        "size": 0,
+                        "sha256": hashlib.sha256(b"").hexdigest(),
+                    }
+                ],
+                "dependencies": {"linux-cpu": {"base": base["id"], "wheels": []}},
+            }
+        )
+    )
     responses = {
         f"/v1/publish/{name}/versions/0.0.1": json.dumps(
             {"status": "queued", "candidateId": name}
@@ -806,6 +837,8 @@ def test_official_library_selection_and_build(
         "missing-base",
         "duplicate-base",
         "wrong-base",
+        "engine-protocol",
+        "engine-repository",
         "missing-lock",
         "duplicate-lock",
         "extra-lock",
@@ -958,10 +991,32 @@ def test_official_publication_requires_complete_supported_base_bindings(
             ).write(path)
             locks.append(path)
             expected_locks[pack.pack, variant] = json.loads(path.read_bytes())
-    (tmp_path / "scripts").mkdir()
     if problem == "wrong-base":
         supported["win-nvidia"] = "c" * 64
-    (tmp_path / "scripts/base_bundles.json").write_text(json.dumps(supported))
+    (tmp_path / "release-manifest.json").write_text(
+        json.dumps(
+            {
+                "format": "dinkster.engine/1",
+                "repository": "other/engine"
+                if problem == "engine-repository"
+                else "Kosinkadink/Dinkster",
+                "version": "0.0.4.dev123",
+                "commit": "c" * 40,
+                "workerProtocol": 12 if problem == "engine-protocol" else 11,
+                "artifacts": [
+                    {
+                        "name": "constraints.txt",
+                        "size": 0,
+                        "sha256": hashlib.sha256(b"").hexdigest(),
+                    }
+                ],
+                "dependencies": {
+                    variant: {"base": "sha256:" + identity, "wheels": []}
+                    for variant, identity in supported.items()
+                },
+            }
+        )
+    )
     if problem == "missing-base":
         bases.pop()
     elif problem == "duplicate-base":
@@ -1051,6 +1106,25 @@ def test_official_publication_requires_complete_supported_base_bindings(
 
     def registry_response(handler):
         if handler.command == "POST":
+            import email.parser
+
+            body = handler.rfile.read(int(handler.headers["Content-Length"]))
+            message = email.parser.BytesParser().parsebytes(
+                f"Content-Type: {handler.headers['Content-Type']}\r\n\r\n".encode() + body
+            )
+            bindings = []
+            for part in message.walk():
+                if part.get_param("name", header="content-disposition") == "engine":
+                    payload = part.get_payload(decode=True)
+                    assert isinstance(payload, bytes)
+                    bindings.append(json.loads(payload))
+            assert bindings == [
+                {
+                    "commit": "c" * 40,
+                    "manifestDigest": "sha256:"
+                    + hashlib.sha256((tmp_path / "release-manifest.json").read_bytes()).hexdigest(),
+                }
+            ]
             submitted.append(handler.path)
             name, version = handler.path.split("/")[3::2]
             if not (problem and problem.startswith("submitted-")) and not (

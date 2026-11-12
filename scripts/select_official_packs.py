@@ -27,13 +27,13 @@ def publication_selection(root: Path, before: str) -> tuple[str, ...]:
         ["git", "-C", str(root), "diff", "--name-only", before, "HEAD"], text=True
     ).splitlines()
     engine_changed = any(
-        path in {"pyproject.toml", "uv.lock", "scripts/base_bundles.json"}
+        path in {"pyproject.toml", "uv.lock"}
         or path.startswith("packages/")
         and path.endswith("/pyproject.toml")
         for path in changed
     )
     publication_changed = any(
-        path == ".github/workflows/official-packs.yml"
+        path == ".github/workflows/ci.yml"
         or path
         in {
             "scripts/select_official_packs.py",

@@ -5,25 +5,23 @@ from __future__ import annotations
 import argparse
 import json
 import platform
+import subprocess
 import tempfile
 from dataclasses import replace
 from pathlib import Path
 from urllib.parse import quote, urlsplit
 
 from dinkster_registry import Lockfile
-from dinkster_supervisor.environment_archives import extract_base
 from dinkster_supervisor.environment_artifacts import (
-    engine_constraints,
     validate_dependency_base,
     validate_manifest,
 )
 from dinkster_supervisor.environment_channels import engine_publication_names
-from dinkster_supervisor.environment_constraints import effective_constraints
-from dinkster_supervisor.environment_downloads import fetch_artifact
 from dinkster_supervisor.environment_state import content_digest
 from dinkster_workers.pack_lock import PackLock
 
 from scripts.build_official_packs import build
+from scripts.prepare_admission_engine import read_runtime
 
 
 def build_locks(
@@ -34,12 +32,12 @@ def build_locks(
     *,
     sources: Path,
     engine_identity: str,
+    runtime: Path,
 ) -> tuple[Path, ...]:
     """Keep source payloads unchanged while adding native per-variant lock bytes."""
     base_data = manifest.read_bytes()
     raw = json.loads(base_data)
     variant = raw["variant"]
-    base_tag = f"base-{variant}-{raw.get('label', raw['id'][7:])}"
     base: dict = validate_manifest(base_data, raw["id"], variant)
     engine: dict = validate_manifest(
         (release / "release-manifest.json").read_bytes(), engine_identity, None
@@ -62,39 +60,17 @@ def build_locks(
             raise ValueError(f"release artifact differs from manifest: {path.name}")
     if engine["workerProtocol"] != base["workerProtocol"]:
         raise ValueError("engine and selected base worker protocols differ")
+    python, runtime_base, constraints, runtime_variant = read_runtime(runtime, engine_identity)
+    if (runtime_base, runtime_variant) != (base["id"], variant):
+        raise ValueError("pack lock runtime differs from the selected base")
     output.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix="release-pack-locks-", dir=output.parent) as directory:
         work = Path(directory)
-        archive = base["archive"]
-        mirror = (
-            "https://github.com/Kosinkadink/Dinkster-Environments/releases/download/" + base_tag
-        )
-        parts = tuple(
-            fetch_artifact(
-                (mirror,),
-                row["filename"],
-                work / row["filename"],
-                row["sha256"],
-                row["size"],
-            )
-            for row in archive["parts"]
-        )
-        tree = work / "base"
-        extract_base(
-            parts,
-            tree,
-            platform=system,
-            executable=base["interpreter"]["executable"],
-            expected_parts=tuple(archive["parts"]),
-        )
-        constraints = work / "constraints.txt"
-        constraints.write_text(
-            effective_constraints(engine_constraints(engine, variant), base, strict=True),
-            encoding="ascii",
-        )
         wheel_urls = {
             (row["filename"], row["size"], row["sha256"]): row["url"] for row in base["wheels"]
         }
+        for row in engine["dependencies"][variant]["wheels"]:
+            wheel_urls[(row["filename"], row["size"], row["sha256"])] = row["url"]
         for row in engine["artifacts"]:
             if not row["name"].endswith(".whl"):
                 continue
@@ -108,11 +84,11 @@ def build_locks(
             work / "packs",
             packs=tuple(pack.pack for pack in catalog.packs),
             variant=variant,
-            python=tree / base["interpreter"]["executable"],
+            python=python,
             constraints=constraints,
             # Native base wheels come from find-links; backend indexes can shadow PyPI pins.
             indexes=("https://pypi.org/simple",),
-            find_links=(release, tree / "wheels"),
+            find_links=(runtime / "wheelhouse",),
             accelerator="cuda" if base["nvidia"] is not None else "cpu",
         )
         locks = [path for path in built if path.name.endswith(f"-{variant}.pack-lock.json")]
@@ -145,8 +121,21 @@ def build_locks(
                     raise ValueError(f"native pack build changed source artifact: {path.name}")
         if not locks:
             raise ValueError("native pack build produced no dependency locks")
+        head = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=root, text=True).strip()
+        (staged / "engine.json").write_text(
+            json.dumps(
+                {
+                    "engineVersion": engine["version"],
+                    "engineRelease": engine_identity,
+                    "engineCommit": engine["commit"],
+                    "packSourceCommit": head,
+                    "baseId": base["id"],
+                    "variant": variant,
+                }
+            )
+        )
         staged.rename(output)
-    return tuple(sorted(output.iterdir()))
+    return tuple(sorted(output.glob("*.pack-lock.json")))
 
 
 if __name__ == "__main__":
@@ -156,6 +145,7 @@ if __name__ == "__main__":
     parser.add_argument("--output", required=True, type=Path)
     parser.add_argument("--sources", required=True, type=Path)
     parser.add_argument("--engine-identity", required=True)
+    parser.add_argument("--runtime", required=True, type=Path)
     args = parser.parse_args()
     for path in build_locks(
         Path(__file__).resolve().parents[1],
@@ -164,5 +154,6 @@ if __name__ == "__main__":
         args.output.resolve(),
         sources=args.sources.resolve(),
         engine_identity=args.engine_identity,
+        runtime=args.runtime.resolve(),
     ):
         print(path)

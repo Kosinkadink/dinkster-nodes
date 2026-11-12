@@ -35,8 +35,24 @@ Hosted pull-request and main checks use the same locked workspace. Root and
 package tests each run in four disjoint file shards, with each package in its
 own pytest process. Shader tests use the CPU software renderer.
 
-There is no production publication workflow in this repository. Building or
-testing a pack does not submit it to the public registry.
+The production publication job in `ci.yml` is disabled unless the repository
+variable `OFFICIAL_PACK_PUBLICATION_ENABLED` is exactly `true`. Building or
+testing a pack does not submit it to the public registry. Pull requests,
+merge groups and forks cannot publish, even with that variable set.
+
+When enabled, a main push affecting pack sources or publication inputs publishes
+their declared versions only after all checks, native dependency locks, selected
+wheel admission and isolated publisher/scanner checks pass. The publisher uses
+the same source wheels and native locks those jobs checked. It compares the
+selected set with existing public versions without credentials before submitting
+anything: changed bytes or install locks require a version bump. Identical public
+versions are not resubmitted. Submissions are serialized without cancellation,
+and the job waits for public activation rather than treating a queue receipt as
+acceptance. The credential is available only to the submission step.
+
+The cutover is not complete. Dinkster remains the only active publisher. Keep
+the standalone variable unset until the engine's publication route is disabled;
+the two repositories must never publish the same pack name concurrently.
 
 ## Registry publisher credentials
 

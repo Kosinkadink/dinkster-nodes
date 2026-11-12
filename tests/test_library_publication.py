@@ -14,9 +14,14 @@ from zipfile import ZipFile
 import pytest
 
 
-@pytest.mark.parametrize("dependent", [False, True])
+@pytest.mark.parametrize(
+    "dependent,engine_dependency", [(False, False), (True, False), (False, True)]
+)
 def test_probe_index_stages_selected_library_dependency_without_public_lookup(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, dependent: bool
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    dependent: bool,
+    engine_dependency: bool,
 ) -> None:
     from dinkster_registry import LockedPack, Lockfile, artifact_digest
 
@@ -45,9 +50,21 @@ def test_probe_index_stages_selected_library_dependency_without_public_lookup(
         )
     )
     (sources / "official-packs.lock").write_text(Lockfile.of(entries).record_json())
+    engine = None
+    if engine_dependency:
+        engine = tmp_path / "engine"
+        engine.mkdir()
+        _wheel(
+            engine,
+            "dinkster-api",
+            "0.0.3",
+            "dinkster_api",
+            "",
+            requires=("test-helper==0.0.1",),
+        )
     output = tmp_path / "index"
-    result = stage_index(sources, output)
-    if dependent:
+    result = stage_index(sources, output, engine=engine)
+    if dependent or engine_dependency:
         assert result["distributions"] == 1
         assert result["wheels"] == [
             {
@@ -67,7 +84,70 @@ def test_probe_index_stages_selected_library_dependency_without_public_lookup(
     with ZipFile(sources / consumer.filename, "a") as archive:
         archive.writestr("changed.txt", "source drift")
     with pytest.raises(ValueError, match="probe source digest mismatch: test-consumer"):
-        stage_index(sources, tmp_path / "bad-index")
+        stage_index(sources, tmp_path / "bad-index", engine=engine)
+
+
+def test_incompatible_publication_control_reaches_publisher_refusal(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from scripts.check_publication_controls import CONSUMER, HELPER, prepare_fixture
+    from scripts.publish_official_packs import publish_official_packs
+    from tests.registry_fixtures import _wheel
+
+    monkeypatch.setenv("UV_NO_INDEX", "1")
+    base = {
+        "format": "dinkster.base/1",
+        "variant": "linux-cpu",
+        "platform": {"os": "linux", "arch": "x86_64"},
+        "python": "3.12.9",
+        "interpreter": {},
+        "wheels": [],
+        "replaces": [],
+        "workerProtocol": 12,
+        "nvidia": None,
+        "archive": {"format": "tar+zstd"},
+    }
+    identity = hashlib.sha256(
+        json.dumps(base, sort_keys=True, separators=(",", ":")).encode("ascii")
+    ).hexdigest()
+    base["id"] = "sha256:" + identity
+    base["archive"]["parts"] = []
+    bases = tmp_path / "bases/linux-cpu"
+    bases.mkdir(parents=True)
+    (bases / "manifest.json").write_text(json.dumps(base))
+    engine = tmp_path / "engine"
+    engine.mkdir()
+    api = _wheel(engine, "dinkster-api", "0.0.4", "dinkster_api", "")
+    (engine / "release-manifest.json").write_text(
+        json.dumps(
+            {
+                "format": "dinkster.engine/1",
+                "repository": "Kosinkadink/Dinkster",
+                "version": "0.0.4.dev123",
+                "commit": "c" * 40,
+                "workerProtocol": 12,
+                "artifacts": [
+                    {"name": api.filename, "size": api.size, "sha256": api.sha256},
+                    {
+                        "name": "constraints.txt",
+                        "size": 0,
+                        "sha256": hashlib.sha256(b"").hexdigest(),
+                    },
+                ],
+                "dependencies": {"linux-cpu": {"base": base["id"], "wheels": []}},
+            }
+        )
+    )
+    output = tmp_path / "broken"
+    prepare_fixture(bases.parent, output, incompatible=True, engine=engine)
+    with pytest.raises(ValueError, match=f"{CONSUMER}: selected {HELPER} excludes >=2"):
+        publish_official_packs(
+            output / "engine",
+            output / "sources",
+            list((output / "bases").glob("*/manifest.json")),
+            list((output / "locks").glob("*.pack-lock.json")),
+            output / "publication",
+        )
 
 
 def test_probe_index_refuses_local_dependency_outside_selected_sources(
@@ -97,7 +177,18 @@ def test_probe_index_refuses_local_dependency_outside_selected_sources(
 
 @pytest.mark.parametrize(
     "problem",
-    [None, "engine", "base", "base-bytes", "dependency", "protocol", "artifact", "source"],
+    [
+        None,
+        "engine",
+        "base",
+        "base-bytes",
+        "dependency",
+        "protocol",
+        "artifact",
+        "source",
+        "runtime-base",
+        "runtime-variant",
+    ],
 )
 def test_native_publication_locks_bind_published_inputs_and_preserve_sources(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, problem: str | None
@@ -112,7 +203,8 @@ def test_native_publication_locks_bind_published_inputs_and_preserve_sources(
     files = {
         "packages/helpers/pyproject.toml": (
             '[project]\nname = "test-helpers"\nversion = "0.0.1"\n'
-            'requires-python = ">=3.12"\ndependencies = ["fixture-dependency==1.0"]\n'
+            'requires-python = ">=3.12"\n'
+            'dependencies = ["fixture-dependency==1.0", "fixture-runtime==3.0"]\n'
             '[build-system]\nrequires = ["hatchling"]\nbuild-backend = "hatchling.build"\n'
             '[tool.hatch.build.targets.wheel]\npackages = ["src/test_helpers"]\n'
             "[tool.dinkster]\nofficial-library = true\n"
@@ -143,6 +235,16 @@ def test_native_publication_locks_bind_published_inputs_and_preserve_sources(
     originals = {path.name: path.read_bytes() for path in sources.iterdir()}
     system = {"Linux": "linux", "Windows": "windows", "Darwin": "macos"}[platform.system()]
     base_wheel = _wheel(tmp_path, "fixture-base", "2.0", "fixture_base", "VALUE = 43\n")
+    runtime_wheel = _wheel(tmp_path, "fixture-runtime", "3.0", "fixture_runtime", "VALUE = 47\n")
+    runtime_row = {
+        "name": "fixture-runtime",
+        "version": "3.0",
+        "filename": runtime_wheel.filename,
+        "sha256": runtime_wheel.sha256,
+        "size": runtime_wheel.size,
+        "index": "https://pypi.org/simple",
+        "url": f"https://example.org/runtime/{runtime_wheel.filename}",
+    }
     base_row = {
         "name": "fixture-base",
         "version": "2.0",
@@ -192,7 +294,8 @@ def test_native_publication_locks_bind_published_inputs_and_preserve_sources(
             "fixture-cpu": {
                 "base": "sha256:" + "d" * 64 if problem == "base" else base["id"],
                 "wheels": [
-                    {**base_row, "sha256": "f" * 64} if problem == "dependency" else base_row
+                    {**base_row, "sha256": "f" * 64} if problem == "dependency" else base_row,
+                    runtime_row,
                 ],
             }
         },
@@ -211,11 +314,27 @@ def test_native_publication_locks_bind_published_inputs_and_preserve_sources(
     if problem == "source":
         (sources / "test_helpers-0.0.1-py3-none-any.whl").write_bytes(b"changed source wheel")
 
-    def extract(parts, tree, **kwargs):
-        # Resolution uses the test interpreter; published-base extraction is a supervisor contract.
-        (tree / "wheels").mkdir(parents=True)
-        shutil.copyfile(tmp_path / base_wheel.filename, tree / "wheels" / base_wheel.filename)
-        python = tree / base["interpreter"]["executable"]
+    runtime = tmp_path / "runtime"
+
+    def read_runtime(directory, selected_identity):
+        # The generation validator has separate coverage; resolution still uses real wheels.
+        from dinkster_supervisor.environment_artifacts import engine_constraints
+        from dinkster_supervisor.environment_constraints import effective_constraints
+
+        assert directory == runtime
+        assert selected_identity == identity
+        (runtime / "wheelhouse").mkdir(parents=True)
+        for source in (
+            tmp_path / base_wheel.filename,
+            tmp_path / runtime_wheel.filename,
+            release / wheel.filename,
+        ):
+            shutil.copyfile(source, runtime / "wheelhouse" / source.name)
+        constraints = runtime / "constraints.txt"
+        constraints.write_text(
+            effective_constraints(engine_constraints(engine, "fixture-cpu"), base, strict=True)
+        )
+        python = runtime / base["interpreter"]["executable"]
         python.parent.mkdir(parents=True)
         if system == "windows":
             for path in Path(sys.base_prefix).iterdir():
@@ -225,9 +344,14 @@ def test_native_publication_locks_bind_published_inputs_and_preserve_sources(
             shutil.copytree(Path(sys.base_prefix) / "DLLs", python.parent / "DLLs")
         else:
             python.symlink_to(sys.executable)
+        return (
+            python,
+            "sha256:" + "e" * 64 if problem == "runtime-base" else base["id"],
+            constraints,
+            "other-cpu" if problem == "runtime-variant" else "fixture-cpu",
+        )
 
-    monkeypatch.setattr(native, "extract_base", extract)
-    monkeypatch.setattr(native, "fetch_artifact", lambda mirrors, name, path, *args: path)
+    monkeypatch.setattr(native, "read_runtime", read_runtime)
     output = tmp_path / "locks"
     if problem:
         messages = {
@@ -238,17 +362,39 @@ def test_native_publication_locks_bind_published_inputs_and_preserve_sources(
             "protocol": "worker protocols differ",
             "artifact": "release artifact differs",
             "source": "changed source artifact",
+            "runtime-base": "runtime differs from the selected base",
+            "runtime-variant": "runtime differs from the selected base",
         }
         with pytest.raises(ValueError, match=messages[problem]):
             native.build_locks(
-                tmp_path, release, manifest, output, sources=sources, engine_identity=identity
+                tmp_path,
+                release,
+                manifest,
+                output,
+                sources=sources,
+                engine_identity=identity,
+                runtime=runtime,
             )
         assert not output.exists()
     else:
         paths = native.build_locks(
-            tmp_path, release, manifest, output, sources=sources, engine_identity=identity
+            tmp_path,
+            release,
+            manifest,
+            output,
+            sources=sources,
+            engine_identity=identity,
+            runtime=runtime,
         )
         assert [path.name for path in paths] == ["test-helpers-0.0.1-fixture-cpu.pack-lock.json"]
+        assert json.loads((output / "engine.json").read_text()) == {
+            "engineVersion": "0.0.4.dev123",
+            "engineRelease": identity,
+            "engineCommit": "c" * 40,
+            "packSourceCommit": "a" * 40,
+            "baseId": base["id"],
+            "variant": "fixture-cpu",
+        }
         lock = PackLock.read(paths[0])
         locked = next(package for package in lock.packages if package.name == "fixture-dependency")
         assert [(row.filename, row.sha256, row.size, row.url) for row in locked.wheels] == [
@@ -258,6 +404,17 @@ def test_native_publication_locks_bind_published_inputs_and_preserve_sources(
                 wheel.size,
                 "https://github.com/Kosinkadink/Dinkster/releases/download/"
                 f"main-{'c' * 40}/{wheel.filename}",
+            )
+        ]
+        runtime_locked = next(
+            package for package in lock.packages if package.name == "fixture-runtime"
+        )
+        assert [(row.filename, row.sha256, row.size, row.url) for row in runtime_locked.wheels] == [
+            (
+                runtime_wheel.filename,
+                runtime_wheel.sha256,
+                runtime_wheel.size,
+                f"https://example.org/runtime/{runtime_wheel.filename}",
             )
         ]
         assert {path.name: path.read_bytes() for path in sources.iterdir()} == originals
@@ -470,6 +627,72 @@ def test_publication_preparation_uses_pinned_engine_and_its_exact_base(
             assert [(pack.pack, pack.version) for pack in catalog.packs] == [
                 ("test-helper", "0.0.2")
             ]
+
+            from dinkster_supervisor.environment_state import interpreter
+            from dinkster_workers.pack_lock import GenerationPackages
+
+            from scripts import prepare_admission_engine as admission
+
+            def acquire(catalog, variant, store):
+                constraints = store / "constraints.txt"
+                constraints.write_text("")
+                return constraints
+
+            def provision(destination, *, store, base, constraints):
+                destination.mkdir()
+                shutil.copyfile(constraints, destination / "constraints.txt")
+                return interpreter(destination)
+
+            facts = GenerationPackages.inspect(Path(sys.executable))
+            monkeypatch.setattr(admission, "acquire", acquire)
+            monkeypatch.setattr(admission, "prepare_engine_interpreter", provision)
+            monkeypatch.setattr(GenerationPackages, "inspect", lambda python: facts)
+            runtime = tmp_path / "runtime"
+            selected_identity = "sha256:" + identity
+            prepared_wheel = output / "engine" / wheel.filename
+            original_wheel = prepared_wheel.read_bytes()
+            prepared_wheel.write_bytes(original_wheel + b"changed")
+            with pytest.raises(ValueError, match="release artifact differs"):
+                admission.prepare_engine(
+                    output / "engine",
+                    runtime,
+                    tmp_path / "store",
+                    output / "bases/fixture-cpu/manifest.json",
+                    engine_identity=selected_identity,
+                )
+            prepared_wheel.write_bytes(original_wheel)
+            python = admission.prepare_engine(
+                output / "engine",
+                runtime,
+                tmp_path / "store",
+                output / "bases/fixture-cpu/manifest.json",
+                engine_identity=selected_identity,
+            )
+            constraints = runtime / "generation/constraints.txt"
+            assert admission.read_runtime(runtime, selected_identity) == (
+                python,
+                base["id"],
+                constraints,
+                "fixture-cpu",
+            )
+            record = json.loads((runtime / "runtime.json").read_bytes())
+            assert record["commit"] == commit
+            assert record["engineVersion"] == version
+            assert (runtime / "engine/release-manifest.json").read_bytes() == data
+            assert (runtime / "wheelhouse" / wheel.filename).read_bytes() == (
+                tmp_path / wheel.filename
+            ).read_bytes()
+            with pytest.raises(ValueError, match="selected engine"):
+                admission.read_runtime(runtime, "sha256:" + "e" * 64)
+            constraints.write_text("changed constraints")
+            with pytest.raises(ValueError, match="constraints changed"):
+                admission.read_runtime(runtime, selected_identity)
+            constraints.write_text("")
+            (runtime / "runtime.json").write_text(
+                json.dumps({**record, "packages": {"unexpected": "1.0"}})
+            )
+            with pytest.raises(ValueError, match="installed packages changed"):
+                admission.read_runtime(runtime, selected_identity)
     finally:
         server.shutdown()
         server.server_close()

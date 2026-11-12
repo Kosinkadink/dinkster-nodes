@@ -17,10 +17,10 @@ explicit = true
 [tool.uv.sources]
 torch = { index = "pytorch-cpu", marker = "sys_platform != 'darwin'" }
 torchvision = { index = "pytorch-cpu", marker = "sys_platform != 'darwin'" }
-dinkster = { url = "https://github.com/Kosinkadink/Dinkster/releases/download/main-2026-11-11-0.0.4.dev305-dd39c7b2/dinkster-0.0.4.dev305%2Bg10edf73da3e055c2da9da04c4f0cf88819b4883d-py3-none-any.whl" }
-dinkster-api = { url = "https://github.com/Kosinkadink/Dinkster/releases/download/main-2026-11-11-0.0.4.dev305-dd39c7b2/dinkster_api-0.0.4.dev305%2Bg10edf73da3e055c2da9da04c4f0cf88819b4883d-py3-none-any.whl" }
-dinkster-engine = { url = "https://github.com/Kosinkadink/Dinkster/releases/download/main-2026-11-11-0.0.4.dev305-dd39c7b2/dinkster_engine-0.0.4.dev305%2Bg10edf73da3e055c2da9da04c4f0cf88819b4883d-py3-none-any.whl" }
-dinkster-supervisor = { url = "https://github.com/Kosinkadink/Dinkster/releases/download/main-2026-11-11-0.0.4.dev305-dd39c7b2/dinkster_supervisor-0.0.3-py3-none-any.whl" }
+dinkster = { url = "https://github.com/Kosinkadink/Dinkster/releases/download/main-2026-11-12-0.0.4.dev350-1c79f0d4/dinkster-0.0.4.dev350%2Bg617b3cb7bec69722263c697c6085249d075e44b8-py3-none-any.whl" }
+dinkster-api = { url = "https://github.com/Kosinkadink/Dinkster/releases/download/main-2026-11-12-0.0.4.dev350-1c79f0d4/dinkster_api-0.0.4.dev350%2Bg617b3cb7bec69722263c697c6085249d075e44b8-py3-none-any.whl" }
+dinkster-engine = { url = "https://github.com/Kosinkadink/Dinkster/releases/download/main-2026-11-12-0.0.4.dev350-1c79f0d4/dinkster_engine-0.0.4.dev350%2Bg617b3cb7bec69722263c697c6085249d075e44b8-py3-none-any.whl" }
+dinkster-supervisor = { url = "https://github.com/Kosinkadink/Dinkster/releases/download/main-2026-11-12-0.0.4.dev350-1c79f0d4/dinkster_supervisor-0.0.4-py3-none-any.whl" }
 
 [tool.uv.workspace]
 members = ["packages/*"]
@@ -33,6 +33,8 @@ dev = [
     "pytest>=8",
     "pytest-cov>=6",
     "pytest-timeout>=2.4",
+    "pytest-xdist>=3.6",
+    "pyyaml>=6",
     "hypothesis>=6",
     "ruff>=0.8",
     "pyright>=1.1.390",
@@ -58,7 +60,7 @@ pythonpath = [".", "tests/first_party_runtime"]
 pythonVersion = "3.12"
 venvPath = "."
 venv = ".venv"
-include = ["packages", "tests"]
+include = ["packages", "scripts", "tests"]
 # Torch execution tests run in the worker runtime, outside the static check.
 exclude = [
     "tests/first_party_runtime",

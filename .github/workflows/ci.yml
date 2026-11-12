@@ -2,6 +2,7 @@ name: ci
 
 on:
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
   push:
     branches: [main]
   merge_group:
@@ -29,19 +30,539 @@ jobs:
       - run: uv run --no-sync pyright
       - run: uv run --no-sync pyright --pythonplatform Windows
 
+  published-inputs:
+    name: Verified published engine and pack sources
+    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    outputs:
+      matrix: ${{ steps.inputs.outputs.matrix }}
+      publication: ${{ steps.inputs.outputs.publication }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+      - run: uv sync --locked --all-packages
+      - name: Verify the pinned release and every selected base, then build source wheels
+        id: inputs
+        env:
+          EVENT: ${{ github.event_name }}
+          BEFORE: ${{ github.event.before }}
+        run: |
+          uv run --no-sync python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+          from scripts.prepare_official_publication import prepare_inputs
+          from scripts.select_official_packs import publication_selection, select_packs
+
+          root = Path.cwd()
+          output = (root / ".admission-inputs").resolve()
+          packs = select_packs(root, before="0" * 40)
+          if not packs:
+              raise ValueError("admission requires official sources")
+          rows = prepare_inputs(root, output, list(packs))
+          if not any(row["variant"] == "linux-cpu" for row in rows):
+              raise ValueError("admission requires a published Linux CPU base")
+          publication = (
+              publication_selection(root, os.environ["BEFORE"])
+              if os.environ["EVENT"] == "push" else ()
+          )
+          with open(os.environ["GITHUB_OUTPUT"], "a") as stream:
+              print("matrix=" + json.dumps({"include": rows}), file=stream)
+              print("publication=" + json.dumps(publication), file=stream)
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: verified-admission-inputs
+          path: .admission-inputs
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 1
+
+  native-pack-locks:
+    name: Published runtime dependency locks (${{ matrix.variant }})
+    needs: published-inputs
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.published-inputs.outputs.matrix) }}
+    steps:
+      - name: Expose Git Bash on Windows
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $bashDirectory = Join-Path $env:ProgramFiles 'Git/bin'
+          if (-not (Test-Path (Join-Path $bashDirectory 'bash.exe') -PathType Leaf)) {
+            throw 'Git Bash is required for the native pack lock build'
+          }
+          $bashDirectory >> $env:GITHUB_PATH
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          name: verified-admission-inputs
+          path: .admission-inputs
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+      - run: uv sync --locked --all-packages
+      - name: Provision the verified published engine on this native base
+        shell: bash
+        env:
+          VARIANT: ${{ matrix.variant }}
+          ENGINE_IDENTITY: ${{ matrix.engineIdentity }}
+        run: |
+          uv run --no-sync python -m scripts.prepare_admission_engine \
+            --release .admission-inputs/engine --output admission-runtime \
+            --store .admission-store \
+            --base-manifest ".admission-inputs/bases/$VARIANT/manifest.json" \
+            --engine-identity "$ENGINE_IDENTITY"
+      - name: Resolve native locks without changing the prepared source wheels
+        shell: bash
+        env:
+          VARIANT: ${{ matrix.variant }}
+          ENGINE_IDENTITY: ${{ matrix.engineIdentity }}
+        run: |
+          uv run --no-sync python -m scripts.build_release_pack_locks \
+            --release .admission-inputs/engine --sources .admission-inputs/sources \
+            --base-manifest ".admission-inputs/bases/$VARIANT/manifest.json" \
+            --output native-pack-locks --engine-identity "$ENGINE_IDENTITY" \
+            --runtime admission-runtime
+      - uses: actions/upload-artifact@v4
+        with:
+          name: native-pack-locks-${{ matrix.variant }}
+          path: native-pack-locks
+          if-no-files-found: error
+          retention-days: 1
+
+  admission-prepare:
+    name: Immutable selected-wheel admission sources
+    needs: [published-inputs, native-pack-locks]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    outputs:
+      groups: ${{ steps.sources.outputs.groups }}
+    env:
+      CUDA_VISIBLE_DEVICES: ""
+      DINKSTER_ACCELERATOR: cpu
+      OMP_NUM_THREADS: "4"
+      MKL_NUM_THREADS: "4"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          name: verified-admission-inputs
+          path: .admission-inputs
+      - uses: actions/download-artifact@v4
+        with:
+          name: native-pack-locks-linux-cpu
+          path: .admission-inputs/sources
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+      - run: uv sync --locked --all-packages
+      - name: Provision the engine identified by the native locks
+        run: |
+          identity=$(jq -er '.engineRelease' .admission-inputs/sources/engine.json)
+          uv run --no-sync python -m scripts.prepare_admission_engine \
+            --release .admission-inputs/engine --output admission-runtime \
+            --store .admission-store \
+            --base-manifest .admission-inputs/bases/linux-cpu/manifest.json \
+            --engine-identity "$identity"
+      - name: Bind immutable wheels and native locks to the complete admission catalog
+        id: sources
+        run: |
+          identity=$(jq -er '.engineRelease' .admission-inputs/sources/engine.json)
+          version=$(jq -er '.engineVersion' .admission-inputs/sources/engine.json)
+          uv run --no-sync python -m scripts.check_default_pack_admission \
+            --engine-version "$version" --engine-identity "$identity" \
+            --runtime admission-runtime --candidate-sources .admission-inputs/sources \
+            --prepare-output admission-sources | tee admission-preparation.log
+          uv run --no-sync python - <<'PY' >> "$GITHUB_OUTPUT"
+          import json
+          from pathlib import Path
+          result = json.loads(Path("admission-preparation.log").read_text().splitlines()[-1])
+          groups = [
+              {"group": index + 1, "packs": json.dumps(packs)}
+              for index, packs in enumerate(result["groups"])
+          ]
+          if not groups:
+              raise ValueError("admission requires behavioral test groups")
+          print("groups=" + json.dumps(groups))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: selected-wheel-admission-sources
+          path: admission-sources
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 1
+
+  admission:
+    name: Selected-wheel scanner and tests (group ${{ matrix.group }})
+    needs: admission-prepare
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.admission-prepare.outputs.groups) }}
+    env:
+      ATEN_CPU_CAPABILITY: avx2
+      ONEDNN_MAX_CPU_ISA: AVX2
+      CUDA_VISIBLE_DEVICES: ""
+      DINKSTER_ACCELERATOR: cpu
+      OMP_NUM_THREADS: "4"
+      MKL_NUM_THREADS: "4"
+      LIBGL_ALWAYS_SOFTWARE: "1"
+      PYOPENGL_PLATFORM: egl
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          name: verified-admission-inputs
+          path: .admission-inputs
+      - uses: actions/download-artifact@v4
+        with:
+          name: selected-wheel-admission-sources
+          path: admission-sources
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+      - run: uv sync --locked --all-packages
+      - name: Configure the full Linux registry admission jail
+        run: bash scripts/setup_probe_jail.sh
+      - name: Install the CPU software shader renderer
+        run: |
+          sudo apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=30 \
+            -o Acquire::https::Timeout=30 install -y --no-install-recommends \
+            libegl1 libgles2 libvulkan1 mesa-vulkan-drivers
+          lvp=$(find /usr/share/vulkan/icd.d -name 'lvp_icd*.json' -print -quit)
+          test -n "$lvp"
+          echo "VK_ICD_FILENAMES=$lvp" >> "$GITHUB_ENV"
+      - name: Reconstruct the exact prepared published runtime
+        run: |
+          identity=$(jq -er '.engineRelease' admission-sources/engine.json)
+          uv run --no-sync python -m scripts.prepare_admission_engine \
+            --release .admission-inputs/engine --output admission-runtime \
+            --store .admission-store \
+            --base-manifest .admission-inputs/bases/linux-cpu/manifest.json \
+            --engine-identity "$identity"
+      - name: Admit and test selected wheels against the complete verified catalog
+        env:
+          TEST_PACKS: ${{ matrix.packs }}
+        run: |
+          arguments=()
+          while IFS= read -r -d '' name; do
+            arguments+=(--pack "$name")
+          done < <(jq -j '.[] + "\u0000"' <<< "$TEST_PACKS")
+          identity=$(jq -er '.engineRelease' admission-sources/engine.json)
+          version=$(jq -er '.engineVersion' admission-sources/engine.json)
+          uv run --no-sync python -m scripts.check_default_pack_admission \
+            --engine-version "$version" --engine-identity "$identity" \
+            --runtime admission-runtime --prepared-sources admission-sources \
+            "${arguments[@]}"
+
+  disposable-registry-image:
+    name: Build isolated publication images
+    needs: published-inputs
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out the pinned registry service
+        uses: actions/checkout@v4
+        with:
+          repository: Kosinkadink/dinkster-registry-service
+          ref: 8e504d21d6fa56fc81cd23579d4e57123ac9fca5
+          persist-credentials: false
+          path: .disposable-registry-source
+      - uses: actions/download-artifact@v4
+        with:
+          name: verified-admission-inputs
+          path: .admission-inputs
+      - name: Build the unchanged service and install the selected published publisher engine
+        run: |
+          docker build --tag dinkster-disposable-registry:local .disposable-registry-source
+          docker build --tag dinkster-disposable-publisher:local --file - .admission-inputs/engine <<'DOCKER'
+          FROM dinkster-disposable-registry:local
+          USER root
+          COPY *.whl /engine/
+          RUN uv pip install --python /app/.venv/bin/python --torch-backend cpu /engine/*.whl dinkster-token-verifier==0.1.2
+          DOCKER
+          docker save dinkster-disposable-registry:local dinkster-disposable-publisher:local > disposable-images.tar
+      - uses: actions/upload-artifact@v4
+        with:
+          name: disposable-registry-images
+          path: disposable-images.tar
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 1
+
+  disposable-probe-inputs:
+    name: Stage isolated publisher dependencies and controls
+    needs: published-inputs
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          name: verified-admission-inputs
+          path: .admission-inputs
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+      - run: uv sync --locked --all-packages
+      - name: Stage selected wheel and published API dependencies before isolation
+        run: |
+          uv run --no-sync python -m scripts.stage_publication_probe_index \
+            --sources .admission-inputs/sources --engine .admission-inputs/engine \
+            --output .probe-index
+          uv run --no-sync python -m scripts.check_publication_controls prepare \
+            --bases .admission-inputs/bases --engine .admission-inputs/engine \
+            --output .publication-controls
+      - uses: actions/upload-artifact@v4
+        with:
+          name: disposable-probe-index
+          path: .probe-index
+          include-hidden-files: true
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 1
+      - uses: actions/upload-artifact@v4
+        with:
+          name: disposable-publication-controls
+          path: .publication-controls
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 1
+
+  disposable-publication:
+    name: Isolated standalone publisher and scanner
+    needs: [published-inputs, native-pack-locks, disposable-registry-image, disposable-probe-inputs]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      CUDA_VISIBLE_DEVICES: ""
+      DINKSTER_ACCELERATOR: cpu
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          name: verified-admission-inputs
+          path: .admission-inputs
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: native-pack-locks-*
+          merge-multiple: true
+          path: .admission-inputs/locks
+      - uses: actions/download-artifact@v4
+        with:
+          name: disposable-probe-index
+          path: .probe-index
+      - uses: actions/download-artifact@v4
+        with:
+          name: disposable-registry-images
+          path: .disposable-images
+      - uses: actions/download-artifact@v4
+        with:
+          name: disposable-publication-controls
+          path: .publication-controls
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+      - run: uv sync --locked --all-packages
+      - name: Load the immutable images without pulling
+        run: docker load --input .disposable-images/disposable-images.tar
+      - name: Check ordering, replay, incompatible dependency and missing API export refusal
+        run: |
+          uv run --no-sync python -m scripts.check_publication_controls check \
+            --fixtures .publication-controls \
+            --service-image dinkster-disposable-registry:local \
+            --publisher-image dinkster-disposable-publisher:local > disposable-controls.json
+      - name: Publish candidate wheels only inside the isolated disposable registry
+        run: |
+          uv run --no-sync python -m scripts.check_disposable_publication \
+            --inputs .admission-inputs --package-index .probe-index \
+            --service-image dinkster-disposable-registry:local \
+            --publisher-image dinkster-disposable-publisher:local > disposable-publication.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: disposable-publication-result
+          path: |
+            disposable-controls.json
+            disposable-publication.json
+          if-no-files-found: error
+          retention-days: 1
+
+  publish:
+    name: Publish official pack versions
+    needs: [checks, tests, native-publication-contracts, published-inputs, native-pack-locks, admission, disposable-publication]
+    if: github.repository == 'Kosinkadink/dinkster-nodes' && github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.OFFICIAL_PACK_PUBLICATION_ENABLED == 'true' && needs.published-inputs.outputs.publication != '[]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    concurrency:
+      group: official-pack-publication
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          name: verified-admission-inputs
+          path: .admission-inputs
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: native-pack-locks-*
+          merge-multiple: true
+          path: .admission-inputs/locks
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+      - run: uv sync --locked --all-packages
+      - name: Select affected wheels and native locks without rebuilding them
+        env:
+          PACKS: ${{ needs.published-inputs.outputs.publication }}
+        run: |
+          uv run --no-sync python - <<'PY'
+          import json
+          import os
+          import shutil
+          from pathlib import Path
+          from dinkster_registry import Lockfile
+
+          inputs = Path(".admission-inputs")
+          selected = json.loads(os.environ["PACKS"])
+          catalog = Lockfile.from_record_json((inputs / "sources/official-packs.lock").read_text())
+          packs = tuple(pack for pack in catalog.packs if pack.pack in selected)
+          if not packs or {pack.pack for pack in packs} != set(selected):
+              raise ValueError("publication selection differs from verified source wheels")
+          output = Path(".publication")
+          (output / "sources").mkdir(parents=True)
+          (output / "locks").mkdir()
+          for pack in packs:
+              archive = f"{pack.pack.replace('-', '_')}-{pack.version}-py3-none-any.whl"
+              shutil.copyfile(inputs / "sources" / archive, output / "sources" / archive)
+              for base in (inputs / "bases").glob("*/manifest.json"):
+                  lock = f"{pack.pack}-{pack.version}-{base.parent.name}.pack-lock.json"
+                  shutil.copyfile(inputs / "locks" / lock, output / "locks" / lock)
+          (output / "sources/official-packs.lock").write_text(Lockfile.of(packs).record_json())
+          PY
+      - name: Validate every native lock and public version without credentials
+        run: |
+          arguments=()
+          for base in .admission-inputs/bases/*/manifest.json; do arguments+=(--base-manifest "$base"); done
+          for lock in .publication/locks/*.pack-lock.json; do arguments+=(--pack-lock "$lock"); done
+          uv run --no-sync python -m scripts.publish_official_packs \
+            --release .admission-inputs/engine \
+            --sources .publication/sources "${arguments[@]}" \
+            --output .publication/preflight --check-published
+      - name: Submit own-version packs and wait for public activation
+        env:
+          DINKSTER_REGISTRY_TOKEN: ${{ secrets.DINKSTER_REGISTRY_TOKEN }}
+        run: |
+          if [ -z "$DINKSTER_REGISTRY_TOKEN" ]; then
+            echo 'Official pack submission refused: DINKSTER_REGISTRY_TOKEN is unavailable' >&2
+            exit 1
+          fi
+          arguments=()
+          for base in .admission-inputs/bases/*/manifest.json; do arguments+=(--base-manifest "$base"); done
+          for lock in .publication/locks/*.pack-lock.json; do arguments+=(--pack-lock "$lock"); done
+          timeout --kill-after=30s 12m uv run --no-sync python -m scripts.publish_official_packs \
+            --release .admission-inputs/engine \
+            --sources .publication/sources "${arguments[@]}" \
+            --output .publication/submitted --publish
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: official-publication-result
+          path: |
+            .publication/preflight
+            .publication/submitted
+          include-hidden-files: true
+          if-no-files-found: warn
+
+  native-publication-contracts:
+    name: Publication runtime contracts (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest]
+    env:
+      CUDA_VISIBLE_DEVICES: ""
+      DINKSTER_ACCELERATOR: cpu
+      OMP_NUM_THREADS: "4"
+      MKL_NUM_THREADS: "4"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+      - run: uv sync --locked --all-packages
+      - name: Verify published-input preparation and native lock contracts
+        run: >-
+          uv run --no-sync pytest -q tests/test_library_publication.py
+          tests/test_default_pack_admission.py tests/test_admission_libraries.py --timeout=180
+
   tests:
-    name: CPU ${{ matrix.suite }} tests (${{ matrix.shard }}/4)${{ matrix.suite == 'packages' && format(' group {0}/2', matrix.package-group) || '' }}
+    name: CPU ${{ matrix.suite }} tests (${{ matrix.shard }}/${{ matrix.suite == 'root' && 8 || 4 }})${{ matrix.suite == 'packages' && format(' group {0}/2', matrix.package-group) || '' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     strategy:
       fail-fast: false
       matrix:
         suite: [root, packages]
-        shard: [1, 2, 3, 4]
+        shard: [1, 2, 3, 4, 5, 6, 7, 8]
         package-group: [1, 2]
         exclude:
           - suite: root
             package-group: 2
+          - suite: packages
+            shard: 5
+          - suite: packages
+            shard: 6
+          - suite: packages
+            shard: 7
+          - suite: packages
+            shard: 8
     env:
       CUDA_VISIBLE_DEVICES: ""
       DINKSTER_ACCELERATOR: cpu
@@ -94,7 +615,7 @@ jobs:
         if: matrix.suite == 'root'
         run: >-
           uv run --no-sync pytest -q tests --timeout=180
-          -p tools.pytest_file_shard --file-shard ${{ matrix.shard }}/4
+          -p tools.pytest_file_shard --file-shard ${{ matrix.shard }}/8
       - name: Run each package in a separate process
         if: matrix.suite == 'packages'
         run: |
