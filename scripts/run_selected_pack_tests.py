@@ -369,17 +369,15 @@ def run_selected_tests(
             lock = locks[pack.pack]
             packages = {package.name: package for package in lock.packages}
             for tool in tools.packages:
-                if tool.name in packages:
-                    existing = packages[tool.name]
-                    if existing.version != tool.version or not (
-                        {wheel.sha256 for wheel in existing.wheels}
-                        & {wheel.sha256 for wheel in tool.wheels}
-                    ):
-                        raise ProvisionError(
-                            f"test tooling conflicts with {lock.pack}'s locked {tool.name}"
-                        )
-                else:
-                    packages[tool.name] = tool
+                # Retain reviewed pack bytes and the immutable engine's dependencies.
+                # Check the tooling's requirements against this environment after install.
+                if tool.name not in packages:
+                    base_version = generation.versions.get(tool.name)
+                    packages[tool.name] = (
+                        LockedDistribution(tool.name, base_version, ())
+                        if base_version is not None
+                        else tool
+                    )
             test_lock = replace(
                 lock,
                 requirements=(*lock.requirements, *tools.requirements),
@@ -396,6 +394,17 @@ def run_selected_tests(
                     uv_cache=work / "uv-cache",
                     variant=variant,
                     offline=True,
+                )
+            compatible = subprocess.run(
+                ["uv", "pip", "check", "--python", str(python)],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            if compatible.returncode:
+                raise ProvisionError(
+                    f"test tooling conflicts with {lock.pack}'s locked dependencies: "
+                    + (compatible.stderr or compatible.stdout).strip()
                 )
             site = Path(
                 subprocess.check_output(

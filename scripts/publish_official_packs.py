@@ -375,6 +375,10 @@ def publish_official_packs(
                     pack.pack,
                     pack.version,
                     locks=locks,
+                    engine={
+                        "commit": str(engine["commit"]),
+                        "manifestDigest": content_digest(engine_manifest),
+                    },
                 )
             except RegistryPublishError as exc:
                 raise RegistryPublishError(

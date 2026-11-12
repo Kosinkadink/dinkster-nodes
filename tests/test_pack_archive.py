@@ -1106,6 +1106,25 @@ def test_official_publication_requires_complete_supported_base_bindings(
 
     def registry_response(handler):
         if handler.command == "POST":
+            import email.parser
+
+            body = handler.rfile.read(int(handler.headers["Content-Length"]))
+            message = email.parser.BytesParser().parsebytes(
+                f"Content-Type: {handler.headers['Content-Type']}\r\n\r\n".encode() + body
+            )
+            bindings = []
+            for part in message.walk():
+                if part.get_param("name", header="content-disposition") == "engine":
+                    payload = part.get_payload(decode=True)
+                    assert isinstance(payload, bytes)
+                    bindings.append(json.loads(payload))
+            assert bindings == [
+                {
+                    "commit": "c" * 40,
+                    "manifestDigest": "sha256:"
+                    + hashlib.sha256((tmp_path / "release-manifest.json").read_bytes()).hexdigest(),
+                }
+            ]
             submitted.append(handler.path)
             name, version = handler.path.split("/")[3::2]
             if not (problem and problem.startswith("submitted-")) and not (

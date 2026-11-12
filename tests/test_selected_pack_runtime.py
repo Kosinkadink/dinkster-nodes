@@ -4,6 +4,8 @@ import hashlib
 import shutil
 import subprocess
 import sys
+from contextlib import nullcontext
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -69,15 +71,21 @@ def published_generation(tmp_path_factory: pytest.TempPathFactory) -> Path:
 
 
 @pytest.mark.skipif(sys.platform != "linux", reason="selected archive tests run in Linux admission")
-@pytest.mark.parametrize("selected_value", [17, 29])
+@pytest.mark.parametrize("selected_value,dependency_version", [(17, None), (29, "2"), (41, "1")])
 def test_selected_candidate_uses_published_engine_not_checkout_or_default_bytes(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, published_generation: Path, selected_value: int
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    published_generation: Path,
+    selected_value: int,
+    dependency_version: str | None,
 ) -> None:
     from dinkster_registry import LockedPack, Lockfile, artifact_digest
     from dinkster_workers.pack_lock import LockedDistribution, LockedWheel, PackLock
     from dinkster_workers.pack_wheel import build_pack_archive
+    from dinkster_workers.provision import ProvisionError
 
     from scripts import run_selected_pack_tests as selected
+    from tests.registry_fixtures import _wheel
 
     temporary = tmp_path / "physical-temporary"
     temporary.mkdir()
@@ -87,11 +95,32 @@ def test_selected_candidate_uses_published_engine_not_checkout_or_default_bytes(
 
     root = Path(__file__).resolve().parents[1]
     tools = selected.selected_test_tools
-    monkeypatch.setattr(
-        selected,
-        "selected_test_tools",
-        lambda fixture, facts, *, variant: tools(root, facts, variant=variant),
+    shared = _wheel(tmp_path, "shared-test-dependency", dependency_version or "2", "shared", "")
+    tool_shared = _wheel(tmp_path, "shared-test-dependency", "3", "shared", "")
+    helper = _wheel(
+        tmp_path,
+        "selected-test-helper",
+        "1",
+        "test_helper",
+        "",
+        requires=("shared-test-dependency>=2",),
     )
+
+    def test_tools(fixture, facts, *, variant):
+        lock = tools(root, facts, variant=variant)
+        if dependency_version is None:
+            return lock
+        return replace(
+            lock,
+            requirements=(*lock.requirements, "selected-test-helper"),
+            packages=(
+                *lock.packages,
+                LockedDistribution("selected-test-helper", "1", (helper,)),
+                LockedDistribution("shared-test-dependency", "3", (tool_shared,)),
+            ),
+        )
+
+    monkeypatch.setattr(selected, "selected_test_tools", test_tools)
     checkout = tmp_path / "checkout"
     tests = checkout / "tests"
     tests.mkdir(parents=True)
@@ -108,7 +137,12 @@ def test_selected_candidate_uses_published_engine_not_checkout_or_default_bytes(
         "import dinkster\nimport dinkster_text\n"
         "def test_selected_bytes():\n"
         f"    assert dinkster_text.VALUE == {selected_value}\n"
-        "    assert importlib.metadata.version('dinkster-text') == '1.2.3'\n"
+        + (
+            "    assert importlib.metadata.version('shared-test-dependency') == '2'\n"
+            if dependency_version is not None
+            else ""
+        )
+        + "    assert importlib.metadata.version('dinkster-text') == '1.2.3'\n"
         "    assert not Path(dinkster.__file__).is_relative_to(Path.cwd())\n"
         "    assert not (Path.cwd() / 'src/dinkster').exists()\n"
         "    assert not (Path.cwd() / '.git').exists()\n"
@@ -154,11 +188,26 @@ def test_selected_candidate_uses_published_engine_not_checkout_or_default_bytes(
             ),
         ),
     )
-    selected.run_selected_tests(
-        checkout,
-        catalog,
-        artifacts,
-        generation_python=published_generation,
-        locks={"dinkster-text": lock},
-        variant="linux-cpu",
+    if dependency_version is not None:
+        lock = replace(
+            lock,
+            requirements=("shared-test-dependency",),
+            packages=(
+                *lock.packages,
+                LockedDistribution("shared-test-dependency", dependency_version, (shared,)),
+            ),
+        )
+    expected = (
+        pytest.raises(ProvisionError, match="shared-test-dependency")
+        if dependency_version == "1"
+        else nullcontext()
     )
+    with expected:
+        selected.run_selected_tests(
+            checkout,
+            catalog,
+            artifacts,
+            generation_python=published_generation,
+            locks={"dinkster-text": lock},
+            variant="linux-cpu",
+        )
