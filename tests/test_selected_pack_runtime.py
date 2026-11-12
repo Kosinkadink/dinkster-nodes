@@ -79,6 +79,12 @@ def test_selected_candidate_uses_published_engine_not_checkout_or_default_bytes(
 
     from scripts import run_selected_pack_tests as selected
 
+    temporary = tmp_path / "physical-temporary"
+    temporary.mkdir()
+    alias = tmp_path / "temporary-parent"
+    alias.symlink_to(temporary, target_is_directory=True)
+    monkeypatch.setattr(selected.tempfile, "tempdir", str(alias))
+
     root = Path(__file__).resolve().parents[1]
     tools = selected.selected_test_tools
     monkeypatch.setattr(

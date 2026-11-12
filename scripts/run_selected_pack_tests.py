@@ -262,7 +262,7 @@ def run_selected_tests(
             json.dumps({"admissionTiming": "start", "pack": "defaults", "stage": "test-layout"}),
             flush=True,
         )
-        work = Path(directory)
+        work = Path(directory).resolve()
         wheel_store = work / "wheels"
         wheel_store.mkdir()
         # Candidate archives need not be public yet; each consumer lock still
