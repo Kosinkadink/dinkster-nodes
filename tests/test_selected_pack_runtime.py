@@ -1,0 +1,158 @@
+from __future__ import annotations
+
+import hashlib
+import shutil
+import subprocess
+import sys
+from pathlib import Path
+
+import pytest
+
+
+@pytest.fixture(scope="module")
+def published_generation(tmp_path_factory: pytest.TempPathFactory) -> Path:
+    root = Path(__file__).resolve().parents[1]
+    work = tmp_path_factory.mktemp("published-generation")
+    generation = work / "generation"
+    (generation / "bin").mkdir(parents=True)
+    python = generation / "bin/python"
+    shutil.copy2(Path(sys.executable).resolve(), python)
+    base = Path(sys.base_prefix)
+    lib = generation / "lib"
+    lib.mkdir()
+    for source in (base / "lib").iterdir():
+        if not source.is_dir():
+            (lib / source.name).symlink_to(source)
+    version = f"python{sys.version_info.major}.{sys.version_info.minor}"
+    stdlib = lib / version
+    stdlib.mkdir()
+    for source in (base / "lib" / version).iterdir():
+        if source.name != "site-packages":
+            (stdlib / source.name).symlink_to(source)
+    requirements = work / "pylock.toml"
+    subprocess.run(
+        [
+            "uv",
+            "export",
+            "--frozen",
+            "--only-group",
+            "dev",
+            "--no-emit-workspace",
+            "--format",
+            "pylock.toml",
+            "--output-file",
+            str(requirements),
+        ],
+        cwd=root,
+        check=True,
+        stdout=subprocess.DEVNULL,
+    )
+    subprocess.run(
+        [
+            "uv",
+            "pip",
+            "install",
+            "--python",
+            str(python),
+            "--no-deps",
+            "--break-system-packages",
+            "--require-hashes",
+            "--offline",
+            "--only-binary",
+            ":all:",
+            "-r",
+            str(requirements),
+        ],
+        check=True,
+    )
+    return python
+
+
+@pytest.mark.skipif(sys.platform != "linux", reason="selected archive tests run in Linux admission")
+@pytest.mark.parametrize("selected_value", [17, 29])
+def test_selected_candidate_uses_published_engine_not_checkout_or_default_bytes(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, published_generation: Path, selected_value: int
+) -> None:
+    from dinkster_registry import LockedPack, Lockfile, artifact_digest
+    from dinkster_workers.pack_lock import LockedDistribution, LockedWheel, PackLock
+    from dinkster_workers.pack_wheel import build_pack_archive
+
+    from scripts import run_selected_pack_tests as selected
+
+    root = Path(__file__).resolve().parents[1]
+    tools = selected.selected_test_tools
+    monkeypatch.setattr(
+        selected,
+        "selected_test_tools",
+        lambda fixture, facts, *, variant: tools(root, facts, variant=variant),
+    )
+    checkout = tmp_path / "checkout"
+    tests = checkout / "tests"
+    tests.mkdir(parents=True)
+    (checkout / "pyproject.toml").write_text("")
+    poison = checkout / "packages/dinkster-nodes-text/src/dinkster_text"
+    poison.mkdir(parents=True)
+    (poison / "__init__.py").write_text("raise AssertionError('checkout pack imported')\n")
+    (poison.parent.parent / "pyproject.toml").write_text('[project]\nname = "dinkster-text"\n')
+    engine_poison = checkout / "src/dinkster"
+    engine_poison.mkdir(parents=True)
+    (engine_poison / "__init__.py").write_text("raise AssertionError('checkout engine imported')\n")
+    (tests / "test_save_text.py").write_text(
+        "import importlib.metadata\nfrom pathlib import Path\n"
+        "import dinkster\nimport dinkster_text\n"
+        "def test_selected_bytes():\n"
+        f"    assert dinkster_text.VALUE == {selected_value}\n"
+        "    assert importlib.metadata.version('dinkster-text') == '1.2.3'\n"
+        "    assert not Path(dinkster.__file__).is_relative_to(Path.cwd())\n"
+        "    assert not (Path.cwd() / 'src/dinkster').exists()\n"
+        "    assert not (Path.cwd() / '.git').exists()\n"
+        "    assert Path(dinkster_text.__file__).is_relative_to(Path.cwd() / 'packages')\n",
+        encoding="ascii",
+    )
+    subprocess.run(["git", "init", "--quiet", str(checkout)], check=True)
+    subprocess.run(["git", "add", "."], cwd=checkout, check=True)
+    source = tmp_path / "source"
+    (source / "dinkster_text").mkdir(parents=True)
+    (source / "dinkster_text/__init__.py").write_text(f"NODES = []\nVALUE = {selected_value}\n")
+    (source / "dinkster-pack.toml").write_text(
+        '[pack]\nname = "dinkster-text"\npublisher = "dinkster"\nversion = "1.2.3"\n'
+        'engine = ">=0.0.2.dev0,<2"\n[pack.entry]\nnodes = "dinkster_text:NODES"\n'
+        '[pack.contracts]\nhost = "dinkster-pack-host/1"\napi = "dinkster-api/v1"\n'
+    )
+    archive = tmp_path / "dinkster_text-1.2.3-py3-none-any.whl"
+    build_pack_archive(source, archive)
+    payload = archive.read_bytes()
+    digest = artifact_digest(payload)
+    artifacts = tmp_path / "artifacts"
+    artifacts.mkdir()
+    archive.rename(artifacts / f"{digest.removeprefix('blake3:')}.zip")
+    catalog = Lockfile.of([LockedPack("dinkster-text", "1.2.3", digest, "dinkster", ())])
+    lock = PackLock(
+        "dinkster-text",
+        "linux-cpu",
+        ">=3.12",
+        (),
+        (),
+        (
+            LockedDistribution(
+                "dinkster-text",
+                "1.2.3",
+                (
+                    LockedWheel(
+                        archive.name,
+                        len(payload),
+                        hashlib.sha256(payload).hexdigest(),
+                        archive.as_uri(),
+                    ),
+                ),
+            ),
+        ),
+    )
+    selected.run_selected_tests(
+        checkout,
+        catalog,
+        artifacts,
+        generation_python=published_generation,
+        locks={"dinkster-text": lock},
+        variant="linux-cpu",
+    )

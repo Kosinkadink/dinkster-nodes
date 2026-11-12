@@ -53,7 +53,9 @@ jobs:
           cache-dependency-glob: uv.lock
       - run: uv sync --locked --all-packages
       - name: Verify published-input preparation and native lock contracts
-        run: uv run --no-sync pytest -q tests/test_library_publication.py --timeout=180
+        run: >-
+          uv run --no-sync pytest -q tests/test_library_publication.py
+          tests/test_default_pack_admission.py tests/test_admission_libraries.py --timeout=180
 
   tests:
     name: CPU ${{ matrix.suite }} tests (${{ matrix.shard }}/4)${{ matrix.suite == 'packages' && format(' group {0}/2', matrix.package-group) || '' }}
