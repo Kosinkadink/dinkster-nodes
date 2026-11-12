@@ -367,7 +367,11 @@ def run_selected_tests(
             if pack.pack in libraries:
                 continue
             lock = locks[pack.pack]
-            packages = {package.name: package for package in lock.packages}
+            # The verified source-layout view already exposes the candidate wheel.
+            # Installing its outer wheel again duplicates RECORD-based pack discovery.
+            packages = {
+                package.name: package for package in lock.packages if package.name != pack.pack
+            }
             for tool in tools.packages:
                 # Retain reviewed pack bytes and the immutable engine's dependencies.
                 # Check the tooling's requirements against this environment after install.
@@ -395,12 +399,25 @@ def run_selected_tests(
                     variant=variant,
                     offline=True,
                 )
+            site = Path(
+                subprocess.check_output(
+                    [
+                        str(python),
+                        "-I",
+                        "-c",
+                        "import sysconfig;print(sysconfig.get_path('purelib'))",
+                    ],
+                    text=True,
+                ).strip()
+            )
             compatible = subprocess.run(
                 [
                     str(python),
                     "-I",
                     "-c",
                     """
+import sys
+sys.path.insert(0, sys.argv[1])
 import importlib.metadata as metadata
 from packaging.requirements import Requirement
 errors = []
@@ -419,6 +436,7 @@ for distribution in metadata.distributions():
 print("\\n".join(errors))
 raise SystemExit(bool(errors))
 """,
+                    str(checkout / "packages" / _PACK_DIRECTORIES[pack.pack] / "src"),
                 ],
                 capture_output=True,
                 text=True,
@@ -429,19 +447,9 @@ raise SystemExit(bool(errors))
                     f"test tooling conflicts with {lock.pack}'s locked dependencies: "
                     + (compatible.stderr or compatible.stdout).strip()
                 )
-            site = Path(
-                subprocess.check_output(
-                    [
-                        str(python),
-                        "-I",
-                        "-c",
-                        "import sysconfig;print(sysconfig.get_path('purelib'))",
-                    ],
-                    text=True,
-                ).strip()
-            )
             (site / "selected.pth").write_text(
-                f"import sys; sys.path[:0] = {paths!r}\n", encoding="utf-8"
+                f"import sys; sys.path[:0] = [p for p in {paths!r} if p not in sys.path]\n",
+                encoding="utf-8",
             )
             runtimes[pack.pack] = str(python)
         child_env = {

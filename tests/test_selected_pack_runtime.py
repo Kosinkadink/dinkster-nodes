@@ -152,7 +152,12 @@ def test_selected_candidate_uses_published_engine_not_checkout_or_default_bytes(
     (tests / "test_save_text.py").write_text(
         "import importlib.metadata\nfrom pathlib import Path\n"
         "import dinkster\nimport dinkster_text\n"
+        "from dinkster.packs import first_party_pack_metadata\n"
         "def test_selected_bytes():\n"
+        "    assert first_party_pack_metadata(Path(dinkster.__file__).resolve().parents[2])"
+        "['dinkster-text'] == ('dinkster_text', 'dinkster-text')\n"
+        "    assert sum(d.metadata['Name'] == 'dinkster-text' "
+        "for d in importlib.metadata.distributions()) == 1\n"
         f"    assert dinkster_text.VALUE == {selected_value}\n"
         + (
             "    assert importlib.metadata.version('shared-test-dependency') == '2'\n"
