@@ -1,6 +1,6 @@
 [project]
 name = "dinkster-wan"
-version = "0.0.6"
+version = "0.0.8"
 description = "Dinkster wan model nodes"
 requires-python = ">=3.12"
 dependencies = [
@@ -28,6 +28,7 @@ packages = ["src/dinkster_wan"]
 "locales" = "dinkster_wan/locales"
 
 [tool.uv.sources]
+dinkster-api = { workspace = true }
 dinkster-models = { workspace = true }
 dinkster-vision-sam3 = { workspace = true }
 dinkster-pack-helpers = { workspace = true }

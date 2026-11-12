@@ -1,6 +1,6 @@
 [project]
 name = "dinkster-nodes-remote"
-version = "0.0.4"
+version = "0.0.5"
 description = "Dinkster catalog-driven remote node client pack"
 requires-python = ">=3.12"
 dependencies = [
@@ -18,3 +18,6 @@ packages = ["src/dinkster_nodes_remote"]
 [tool.hatch.build.targets.wheel.force-include]
 "dinkster-pack.toml" = "dinkster_nodes_remote_pack/dinkster-pack.toml"
 "src/dinkster_nodes_remote" = "dinkster_nodes_remote_pack/dinkster_nodes_remote"
+
+[tool.uv.sources]
+dinkster-api = { workspace = true }
