@@ -139,7 +139,7 @@ def prepare_fixture(
     (simple / "index.html").write_text(
         f'<a href="../../{helper.name}">{helper.name}</a>', encoding="ascii"
     )
-    if engine is not None:
+    if engine is not None and not incompatible:
         from scripts.stage_publication_probe_index import stage_index
 
         stage_index(sources, index, engine=engine)
@@ -163,7 +163,9 @@ def check_controls(fixtures: Path, service_image: str, publisher_image: str) -> 
             raise RuntimeError("unchanged replay did not recognize every active identity")
         results.append(result)
     try:
-        check_publication(root, broken, broken / "index", service_image, publisher_image)
+        # The incompatible requirement is rejected by the publisher, not resolved
+        # during staging. Keep the same complete index as the compatible control.
+        check_publication(root, broken, good / "index", service_image, publisher_image)
     except RuntimeError as exc:
         expected = f"{CONSUMER}: selected {HELPER} excludes >=2"
         if expected not in str(exc):
