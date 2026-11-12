@@ -27,7 +27,7 @@ def publication_selection(root: Path, before: str) -> tuple[str, ...]:
         ["git", "-C", str(root), "diff", "--name-only", before, "HEAD"], text=True
     ).splitlines()
     engine_changed = any(
-        path in {"pyproject.toml", "uv.lock", "scripts/base_bundles.json"}
+        path in {"pyproject.toml", "uv.lock"}
         or path.startswith("packages/")
         and path.endswith("/pyproject.toml")
         for path in changed

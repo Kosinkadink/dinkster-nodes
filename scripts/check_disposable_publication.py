@@ -290,7 +290,7 @@ def check_publication(
             "--publish",
         ]
         if engine_manifest.is_file():
-            arguments.extend(["--engine-manifest", "/inputs/engine/release-manifest.json"])
+            arguments.extend(["--release", "/inputs/engine"])
         for path in bases:
             arguments.extend(["--base-manifest", "/inputs/" + str(path.relative_to(inputs))])
         for path in locks:

@@ -486,6 +486,7 @@ jobs:
           for base in .admission-inputs/bases/*/manifest.json; do arguments+=(--base-manifest "$base"); done
           for lock in .publication/locks/*.pack-lock.json; do arguments+=(--pack-lock "$lock"); done
           uv run --no-sync python -m scripts.publish_official_packs \
+            --release .admission-inputs/engine \
             --sources .publication/sources "${arguments[@]}" \
             --output .publication/preflight --check-published
       - name: Submit own-version packs and wait for public activation
@@ -500,6 +501,7 @@ jobs:
           for base in .admission-inputs/bases/*/manifest.json; do arguments+=(--base-manifest "$base"); done
           for lock in .publication/locks/*.pack-lock.json; do arguments+=(--pack-lock "$lock"); done
           timeout --kill-after=30s 12m uv run --no-sync python -m scripts.publish_official_packs \
+            --release .admission-inputs/engine \
             --sources .publication/sources "${arguments[@]}" \
             --output .publication/submitted --publish
       - uses: actions/upload-artifact@v4

@@ -22,6 +22,7 @@ import pytest
         "source-commit",
         "artifact",
         "lock",
+        "missing-outer",
         "security",
     ],
 )
@@ -215,8 +216,17 @@ def test_admission_prepared_sources_bind_pack_source_and_published_engine(
                 path.write_bytes(original_bytes)
             path = candidate / "candidate-7.2-linux-cpu.pack-lock.json"
             original_bytes = path.read_bytes()
-            replace(dependency_lock("candidate"), packages=()).write(path)
-            with pytest.raises(ValueError, match="dependency lock omits the outer wheel"):
+            original_lock = dependency_lock("candidate")
+            replace(
+                original_lock,
+                packages=(
+                    replace(
+                        original_lock.packages[0],
+                        wheels=(replace(original_lock.packages[0].wheels[0], sha256="f" * 64),),
+                    ),
+                ),
+            ).write(path)
+            with pytest.raises(ValueError, match="locked outer wheel differs from the archive"):
                 admission.check_defaults(
                     admission.NamedRegistry("", "https://registry.invalid"),
                     engine_version="0.2",
@@ -225,6 +235,9 @@ def test_admission_prepared_sources_bind_pack_source_and_published_engine(
                     candidate_sources=candidate,
                 )
             path.write_bytes(original_bytes)
+        replace(dependency_lock("candidate"), packages=()).write(
+            candidate / "candidate-7.2-linux-cpu.pack-lock.json"
+        )
     source_bytes = (
         {path.name: path.read_bytes() for path in candidate.iterdir()}
         if candidate_mode == "native"
@@ -252,6 +265,16 @@ def test_admission_prepared_sources_bind_pack_source_and_published_engine(
     metadata = json.loads((prepared / "engine.json").read_text())
     assert metadata["engineCommit"] == "c" * 40
     assert metadata["packSourceCommit"] != metadata["engineCommit"]
+    bound = PackLock.read(prepared / "pack-locks/candidate.json")
+    outer = next(item for item in bound.packages if item.name == "candidate")
+    assert outer.version == "7.2"
+    assert [(wheel.filename, wheel.size, wheel.sha256) for wheel in outer.wheels] == [
+        (
+            "candidate-7.2-py3-none-any.whl",
+            len(archives["candidate"]),
+            hashlib.sha256(archives["candidate"]).hexdigest(),
+        )
+    ]
     transferred = tmp_path / "transferred"
     shutil.copytree(prepared, transferred)
     fields = {
@@ -270,6 +293,8 @@ def test_admission_prepared_sources_bind_pack_source_and_published_engine(
     elif problem == "lock":
         lock = dependency_lock("unchanged")
         lock.write(transferred / "pack-locks/candidate.json")
+    elif problem == "missing-outer":
+        replace(bound, packages=()).write(transferred / "pack-locks/candidate.json")
     if problem is None:
         report = admission.check_defaults(
             admission.NamedRegistry("", "https://registry.invalid"),
@@ -291,6 +316,7 @@ def test_admission_prepared_sources_bind_pack_source_and_published_engine(
         message = {
             "artifact": "locked outer wheel differs from the archive",
             "lock": "dependency lock identity differs",
+            "missing-outer": "dependency lock omits the outer wheel",
             "security": "admission refused",
         }.get(problem, "prepared sources do not match the pack source and engine release")
         with pytest.raises(ValueError, match=message):

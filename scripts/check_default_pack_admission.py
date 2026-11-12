@@ -371,9 +371,9 @@ def check_defaults(
                 archive = pack_archive_path(artifacts, pack.artifact_digest)
                 payload = archive.read_bytes()
                 outer = next((item for item in lock.packages if item.name == pack.pack), None)
-                if outer is None and (
-                    prepared_sources is not None or candidate_sources is not None
-                ):
+                # Native publication locks contain dependencies only. Preparation
+                # binds the verified candidate archive; transferred locks must retain it.
+                if outer is None and prepared_sources is not None:
                     raise ValueError(f"{pack.pack}: prepared dependency lock omits the outer wheel")
                 wheel = LockedWheel(
                     f"{pack.pack.replace('-', '_')}-{pack.version}-py3-none-any.whl",

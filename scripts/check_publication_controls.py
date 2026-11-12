@@ -201,8 +201,15 @@ if __name__ == "__main__":
     check.add_argument("--publisher-image", required=True)
     args = parser.parse_args()
     if args.command == "prepare":
-        prepare_fixture(args.bases.resolve(), args.output.resolve() / "good")
-        prepare_fixture(args.bases.resolve(), args.output.resolve() / "broken", incompatible=True)
+        prepare_fixture(
+            args.bases.resolve(), args.output.resolve() / "good", engine=args.engine.resolve()
+        )
+        prepare_fixture(
+            args.bases.resolve(),
+            args.output.resolve() / "broken",
+            incompatible=True,
+            engine=args.engine.resolve(),
+        )
         prepare_fixture(
             args.bases.resolve(),
             args.output.resolve() / "matching-engine",

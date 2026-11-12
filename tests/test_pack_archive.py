@@ -718,8 +718,25 @@ def test_official_library_selection_and_build(
     base["archive"]["parts"] = []
     base_path = tmp_path / "base.json"
     base_path.write_text(json.dumps(base))
-    (tmp_path / "scripts").mkdir()
-    (tmp_path / "scripts/base_bundles.json").write_text(json.dumps({"linux-cpu": identity}))
+    (tmp_path / "release-manifest.json").write_text(
+        json.dumps(
+            {
+                "format": "dinkster.engine/1",
+                "repository": "Kosinkadink/Dinkster",
+                "version": "0.0.4.dev123",
+                "commit": "c" * 40,
+                "workerProtocol": 11,
+                "artifacts": [
+                    {
+                        "name": "constraints.txt",
+                        "size": 0,
+                        "sha256": hashlib.sha256(b"").hexdigest(),
+                    }
+                ],
+                "dependencies": {"linux-cpu": {"base": base["id"], "wheels": []}},
+            }
+        )
+    )
     responses = {
         f"/v1/publish/{name}/versions/0.0.1": json.dumps(
             {"status": "queued", "candidateId": name}
@@ -820,6 +837,8 @@ def test_official_library_selection_and_build(
         "missing-base",
         "duplicate-base",
         "wrong-base",
+        "engine-protocol",
+        "engine-repository",
         "missing-lock",
         "duplicate-lock",
         "extra-lock",
@@ -972,10 +991,32 @@ def test_official_publication_requires_complete_supported_base_bindings(
             ).write(path)
             locks.append(path)
             expected_locks[pack.pack, variant] = json.loads(path.read_bytes())
-    (tmp_path / "scripts").mkdir()
     if problem == "wrong-base":
         supported["win-nvidia"] = "c" * 64
-    (tmp_path / "scripts/base_bundles.json").write_text(json.dumps(supported))
+    (tmp_path / "release-manifest.json").write_text(
+        json.dumps(
+            {
+                "format": "dinkster.engine/1",
+                "repository": "other/engine"
+                if problem == "engine-repository"
+                else "Kosinkadink/Dinkster",
+                "version": "0.0.4.dev123",
+                "commit": "c" * 40,
+                "workerProtocol": 12 if problem == "engine-protocol" else 11,
+                "artifacts": [
+                    {
+                        "name": "constraints.txt",
+                        "size": 0,
+                        "sha256": hashlib.sha256(b"").hexdigest(),
+                    }
+                ],
+                "dependencies": {
+                    variant: {"base": "sha256:" + identity, "wheels": []}
+                    for variant, identity in supported.items()
+                },
+            }
+        )
+    )
     if problem == "missing-base":
         bases.pop()
     elif problem == "duplicate-base":
