@@ -20,6 +20,3 @@ packages = ["src/dinkster_vision_moge"]
 [tool.hatch.build.targets.wheel.force-include]
 "dinkster-pack.toml" = "dinkster_vision_moge/dinkster-pack.toml"
 "locales" = "dinkster_vision_moge/locales"
-
-[tool.uv.sources]
-dinkster-api = { workspace = true }

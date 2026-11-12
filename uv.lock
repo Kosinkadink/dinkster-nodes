@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 5
 requires-python = ">=3.12"
 resolution-markers = [
     "sys_platform != 'darwin'",
@@ -895,7 +895,7 @@ provides-extras = ["collab", "default", "inference", "supervisor"]
 
 [[package]]
 name = "dinkster-3d"
-version = "0.0.4"
+version = "0.0.6"
 source = { editable = "packages/dinkster-nodes-3d" }
 dependencies = [
     { name = "dinkster-api" },
@@ -931,7 +931,7 @@ provides-extras = ["numba"]
 
 [[package]]
 name = "dinkster-3d-models"
-version = "0.0.3"
+version = "0.0.4"
 source = { editable = "packages/dinkster-nodes-3d-models" }
 dependencies = [
     { name = "dinkster-api" },
@@ -994,7 +994,7 @@ requires-dist = [
 
 [[package]]
 name = "dinkster-audio"
-version = "0.0.4"
+version = "0.0.5"
 source = { editable = "packages/dinkster-nodes-audio" }
 dependencies = [
     { name = "av" },
@@ -1017,7 +1017,7 @@ requires-dist = [
 
 [[package]]
 name = "dinkster-audio-models"
-version = "0.0.6"
+version = "0.0.7"
 source = { editable = "packages/dinkster-nodes-audio-models" }
 dependencies = [
     { name = "dinkster-api" },
@@ -1038,7 +1038,7 @@ requires-dist = [
 
 [[package]]
 name = "dinkster-conditioning"
-version = "0.0.6"
+version = "0.0.7"
 source = { editable = "packages/dinkster-nodes-conditioning" }
 dependencies = [
     { name = "dinkster-api" },
@@ -1063,7 +1063,7 @@ requires-dist = [
 
 [[package]]
 name = "dinkster-cosmos"
-version = "0.0.6"
+version = "0.0.7"
 source = { editable = "packages/dinkster-nodes-cosmos" }
 dependencies = [
     { name = "dinkster-api" },
@@ -1098,7 +1098,7 @@ requires-dist = [{ name = "dinkster-api", specifier = "==0.0.4.dev350+g617b3cb7b
 
 [[package]]
 name = "dinkster-flux"
-version = "0.0.6"
+version = "0.0.7"
 source = { editable = "packages/dinkster-nodes-flux" }
 dependencies = [
     { name = "dinkster-api" },
@@ -1119,7 +1119,7 @@ requires-dist = [
 
 [[package]]
 name = "dinkster-hidream"
-version = "0.0.6"
+version = "0.0.7"
 source = { editable = "packages/dinkster-nodes-hidream" }
 dependencies = [
     { name = "dinkster-api" },
@@ -1140,7 +1140,7 @@ requires-dist = [
 
 [[package]]
 name = "dinkster-hunyuan"
-version = "0.0.6"
+version = "0.0.7"
 source = { editable = "packages/dinkster-nodes-hunyuan" }
 dependencies = [
     { name = "dinkster-api" },
@@ -1161,7 +1161,7 @@ requires-dist = [
 
 [[package]]
 name = "dinkster-image"
-version = "0.0.9"
+version = "0.0.10"
 source = { editable = "packages/dinkster-nodes-image" }
 dependencies = [
     { name = "av" },
@@ -1242,7 +1242,7 @@ wheels = [
 
 [[package]]
 name = "dinkster-latent"
-version = "0.0.4"
+version = "0.0.5"
 source = { editable = "packages/dinkster-nodes-latent" }
 dependencies = [
     { name = "dinkster-api" },
@@ -1263,7 +1263,7 @@ requires-dist = [
 
 [[package]]
 name = "dinkster-llm"
-version = "0.0.3"
+version = "0.0.4"
 source = { editable = "packages/dinkster-nodes-llm" }
 dependencies = [
     { name = "dinkster-api" },
@@ -1280,7 +1280,7 @@ requires-dist = [
 
 [[package]]
 name = "dinkster-ltx"
-version = "0.0.6"
+version = "0.0.8"
 source = { editable = "packages/dinkster-nodes-ltx" }
 dependencies = [
     { name = "dinkster-api" },
@@ -1307,7 +1307,7 @@ requires-dist = [
 
 [[package]]
 name = "dinkster-minimax"
-version = "0.0.6"
+version = "0.0.7"
 source = { editable = "packages/dinkster-nodes-minimax" }
 dependencies = [
     { name = "dinkster-api" },
@@ -1328,7 +1328,7 @@ requires-dist = [
 
 [[package]]
 name = "dinkster-misc-models"
-version = "0.0.6"
+version = "0.0.7"
 source = { editable = "packages/dinkster-nodes-misc-models" }
 dependencies = [
     { name = "dinkster-api" },
@@ -1351,7 +1351,7 @@ requires-dist = [
 
 [[package]]
 name = "dinkster-models"
-version = "0.0.7"
+version = "0.0.8"
 source = { editable = "packages/dinkster-nodes-models" }
 dependencies = [
     { name = "comfy-kitchen" },
@@ -1374,7 +1374,7 @@ requires-dist = [
 
 [[package]]
 name = "dinkster-nodes-remote"
-version = "0.0.4"
+version = "0.0.5"
 source = { editable = "packages/dinkster-nodes-remote" }
 dependencies = [
     { name = "dinkster-api" },
@@ -1450,7 +1450,7 @@ wheels = [
 
 [[package]]
 name = "dinkster-pack-helpers"
-version = "0.0.4"
+version = "0.0.5"
 source = { editable = "packages/dinkster-pack-helpers" }
 dependencies = [
     { name = "dinkster-api" },
@@ -1473,7 +1473,7 @@ requires-dist = [
 
 [[package]]
 name = "dinkster-qwen"
-version = "0.0.6"
+version = "0.0.7"
 source = { editable = "packages/dinkster-nodes-qwen" }
 dependencies = [
     { name = "dinkster-api" },
@@ -1494,7 +1494,7 @@ requires-dist = [
 
 [[package]]
 name = "dinkster-sampling"
-version = "0.0.6"
+version = "0.0.7"
 source = { editable = "packages/dinkster-nodes-sampling" }
 dependencies = [
     { name = "dinkster-api" },
@@ -1519,7 +1519,7 @@ requires-dist = [
 
 [[package]]
 name = "dinkster-sd"
-version = "0.0.6"
+version = "0.0.8"
 source = { editable = "packages/dinkster-nodes-sd" }
 dependencies = [
     { name = "dinkster-api" },
@@ -1544,7 +1544,7 @@ requires-dist = [
 
 [[package]]
 name = "dinkster-seedvr"
-version = "0.0.3"
+version = "0.0.4"
 source = { editable = "packages/dinkster-nodes-seedvr" }
 dependencies = [
     { name = "dinkster-api" },
@@ -1617,7 +1617,7 @@ wheels = [
 
 [[package]]
 name = "dinkster-upscale"
-version = "0.0.3"
+version = "0.0.4"
 source = { editable = "packages/dinkster-nodes-upscale" }
 dependencies = [
     { name = "dinkster-api" },
@@ -1638,7 +1638,7 @@ requires-dist = [
 
 [[package]]
 name = "dinkster-utilities"
-version = "0.0.5"
+version = "0.0.6"
 source = { editable = "packages/dinkster-nodes-utilities" }
 dependencies = [
     { name = "dinkster-api" },
@@ -1653,7 +1653,7 @@ requires-dist = [
 
 [[package]]
 name = "dinkster-video"
-version = "0.0.4"
+version = "0.0.5"
 source = { editable = "packages/dinkster-nodes-video" }
 dependencies = [
     { name = "av" },
@@ -1680,7 +1680,7 @@ requires-dist = [
 
 [[package]]
 name = "dinkster-vision-background-removal"
-version = "0.0.3"
+version = "0.0.4"
 source = { editable = "packages/dinkster-nodes-vision-background-removal" }
 dependencies = [
     { name = "dinkster-api" },
@@ -1699,7 +1699,7 @@ requires-dist = [
 
 [[package]]
 name = "dinkster-vision-depth-anything-3"
-version = "0.0.3"
+version = "0.0.4"
 source = { editable = "packages/dinkster-nodes-vision-depth-anything-3" }
 dependencies = [
     { name = "dinkster-api" },
@@ -1718,7 +1718,7 @@ requires-dist = [
 
 [[package]]
 name = "dinkster-vision-marigold"
-version = "0.0.3"
+version = "0.0.4"
 source = { editable = "packages/dinkster-nodes-vision-marigold" }
 dependencies = [
     { name = "dinkster-api" },
@@ -1737,7 +1737,7 @@ requires-dist = [
 
 [[package]]
 name = "dinkster-vision-mediapipe"
-version = "0.0.3"
+version = "0.0.4"
 source = { editable = "packages/dinkster-nodes-vision-mediapipe" }
 dependencies = [
     { name = "dinkster-api" },
@@ -1760,7 +1760,7 @@ requires-dist = [
 
 [[package]]
 name = "dinkster-vision-moge"
-version = "0.0.3"
+version = "0.0.4"
 source = { editable = "packages/dinkster-nodes-vision-moge" }
 dependencies = [
     { name = "dinkster-api" },
@@ -1779,7 +1779,7 @@ requires-dist = [
 
 [[package]]
 name = "dinkster-vision-rtdetr"
-version = "0.0.5"
+version = "0.0.6"
 source = { editable = "packages/dinkster-nodes-vision-rtdetr" }
 dependencies = [
     { name = "dinkster-api" },
@@ -1804,7 +1804,7 @@ requires-dist = [
 
 [[package]]
 name = "dinkster-vision-sam3"
-version = "0.0.3"
+version = "0.0.4"
 source = { editable = "packages/dinkster-nodes-vision-sam3" }
 dependencies = [
     { name = "av" },
@@ -1825,7 +1825,7 @@ requires-dist = [
 
 [[package]]
 name = "dinkster-vision-sam3d-body"
-version = "0.0.6"
+version = "0.0.8"
 source = { editable = "packages/dinkster-nodes-vision-sam3d-body" }
 dependencies = [
     { name = "dinkster-api" },
@@ -1854,7 +1854,7 @@ requires-dist = [
 
 [[package]]
 name = "dinkster-vision-sdpose"
-version = "0.0.6"
+version = "0.0.7"
 source = { editable = "packages/dinkster-nodes-vision-sdpose" }
 dependencies = [
     { name = "dinkster-api" },
@@ -1879,7 +1879,7 @@ requires-dist = [
 
 [[package]]
 name = "dinkster-void"
-version = "0.0.6"
+version = "0.0.8"
 source = { editable = "packages/dinkster-nodes-void" }
 dependencies = [
     { name = "dinkster-api" },
@@ -1904,7 +1904,7 @@ requires-dist = [
 
 [[package]]
 name = "dinkster-wan"
-version = "0.0.6"
+version = "0.0.8"
 source = { editable = "packages/dinkster-nodes-wan" }
 dependencies = [
     { name = "dinkster-api" },
