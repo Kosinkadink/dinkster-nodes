@@ -1,6 +1,6 @@
 [project]
 name = "dinkster-void"
-version = "0.0.5"
+version = "0.0.6"
 description = "Dinkster void model nodes"
 requires-python = ">=3.12"
 dependencies = [
@@ -25,5 +25,6 @@ packages = ["src/dinkster_void"]
 "locales" = "dinkster_void/locales"
 
 [tool.uv.sources]
+dinkster-api = { workspace = true }
 dinkster-video = { workspace = true }
 dinkster-pack-helpers = { workspace = true }

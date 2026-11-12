@@ -1,6 +1,6 @@
 [project]
 name = "dinkster-utilities"
-version = "0.0.3"
+version = "0.0.5"
 description = "Dinkster primitive, logic, list and loop nodes"
 requires-python = ">=3.12"
 dependencies = [
@@ -19,3 +19,6 @@ packages = ["src/dinkster_utilities"]
 [tool.hatch.build.targets.wheel.force-include]
 "dinkster-pack.toml" = "dinkster_utilities/dinkster-pack.toml"
 "locales" = "dinkster_utilities/locales"
+
+[tool.uv.sources]
+dinkster-api = { workspace = true }

@@ -1,6 +1,6 @@
 [project]
 name = "dinkster-flux"
-version = "0.0.5"
+version = "0.0.6"
 description = "Dinkster flux nodes"
 requires-python = ">=3.12"
 dependencies = [
@@ -23,4 +23,5 @@ packages = ["src/dinkster_flux"]
 "locales" = "dinkster_flux/locales"
 
 [tool.uv.sources]
+dinkster-api = { workspace = true }
 dinkster-pack-helpers = { workspace = true }

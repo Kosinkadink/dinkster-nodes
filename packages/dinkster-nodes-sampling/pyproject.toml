@@ -1,6 +1,6 @@
 [project]
 name = "dinkster-sampling"
-version = "0.0.5"
+version = "0.0.6"
 description = "First-party Dinkster sampling nodes"
 requires-python = ">=3.12"
 dependencies = [
@@ -25,4 +25,5 @@ packages = ["src/dinkster_sampling"]
 "locales" = "dinkster_sampling/locales"
 
 [tool.uv.sources]
+dinkster-api = { workspace = true }
 dinkster-pack-helpers = { workspace = true }
