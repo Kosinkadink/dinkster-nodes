@@ -5,11 +5,13 @@ import json
 import shutil
 import subprocess
 import sys
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
 
 
+@pytest.mark.parametrize("candidate_mode", ["build", "native"])
 @pytest.mark.parametrize(
     "problem",
     [
@@ -24,7 +26,7 @@ import pytest
     ],
 )
 def test_admission_prepared_sources_bind_pack_source_and_published_engine(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, problem: str | None
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, problem: str | None, candidate_mode: str
 ) -> None:
     from dinkster_registry import LockedPack, Lockfile, artifact_digest
     from dinkster_registry.archive_admission import StageResult
@@ -119,8 +121,11 @@ def test_admission_prepared_sources_bind_pack_source_and_published_engine(
         assert kwargs["find_links"] == (runtime / "wheelhouse",)
         output.mkdir()
         (output / "candidate-7.2-py3-none-any.whl").write_bytes(archives["candidate"])
+        head = original(["git", "rev-parse", "HEAD"], text=True).strip()
         (output / "official-packs.lock").write_text(
-            Lockfile.of([entries["candidate"]]).record_json()
+            Lockfile.of(
+                [replace(entries["candidate"], source=f"git:Kosinkadink/dinkster-nodes@{head}")]
+            ).record_json()
         )
         dependency_lock("candidate").write(output / "candidate-7.2-linux-cpu.pack-lock.json")
 
@@ -149,15 +154,94 @@ def test_admission_prepared_sources_bind_pack_source_and_published_engine(
     )
     monkeypatch.setattr(admission, "run_locked_probe", lambda *args, **kwargs: StageResult())
     monkeypatch.setattr(admission, "run_selected_tests", selected_tests)
+    candidate = tmp_path / "native-candidates"
+    if candidate_mode == "native":
+        build_candidate(
+            None,
+            candidate,
+            packs=("candidate",),
+            python=python,
+            constraints=constraints,
+            find_links=(runtime / "wheelhouse",),
+        )
+        context = {
+            "engineVersion": "0.2",
+            "engineRelease": identity,
+            "engineCommit": "c" * 40,
+            "packSourceCommit": original(["git", "rev-parse", "HEAD"], text=True).strip(),
+            "baseId": "sha256:" + "f" * 64,
+            "variant": "linux-cpu",
+        }
+        for field in context:
+            (candidate / "engine.json").write_text(json.dumps({**context, field: "wrong"}))
+            with pytest.raises(ValueError, match="candidate locks do not match"):
+                admission.check_defaults(
+                    admission.NamedRegistry("", "https://registry.invalid"),
+                    engine_version="0.2",
+                    engine_identity=identity,
+                    runtime=runtime,
+                    candidate_sources=candidate,
+                )
+        (candidate / "engine.json").write_text(json.dumps(context))
+        monkeypatch.setattr(
+            admission, "build", lambda *args, **kwargs: pytest.fail("rebuilt sources")
+        )
+        if problem is None:
+            for name, replacement, message in (
+                (
+                    "official-packs.lock",
+                    Lockfile.of([replace(entries["candidate"], source="git:wrong")])
+                    .record_json()
+                    .encode(),
+                    "candidate sources do not match",
+                ),
+                (
+                    "candidate-7.2-py3-none-any.whl",
+                    b"changed source wheel",
+                    "candidate source digest mismatch",
+                ),
+            ):
+                path = candidate / name
+                original_bytes = path.read_bytes()
+                path.write_bytes(replacement)
+                with pytest.raises(ValueError, match=message):
+                    admission.check_defaults(
+                        admission.NamedRegistry("", "https://registry.invalid"),
+                        engine_version="0.2",
+                        engine_identity=identity,
+                        runtime=runtime,
+                        candidate_sources=candidate,
+                    )
+                path.write_bytes(original_bytes)
+            path = candidate / "candidate-7.2-linux-cpu.pack-lock.json"
+            original_bytes = path.read_bytes()
+            replace(dependency_lock("candidate"), packages=()).write(path)
+            with pytest.raises(ValueError, match="dependency lock omits the outer wheel"):
+                admission.check_defaults(
+                    admission.NamedRegistry("", "https://registry.invalid"),
+                    engine_version="0.2",
+                    engine_identity=identity,
+                    runtime=runtime,
+                    candidate_sources=candidate,
+                )
+            path.write_bytes(original_bytes)
+    source_bytes = (
+        {path.name: path.read_bytes() for path in candidate.iterdir()}
+        if candidate_mode == "native"
+        else {}
+    )
     prepared = tmp_path / "prepared"
     result = admission.check_defaults(
         admission.NamedRegistry("", "https://registry.invalid"),
         engine_version="0.2",
         engine_identity=identity,
         runtime=runtime,
-        candidate_base="b" * 40,
+        candidate_base="b" * 40 if candidate_mode == "build" else None,
+        candidate_sources=candidate if candidate_mode == "native" else None,
         prepare_output=prepared,
     )
+    if candidate_mode == "native":
+        assert {path.name: path.read_bytes() for path in candidate.iterdir()} == source_bytes
     groups = result["groups"]
     assert isinstance(groups, list)
     assert sorted(name for group in groups for name in group) == [

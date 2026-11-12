@@ -14,7 +14,7 @@ from dataclasses import replace
 from graphlib import TopologicalSorter
 from pathlib import Path
 
-from dinkster_registry import LockedPack, Lockfile, unpack_artifact
+from dinkster_registry import LockedPack, Lockfile, artifact_digest, unpack_artifact
 from dinkster_registry.archive_admission import (
     StageResult,
     admission_timing,
@@ -185,6 +185,7 @@ def check_defaults(
     engine_identity: str,
     runtime: Path,
     candidate_base: str | None = None,
+    candidate_sources: Path | None = None,
     published_sources: Path | None = None,
     prepare_output: Path | None = None,
     prepared_sources: Path | None = None,
@@ -200,7 +201,10 @@ def check_defaults(
         raise ValueError("admission engine version differs from the selected release")
     head = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=root, text=True).strip()
     if (
-        sum(value is not None for value in (candidate_base, published_sources, prepared_sources))
+        sum(
+            value is not None
+            for value in (candidate_base, candidate_sources, published_sources, prepared_sources)
+        )
         > 1
     ):
         raise ValueError("select candidate or published sources, not both")
@@ -243,8 +247,15 @@ def check_defaults(
                     pack.pack: PackLock.read(prepared_sources / "pack-locks" / f"{pack.pack}.json")
                     for pack in selected.packs
                 }
-        elif candidate_base is not None:
-            candidates = publication_selection(root, candidate_base)
+        elif candidate_base is not None or candidate_sources is not None:
+            output = candidate_sources
+            if candidate_sources is not None and (
+                json.loads((candidate_sources / "engine.json").read_text()) != engine_context
+            ):
+                raise ValueError("candidate locks do not match the pack source and engine release")
+            candidates = (
+                publication_selection(root, candidate_base) if candidate_base is not None else ()
+            )
             if candidates:
                 output = work / "candidate"
                 with admission_timing("defaults", "candidate-build"):
@@ -259,12 +270,21 @@ def check_defaults(
                         find_links=(runtime.resolve() / "wheelhouse",),
                         accelerator="cpu",
                     )
+            if output is not None:
                 selected = Lockfile.from_record_json((output / "official-packs.lock").read_text())
+                if not selected.packs or any(
+                    pack.source != f"git:Kosinkadink/dinkster-nodes@{head}"
+                    for pack in selected.packs
+                ):
+                    raise ValueError("candidate sources do not match the pack checkout")
                 for pack in selected.packs:
-                    shutil.copyfile(
-                        output / f"{pack.pack.replace('-', '_')}-{pack.version}-py3-none-any.whl",
-                        artifacts / f"{pack.artifact_digest.removeprefix('blake3:')}.zip",
+                    archive = output / (
+                        f"{pack.pack.replace('-', '_')}-{pack.version}-py3-none-any.whl"
                     )
+                    data = archive.read_bytes()
+                    if artifact_digest(data) != pack.artifact_digest:
+                        raise ValueError(f"candidate source digest mismatch: {pack.pack}")
+                    pack_archive_path(artifacts, pack.artifact_digest).write_bytes(data)
                     if generation_python is not None:
                         locks[pack.pack] = PackLock.read(
                             output / f"{pack.pack}-{pack.version}-{variant}.pack-lock.json"
@@ -351,7 +371,9 @@ def check_defaults(
                 archive = pack_archive_path(artifacts, pack.artifact_digest)
                 payload = archive.read_bytes()
                 outer = next((item for item in lock.packages if item.name == pack.pack), None)
-                if outer is None and prepared_sources is not None:
+                if outer is None and (
+                    prepared_sources is not None or candidate_sources is not None
+                ):
                     raise ValueError(f"{pack.pack}: prepared dependency lock omits the outer wheel")
                 wheel = LockedWheel(
                     f"{pack.pack.replace('-', '_')}-{pack.version}-py3-none-any.whl",
@@ -531,6 +553,7 @@ if __name__ == "__main__":
     parser.add_argument("--engine-identity", required=True)
     selection = parser.add_mutually_exclusive_group()
     selection.add_argument("--candidate-base")
+    selection.add_argument("--candidate-sources", type=Path)
     selection.add_argument("--published-sources", type=Path)
     selection.add_argument("--prepared-sources", type=Path)
     parser.add_argument("--prepare-output", type=Path)
@@ -544,6 +567,7 @@ if __name__ == "__main__":
                 engine_version=args.engine_version,
                 engine_identity=args.engine_identity,
                 candidate_base=args.candidate_base,
+                candidate_sources=args.candidate_sources,
                 published_sources=args.published_sources,
                 prepare_output=args.prepare_output,
                 prepared_sources=args.prepared_sources,

@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 import platform
+import subprocess
 import tempfile
 from dataclasses import replace
 from pathlib import Path
@@ -118,8 +119,21 @@ def build_locks(
                     raise ValueError(f"native pack build changed source artifact: {path.name}")
         if not locks:
             raise ValueError("native pack build produced no dependency locks")
+        head = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=root, text=True).strip()
+        (staged / "engine.json").write_text(
+            json.dumps(
+                {
+                    "engineVersion": engine["version"],
+                    "engineRelease": engine_identity,
+                    "engineCommit": engine["commit"],
+                    "packSourceCommit": head,
+                    "baseId": base["id"],
+                    "variant": variant,
+                }
+            )
+        )
         staged.rename(output)
-    return tuple(sorted(output.iterdir()))
+    return tuple(sorted(output.glob("*.pack-lock.json")))
 
 
 if __name__ == "__main__":

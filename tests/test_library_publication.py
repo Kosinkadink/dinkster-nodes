@@ -291,6 +291,14 @@ def test_native_publication_locks_bind_published_inputs_and_preserve_sources(
             runtime=runtime,
         )
         assert [path.name for path in paths] == ["test-helpers-0.0.1-fixture-cpu.pack-lock.json"]
+        assert json.loads((output / "engine.json").read_text()) == {
+            "engineVersion": "0.0.4.dev123",
+            "engineRelease": identity,
+            "engineCommit": "c" * 40,
+            "packSourceCommit": "a" * 40,
+            "baseId": base["id"],
+            "variant": "fixture-cpu",
+        }
         lock = PackLock.read(paths[0])
         locked = next(package for package in lock.packages if package.name == "fixture-dependency")
         assert [(row.filename, row.sha256, row.size, row.url) for row in locked.wheels] == [
