@@ -541,18 +541,26 @@ jobs:
           tests/test_default_pack_admission.py tests/test_admission_libraries.py --timeout=180
 
   tests:
-    name: CPU ${{ matrix.suite }} tests (${{ matrix.shard }}/4)${{ matrix.suite == 'packages' && format(' group {0}/2', matrix.package-group) || '' }}
+    name: CPU ${{ matrix.suite }} tests (${{ matrix.shard }}/${{ matrix.suite == 'root' && 8 || 4 }})${{ matrix.suite == 'packages' && format(' group {0}/2', matrix.package-group) || '' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     strategy:
       fail-fast: false
       matrix:
         suite: [root, packages]
-        shard: [1, 2, 3, 4]
+        shard: [1, 2, 3, 4, 5, 6, 7, 8]
         package-group: [1, 2]
         exclude:
           - suite: root
             package-group: 2
+          - suite: packages
+            shard: 5
+          - suite: packages
+            shard: 6
+          - suite: packages
+            shard: 7
+          - suite: packages
+            shard: 8
     env:
       CUDA_VISIBLE_DEVICES: ""
       DINKSTER_ACCELERATOR: cpu
@@ -605,7 +613,7 @@ jobs:
         if: matrix.suite == 'root'
         run: >-
           uv run --no-sync pytest -q tests --timeout=180
-          -p tools.pytest_file_shard --file-shard ${{ matrix.shard }}/4
+          -p tools.pytest_file_shard --file-shard ${{ matrix.shard }}/8
       - name: Run each package in a separate process
         if: matrix.suite == 'packages'
         run: |
