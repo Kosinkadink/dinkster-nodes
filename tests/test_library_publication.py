@@ -261,3 +261,215 @@ def test_native_publication_locks_bind_published_inputs_and_preserve_sources(
             )
         ]
         assert {path.name: path.read_bytes() for path in sources.iterdir()} == originals
+
+
+@pytest.mark.parametrize(
+    "problem",
+    [
+        None,
+        "labelled",
+        "engine-bytes",
+        "pin",
+        "wheel",
+        "base-bytes",
+        "base-lock",
+        "dependency",
+        "protocol",
+        "compatibility",
+    ],
+)
+def test_publication_preparation_uses_pinned_engine_and_its_exact_base(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, problem: str | None
+) -> None:
+    from urllib.parse import quote
+
+    from dinkster_registry import LockedPack, Lockfile, artifact_digest
+    from dinkster_workers.pack_wheel import build_pack_archive
+
+    from scripts import prepare_official_publication as preparation
+    from tests.registry_fixtures import _serve_artifacts, _wheel
+
+    commit = "c" * 40
+    version = f"0.0.4.dev123+g{commit}"
+    tag = f"main-{commit}"
+    wheel = _wheel(tmp_path, "dinkster", version, "dinkster", "VALUE = 41\n")
+    base_wheel = _wheel(tmp_path, "fixture-base", "2.0", "fixture_base", "VALUE = 43\n")
+    base_row = {
+        "name": "fixture-base",
+        "version": "2.0",
+        "filename": base_wheel.filename,
+        "size": base_wheel.size,
+        "sha256": base_wheel.sha256,
+        "index": "https://pypi.org/simple",
+        "url": f"https://example.org/{base_wheel.filename}",
+    }
+    base = {
+        "format": "dinkster.base/1",
+        "variant": "fixture-cpu",
+        "platform": {"os": "linux", "arch": "x86_64"},
+        "python": "3.12.9",
+        "interpreter": {"executable": "python/bin/python3"},
+        "wheels": [base_row],
+        "replaces": ["fixture-base"],
+        "workerProtocol": 12 if problem == "protocol" else 11,
+        "nvidia": None,
+        "archive": {"format": "tar+zstd"},
+    }
+    base["id"] = (
+        "sha256:"
+        + hashlib.sha256(
+            json.dumps(base, sort_keys=True, separators=(",", ":")).encode("ascii")
+        ).hexdigest()
+    )
+    base["archive"]["parts"] = [{"filename": "base.tar.zst.001", "size": 1, "sha256": "b" * 64}]
+    engine = {
+        "format": "dinkster.engine/1",
+        "repository": "Kosinkadink/Dinkster",
+        "commit": commit,
+        "version": version,
+        "tag": tag,
+        "workerProtocol": 11,
+        "dependencies": {
+            "fixture-cpu": {
+                "base": "sha256:" + "d" * 64 if problem == "base-lock" else base["id"],
+                "wheels": [
+                    {**base_row, "sha256": "f" * 64} if problem == "dependency" else base_row
+                ],
+            }
+        },
+        "artifacts": [
+            {"name": wheel.filename, "size": wheel.size, "sha256": wheel.sha256},
+            {"name": "constraints.txt", "size": 0, "sha256": hashlib.sha256(b"").hexdigest()},
+        ],
+    }
+    if problem == "labelled":
+        engine["label"] = "2026-11-11-0.0.4.dev123"
+        base["label"] = "2026-11-11-py3.12.9-torch2.9.0-" + base["id"][7:15]
+    data = json.dumps(engine).encode()
+    identity = hashlib.sha256(data).hexdigest()
+    engine_name = f"{engine['label']}-{identity[:8]}" if problem == "labelled" else identity
+    if problem == "labelled":
+        tag = f"main-{engine_name}"
+    selected_base = engine["dependencies"]["fixture-cpu"]["base"]
+    base_name = base.get("label", selected_base[7:])
+    metadata = {
+        "engine/index.json": json.dumps(
+            [
+                {
+                    "commit": commit,
+                    "version": version,
+                    **({"label": engine["label"]} if problem == "labelled" else {}),
+                    "sha256": identity,
+                    "path": f"engine/{engine_name}",
+                }
+            ]
+        ).encode(),
+        f"engine/{engine_name}/release-manifest.json": (
+            json.dumps({**engine, "workerProtocol": 12}).encode()
+            if problem == "engine-bytes"
+            else data
+        ),
+        "base/fixture-cpu/index.json": json.dumps(
+            [
+                {
+                    "id": selected_base,
+                    "path": f"base/fixture-cpu/{base_name}",
+                    **({"label": base_name} if problem == "labelled" else {}),
+                }
+            ]
+        ).encode(),
+        f"base/fixture-cpu/{base_name}/manifest.json": json.dumps(
+            {**base, "python": "3.12.8"} if problem == "base-bytes" else base
+        ).encode(),
+    }
+    pinned_tag = "main-" + "a" * 40 if problem == "pin" else tag
+    (tmp_path / "pyproject.toml").write_text(
+        "[tool.uv.sources]\ndinkster = { url = "
+        f'"https://github.com/Kosinkadink/Dinkster/releases/download/{pinned_tag}/{wheel.filename}"'
+        " }\n"
+    )
+    monkeypatch.setattr(preparation, "read_metadata", lambda root, name: metadata[name])
+    fetch = preparation.fetch_artifact
+    requests = []
+    server = _serve_artifacts(
+        {
+            f"/{quote(wheel.filename, safe='')}": b"broken"
+            if problem == "wheel"
+            else (tmp_path / wheel.filename).read_bytes(),
+            "/constraints.txt": b"",
+        },
+        requests,
+    )
+    mirror = f"http://127.0.0.1:{server.server_port}"
+    monkeypatch.setattr(
+        preparation,
+        "fetch_artifact",
+        lambda mirrors, *args: fetch((mirror,), *args),
+    )
+
+    def sources(root, output, *, packs):
+        output.mkdir()
+        candidate = root / "candidate"
+        (candidate / "src/test_helper").mkdir(parents=True)
+        (candidate / "src/test_helper/__init__.py").write_text("NODES = []\n")
+        (candidate / "dinkster-pack.toml").write_text(
+            '[pack]\nname = "test-helper"\nversion = "0.0.2"\n'
+            'publisher = "dinkster"\n'
+            f'engine = "{">=0.1" if problem == "compatibility" else ">=0.0.2,<0.1"}"\n'
+            '[pack.entry]\nnodes = "test_helper:NODES"\n'
+        )
+        archive = output / "test_helper-0.0.2-py3-none-any.whl"
+        build_pack_archive(candidate, archive)
+        (output / "official-packs.lock").write_text(
+            Lockfile.of(
+                (
+                    LockedPack(
+                        "test-helper",
+                        "0.0.2",
+                        artifact_digest(archive.read_bytes()),
+                        "dinkster",
+                        (),
+                    ),
+                )
+            ).record_json()
+        )
+
+    monkeypatch.setattr(preparation, "build", sources)
+    output = tmp_path / "prepared"
+    try:
+        if problem is not None and problem != "labelled":
+            messages = {
+                "engine-bytes": "engine manifest digest mismatch",
+                "pin": "differs from the workspace pin",
+                "wheel": "artifact",
+                "base-bytes": "base manifest digest mismatch",
+                "base-lock": "base manifest digest mismatch",
+                "dependency": "base wheel differs",
+                "protocol": "worker protocols differ",
+                "compatibility": "engine",
+            }
+            with pytest.raises(ValueError, match=messages[problem]):
+                preparation.prepare_inputs(tmp_path, output, ["test-helper"])
+            assert not output.exists()
+        else:
+            assert preparation.prepare_inputs(tmp_path, output, ["test-helper"]) == [
+                {
+                    "variant": "fixture-cpu",
+                    "runner": "ubuntu-latest",
+                    "engineIdentity": "sha256:" + identity,
+                }
+            ]
+            assert (output / "engine/release-manifest.json").read_bytes() == data
+            assert (output / "engine" / wheel.filename).read_bytes() == (
+                tmp_path / wheel.filename
+            ).read_bytes()
+            assert json.loads((output / "bases/fixture-cpu/manifest.json").read_bytes()) == base
+            catalog = Lockfile.from_record_json(
+                (output / "sources/official-packs.lock").read_text()
+            )
+            assert [(pack.pack, pack.version) for pack in catalog.packs] == [
+                ("test-helper", "0.0.2")
+            ]
+    finally:
+        server.shutdown()
+        server.server_close()
