@@ -67,6 +67,13 @@ def published_generation(tmp_path_factory: pytest.TempPathFactory) -> Path:
         ],
         check=True,
     )
+    # Managed interpreters can expose engine dependencies through site initialization.
+    # Inspect the interpreter's effective metadata, not only its local site directory.
+    site = stdlib / "site-packages"
+    inherited = generation / "engine-site"
+    site.rename(inherited)
+    site.mkdir()
+    (site / "engine.pth").write_text(str(inherited) + "\n", encoding="ascii")
     return python
 
 
@@ -80,7 +87,12 @@ def test_selected_candidate_uses_published_engine_not_checkout_or_default_bytes(
     dependency_version: str | None,
 ) -> None:
     from dinkster_registry import LockedPack, Lockfile, artifact_digest
-    from dinkster_workers.pack_lock import LockedDistribution, LockedWheel, PackLock
+    from dinkster_workers.pack_lock import (
+        GenerationPackages,
+        LockedDistribution,
+        LockedWheel,
+        PackLock,
+    )
     from dinkster_workers.pack_wheel import build_pack_archive
     from dinkster_workers.provision import ProvisionError
 
@@ -156,7 +168,8 @@ def test_selected_candidate_uses_published_engine_not_checkout_or_default_bytes(
     (source / "dinkster_text/__init__.py").write_text(f"NODES = []\nVALUE = {selected_value}\n")
     (source / "dinkster-pack.toml").write_text(
         '[pack]\nname = "dinkster-text"\npublisher = "dinkster"\nversion = "1.2.3"\n'
-        'engine = ">=0.0.2.dev0,<2"\n[pack.entry]\nnodes = "dinkster_text:NODES"\n'
+        'engine = ">=0.0.2.dev0,<2"\nrequires = ["packaging>=24"]\n'
+        '[pack.entry]\nnodes = "dinkster_text:NODES"\n'
         '[pack.contracts]\nhost = "dinkster-pack-host/1"\napi = "dinkster-api/v1"\n'
     )
     archive = tmp_path / "dinkster_text-1.2.3-py3-none-any.whl"
@@ -171,9 +184,14 @@ def test_selected_candidate_uses_published_engine_not_checkout_or_default_bytes(
         "dinkster-text",
         "linux-cpu",
         ">=3.12",
-        (),
+        ("packaging>=24",),
         (),
         (
+            LockedDistribution(
+                "packaging",
+                GenerationPackages.inspect(published_generation).versions["packaging"],
+                (),
+            ),
             LockedDistribution(
                 "dinkster-text",
                 "1.2.3",
@@ -191,7 +209,7 @@ def test_selected_candidate_uses_published_engine_not_checkout_or_default_bytes(
     if dependency_version is not None:
         lock = replace(
             lock,
-            requirements=("shared-test-dependency",),
+            requirements=(*lock.requirements, "shared-test-dependency"),
             packages=(
                 *lock.packages,
                 LockedDistribution("shared-test-dependency", dependency_version, (shared,)),

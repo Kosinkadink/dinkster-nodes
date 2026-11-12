@@ -396,7 +396,30 @@ def run_selected_tests(
                     offline=True,
                 )
             compatible = subprocess.run(
-                ["uv", "pip", "check", "--python", str(python)],
+                [
+                    str(python),
+                    "-I",
+                    "-c",
+                    """
+import importlib.metadata as metadata
+from packaging.requirements import Requirement
+errors = []
+for distribution in metadata.distributions():
+    for text in distribution.requires or ():
+        requirement = Requirement(text)
+        if requirement.marker and not requirement.marker.evaluate({"extra": ""}):
+            continue
+        try:
+            version = metadata.version(requirement.name)
+        except metadata.PackageNotFoundError:
+            errors.append(f"{distribution.name} requires {requirement}, but it is not installed")
+            continue
+        if not requirement.specifier.contains(version, prereleases=True):
+            errors.append(f"{distribution.name} requires {requirement}, found {version}")
+print("\\n".join(errors))
+raise SystemExit(bool(errors))
+""",
+                ],
                 capture_output=True,
                 text=True,
                 check=False,
