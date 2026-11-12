@@ -33,7 +33,7 @@ def publication_selection(root: Path, before: str) -> tuple[str, ...]:
         for path in changed
     )
     publication_changed = any(
-        path == ".github/workflows/official-packs.yml"
+        path == ".github/workflows/ci.yml"
         or path
         in {
             "scripts/select_official_packs.py",

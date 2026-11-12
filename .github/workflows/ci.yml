@@ -37,9 +37,11 @@ jobs:
     timeout-minutes: 15
     outputs:
       matrix: ${{ steps.inputs.outputs.matrix }}
+      publication: ${{ steps.inputs.outputs.publication }}
     steps:
       - uses: actions/checkout@v4
         with:
+          fetch-depth: 0
           persist-credentials: false
       - uses: astral-sh/setup-uv@v5
         with:
@@ -49,13 +51,16 @@ jobs:
       - run: uv sync --locked --all-packages
       - name: Verify the pinned release and every selected base, then build source wheels
         id: inputs
+        env:
+          EVENT: ${{ github.event_name }}
+          BEFORE: ${{ github.event.before }}
         run: |
           uv run --no-sync python - <<'PY'
           import json
           import os
           from pathlib import Path
           from scripts.prepare_official_publication import prepare_inputs
-          from scripts.select_official_packs import select_packs
+          from scripts.select_official_packs import publication_selection, select_packs
 
           root = Path.cwd()
           output = (root / ".admission-inputs").resolve()
@@ -65,8 +70,13 @@ jobs:
           rows = prepare_inputs(root, output, list(packs))
           if not any(row["variant"] == "linux-cpu" for row in rows):
               raise ValueError("admission requires a published Linux CPU base")
+          publication = (
+              publication_selection(root, os.environ["BEFORE"])
+              if os.environ["EVENT"] == "push" else ()
+          )
           with open(os.environ["GITHUB_OUTPUT"], "a") as stream:
               print("matrix=" + json.dumps({"include": rows}), file=stream)
+              print("publication=" + json.dumps(publication), file=stream)
           PY
       - uses: actions/upload-artifact@v4
         with:
@@ -413,6 +423,94 @@ jobs:
             disposable-publication.json
           if-no-files-found: error
           retention-days: 1
+
+  publish:
+    name: Publish official pack versions
+    needs: [checks, tests, native-publication-contracts, published-inputs, native-pack-locks, admission, disposable-publication]
+    if: github.repository == 'Kosinkadink/dinkster-nodes' && github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.OFFICIAL_PACK_PUBLICATION_ENABLED == 'true' && needs.published-inputs.outputs.publication != '[]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    concurrency:
+      group: official-pack-publication
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          name: verified-admission-inputs
+          path: .admission-inputs
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: native-pack-locks-*
+          merge-multiple: true
+          path: .admission-inputs/locks
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+      - run: uv sync --locked --all-packages
+      - name: Select affected wheels and native locks without rebuilding them
+        env:
+          PACKS: ${{ needs.published-inputs.outputs.publication }}
+        run: |
+          uv run --no-sync python - <<'PY'
+          import json
+          import os
+          import shutil
+          from pathlib import Path
+          from dinkster_registry import Lockfile
+
+          inputs = Path(".admission-inputs")
+          selected = json.loads(os.environ["PACKS"])
+          catalog = Lockfile.from_record_json((inputs / "sources/official-packs.lock").read_text())
+          packs = tuple(pack for pack in catalog.packs if pack.pack in selected)
+          if not packs or {pack.pack for pack in packs} != set(selected):
+              raise ValueError("publication selection differs from verified source wheels")
+          output = Path(".publication")
+          (output / "sources").mkdir(parents=True)
+          (output / "locks").mkdir()
+          for pack in packs:
+              archive = f"{pack.pack.replace('-', '_')}-{pack.version}-py3-none-any.whl"
+              shutil.copyfile(inputs / "sources" / archive, output / "sources" / archive)
+              for base in (inputs / "bases").glob("*/manifest.json"):
+                  lock = f"{pack.pack}-{pack.version}-{base.parent.name}.pack-lock.json"
+                  shutil.copyfile(inputs / "locks" / lock, output / "locks" / lock)
+          (output / "sources/official-packs.lock").write_text(Lockfile.of(packs).record_json())
+          PY
+      - name: Validate every native lock and public version without credentials
+        run: |
+          arguments=()
+          for base in .admission-inputs/bases/*/manifest.json; do arguments+=(--base-manifest "$base"); done
+          for lock in .publication/locks/*.pack-lock.json; do arguments+=(--pack-lock "$lock"); done
+          uv run --no-sync python -m scripts.publish_official_packs \
+            --sources .publication/sources "${arguments[@]}" \
+            --output .publication/preflight --check-published
+      - name: Submit own-version packs and wait for public activation
+        env:
+          DINKSTER_REGISTRY_TOKEN: ${{ secrets.DINKSTER_REGISTRY_TOKEN }}
+        run: |
+          if [ -z "$DINKSTER_REGISTRY_TOKEN" ]; then
+            echo 'Official pack submission refused: DINKSTER_REGISTRY_TOKEN is unavailable' >&2
+            exit 1
+          fi
+          arguments=()
+          for base in .admission-inputs/bases/*/manifest.json; do arguments+=(--base-manifest "$base"); done
+          for lock in .publication/locks/*.pack-lock.json; do arguments+=(--pack-lock "$lock"); done
+          timeout --kill-after=30s 12m uv run --no-sync python -m scripts.publish_official_packs \
+            --sources .publication/sources "${arguments[@]}" \
+            --output .publication/submitted --publish
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: official-publication-result
+          path: |
+            .publication/preflight
+            .publication/submitted
+          include-hidden-files: true
+          if-no-files-found: warn
 
   native-publication-contracts:
     name: Publication runtime contracts (${{ matrix.os }})

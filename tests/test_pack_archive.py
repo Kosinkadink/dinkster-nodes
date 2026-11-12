@@ -431,6 +431,8 @@ def test_official_publication_uses_selected_manifest_versions(
     ("changed", "expected"),
     [
         (("src/dinkster/serve.py", "pyproject.toml"), ()),
+        (("README.md",), ()),
+        ((".github/workflows/ci.yml",), ()),
         (("packages/dinkster-nodes-foundation/src/nodes.py",), ("foundation",)),
         (("packages/dinkster-nodes-image/deleted.py",), ("image",)),
         (("packages/dinkster-nodes-unlisted-family/src/nodes.py",), ("unlisted",)),
@@ -453,7 +455,7 @@ def test_official_publication_selects_only_changed_committed_packs(
     changed: tuple[str, ...],
     expected: tuple[str, ...],
 ) -> None:
-    from scripts.select_official_packs import select_packs
+    from scripts.select_official_packs import publication_selection, select_packs
 
     paths = {
         "foundation": "packages/dinkster-nodes-foundation/dinkster-pack.toml",
@@ -491,6 +493,8 @@ def test_official_publication_selects_only_changed_committed_packs(
                 else data
             )
         if "diff" in command:
+            if kwargs.get("text"):
+                return "\n".join(changed) + "\n"
             return ("\0".join(changed) + "\0").encode()
         raise AssertionError(command)
 
@@ -506,6 +510,16 @@ def test_official_publication_selects_only_changed_committed_packs(
         "image",
         "second",
         "unlisted",
+    )
+    assert publication_selection(tmp_path, "b" * 40) == (
+        ("first", "foundation", "image", "second", "unlisted")
+        if changed
+        in (
+            ("src/dinkster/serve.py", "pyproject.toml"),
+            (".github/workflows/ci.yml",),
+            ("packages/dinkster-nodes-vision/pyproject.toml",),
+        )
+        else expected
     )
     assert select_packs(tmp_path, tag="pack/unlisted/v4.2.1") == ("unlisted",)
     assert select_packs(tmp_path, tag="pack/first/v3.4rc1") == ("first",)
