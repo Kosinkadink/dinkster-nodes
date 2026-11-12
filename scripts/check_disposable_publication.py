@@ -338,8 +338,16 @@ def check_publication(
         # Retain scanner diagnostics before deleting the disposable database.
         report = (
             "import json,sqlite3; db=sqlite3.connect('/data/registry.sqlite'); "
-            "print(json.dumps(db.execute('SELECT stage,operator_details,doctor "
-            "FROM release_scan_runs ORDER BY created_at DESC LIMIT 10').fetchall()))"
+            "print(json.dumps({'candidates': db.execute("
+            "'SELECT pack_name,version,status,status_reason,attempt_count,"
+            "submitted_at,lease_expires_at "
+            "FROM release_candidates ORDER BY submitted_at').fetchall(), "
+            "'findings': db.execute('SELECT c.pack_name,r.stage,f.code,f.message "
+            "FROM release_findings f JOIN release_scan_runs r ON r.id=f.scan_run_id "
+            "JOIN release_candidates c ON c.id=r.candidate_id "
+            "WHERE f.effect IN (?,?) ORDER BY f.created_at',('block','review')).fetchall(), "
+            "'recentScans': db.execute('SELECT candidate_id,stage,doctor "
+            "FROM release_scan_runs ORDER BY created_at DESC LIMIT 10').fetchall()}))"
         )
         try:
             result = subprocess.run(
