@@ -58,9 +58,10 @@ the page cannot recover the value.
 
 For cutover or rotation, install the replacement credential, confirm a
 publication through the normal workflow, then revoke the previous credential
-on the same page and remove its obsolete Actions secret. Record the first-party
-publication and retirement before declaring cutover complete. Do not revoke the
-existing credential before that confirmation or publish manually to demonstrate
-cutover.
+on the same page and remove its obsolete Actions secret. Maintainers record the
+confirmed first-party publication, token revocation and Actions-secret removal
+on issue 698 of the private `Kosinkadink/comfy-vibe-station` tracker before
+declaring cutover complete. Do not revoke the existing credential before that
+confirmation or publish manually to demonstrate cutover.
 Expired and revoked tokens cannot publish. Publisher registration does not
 change admission, scanning or the official publisher tier.
