@@ -37,3 +37,31 @@ own pytest process. Shader tests use the CPU software renderer.
 
 There is no production publication workflow in this repository. Building or
 testing a pack does not submit it to the public registry.
+
+## Registry publisher credentials
+
+First-party packs will use the same self-service credentials as third-party
+packs. The `dinkster` publisher is already bound to its Dinkster account; the
+first-party publication and credential cutover are not complete.
+These instructions do not enable publication or complete that cutover.
+
+Open [publisher accounts](https://id.dinkster.org/registry), sign in with the
+Dinkster account or organization bound to the reserved `dinkster` publisher,
+select that account or organization and choose **Refresh tokens**. The reserved
+name is not available for a public claim; do not repeat its initial binding.
+
+When the publication workflow is ready, choose an expiry at most 90 days away,
+optionally restrict the token to one pack, then choose **Create token**. Save
+the one-time value privately as the workflow's `DINKSTER_REGISTRY_TOKEN` Actions
+secret. Never commit it or print it in logs or command arguments. Refreshing
+the page cannot recover the value.
+
+For cutover or rotation, install the replacement credential, confirm a
+publication through the normal workflow, then revoke the previous credential
+on the same page and remove its obsolete Actions secret. Maintainers record the
+confirmed first-party publication, token revocation and Actions-secret removal
+on issue 698 of the private `Kosinkadink/comfy-vibe-station` tracker before
+declaring cutover complete. Do not revoke the existing credential before that
+confirmation or publish manually to demonstrate cutover.
+Expired and revoked tokens cannot publish. Publisher registration does not
+change admission, scanning or the official publisher tier.
