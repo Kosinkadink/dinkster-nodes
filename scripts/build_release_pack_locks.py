@@ -69,6 +69,8 @@ def build_locks(
         wheel_urls = {
             (row["filename"], row["size"], row["sha256"]): row["url"] for row in base["wheels"]
         }
+        for row in engine["dependencies"][variant]["wheels"]:
+            wheel_urls[(row["filename"], row["size"], row["sha256"])] = row["url"]
         for row in engine["artifacts"]:
             if not row["name"].endswith(".whl"):
                 continue

@@ -140,7 +140,8 @@ def test_native_publication_locks_bind_published_inputs_and_preserve_sources(
     files = {
         "packages/helpers/pyproject.toml": (
             '[project]\nname = "test-helpers"\nversion = "0.0.1"\n'
-            'requires-python = ">=3.12"\ndependencies = ["fixture-dependency==1.0"]\n'
+            'requires-python = ">=3.12"\n'
+            'dependencies = ["fixture-dependency==1.0", "fixture-runtime==3.0"]\n'
             '[build-system]\nrequires = ["hatchling"]\nbuild-backend = "hatchling.build"\n'
             '[tool.hatch.build.targets.wheel]\npackages = ["src/test_helpers"]\n'
             "[tool.dinkster]\nofficial-library = true\n"
@@ -171,6 +172,16 @@ def test_native_publication_locks_bind_published_inputs_and_preserve_sources(
     originals = {path.name: path.read_bytes() for path in sources.iterdir()}
     system = {"Linux": "linux", "Windows": "windows", "Darwin": "macos"}[platform.system()]
     base_wheel = _wheel(tmp_path, "fixture-base", "2.0", "fixture_base", "VALUE = 43\n")
+    runtime_wheel = _wheel(tmp_path, "fixture-runtime", "3.0", "fixture_runtime", "VALUE = 47\n")
+    runtime_row = {
+        "name": "fixture-runtime",
+        "version": "3.0",
+        "filename": runtime_wheel.filename,
+        "sha256": runtime_wheel.sha256,
+        "size": runtime_wheel.size,
+        "index": "https://pypi.org/simple",
+        "url": f"https://example.org/runtime/{runtime_wheel.filename}",
+    }
     base_row = {
         "name": "fixture-base",
         "version": "2.0",
@@ -220,7 +231,8 @@ def test_native_publication_locks_bind_published_inputs_and_preserve_sources(
             "fixture-cpu": {
                 "base": "sha256:" + "d" * 64 if problem == "base" else base["id"],
                 "wheels": [
-                    {**base_row, "sha256": "f" * 64} if problem == "dependency" else base_row
+                    {**base_row, "sha256": "f" * 64} if problem == "dependency" else base_row,
+                    runtime_row,
                 ],
             }
         },
@@ -249,7 +261,11 @@ def test_native_publication_locks_bind_published_inputs_and_preserve_sources(
         assert directory == runtime
         assert selected_identity == identity
         (runtime / "wheelhouse").mkdir(parents=True)
-        for source in (tmp_path / base_wheel.filename, release / wheel.filename):
+        for source in (
+            tmp_path / base_wheel.filename,
+            tmp_path / runtime_wheel.filename,
+            release / wheel.filename,
+        ):
             shutil.copyfile(source, runtime / "wheelhouse" / source.name)
         constraints = runtime / "constraints.txt"
         constraints.write_text(
@@ -325,6 +341,17 @@ def test_native_publication_locks_bind_published_inputs_and_preserve_sources(
                 wheel.size,
                 "https://github.com/Kosinkadink/Dinkster/releases/download/"
                 f"main-{'c' * 40}/{wheel.filename}",
+            )
+        ]
+        runtime_locked = next(
+            package for package in lock.packages if package.name == "fixture-runtime"
+        )
+        assert [(row.filename, row.sha256, row.size, row.url) for row in runtime_locked.wheels] == [
+            (
+                runtime_wheel.filename,
+                runtime_wheel.sha256,
+                runtime_wheel.size,
+                f"https://example.org/runtime/{runtime_wheel.filename}",
             )
         ]
         assert {path.name: path.read_bytes() for path in sources.iterdir()} == originals
