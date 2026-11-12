@@ -2,6 +2,7 @@ name: ci
 
 on:
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
   push:
     branches: [main]
   merge_group:
@@ -28,6 +29,112 @@ jobs:
       - run: uv run --no-sync ruff check .
       - run: uv run --no-sync pyright
       - run: uv run --no-sync pyright --pythonplatform Windows
+
+  published-inputs:
+    name: Verified published engine and pack sources
+    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    outputs:
+      matrix: ${{ steps.inputs.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+      - run: uv sync --locked --all-packages
+      - name: Verify the pinned release and every selected base, then build source wheels
+        id: inputs
+        run: |
+          uv run --no-sync python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+          from scripts.prepare_official_publication import prepare_inputs
+          from scripts.select_official_packs import select_packs
+
+          root = Path.cwd()
+          output = (root / ".admission-inputs").resolve()
+          packs = select_packs(root, before="0" * 40)
+          if not packs:
+              raise ValueError("admission requires official sources")
+          rows = prepare_inputs(root, output, list(packs))
+          if not any(row["variant"] == "linux-cpu" for row in rows):
+              raise ValueError("admission requires a published Linux CPU base")
+          with open(os.environ["GITHUB_OUTPUT"], "a") as stream:
+              print("matrix=" + json.dumps({"include": rows}), file=stream)
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: verified-admission-inputs
+          path: .admission-inputs
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 1
+
+  native-pack-locks:
+    name: Published runtime dependency locks (${{ matrix.variant }})
+    needs: published-inputs
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.published-inputs.outputs.matrix) }}
+    steps:
+      - name: Expose Git Bash on Windows
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $bashDirectory = Join-Path $env:ProgramFiles 'Git/bin'
+          if (-not (Test-Path (Join-Path $bashDirectory 'bash.exe') -PathType Leaf)) {
+            throw 'Git Bash is required for the native pack lock build'
+          }
+          $bashDirectory >> $env:GITHUB_PATH
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          name: verified-admission-inputs
+          path: .admission-inputs
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+      - run: uv sync --locked --all-packages
+      - name: Provision the verified published engine on this native base
+        shell: bash
+        env:
+          VARIANT: ${{ matrix.variant }}
+          ENGINE_IDENTITY: ${{ matrix.engineIdentity }}
+        run: |
+          uv run --no-sync python -m scripts.prepare_admission_engine \
+            --release .admission-inputs/engine --output admission-runtime \
+            --store .admission-store \
+            --base-manifest ".admission-inputs/bases/$VARIANT/manifest.json" \
+            --engine-identity "$ENGINE_IDENTITY"
+      - name: Resolve native locks without changing the prepared source wheels
+        shell: bash
+        env:
+          VARIANT: ${{ matrix.variant }}
+          ENGINE_IDENTITY: ${{ matrix.engineIdentity }}
+        run: |
+          uv run --no-sync python -m scripts.build_release_pack_locks \
+            --release .admission-inputs/engine --sources .admission-inputs/sources \
+            --base-manifest ".admission-inputs/bases/$VARIANT/manifest.json" \
+            --output native-pack-locks --engine-identity "$ENGINE_IDENTITY" \
+            --runtime admission-runtime
+      - uses: actions/upload-artifact@v4
+        with:
+          name: native-pack-locks-${{ matrix.variant }}
+          path: native-pack-locks/*.pack-lock.json
+          if-no-files-found: error
+          retention-days: 1
 
   native-publication-contracts:
     name: Publication runtime contracts (${{ matrix.os }})
