@@ -219,7 +219,7 @@ def check_defaults(
         )
     )
     with tempfile.TemporaryDirectory(prefix="default-pack-admission-") as directory:
-        work = Path(directory)
+        work = Path(directory).resolve()
         artifacts = work / "artifacts"
         artifacts.mkdir()
         selected = Lockfile.of(())

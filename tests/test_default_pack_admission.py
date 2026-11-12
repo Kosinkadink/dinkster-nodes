@@ -34,6 +34,13 @@ def test_admission_prepared_sources_bind_pack_source_and_published_engine(
 
     from scripts import check_default_pack_admission as admission
 
+    if sys.platform != "win32":
+        temporary = tmp_path / "physical-temporary"
+        temporary.mkdir()
+        alias = tmp_path / "temporary-parent"
+        alias.symlink_to(temporary, target_is_directory=True)
+        monkeypatch.setattr(admission.tempfile, "tempdir", str(alias))
+
     identity = "sha256:" + "e" * 64
     runtime = tmp_path / "runtime"
     (runtime / "engine").mkdir(parents=True)
