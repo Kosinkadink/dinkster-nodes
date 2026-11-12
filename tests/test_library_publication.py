@@ -97,7 +97,18 @@ def test_probe_index_refuses_local_dependency_outside_selected_sources(
 
 @pytest.mark.parametrize(
     "problem",
-    [None, "engine", "base", "base-bytes", "dependency", "protocol", "artifact", "source"],
+    [
+        None,
+        "engine",
+        "base",
+        "base-bytes",
+        "dependency",
+        "protocol",
+        "artifact",
+        "source",
+        "runtime-base",
+        "runtime-variant",
+    ],
 )
 def test_native_publication_locks_bind_published_inputs_and_preserve_sources(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, problem: str | None
@@ -211,11 +222,23 @@ def test_native_publication_locks_bind_published_inputs_and_preserve_sources(
     if problem == "source":
         (sources / "test_helpers-0.0.1-py3-none-any.whl").write_bytes(b"changed source wheel")
 
-    def extract(parts, tree, **kwargs):
-        # Resolution uses the test interpreter; published-base extraction is a supervisor contract.
-        (tree / "wheels").mkdir(parents=True)
-        shutil.copyfile(tmp_path / base_wheel.filename, tree / "wheels" / base_wheel.filename)
-        python = tree / base["interpreter"]["executable"]
+    runtime = tmp_path / "runtime"
+
+    def read_runtime(directory, selected_identity):
+        # The generation validator has separate coverage; resolution still uses real wheels.
+        from dinkster_supervisor.environment_artifacts import engine_constraints
+        from dinkster_supervisor.environment_constraints import effective_constraints
+
+        assert directory == runtime
+        assert selected_identity == identity
+        (runtime / "wheelhouse").mkdir(parents=True)
+        for source in (tmp_path / base_wheel.filename, release / wheel.filename):
+            shutil.copyfile(source, runtime / "wheelhouse" / source.name)
+        constraints = runtime / "constraints.txt"
+        constraints.write_text(
+            effective_constraints(engine_constraints(engine, "fixture-cpu"), base, strict=True)
+        )
+        python = runtime / base["interpreter"]["executable"]
         python.parent.mkdir(parents=True)
         if system == "windows":
             for path in Path(sys.base_prefix).iterdir():
@@ -225,9 +248,14 @@ def test_native_publication_locks_bind_published_inputs_and_preserve_sources(
             shutil.copytree(Path(sys.base_prefix) / "DLLs", python.parent / "DLLs")
         else:
             python.symlink_to(sys.executable)
+        return (
+            python,
+            "sha256:" + "e" * 64 if problem == "runtime-base" else base["id"],
+            constraints,
+            "other-cpu" if problem == "runtime-variant" else "fixture-cpu",
+        )
 
-    monkeypatch.setattr(native, "extract_base", extract)
-    monkeypatch.setattr(native, "fetch_artifact", lambda mirrors, name, path, *args: path)
+    monkeypatch.setattr(native, "read_runtime", read_runtime)
     output = tmp_path / "locks"
     if problem:
         messages = {
@@ -238,15 +266,29 @@ def test_native_publication_locks_bind_published_inputs_and_preserve_sources(
             "protocol": "worker protocols differ",
             "artifact": "release artifact differs",
             "source": "changed source artifact",
+            "runtime-base": "runtime differs from the selected base",
+            "runtime-variant": "runtime differs from the selected base",
         }
         with pytest.raises(ValueError, match=messages[problem]):
             native.build_locks(
-                tmp_path, release, manifest, output, sources=sources, engine_identity=identity
+                tmp_path,
+                release,
+                manifest,
+                output,
+                sources=sources,
+                engine_identity=identity,
+                runtime=runtime,
             )
         assert not output.exists()
     else:
         paths = native.build_locks(
-            tmp_path, release, manifest, output, sources=sources, engine_identity=identity
+            tmp_path,
+            release,
+            manifest,
+            output,
+            sources=sources,
+            engine_identity=identity,
+            runtime=runtime,
         )
         assert [path.name for path in paths] == ["test-helpers-0.0.1-fixture-cpu.pack-lock.json"]
         lock = PackLock.read(paths[0])

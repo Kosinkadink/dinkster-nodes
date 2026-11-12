@@ -58,7 +58,7 @@ pythonpath = [".", "tests/first_party_runtime"]
 pythonVersion = "3.12"
 venvPath = "."
 venv = ".venv"
-include = ["packages", "tests"]
+include = ["packages", "scripts", "tests"]
 # Torch execution tests run in the worker runtime, outside the static check.
 exclude = [
     "tests/first_party_runtime",

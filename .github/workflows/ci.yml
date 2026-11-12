@@ -29,6 +29,32 @@ jobs:
       - run: uv run --no-sync pyright
       - run: uv run --no-sync pyright --pythonplatform Windows
 
+  native-publication-contracts:
+    name: Publication runtime contracts (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest]
+    env:
+      CUDA_VISIBLE_DEVICES: ""
+      DINKSTER_ACCELERATOR: cpu
+      OMP_NUM_THREADS: "4"
+      MKL_NUM_THREADS: "4"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+      - run: uv sync --locked --all-packages
+      - name: Verify published-input preparation and native lock contracts
+        run: uv run --no-sync pytest -q tests/test_library_publication.py --timeout=180
+
   tests:
     name: CPU ${{ matrix.suite }} tests (${{ matrix.shard }}/4)${{ matrix.suite == 'packages' && format(' group {0}/2', matrix.package-group) || '' }}
     runs-on: ubuntu-latest
