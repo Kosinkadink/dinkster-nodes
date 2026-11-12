@@ -470,6 +470,72 @@ def test_publication_preparation_uses_pinned_engine_and_its_exact_base(
             assert [(pack.pack, pack.version) for pack in catalog.packs] == [
                 ("test-helper", "0.0.2")
             ]
+
+            from dinkster_supervisor.environment_state import interpreter
+            from dinkster_workers.pack_lock import GenerationPackages
+
+            from scripts import prepare_admission_engine as admission
+
+            def acquire(catalog, variant, store):
+                constraints = store / "constraints.txt"
+                constraints.write_text("")
+                return constraints
+
+            def provision(destination, *, store, base, constraints):
+                destination.mkdir()
+                shutil.copyfile(constraints, destination / "constraints.txt")
+                return interpreter(destination)
+
+            facts = GenerationPackages.inspect(Path(sys.executable))
+            monkeypatch.setattr(admission, "acquire", acquire)
+            monkeypatch.setattr(admission, "prepare_engine_interpreter", provision)
+            monkeypatch.setattr(GenerationPackages, "inspect", lambda python: facts)
+            runtime = tmp_path / "runtime"
+            selected_identity = "sha256:" + identity
+            prepared_wheel = output / "engine" / wheel.filename
+            original_wheel = prepared_wheel.read_bytes()
+            prepared_wheel.write_bytes(original_wheel + b"changed")
+            with pytest.raises(ValueError, match="release artifact differs"):
+                admission.prepare_engine(
+                    output / "engine",
+                    runtime,
+                    tmp_path / "store",
+                    output / "bases/fixture-cpu/manifest.json",
+                    engine_identity=selected_identity,
+                )
+            prepared_wheel.write_bytes(original_wheel)
+            python = admission.prepare_engine(
+                output / "engine",
+                runtime,
+                tmp_path / "store",
+                output / "bases/fixture-cpu/manifest.json",
+                engine_identity=selected_identity,
+            )
+            constraints = runtime / "generation/constraints.txt"
+            assert admission.read_runtime(runtime, selected_identity) == (
+                python,
+                base["id"],
+                constraints,
+                "fixture-cpu",
+            )
+            record = json.loads((runtime / "runtime.json").read_bytes())
+            assert record["commit"] == commit
+            assert record["engineVersion"] == version
+            assert (runtime / "engine/release-manifest.json").read_bytes() == data
+            assert (runtime / "wheelhouse" / wheel.filename).read_bytes() == (
+                tmp_path / wheel.filename
+            ).read_bytes()
+            with pytest.raises(ValueError, match="selected engine"):
+                admission.read_runtime(runtime, "sha256:" + "e" * 64)
+            constraints.write_text("changed constraints")
+            with pytest.raises(ValueError, match="constraints changed"):
+                admission.read_runtime(runtime, selected_identity)
+            constraints.write_text("")
+            (runtime / "runtime.json").write_text(
+                json.dumps({**record, "packages": {"unexpected": "1.0"}})
+            )
+            with pytest.raises(ValueError, match="installed packages changed"):
+                admission.read_runtime(runtime, selected_identity)
     finally:
         server.shutdown()
         server.server_close()
