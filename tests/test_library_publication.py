@@ -14,9 +14,14 @@ from zipfile import ZipFile
 import pytest
 
 
-@pytest.mark.parametrize("dependent", [False, True])
+@pytest.mark.parametrize(
+    "dependent,engine_dependency", [(False, False), (True, False), (False, True)]
+)
 def test_probe_index_stages_selected_library_dependency_without_public_lookup(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, dependent: bool
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    dependent: bool,
+    engine_dependency: bool,
 ) -> None:
     from dinkster_registry import LockedPack, Lockfile, artifact_digest
 
@@ -45,9 +50,21 @@ def test_probe_index_stages_selected_library_dependency_without_public_lookup(
         )
     )
     (sources / "official-packs.lock").write_text(Lockfile.of(entries).record_json())
+    engine = None
+    if engine_dependency:
+        engine = tmp_path / "engine"
+        engine.mkdir()
+        _wheel(
+            engine,
+            "dinkster-api",
+            "0.0.3",
+            "dinkster_api",
+            "",
+            requires=("test-helper==0.0.1",),
+        )
     output = tmp_path / "index"
-    result = stage_index(sources, output)
-    if dependent:
+    result = stage_index(sources, output, engine=engine)
+    if dependent or engine_dependency:
         assert result["distributions"] == 1
         assert result["wheels"] == [
             {
@@ -67,7 +84,7 @@ def test_probe_index_stages_selected_library_dependency_without_public_lookup(
     with ZipFile(sources / consumer.filename, "a") as archive:
         archive.writestr("changed.txt", "source drift")
     with pytest.raises(ValueError, match="probe source digest mismatch: test-consumer"):
-        stage_index(sources, tmp_path / "bad-index")
+        stage_index(sources, tmp_path / "bad-index", engine=engine)
 
 
 def test_probe_index_refuses_local_dependency_outside_selected_sources(

@@ -273,6 +273,147 @@ jobs:
             --runtime admission-runtime --prepared-sources admission-sources \
             "${arguments[@]}"
 
+  disposable-registry-image:
+    name: Build isolated publication images
+    needs: published-inputs
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out the pinned registry service
+        uses: actions/checkout@v4
+        with:
+          repository: Kosinkadink/dinkster-registry-service
+          ref: 8e504d21d6fa56fc81cd23579d4e57123ac9fca5
+          persist-credentials: false
+          path: .disposable-registry-source
+      - uses: actions/download-artifact@v4
+        with:
+          name: verified-admission-inputs
+          path: .admission-inputs
+      - name: Build the unchanged service and install the selected published publisher engine
+        run: |
+          docker build --tag dinkster-disposable-registry:local .disposable-registry-source
+          docker build --tag dinkster-disposable-publisher:local --file - .admission-inputs/engine <<'DOCKER'
+          FROM dinkster-disposable-registry:local
+          USER root
+          COPY *.whl /engine/
+          RUN uv pip install --python /app/.venv/bin/python --torch-backend cpu /engine/*.whl dinkster-token-verifier==0.1.2
+          DOCKER
+          docker save dinkster-disposable-registry:local dinkster-disposable-publisher:local > disposable-images.tar
+      - uses: actions/upload-artifact@v4
+        with:
+          name: disposable-registry-images
+          path: disposable-images.tar
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 1
+
+  disposable-probe-inputs:
+    name: Stage isolated publisher dependencies and controls
+    needs: published-inputs
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          name: verified-admission-inputs
+          path: .admission-inputs
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+      - run: uv sync --locked --all-packages
+      - name: Stage selected wheel and published API dependencies before isolation
+        run: |
+          uv run --no-sync python -m scripts.stage_publication_probe_index \
+            --sources .admission-inputs/sources --engine .admission-inputs/engine \
+            --output .probe-index
+          uv run --no-sync python -m scripts.check_publication_controls prepare \
+            --bases .admission-inputs/bases --engine .admission-inputs/engine \
+            --output .publication-controls
+      - uses: actions/upload-artifact@v4
+        with:
+          name: disposable-probe-index
+          path: .probe-index
+          include-hidden-files: true
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 1
+      - uses: actions/upload-artifact@v4
+        with:
+          name: disposable-publication-controls
+          path: .publication-controls
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 1
+
+  disposable-publication:
+    name: Isolated standalone publisher and scanner
+    needs: [published-inputs, native-pack-locks, disposable-registry-image, disposable-probe-inputs]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      CUDA_VISIBLE_DEVICES: ""
+      DINKSTER_ACCELERATOR: cpu
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          name: verified-admission-inputs
+          path: .admission-inputs
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: native-pack-locks-*
+          merge-multiple: true
+          path: .admission-inputs/locks
+      - uses: actions/download-artifact@v4
+        with:
+          name: disposable-probe-index
+          path: .probe-index
+      - uses: actions/download-artifact@v4
+        with:
+          name: disposable-registry-images
+          path: .disposable-images
+      - uses: actions/download-artifact@v4
+        with:
+          name: disposable-publication-controls
+          path: .publication-controls
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+      - run: uv sync --locked --all-packages
+      - name: Load the immutable images without pulling
+        run: docker load --input .disposable-images/disposable-images.tar
+      - name: Check ordering, replay, incompatible dependency and missing API export refusal
+        run: |
+          uv run --no-sync python -m scripts.check_publication_controls check \
+            --fixtures .publication-controls \
+            --service-image dinkster-disposable-registry:local \
+            --publisher-image dinkster-disposable-publisher:local > disposable-controls.json
+      - name: Publish candidate wheels only inside the isolated disposable registry
+        run: |
+          uv run --no-sync python -m scripts.check_disposable_publication \
+            --inputs .admission-inputs --package-index .probe-index \
+            --service-image dinkster-disposable-registry:local \
+            --publisher-image dinkster-disposable-publisher:local > disposable-publication.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: disposable-publication-result
+          path: |
+            disposable-controls.json
+            disposable-publication.json
+          if-no-files-found: error
+          retention-days: 1
+
   native-publication-contracts:
     name: Publication runtime contracts (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
