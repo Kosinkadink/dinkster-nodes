@@ -1,0 +1,45 @@
+"""SAM3 registration retains portable tracks and their first authority."""
+
+import pytest
+from dinkster_api.v1 import SAM3_TRACK_DATA_TYPE, TypeRegistry
+from dinkster_values import LATENT_TYPE, EncodedLatentTensor
+from dinkster_vision_sam3 import register_types
+
+PACKED = EncodedLatentTensor("uint8", (2, 1, 1, 3), bytes((1, 128, 255, 85, 42, 16)))
+EMPTY = EncodedLatentTensor("uint8", (3, 0, 2, 4), b"")
+TRACKS = {
+    "packed_masks": PACKED,
+    "orig_size": (9, 17),
+    "n_frames": 2,
+    "scores": [0.75],
+    "metadata": {"tag": ("source", 4), "mask": EncodedLatentTensor("bool", (1,), b"\x01")},
+}
+
+
+@pytest.mark.parametrize(
+    "value",
+    (
+        TRACKS,
+        {**TRACKS, "scores": None},
+        {**TRACKS, "scores": EncodedLatentTensor("float32", (1,), b"\x00\x00\x40\x3f")},
+        {**TRACKS, "packed_masks": EMPTY, "n_frames": 3, "scores": ()},
+        {"packed_masks": None, "orig_size": [13, 7], "n_frames": 0},
+        {"packed_masks": None, "orig_size": (13, 7), "n_frames": 4, "scores": []},
+    ),
+)
+def test_sam3_public_codec_preserves_complete_structure(value: dict[str, object]) -> None:
+    registry = TypeRegistry()
+    register_types(registry)
+    spec = registry.spec(SAM3_TRACK_DATA_TYPE)
+    register_types(registry)
+    assert registry.spec(SAM3_TRACK_DATA_TYPE) is spec
+    assert spec.validate_encoded is not None
+    payload = spec.encode(value)
+    spec.validate_encoded(payload, {})
+    assert spec.decode(payload) == value
+    assert spec.fingerprint is not None
+    assert spec.fingerprint(spec.decode(payload)) == spec.fingerprint(value)
+    assert spec.fingerprint(dict(reversed(tuple(value.items())))) == spec.fingerprint(value)
+    latent_fingerprint = registry.spec(LATENT_TYPE).fingerprint
+    assert latent_fingerprint is not None
+    assert latent_fingerprint({"samples": value}) != spec.fingerprint(value)

@@ -1,0 +1,101 @@
+[project]
+name = "dinkster-nodes-workspace"
+version = "0.0.0"
+description = "Development workspace for first-party Dinkster node packs"
+requires-python = ">=3.12"
+dependencies = []
+classifiers = ["Private :: Do Not Upload"]
+
+[tool.uv]
+package = false
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[tool.uv.sources]
+torch = { index = "pytorch-cpu", marker = "sys_platform != 'darwin'" }
+torchvision = { index = "pytorch-cpu", marker = "sys_platform != 'darwin'" }
+dinkster = { url = "https://github.com/Kosinkadink/Dinkster/releases/download/main-2026-11-11-0.0.4.dev305-dd39c7b2/dinkster-0.0.4.dev305%2Bg10edf73da3e055c2da9da04c4f0cf88819b4883d-py3-none-any.whl" }
+dinkster-api = { url = "https://github.com/Kosinkadink/Dinkster/releases/download/main-2026-11-11-0.0.4.dev305-dd39c7b2/dinkster_api-0.0.4.dev305%2Bg10edf73da3e055c2da9da04c4f0cf88819b4883d-py3-none-any.whl" }
+dinkster-engine = { url = "https://github.com/Kosinkadink/Dinkster/releases/download/main-2026-11-11-0.0.4.dev305-dd39c7b2/dinkster_engine-0.0.4.dev305%2Bg10edf73da3e055c2da9da04c4f0cf88819b4883d-py3-none-any.whl" }
+dinkster-supervisor = { url = "https://github.com/Kosinkadink/Dinkster/releases/download/main-2026-11-11-0.0.4.dev305-dd39c7b2/dinkster_supervisor-0.0.3-py3-none-any.whl" }
+
+[tool.uv.workspace]
+members = ["packages/*"]
+
+[dependency-groups]
+dev = [
+    "dinkster>=0.0.2",
+    "dinkster-engine>=0.0.4.dev274",
+    "dinkster-supervisor>=0.0.3",
+    "pytest>=8",
+    "pytest-cov>=6",
+    "pytest-timeout>=2.4",
+    "hypothesis>=6",
+    "ruff>=0.8",
+    "pyright>=1.1.390",
+    "scipy-stubs>=1.18.1.0",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+ignore = ["UP040", "UP046", "UP047"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["dinkster", "tests", "tools"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = [".", "tests/first_party_runtime"]
+
+[tool.pyright]
+pythonVersion = "3.12"
+venvPath = "."
+venv = ".venv"
+include = ["packages", "tests"]
+# Torch execution tests run in the worker runtime, outside the static check.
+exclude = [
+    "tests/first_party_runtime",
+    "packages/dinkster-nodes-sampling/tests",
+    "packages/dinkster-nodes-models/tests",
+    "packages/dinkster-nodes-conditioning/tests",
+    "packages/dinkster-nodes-latent/tests",
+    "packages/dinkster-nodes-audio/tests",
+    "packages/dinkster-nodes-video/tests",
+    "packages/dinkster-nodes-sd/tests",
+    "packages/dinkster-nodes-flux/tests",
+    "packages/dinkster-nodes-qwen/tests",
+    "packages/dinkster-nodes-hidream/tests",
+    "packages/dinkster-nodes-audio-models/tests",
+    "packages/dinkster-nodes-misc-models/tests",
+    "packages/dinkster-nodes-llm/tests",
+    "packages/dinkster-nodes-upscale/tests",
+    "packages/dinkster-nodes-cosmos/tests",
+    "packages/dinkster-nodes-hunyuan/tests",
+    "packages/dinkster-nodes-ltx/tests",
+    "packages/dinkster-nodes-minimax/tests",
+    "packages/dinkster-nodes-seedvr/tests",
+    "packages/dinkster-nodes-void/tests",
+    "packages/dinkster-nodes-wan/tests",
+    "packages/dinkster-nodes-image/tests",
+    "packages/dinkster-nodes-utilities/tests",
+    "packages/dinkster-nodes-3d/tests",
+    "packages/dinkster-nodes-3d-models/tests",
+    "packages/dinkster-nodes-vision-background-removal/tests",
+    "packages/dinkster-nodes-vision-depth-anything-3/tests",
+    "packages/dinkster-nodes-vision-marigold/tests",
+    "packages/dinkster-nodes-vision-mediapipe/tests",
+    "packages/dinkster-nodes-vision-moge/tests",
+    "packages/dinkster-nodes-vision-rtdetr/tests",
+    "packages/dinkster-nodes-vision-sam3/tests",
+    "packages/dinkster-nodes-vision-sam3d-body/tests",
+    "packages/dinkster-nodes-vision-sdpose/tests",
+]
+strict = ["packages"]
+typeCheckingMode = "standard"
