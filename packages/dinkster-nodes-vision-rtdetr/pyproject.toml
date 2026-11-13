@@ -23,5 +23,3 @@ packages = ["src/dinkster_vision_rtdetr"]
 "dinkster-pack.toml" = "dinkster_vision_rtdetr/dinkster-pack.toml"
 "locales" = "dinkster_vision_rtdetr/locales"
 
-[tool.uv.sources]
-dinkster-api = { workspace = true }

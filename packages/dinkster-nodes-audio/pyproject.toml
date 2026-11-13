@@ -23,5 +23,3 @@ packages = ["src/dinkster_audio"]
 "dinkster-pack.toml" = "dinkster_audio/dinkster-pack.toml"
 "locales" = "dinkster_audio/locales"
 
-[tool.uv.sources]
-dinkster-api = { workspace = true }

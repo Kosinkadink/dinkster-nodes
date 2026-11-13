@@ -25,6 +25,5 @@ packages = ["src/dinkster_vision_sdpose"]
 "locales" = "dinkster_vision_sdpose/locales"
 
 [tool.uv.sources]
-dinkster-api = { workspace = true }
 dinkster-misc-models = { workspace = true }
 dinkster-pack-helpers = { workspace = true }

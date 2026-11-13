@@ -22,5 +22,3 @@ packages = ["src/dinkster_upscale"]
 "dinkster-pack.toml" = "dinkster_upscale/dinkster-pack.toml"
 "locales" = "dinkster_upscale/locales"
 
-[tool.uv.sources]
-dinkster-api = { workspace = true }

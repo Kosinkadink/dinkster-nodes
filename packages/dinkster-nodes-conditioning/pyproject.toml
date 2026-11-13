@@ -25,6 +25,5 @@ packages = ["src/dinkster_conditioning"]
 "locales" = "dinkster_conditioning/locales"
 
 [tool.uv.sources]
-dinkster-api = { workspace = true }
 dinkster-latent = { workspace = true }
 dinkster-pack-helpers = { workspace = true }

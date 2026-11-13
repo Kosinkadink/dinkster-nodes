@@ -19,5 +19,3 @@ packages = ["src/dinkster_nodes_remote"]
 "dinkster-pack.toml" = "dinkster_nodes_remote_pack/dinkster-pack.toml"
 "src/dinkster_nodes_remote" = "dinkster_nodes_remote_pack/dinkster_nodes_remote"
 
-[tool.uv.sources]
-dinkster-api = { workspace = true }

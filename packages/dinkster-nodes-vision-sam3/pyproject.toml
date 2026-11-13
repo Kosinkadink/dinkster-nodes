@@ -22,5 +22,3 @@ packages = ["src/dinkster_vision_sam3"]
 "dinkster-pack.toml" = "dinkster_vision_sam3/dinkster-pack.toml"
 "locales" = "dinkster_vision_sam3/locales"
 
-[tool.uv.sources]
-dinkster-api = { workspace = true }

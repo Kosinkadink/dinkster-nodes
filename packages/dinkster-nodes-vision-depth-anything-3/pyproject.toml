@@ -21,5 +21,3 @@ packages = ["src/dinkster_vision_depth_anything_3"]
 "dinkster-pack.toml" = "dinkster_vision_depth_anything_3/dinkster-pack.toml"
 "locales" = "dinkster_vision_depth_anything_3/locales"
 
-[tool.uv.sources]
-dinkster-api = { workspace = true }
