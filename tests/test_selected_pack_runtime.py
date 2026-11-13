@@ -158,7 +158,7 @@ def test_selected_candidate_uses_published_engine_not_checkout_or_default_bytes(
         "from dinkster.packs import first_party_pack_metadata\n"
         "def test_selected_bytes(selected_context):\n"
         "    assert selected_context == 'selected-fixture'\n"
-        "    assert first_party_pack_metadata(Path(dinkster.__file__).resolve().parents[2])"
+        "    assert first_party_pack_metadata()"
         "['dinkster-text'] == ('dinkster_text', 'dinkster-text')\n"
         "    assert sum(d.metadata['Name'] == 'dinkster-text' "
         "for d in importlib.metadata.distributions()) == 1\n"
