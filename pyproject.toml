@@ -39,6 +39,7 @@ dev = [
     "ruff>=0.8",
     "pyright>=1.1.390",
     "scipy-stubs>=1.18.1.0",
+    "numba>=0.67",
 ]
 
 [tool.ruff]
