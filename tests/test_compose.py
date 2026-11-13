@@ -1009,11 +1009,11 @@ def test_image_pack_starts_with_canonical_inference_types(
     ("pack_id", "directory", "expected_version"),
     [
         ("dinkster-text", "dinkster-nodes-text", "0.0.3"),
-        ("dinkster-image", "dinkster-nodes-image", "0.0.9"),
-        ("dinkster-audio", "dinkster-nodes-audio", "0.0.4"),
-        ("dinkster-3d", "dinkster-nodes-3d", "0.0.4"),
-        ("dinkster-models", "dinkster-nodes-models", "0.0.7"),
-        ("dinkster-nodes-remote", "dinkster-nodes-remote", "0.0.4"),
+        ("dinkster-image", "dinkster-nodes-image", "0.0.10"),
+        ("dinkster-audio", "dinkster-nodes-audio", "0.0.5"),
+        ("dinkster-3d", "dinkster-nodes-3d", "0.0.6"),
+        ("dinkster-models", "dinkster-nodes-models", "0.0.8"),
+        ("dinkster-nodes-remote", "dinkster-nodes-remote", "0.0.5"),
     ],
 )
 def test_default_pack_prefers_loaded_source_tree_over_bundled_copy(
@@ -1021,16 +1021,28 @@ def test_default_pack_prefers_loaded_source_tree_over_bundled_copy(
     directory: str,
     expected_version: str,
     monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
 ) -> None:
+    from dinkster_registry import artifact_digest
+    from dinkster_workers.pack_wheel import build_pack_archive, wheel_filename
+
     from dinkster import compose
 
     source_root = TESTS_DIR.parent / "packages" / directory
     lock = Lockfile.from_record_json(
         Path(compose.__file__).with_name("checkout-packs.lock").read_text()
     )
-    monkeypatch.setattr(compose, "_default_pack_lock", lambda: lock)
     locked = lock.get(pack_id)
     assert locked is not None
+    archive = tmp_path / wheel_filename(load_manifest(source_root / "dinkster-pack.toml"))
+    build_pack_archive(source_root, archive)
+    locked = replace(
+        locked,
+        version=expected_version,
+        artifact_digest=artifact_digest(archive.read_bytes()),
+        source=f"python:{pack_id}=={expected_version}",
+    )
+    monkeypatch.setattr(compose, "_default_pack_lock", lambda: Lockfile.of([locked]))
     spec = default_pack_spec(pack_id)
     assert Path(spec.manifest).resolve() == (source_root / "dinkster-pack.toml").resolve()
     assert spec.packs is not None
@@ -1038,6 +1050,11 @@ def test_default_pack_prefers_loaded_source_tree_over_bundled_copy(
     assert info.source == locked.source
     assert info.version == expected_version
     assert info.artifact_digest == locked.artifact_digest
+    monkeypatch.setattr(
+        compose, "_default_pack_lock", lambda: Lockfile.of([replace(locked, version="0.0.0")])
+    )
+    with pytest.raises(CompositionError, match="default suite locks"):
+        default_pack_spec(pack_id)
 
 
 @pytest.mark.parametrize(
