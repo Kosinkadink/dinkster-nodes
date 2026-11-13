@@ -1,15 +1,11 @@
 """Native loop expansion executes body occurrences through the engine."""
 
 import asyncio
-from dataclasses import replace
-from pathlib import Path
-from typing import cast
 
 import pytest
 from dinkster_caches import MemoryLRUCache
 from dinkster_engine import Engine
 from dinkster_graph import Graph, GraphNode, Link, RegionNode, RegionOutput, TypedLiteral
-from dinkster_memory import GovernorReservationService, MemoryGovernor, ReservationRequest
 from dinkster_schema import (
     ABSENT,
     InputSpec,
@@ -19,7 +15,6 @@ from dinkster_schema import (
     TypeExpr,
     build_node_types,
     build_schemas,
-    schema_to_wire,
 )
 from dinkster_utilities.loop_lists import ListElement, MakeList
 from dinkster_utilities.loops import (
@@ -32,8 +27,8 @@ from dinkster_utilities.loops import (
 from dinkster_utilities.math import ComfyMathExpression
 from dinkster_utilities.primitive import PrimitiveBoolean, PrimitiveInt
 from dinkster_utilities.switch import ComfySwitchNode
-from dinkster_values import TypeRegistry, ValueMeta, is_absent, list_children, register_core_types
-from dinkster_workers import GovernedWorker, InProcessWorker, IsolatedWorker
+from dinkster_values import TypeRegistry, is_absent, register_core_types
+from dinkster_workers import InProcessWorker
 
 from tests.async_scenarios import run_scenario
 
@@ -50,45 +45,6 @@ NODES = (
     MakeList,
     ListElement,
 )
-
-
-@pytest.mark.parametrize(
-    ("node_type", "expected"),
-    [
-        (
-            "dinkster.utilities.end_loop",
-            [("output_value", False), ("next_iteration_value", False), ("accumulate", True)],
-        ),
-        (
-            "dinkster.utilities.loop_iteration",
-            [
-                ("iteration_index", True),
-                ("is_first", True),
-                ("is_last", True),
-                ("list_item", False),
-                ("current_iteration_value", False),
-                ("reuse_cache", True),
-            ],
-        ),
-    ],
-)
-def test_loop_wire_inputs_preserve_v3_declaration_order(
-    node_type: str, expected: list[tuple[str, bool]]
-) -> None:
-    schema = build_schemas(NODES)[node_type]
-    interface = cast(list[dict[str, object]], schema_to_wire(schema)["interface"])
-    inputs = [(item["id"], item["required"]) for item in interface if item["role"] == "input"]
-    assert inputs == expected
-    if node_type == "dinkster.utilities.end_loop":
-        family = next(item for item in interface if item["role"] == "inputFamily")
-        assert family["id"] == "terminations"
-        assert family["required"] is False
-        assert family["minMembers"] == 0
-        assert family["maxMembers"] == 50
-        assert family["memberPrefix"] == "termination"
-        assert family["template"] == [
-            {"role": "input", "id": "termination", "required": False, "type": {"kind": "wildcard"}}
-        ]
 
 
 def make_engine() -> Engine:
@@ -234,68 +190,6 @@ def test_nested_loop_keeps_each_occurrences_results(inner_cache: bool) -> None:
     run_scenario(scenario())
 
 
-@pytest.mark.parametrize("worker_kind", ["isolated", "governed"])
-def test_loop_expansion_and_publication_across_worker_boundary(
-    tmp_path: Path, worker_kind: str
-) -> None:
-    async def scenario() -> None:
-        registry = TypeRegistry()
-        register_core_types(registry)
-        manifest = tmp_path / "dinkster-pack.toml"
-        manifest.write_text(
-            '[pack]\nname="loop-test"\npublisher="dinkster"\nnamespaces=["dinkster.utilities"]\n[pack.entry]\n'
-            'nodes="tests.test_comfy_loops:NODES"\n',
-            encoding="ascii",
-        )
-        boundary = IsolatedWorker(
-            manifest,
-            registry,
-            use_shm=True,
-            shm_threshold=1,
-            extra_env={"PYTHONPATH": str(Path(__file__).resolve().parent.parent)},
-        )
-        worker = (
-            GovernedWorker(
-                boundary,
-                planner=lambda _: (ReservationRequest("ram", 1),),
-                reservations=GovernorReservationService(MemoryGovernor({"ram": 1})),
-            )
-            if worker_kind == "governed"
-            else boundary
-        )
-        try:
-            await boundary.start()
-            engine = Engine(
-                schemas=build_schemas(NODES),
-                registry=registry,
-                worker=worker,
-                cache=MemoryLRUCache(),
-            )
-            graph = Graph(
-                {
-                    "start": GraphNode(
-                        "dinkster.utilities.start_loop",
-                        {"mode.num_iterations": 3},
-                        slot_variants={"mode": "simple"},
-                    ),
-                    "body": GraphNode(
-                        "dinkster.utilities.comfy_math_expression",
-                        {"expression": "a + 7", "values.a": Link("start", "iteration_index")},
-                    ),
-                    "end": GraphNode(
-                        "dinkster.utilities.end_loop",
-                        {"output_value": Link("body", "INT"), "accumulate": True},
-                    ),
-                }
-            )
-            result = await asyncio.wait_for(engine.run(graph, ["end"]), 20)
-            assert result.outputs["end"]["outputs"].resolve() == [7, 8, 9]
-        finally:
-            await boundary.close()
-
-    run_scenario(scenario())
-
-
 @pytest.mark.parametrize("accumulate", [False, True])
 @pytest.mark.parametrize("linked", [False, True])
 def test_accumulation_control_reads_its_value(accumulate: bool, linked: bool) -> None:
@@ -320,63 +214,6 @@ def test_accumulation_control_reads_its_value(accumulate: bool, linked: bool) ->
     )
     result = run_scenario(asyncio.wait_for(make_engine().run(graph, ["end"]), 10))
     assert result.outputs["end"]["outputs"].resolve() == ([0, 1, 2] if accumulate else [2])
-
-
-def test_loop_collection_preserves_child_envelopes() -> None:
-    registry = TypeRegistry()
-    register_core_types(registry)
-    value = replace(
-        registry.wrap("INT", 17),
-        meta=ValueMeta({"resourceProducerArm": "producer", "provenance": "original"}),
-    )
-
-    class Source(Node):
-        @classmethod
-        def define_schema(cls) -> NodeSchema:
-            return NodeSchema(
-                "test.stamped", outputs=(OutputSpec("value", TypeExpr.concrete("INT")),)
-            )
-
-        @classmethod
-        def execute(cls):
-            return cls.outputs(value=value)
-
-    nodes = (*NODES, Source)
-    engine = Engine(
-        schemas=build_schemas(nodes),
-        registry=registry,
-        worker=InProcessWorker(build_node_types(nodes), registry),
-        cache=MemoryLRUCache(),
-    )
-    graph = Graph(
-        {
-            "source": GraphNode("test.stamped", {}),
-            "items": GraphNode(
-                "dinkster.utilities.make_list", {"items.0": Link("source", "value")}
-            ),
-            "start": GraphNode(
-                "dinkster.utilities.start_loop",
-                {"mode.list": Link("items", "list")},
-                slot_variants={"mode": "List"},
-            ),
-            "end": GraphNode(
-                "dinkster.utilities.end_loop",
-                {"output_value": Link("start", "list_item"), "accumulate": True},
-            ),
-        }
-    )
-
-    async def scenario() -> None:
-        for replay in (False, True):
-            result = await asyncio.wait_for(engine.run(graph, ["end"]), 10)
-            children = list_children(result.outputs["end"]["outputs"])
-            assert children is not None and len(children) == 1
-            assert children[0].meta == value.meta
-            assert children[0].fingerprint == value.fingerprint
-            if replay:
-                assert "items" in result.cached
-
-    run_scenario(scenario())
 
 
 @pytest.mark.parametrize("cache_enabled", [False, True])

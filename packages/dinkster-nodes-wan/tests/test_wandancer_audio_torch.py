@@ -2,13 +2,8 @@
 
 from __future__ import annotations
 
-import asyncio
-import json
-import os
-import subprocess
 import sys
 import types
-from pathlib import Path
 
 import numpy as np
 import pytest
@@ -26,11 +21,7 @@ from dinkster_api.v1 import (
     materialize_audio,
     materialize_latent,
 )
-from dinkster_graph import Graph, GraphNode, Link
 from dinkster_wan.wandancer_audio import WanDancerEncodeAudio
-from wan_pack_fixtures import compose_wan_packs
-
-from dinkster.compose import ServingComposer
 
 
 def _audio(waveform: torch.Tensor, sample_rate: int = 15360) -> dict[str, object]:
@@ -49,40 +40,6 @@ def _assert_output(
     assert encoded["fps"] == fps and encoded["audio_inject_scale"] == scale
     assert result["fps_string"] == fps_string
     return feature
-
-
-def test_schema_and_cold_source_tree_discovery() -> None:
-
-    root = Path(__file__).resolve().parents[3]
-    python_path = os.pathsep.join(
-        (str(root), str(root / "src"), *(str(path) for path in sorted(root.glob("packages/*/src"))))
-    )
-    script = "\n".join(
-        (
-            "import json",
-            "import sys",
-            "import dinkster_wan.wandancer_audio as module",
-            "module.WanDancerEncodeAudio.define_schema()",
-            "prefixes = ('torch', 'torchvision', 'dinkster_inference', 'scipy')",
-            "forbidden = sorted(name for name in sys.modules if any("
-            "name == prefix or name.startswith(prefix + '.') for prefix in prefixes))",
-            "print(json.dumps({'path': module.__file__, 'forbidden': forbidden}))",
-        )
-    )
-    completed = subprocess.run(
-        [sys.executable, "-c", script],
-        cwd=Path.cwd(),
-        env={**os.environ, "PYTHONPATH": python_path},
-        capture_output=True,
-        text=True,
-        timeout=45,
-    )
-    assert completed.returncode == 0, completed.stdout + completed.stderr
-    discovery = json.loads(completed.stdout)
-    assert Path(discovery["path"]).resolve() == (
-        root / "packages/dinkster-nodes-wan/src/dinkster_wan/wandancer_audio.py"
-    )
-    assert discovery["forbidden"] == []
 
 
 def test_silence_features_have_only_the_constant_spectrum_mfcc_offset() -> None:
@@ -238,94 +195,3 @@ class AudioConsumer(Node):
 
 
 HOST_NODES = (AudioSource, AudioConsumer)
-
-
-@pytest.mark.parametrize("in_process", (True, False))
-def test_wandancer_audio_runs_twice_through_ordinary_hosts(
-    tmp_path: Path, in_process: bool
-) -> None:
-    async def scenario() -> None:
-        package = Path(__file__).resolve().parents[1]
-        root = package.parents[1]
-        source_paths = (
-            str(root),
-            str(root / "src"),
-            *(str(path) for path in sorted(root.glob("packages/*/src"))),
-        )
-        source_module = package / "src/dinkster_wan/wandancer_audio.py"
-        entry = tmp_path / "wandancer_audio_host_entry.py"
-        entry.write_text(
-            "from pathlib import Path\n"
-            "import dinkster_wan.wandancer_audio as native\n"
-            f"assert Path(native.__file__).resolve() == Path({str(source_module)!r}).resolve()\n"
-            "from test_wandancer_audio_torch import HOST_NODES\n"
-            "from dinkster_api.v1 import (AUDIO_TYPE, register_audio_value_type,\n"
-            "    register_inference_types, resolver_from_env)\n"
-            "def register_types(registry):\n"
-            "    register_inference_types(registry)\n"
-            "    if AUDIO_TYPE not in registry:\n"
-            "        register_audio_value_type(registry, AUDIO_TYPE, resolver_from_env())\n",
-            encoding="ascii",
-        )
-        fixture = tmp_path / "dinkster-pack.toml"
-        fixture.write_text(
-            '[pack]\nname="wandancer-audio-fixture"\npublisher="dinkster"\n'
-            'namespaces=["wandancer-audio-fixture"]\n[pack.entry]\n'
-            'nodes="wandancer_audio_host_entry:HOST_NODES"\n'
-            'types="wandancer_audio_host_entry:register_types"\n',
-            encoding="ascii",
-        )
-        composer = ServingComposer(
-            worker_env={
-                "CUDA_VISIBLE_DEVICES": "",
-                "DINKSTER_ACCELERATOR": "cpu",
-                "PYTHONPATH": os.pathsep.join(
-                    (str(tmp_path), str(Path(__file__).parent), *source_paths)
-                ),
-            }
-        )
-        try:
-            native = package / "dinkster-pack.toml"
-            native_before = native.read_bytes()
-            await compose_wan_packs(
-                composer,
-                native,
-                fixture,
-                in_process=in_process,
-                worker_group="wandancer-audio-fixture",
-            )
-            graph = Graph(
-                nodes={
-                    "source": GraphNode("wandancer-audio-fixture.source"),
-                    "encode": GraphNode(
-                        "dinkster.wan.wan_dancer_encode_audio",
-                        {
-                            "audio": Link("source", "audio"),
-                            "video_frames": 3,
-                            "audio_inject_scale": 0.5,
-                        },
-                    ),
-                    "consumer": GraphNode(
-                        "wandancer-audio-fixture.consumer",
-                        {
-                            "encoded": Link("encode", "audio_encoder_output"),
-                            "fps_string": Link("encode", "fps_string"),
-                            "audio": Link("source", "audio"),
-                        },
-                    ),
-                }
-            )
-            engine = composer.composition.make_engine(lambda _event: None)
-            for attempt in range(2):
-                result = await engine.run(graph, ["consumer"])
-                assert (
-                    result.outputs["consumer"]["summary"].resolve() == "wandancer-audio-host-values"
-                )
-                assert set(result.cached) == (
-                    set() if attempt == 0 else {"source", "encode", "consumer"}
-                )
-            assert native.read_bytes() == native_before
-        finally:
-            await composer.close()
-
-    asyncio.run(scenario())

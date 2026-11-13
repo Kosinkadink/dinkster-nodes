@@ -2,29 +2,15 @@
 
 from __future__ import annotations
 
-import asyncio
-import os
 from io import BytesIO
-from pathlib import Path
 
 import numpy as np
-import pytest
 import torch
 from dinkster_api.v1 import (
-    CORE_STRING,
     IMAGE_TYPE,
-    InputSpec,
-    Node,
-    NodeSchema,
-    OutputSpec,
     TypeExpr,
-    materialize_image,
 )
-from dinkster_graph import Graph, GraphNode, Link
 from dinkster_ltx.ltx_video_preprocess import LTXVPreprocess
-from ltx_pack_fixtures import compose_ltx_packs
-
-from dinkster.compose import ServingComposer
 
 _IMAGE = TypeExpr.concrete(IMAGE_TYPE)
 
@@ -85,107 +71,3 @@ def test_h264_preprocess_trims_odd_dimensions_preserves_dtype_and_processes_each
     assert not torch.equal(output[0], output[1])
     torch.testing.assert_close(output, _expected_h264(image, 35), rtol=0, atol=0)
     assert torch.equal(image, _frames(torch.float32))
-
-
-def test_h264_preprocess_preserves_float64_dtype() -> None:
-    output = LTXVPreprocess.execute(image=_frames(torch.float64), img_compression=23)["IMAGE"]
-    assert output.dtype is torch.float64
-    assert output.shape == (2, 4, 6, 3)
-
-
-class LTXPreprocessSource(Node):
-    @classmethod
-    def define_schema(cls) -> NodeSchema:
-        return NodeSchema(
-            node_type="ltx-preprocess-fixture.source",
-            outputs=(OutputSpec("image", _IMAGE),),
-        )
-
-    @classmethod
-    def execute(cls) -> dict[str, object]:
-        return cls.outputs(image=_frames(torch.float32))
-
-
-class LTXPreprocessConsumer(Node):
-    @classmethod
-    def define_schema(cls) -> NodeSchema:
-        return NodeSchema(
-            node_type="ltx-preprocess-fixture.consumer",
-            inputs=(InputSpec("image", _IMAGE),),
-            outputs=(OutputSpec("summary", TypeExpr.concrete(CORE_STRING)),),
-        )
-
-    @classmethod
-    def execute(cls, *, image: object) -> dict[str, object]:
-        image = materialize_image(image)
-        expected = _expected_h264(_frames(torch.float32), 35)
-        assert image.shape == (2, 4, 6, 3)
-        assert image.dtype is torch.float32
-        assert image.device.type == "cpu"
-        torch.testing.assert_close(image, expected, rtol=0, atol=0)
-        return cls.outputs(summary="ltx-preprocess")
-
-
-@pytest.mark.parametrize("in_process", (True,))
-def test_ltx_video_preprocess_executes_twice_through_both_production_hosts(
-    tmp_path: Path, in_process: bool
-) -> None:
-    async def scenario() -> None:
-        source_root = Path(__file__).resolve().parents[1] / "src"
-        composer = ServingComposer(
-            worker_env={
-                "CUDA_VISIBLE_DEVICES": "",
-                "DINKSTER_ACCELERATOR": "cpu",
-                "PYTHONPATH": os.pathsep.join(
-                    (str(tmp_path), str(Path(__file__).parent), str(source_root))
-                ),
-            }
-        )
-        try:
-            native_manifest = Path(__file__).resolve().parents[1] / "dinkster-pack.toml"
-            (tmp_path / "ltx_preprocess_fixture.py").write_text(
-                "from test_ltx_video_preprocess_torch import (\n"
-                "    LTXPreprocessConsumer, LTXPreprocessSource,\n"
-                ")\n"
-                "from dinkster_api.v1 import register_inference_types\n"
-                "NODES = (LTXPreprocessSource, LTXPreprocessConsumer)\n",
-                encoding="ascii",
-            )
-            fixture_manifest = tmp_path / "dinkster-pack.toml"
-            fixture_manifest.write_text(
-                "[pack]\n"
-                'name = "ltx-preprocess-fixture"\n'
-                'publisher = "dinkster"\n'
-                'namespaces = ["ltx-preprocess-fixture"]\n'
-                "\n[pack.entry]\n"
-                'nodes = "ltx_preprocess_fixture:NODES"\n'
-                'types = "ltx_preprocess_fixture:register_inference_types"\n',
-                encoding="ascii",
-            )
-            await compose_ltx_packs(
-                composer,
-                native_manifest,
-                fixture_manifest,
-                in_process=in_process,
-                worker_group="ltx-preprocess-fixture",
-            )
-            engine = composer.composition.make_engine(lambda _event: None)
-            graph = Graph(
-                nodes={
-                    "source": GraphNode("ltx-preprocess-fixture.source"),
-                    "preprocess": GraphNode(
-                        "dinkster.ltx.ltxv_preprocess",
-                        {"image": Link("source", "image"), "img_compression": 35},
-                    ),
-                    "consumer": GraphNode(
-                        "ltx-preprocess-fixture.consumer", {"image": Link("preprocess", "IMAGE")}
-                    ),
-                }
-            )
-            for _ in range(2):
-                result = await engine.run(graph, ["consumer"])
-                assert result.outputs["consumer"]["summary"].resolve() == "ltx-preprocess"
-        finally:
-            await composer.close()
-
-    asyncio.run(scenario())

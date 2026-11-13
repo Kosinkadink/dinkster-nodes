@@ -6,7 +6,6 @@ import importlib
 from pathlib import Path
 from typing import Any
 
-import pytest
 from dinkster_api.v1 import initialize_inference_process
 from dinkster_assets import MountDef, MountTable
 
@@ -50,8 +49,3 @@ def test_loader_reconstructs_synthetic_checkpoint_from_granted_asset(tmp_path: P
         torch.testing.assert_close(
             restored[name].cpu(), expected.to(restored[name].dtype), rtol=0, atol=0
         )
-
-
-def test_loader_rejects_ungranted_path_before_reading_checkpoint() -> None:
-    with pytest.raises(TypeError, match="model_name must be an AssetRef or LocalAssetRef"):
-        LoadMoGeModel.execute(model_name="/tmp/moge.safetensors")

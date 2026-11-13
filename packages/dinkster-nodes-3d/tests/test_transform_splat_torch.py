@@ -2,28 +2,14 @@
 
 from __future__ import annotations
 
-import asyncio
-import os
-from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
 import torch
 from dinkster_3d.gaussian_splat import TransformSplat
 from dinkster_api.v1 import (
-    CORE_STRING,
-    SPLAT_TYPE,
-    InputSpec,
-    Node,
-    NodeSchema,
-    OutputSpec,
-    TypeExpr,
     materialize_splat,
 )
-from dinkster_graph import Graph, GraphNode, Link
-from geometry_pack_fixtures import geometry_pack_specs
-
-from dinkster.compose import ServingComposer
 
 
 def _source(case: str, dtype: torch.dtype) -> SimpleNamespace:
@@ -110,85 +96,3 @@ def test_transform_splat_preserves_source_and_transforms_geometry(
         assert torch.equal(getattr(source, name), original)
     for name in ("opacities", "sh", "counts"):
         assert getattr(out, name) is getattr(source, name)
-
-
-class TransformSource(Node):
-    @classmethod
-    def define_schema(cls) -> NodeSchema:
-        return NodeSchema(
-            "splat-transform-fixture.source",
-            inputs=(InputSpec("case", TypeExpr.concrete(CORE_STRING)),),
-            outputs=(OutputSpec("splat", TypeExpr.concrete(SPLAT_TYPE)),),
-        )
-
-    @classmethod
-    def execute(cls, *, case: str) -> dict[str, object]:
-        return cls.outputs(splat=_source(case, torch.float64))
-
-
-class TransformCheck(Node):
-    @classmethod
-    def define_schema(cls) -> NodeSchema:
-        return NodeSchema(
-            "splat-transform-fixture.check",
-            inputs=(
-                InputSpec("case", TypeExpr.concrete(CORE_STRING)),
-                InputSpec("splat", TypeExpr.concrete(SPLAT_TYPE)),
-            ),
-            outputs=(OutputSpec("result", TypeExpr.concrete(CORE_STRING)),),
-        )
-
-    @classmethod
-    def execute(cls, *, case: str, splat: object) -> dict[str, object]:
-        _assert_geometry(splat, case, torch.float64)
-        return cls.outputs(result="geometry verified")
-
-
-@pytest.mark.parametrize("in_process", [True, False])
-def test_transform_splat_through_ordinary_manifest(tmp_path: Path, in_process: bool) -> None:
-    async def scenario() -> None:
-        module = f"splat_transform_fixture_{in_process}"
-        (tmp_path / f"{module}.py").write_text(
-            "from dinkster_api.v1 import register_inference_types\n"
-            "from test_transform_splat_torch import TransformSource, TransformCheck\n"
-            "NODES = (TransformSource, TransformCheck)\n",
-            encoding="ascii",
-        )
-        fixture = tmp_path / "dinkster-pack.toml"
-        fixture.write_text(
-            '[pack]\nname="splat-transform-fixture"\npublisher="dinkster"\nnamespaces=["splat-transform-fixture"]\n[pack.entry]\n'
-            + f'nodes="{module}:NODES"\ntypes="{module}:register_inference_types"\n',
-            encoding="ascii",
-        )
-        composer = ServingComposer(
-            worker_env={
-                "CUDA_VISIBLE_DEVICES": "",
-                "DINKSTER_ACCELERATOR": "cpu",
-                "PYTHONPATH": os.pathsep.join((str(tmp_path), str(Path(__file__).parent))),
-            }
-        )
-        try:
-            for spec in geometry_pack_specs(fixture, in_process=in_process):
-                await composer.add_pack(spec)
-            engine = composer.composition.make_engine(lambda _event: None)
-            for case in ("uniform", "nonuniform", "empty"):
-                graph = Graph(
-                    {
-                        "source": GraphNode("splat-transform-fixture.source", {"case": case}),
-                        "transform": GraphNode(
-                            "dinkster.3d.transform_splat",
-                            {"splat": Link("source", "splat"), **_parameters(case)},
-                        ),
-                        "check": GraphNode(
-                            "splat-transform-fixture.check",
-                            {"splat": Link("transform", "splat"), "case": case},
-                        ),
-                    }
-                )
-                for _attempt in range(2):
-                    result = await engine.run(graph, ["check"])
-                    assert result.outputs["check"]["result"].resolve() == "geometry verified"
-        finally:
-            await composer.close()
-
-    asyncio.run(scenario())

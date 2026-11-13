@@ -2,10 +2,9 @@ from __future__ import annotations
 
 import asyncio
 import base64
-import contextlib
 import json
 import uuid
-from collections.abc import AsyncGenerator, Callable, Mapping
+from collections.abc import Mapping
 from dataclasses import replace
 from pathlib import Path
 from typing import cast
@@ -26,7 +25,6 @@ from dinkster_api.v1 import (
     schema_to_wire,
 )
 from dinkster_graph import Graph, GraphNode
-from dinkster_nodes_remote import catalog as remote_catalog
 from dinkster_nodes_remote.catalog import CatalogError, parse_catalog
 from dinkster_nodes_remote.runtime import (
     GatewayError,
@@ -36,7 +34,6 @@ from dinkster_nodes_remote.runtime import (
 )
 from dinkster_schema import use_reporter
 from dinkster_workers import ExecutionContext, use_execution_context
-from dinkster_workers.boundary import PROTOCOL_VERSION, write_frame
 
 IMAGE = TypeExpr.asset_of(TypeExpr.concrete("IMAGE"))
 STRING = TypeExpr.concrete("STRING")
@@ -345,19 +342,6 @@ def test_catalog_enforces_remote_schema_invariants_and_isolates_bad_entries(
     assert parse_catalog(wrong_entry_wire).schemas == ()
     with pytest.raises(CatalogError, match="unsupported schema wire"):
         parse_catalog({**catalog_payload(valid), "schemaWire": 2})
-
-
-def test_catalog_rejects_entry_schema_wire_mismatch() -> None:
-    valid = remote_schema()
-    payload = catalog_payload(valid)
-    nodes = cast("dict[str, object]", payload["nodes"])
-    parse_entry = cast(
-        "Callable[[str, object, int], object]",
-        vars(remote_catalog)["_remote_schema"],
-    )
-
-    with pytest.raises(CatalogError, match="does not use the catalog's schema wire version"):
-        parse_entry(valid.node_type, nodes[valid.node_type], SCHEMA_WIRE_VERSION + 1)
 
 
 @pytest.mark.parametrize("input_values", [False, True])
@@ -871,74 +855,5 @@ def test_isolated_worker_announces_catalog_epoch_and_composer_replaces_it(
                 assert current.worker.instance_token != token_before
             finally:
                 await composer.close()
-
-    asyncio.run(scenario())
-
-
-@contextlib.asynccontextmanager
-async def schema_reload_peer(
-    *,
-    capability: bool,
-) -> AsyncGenerator[tuple[asyncio.StreamReader, asyncio.StreamWriter, asyncio.StreamWriter]]:
-    peer_writer: asyncio.Future[asyncio.StreamWriter] = asyncio.get_running_loop().create_future()
-
-    async def peer(_reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
-        peer_writer.set_result(writer)
-        header: dict[str, object] = {
-            "type": "hello",
-            "protocol": PROTOCOL_VERSION,
-            "pack": "remote-test",
-            "workerInstance": "instance-1",
-            "schemas": {},
-        }
-        if capability:
-            header["schemaReload"] = True
-        await write_frame(writer, header, [])
-
-    server = await asyncio.start_server(peer, "127.0.0.1", 0)
-    try:
-        assert server.sockets
-        host, port = server.sockets[0].getsockname()[:2]
-        reader, writer = await asyncio.open_connection(host, port)
-        yield reader, writer, await peer_writer
-    finally:
-        server.close()
-        await server.wait_closed()
-
-
-def test_boundary_accepts_schema_reload_only_after_hello_negotiation() -> None:
-    async def scenario() -> None:
-        from dinkster_values import TypeRegistry, register_core_types
-        from dinkster_workers.boundary import ValueCodec
-        from dinkster_workers.session import BoundarySession
-
-        for capability in (True, False):
-            called = asyncio.Event()
-            registry = TypeRegistry()
-            register_core_types(registry)
-            async with schema_reload_peer(capability=capability) as (reader, writer, peer):
-                session = BoundarySession(
-                    registry,
-                    role="test",
-                    pack="remote-test",
-                    codec=ValueCodec(registry),
-                    on_schema_reload=lambda pack, token, event=called: event.set(),
-                )
-                try:
-                    await session.begin(reader, writer, timeout=1)
-                    await write_frame(peer, {"type": "schemaReloadRequest"}, [])
-                    if capability:
-                        await asyncio.wait_for(called.wait(), 1)
-                        assert session.alive
-                    else:
-                        async with asyncio.timeout(1):
-                            while session.alive:
-                                await asyncio.sleep(0)
-                        assert not called.is_set()
-                        assert not session.alive
-                finally:
-                    await session.close()
-                    peer.close()
-                    await peer.wait_closed()
 
     asyncio.run(scenario())

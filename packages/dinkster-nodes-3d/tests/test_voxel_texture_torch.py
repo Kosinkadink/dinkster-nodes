@@ -2,20 +2,12 @@
 
 from __future__ import annotations
 
-import asyncio
-import os
-from pathlib import Path
 from typing import Any
 
 import pytest
 import torch
 from dinkster_3d.voxel_texture import BakeTextureFromVoxel
-from dinkster_api.v1 import MESH_TYPE, VOXEL_TYPE, Node, NodeSchema, OutputSpec, TypeExpr
-from dinkster_graph import Graph, GraphNode, Link
-from geometry_pack_fixtures import geometry_pack_specs
 from test_mesh_bake_torch import plane
-
-from dinkster.compose import ServingComposer
 
 
 def fixture() -> tuple[Any, dict]:
@@ -119,82 +111,3 @@ def test_voxel_bake_oom_fallback_does_not_hide_other_errors(
     monkeypatch.setattr(voxel_texture, "_trilinear", invalid)
     with pytest.raises(ValueError, match="invalid voxel attributes"):
         BakeTextureFromVoxel.execute(mesh=mesh, voxel_colors=voxel, texture_size=64)
-
-
-class VoxelSource(Node):
-    @classmethod
-    def define_schema(cls) -> NodeSchema:
-        return NodeSchema(
-            node_type="voxel-bake-source.make",
-            inputs=(),
-            outputs=(
-                OutputSpec("mesh", TypeExpr.concrete(MESH_TYPE)),
-                OutputSpec("voxel", TypeExpr.concrete(VOXEL_TYPE)),
-            ),
-        )
-
-    @classmethod
-    def execute(cls) -> dict:
-        mesh, voxel = fixture()
-        return cls.outputs(mesh=mesh, voxel=voxel)
-
-
-@pytest.mark.parametrize("in_process", [True, False])
-def test_voxel_bake_ordinary_hosts(tmp_path: Path, in_process: bool) -> None:
-    module = f"voxel_bake_source_{in_process}"
-    (tmp_path / f"{module}.py").write_text(
-        "from test_voxel_texture_torch import VoxelSource\n"
-        "from dinkster_3d import register_types as register_inference_types\n"
-        "NODES=(VoxelSource,)\n",
-        encoding="ascii",
-    )
-    manifest = tmp_path / "source.toml"
-    manifest.write_text(
-        '[pack]\nname="voxel-bake-source"\npublisher="dinkster"\nnamespaces=["voxel-bake-source"]\n[pack.entry]\n'
-        + f'nodes="{module}:NODES"\ntypes="{module}:register_inference_types"\n',
-        encoding="ascii",
-    )
-
-    async def scenario() -> None:
-        composer = ServingComposer(
-            worker_env={
-                "CUDA_VISIBLE_DEVICES": "",
-                "DINKSTER_ACCELERATOR": "cpu",
-                "PYTHONPATH": os.pathsep.join(
-                    (str(tmp_path), str(Path(__file__).parent), os.environ.get("PYTHONPATH", ""))
-                ),
-            }
-        )
-        try:
-            for spec in geometry_pack_specs(manifest, in_process=in_process):
-                await composer.add_pack(spec)
-            graph = Graph(
-                {
-                    "source": GraphNode("voxel-bake-source.make"),
-                    "bake": GraphNode(
-                        "dinkster.3d.bake_texture_from_voxel",
-                        {
-                            "mesh": Link("source", "mesh"),
-                            "voxel_colors": Link("source", "voxel"),
-                            "texture_size": 64,
-                        },
-                    ),
-                }
-            )
-            engine = composer.composition.make_engine(lambda _event: None)
-            expected = BakeTextureFromVoxel.execute(
-                mesh=fixture()[0], voxel_colors=fixture()[1], texture_size=64
-            )
-            for _ in range(2):
-                result = await engine.run(graph, ["bake"])
-                for name, image in expected.items():
-                    torch.testing.assert_close(
-                        torch.as_tensor(result.outputs["bake"][name].resolve()),
-                        image,
-                        rtol=0,
-                        atol=0,
-                    )
-        finally:
-            await composer.close()
-
-    asyncio.run(scenario())

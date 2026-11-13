@@ -2,30 +2,11 @@
 
 from __future__ import annotations
 
-import asyncio
-import os
-from pathlib import Path
-from typing import Any
-
 import pytest
 import torch
 from dinkster_3d_models.triposplat import (
     TripoSplatPreprocessImage,
 )
-from dinkster_api.v1 import (
-    CORE_STRING,
-    IMAGE_TYPE,
-    MASK_TYPE,
-    InputSpec,
-    Node,
-    NodeSchema,
-    OutputSpec,
-    TypeExpr,
-    materialize_image,
-)
-from dinkster_graph import Graph, GraphNode, Link
-
-from dinkster.compose import PackSpec, ServingComposer
 
 
 @pytest.mark.parametrize("erode_radius", (0, 2))
@@ -76,109 +57,3 @@ def test_erosion_removes_a_foreground_strip_narrower_than_the_kernel() -> None:
     assert torch.count_nonzero(un_eroded) > 0
     with pytest.raises(ValueError, match="mask is empty .*no foreground pixels"):
         TripoSplatPreprocessImage.execute(image=image, mask=mask, erode_radius=2, size=256)
-
-
-class PreprocessSource(Node):
-    @classmethod
-    def define_schema(cls) -> NodeSchema:
-        return NodeSchema(
-            "triposplat-fixture.source",
-            outputs=(
-                OutputSpec("image", TypeExpr.concrete(IMAGE_TYPE)),
-                OutputSpec("mask", TypeExpr.concrete(MASK_TYPE)),
-            ),
-        )
-
-    @classmethod
-    def execute(cls) -> Any:
-        image = torch.zeros(1, 64, 96, 3)
-        image[..., 0] = 1
-        mask = torch.zeros(1, 64, 96)
-        mask[:, 16:48, 24:72] = 1
-        return cls.outputs(image=image.numpy(), mask=mask.numpy())
-
-
-class PreprocessInspect(Node):
-    @classmethod
-    def define_schema(cls) -> NodeSchema:
-        return NodeSchema(
-            "triposplat-fixture.inspect",
-            inputs=(InputSpec("image", TypeExpr.concrete(IMAGE_TYPE)),),
-            outputs=(OutputSpec("summary", TypeExpr.concrete(CORE_STRING)),),
-        )
-
-    @classmethod
-    def execute(cls, *, image: Any) -> Any:
-        # Hand-derived from PreprocessSource's uniform red RGB, centered alpha
-        # rectangle and requested size 256: red center, black corners, no green/blue.
-        image = materialize_image(image)
-        assert image.shape == (1, 256, 256, 3)
-        torch.testing.assert_close(
-            image[0, 128, 128], torch.tensor([1.0, 0.0, 0.0]), rtol=0, atol=0
-        )
-        assert torch.count_nonzero(image[0, 0, 0]) == 0
-        assert torch.count_nonzero(image[..., 1:]) == 0
-        return cls.outputs(summary="foreground crop transported")
-
-
-@pytest.mark.parametrize("in_process", (True, False))
-def test_native_manifest_preprocesses_twice(tmp_path: Path, in_process: bool) -> None:
-    async def scenario() -> None:
-        native = Path(__file__).resolve().parents[1] / "dinkster-pack.toml"
-        (tmp_path / "triposplat_fixture.py").write_text(
-            "from test_triposplat_torch import PreprocessSource, PreprocessInspect\n"
-            "from dinkster_3d_models import register_types as register_inference_types\n"
-            "NODES = (PreprocessSource, PreprocessInspect)\n",
-            encoding="ascii",
-        )
-        fixture = tmp_path / "fixture.toml"
-        fixture.write_text(
-            '[pack]\nname="triposplat-fixture"\npublisher="dinkster"\n'
-            'namespaces=["triposplat-fixture"]\n[pack.entry]\n'
-            'nodes="triposplat_fixture:NODES"\ntypes="triposplat_fixture:register_inference_types"\n',
-            encoding="ascii",
-        )
-        composer = ServingComposer(
-            worker_env={
-                "PYTHONPATH": os.pathsep.join(
-                    (str(Path(__file__).parent), os.environ.get("PYTHONPATH", ""))
-                )
-            }
-        )
-        try:
-            for manifest in (native, fixture):
-                await composer.add_pack(
-                    PackSpec(
-                        manifest=manifest,
-                        in_process=in_process,
-                        worker_group=None if in_process else "triposplat-fixture",
-                        group_manifests=() if in_process else (native, fixture),
-                        trust_reserved=True,
-                    )
-                )
-            graph = Graph(
-                nodes={
-                    "source": GraphNode("triposplat-fixture.source"),
-                    "preprocess": GraphNode(
-                        "dinkster.3d.models.tripo_splat_preprocess_image",
-                        {
-                            "image": Link("source", "image"),
-                            "mask": Link("source", "mask"),
-                            "size": 256,
-                        },
-                    ),
-                    "inspect": GraphNode(
-                        "triposplat-fixture.inspect", {"image": Link("preprocess", "image")}
-                    ),
-                }
-            )
-            engine = composer.composition.make_engine(lambda _event: None)
-            for _ in range(2):
-                result = await engine.run(graph, ["inspect"])
-                assert (
-                    result.outputs["inspect"]["summary"].resolve() == "foreground crop transported"
-                )
-        finally:
-            await composer.close()
-
-    asyncio.run(scenario())

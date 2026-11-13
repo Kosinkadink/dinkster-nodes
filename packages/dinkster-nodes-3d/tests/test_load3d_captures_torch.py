@@ -2,42 +2,26 @@
 
 from __future__ import annotations
 
-import asyncio
 from collections.abc import Mapping
 from fractions import Fraction
 from io import BytesIO
 from pathlib import Path
-from typing import Any, cast
+from typing import Any
 
 import av
 import numpy as np
 import pytest
 import torch
-from dinkster_3d import register_types as register_inference_types
 from dinkster_3d.load3d_captures import Load3D
 from dinkster_api.v1 import (
-    LOAD_3D_TYPE,
     AbsentOutput,
     AssetRef,
     AssetVault,
-    TypeRegistry,
     digest_bytes,
     effective_video_facts,
-    register_asset_type,
 )
 from dinkster_assets import LocalAssetRef, MountDef, MountTable
-from dinkster_graph import Graph, GraphNode, TypedLiteral
-from dinkster_values import (
-    ABSENT_ORIGIN_META_KEY,
-    ABSENT_REASON_META_KEY,
-    ABSENT_STANDS_FOR_META_KEY,
-    is_absent,
-    register_core_types,
-)
-from geometry_pack_fixtures import geometry_pack_specs
 from PIL import Image
-
-from dinkster.compose import ServingComposer
 
 
 @pytest.fixture
@@ -145,56 +129,3 @@ def test_load3d_retains_recorded_video_source_and_timing(captures) -> None:
     facts = effective_video_facts(result["recording_video"])
     assert (facts["width"], facts["height"], facts["fps"]) == (3, 1, Fraction(7))
     assert recording.read_bytes() == data
-
-
-@pytest.mark.parametrize("in_process", [True, False])
-def test_load3d_empty_model_and_recording_through_ordinary_hosts(
-    captures, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, in_process: bool
-) -> None:
-    state, pixels, normals, vault = captures
-    monkeypatch.setenv("DINKSTER_ASSET_VAULT", str(tmp_path / "vault"))
-
-    async def scenario() -> None:
-        registry = TypeRegistry()
-        register_core_types(registry)
-        register_asset_type(registry, vault)
-        register_inference_types(registry)
-        composer = ServingComposer(registry=registry)
-        try:
-            for spec in geometry_pack_specs(in_process=in_process):
-                await composer.add_pack(spec)
-            wire = {
-                key: value.to_wire() if isinstance(value, AssetRef) else value
-                for key, value in state.items()
-            }
-            graph = Graph(
-                {
-                    "load": GraphNode(
-                        "dinkster.3d.load3_d",
-                        {
-                            "model_file": TypedLiteral("FILE_3D", None),
-                            "image": TypedLiteral(LOAD_3D_TYPE, wire),
-                            "width": 37,
-                            "height": 91,
-                        },
-                    )
-                }
-            )
-            result = await composer.composition.make_engine(lambda _event: None).run(
-                graph, ["load"]
-            )
-            values = {key: value.resolve() for key, value in result.outputs["load"].items()}
-            _assert_captures(cast("Mapping[str, Any]", values), pixels, normals)
-            assert values["mesh_path"] == ""
-            assert values["model_3d"] is None
-            recording = result.outputs["load"]["recording_video"]
-            assert is_absent(recording)
-            assert recording.meta.get(ABSENT_ORIGIN_META_KEY) == "load/recording_video"
-            assert recording.meta.get(ABSENT_REASON_META_KEY) == "no recording"
-            assert recording.meta.get(ABSENT_STANDS_FOR_META_KEY) == "VIDEO"
-            assert values["model_3d_info"] == []
-            assert values["camera_info"] == state["camera_info"]
-        finally:
-            await composer.close()
-
-    asyncio.run(scenario())

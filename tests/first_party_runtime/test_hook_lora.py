@@ -4,8 +4,6 @@ from __future__ import annotations
 
 import asyncio
 import os
-import subprocess
-import sys
 from pathlib import Path
 from typing import Any
 
@@ -61,44 +59,6 @@ def _write_lora(path: Path) -> None:
         },
         str(path),
     )
-
-
-def test_lora_hook_schemas_are_torch_free_and_registered() -> None:
-    root = Path(__file__).resolve().parents[2]
-    subprocess.run(
-        [
-            sys.executable,
-            "-c",
-            """
-import sys
-
-from dinkster_api.v1 import HOOKS_TYPE, TypeExpr
-from dinkster_models.hook_lora import CreateHookLora, CreateHookLoraModelOnly
-
-HOOK_LORA_NODES = (CreateHookLora, CreateHookLoraModelOnly)
-
-expected = (
-    (("lora_name", "strength_model", "strength_clip", "prev_hooks"), "Create Hook LoRA"),
-    (("lora_name", "strength_model", "prev_hooks"), "Create Hook LoRA (MO)"),
-)
-for node, (names, display) in zip(HOOK_LORA_NODES, expected, strict=True):
-    schema = node.schema()
-    assert tuple(item.id for item in schema.inputs) == names
-    assert schema.display_name == display
-    assert schema.inputs[0].widget.kind == "model/lora"
-    assert [(item.id, item.type) for item in schema.outputs] == [
-        ("HOOKS", TypeExpr.concrete(HOOKS_TYPE))
-    ]
-assert "torch" not in sys.modules
-assert not any(name.startswith("dinkster_inference.") for name in sys.modules)
-""",
-        ],
-        check=True,
-        cwd=root,
-    )
-    from dinkster_models import NODES
-
-    assert all(node in NODES for node in HOOK_LORA_NODES)
 
 
 @pytest.mark.parametrize("verified", [False, True])

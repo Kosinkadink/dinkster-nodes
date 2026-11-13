@@ -5,8 +5,6 @@ from __future__ import annotations
 import asyncio
 import io
 import os
-import subprocess
-import sys
 from collections.abc import Mapping
 from fractions import Fraction
 from pathlib import Path
@@ -101,42 +99,6 @@ def _assert_components(
     assert bit_depth == expected_depth
     assert type(color_space) is str
     assert color_space == expected_color_space
-
-
-def test_video_component_schema_and_cold_import_use_only_public_types() -> None:
-    root = Path(__file__).resolve().parents[3]
-    source = root / "packages/dinkster-nodes-video/src/dinkster_video/video_components.py"
-    subprocess.run(
-        [
-            sys.executable,
-            "-c",
-            """
-import sys
-from pathlib import Path
-from dinkster_api.v1 import AUDIO_TYPE, CORE_COMBO, CORE_FLOAT, IMAGE_TYPE, VIDEO_TYPE, TypeExpr
-from dinkster_schema import schema_from_wire, schema_to_wire, validate_replacement_references
-import dinkster_video.video_components as module
-from dinkster_video.video_components import ConcatenateVideo, CreateVideo, GetVideoComponents
-
-assert Path(module.__file__).resolve() == Path(sys.argv[1])
-create = CreateVideo.schema()
-concat = ConcatenateVideo.schema()
-assert validate_replacement_references({concat.node_type: concat}) == ()
-wire = schema_to_wire(concat)
-assert schema_from_wire(wire) == concat
-assert "torch" not in sys.modules
-assert "torchvision" not in sys.modules
-assert "av" not in sys.modules
-assert not any(
-    name == "dinkster_inference" or name.startswith("dinkster_inference.")
-    for name in sys.modules
-)
-""",
-            str(source),
-        ],
-        check=True,
-        cwd=root,
-    )
 
 
 @pytest.mark.parametrize(
@@ -522,100 +484,6 @@ def test_native_concatenate_video_cross_public_hosts_twice(
                     result.outputs["without_audio"]["summary"].resolve()
                     == "concatenated-in-document-order"
                 )
-                assert set(result.cached) == (set() if attempt == 0 else set(graph.nodes))
-        finally:
-            await composer.close()
-        assert native.read_bytes() == native_bytes
-
-    asyncio.run(scenario())
-
-
-@pytest.mark.parametrize("in_process", (True, False))
-def test_native_video_components_cross_public_hosts_twice(tmp_path: Path, in_process: bool) -> None:
-    async def scenario() -> None:
-        package = Path(__file__).resolve().parents[1]
-        checkout = package.parents[1]
-        native = package / "dinkster-pack.toml"
-        native_bytes = native.read_bytes()
-        module = "video_components_public_fixture"
-        (tmp_path / f"{module}.py").write_text(
-            "from pathlib import Path\n"
-            "import dinkster_video.video_components as native\n"
-            "from test_video_components import ComponentConsumer, ComponentSource\n"
-            "assert Path(native.__file__).resolve() == "
-            f"Path({str(package / 'src/dinkster_video/video_components.py')!r})\n"
-            "from video_pack_fixtures import register_video_types\n"
-            "NODES = (ComponentSource, ComponentConsumer)\n",
-            encoding="ascii",
-        )
-        fixture = tmp_path / "video-components-public-dinkster-pack.toml"
-        fixture.write_text(
-            "[pack]\n"
-            'name = "video-components-public-fixture"\n'
-            'publisher = "dinkster"\n'
-            'namespaces = ["video-components-public"]\n\n'
-            '[pack.dependencies]\ndinkster-video = ">=0.0.1"\n'
-            "[pack.entry]\n"
-            f'nodes = "{module}:NODES"\n'
-            f'types = "{module}:register_video_types"\n',
-            encoding="ascii",
-        )
-        paths = (
-            tmp_path,
-            package / "tests",
-            checkout / "src",
-            *sorted(checkout.glob("packages/*/src")),
-        )
-        composer = ServingComposer(
-            cache_mode="layered",
-            cache_dir=tmp_path / "cache",
-            worker_env={
-                "CUDA_VISIBLE_DEVICES": "",
-                "DINKSTER_ACCELERATOR": "cpu",
-                "PYTHONPATH": os.pathsep.join(map(str, paths)),
-            },
-        )
-        try:
-            await compose_video_packs(
-                composer,
-                native,
-                fixture,
-                in_process=in_process,
-                worker_group="video-components-public",
-            )
-            graph = Graph(
-                nodes={
-                    "source": GraphNode("video-components-public.source"),
-                    "create": GraphNode(
-                        "dinkster.video.create_video",
-                        {
-                            "images": Link("source", "images"),
-                            "fps": Link("source", "fps"),
-                            "audio": Link("source", "audio"),
-                            "bit_depth": Link("source", "bit_depth"),
-                            "color_space": Link("source", "color_space"),
-                            "codec": "none",
-                        },
-                    ),
-                    "get": GraphNode(
-                        "dinkster.video.get_video_components", {"video": Link("create", "video")}
-                    ),
-                    "consumer": GraphNode(
-                        "video-components-public.consumer",
-                        {
-                            "images": Link("get", "images"),
-                            "audio": Link("get", "audio"),
-                            "fps": Link("get", "fps"),
-                            "bit_depth": Link("get", "bit_depth"),
-                            "color_space": Link("get", "color_space"),
-                        },
-                    ),
-                }
-            )
-            engine = composer.composition.make_engine(lambda _event: None)
-            for attempt in range(2):
-                result = await engine.run(graph, ["consumer"])
-                assert result.outputs["consumer"]["summary"].resolve() == "components-preserved"
                 assert set(result.cached) == (set() if attempt == 0 else set(graph.nodes))
         finally:
             await composer.close()

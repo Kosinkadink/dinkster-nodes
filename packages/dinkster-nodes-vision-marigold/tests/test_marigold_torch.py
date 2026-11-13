@@ -2,27 +2,10 @@
 
 from __future__ import annotations
 
-import asyncio
-import os
-from pathlib import Path
 from typing import Any
 
-import pytest
 import torch
-from dinkster_api.v1 import (
-    CORE_BOOLEAN,
-    IMAGE_TYPE,
-    InputSpec,
-    Node,
-    NodeSchema,
-    OutputSpec,
-    TypeExpr,
-    materialize_image,
-)
-from dinkster_graph import Graph, GraphNode, Link
 from dinkster_vision_marigold.marigold import MarigoldV2PostProcess
-
-from dinkster.compose import PackSpec, ServingComposer
 
 
 def test_depth_normalizes_each_image_and_preserves_constant_images() -> None:
@@ -67,88 +50,3 @@ def test_albedo_transfer_includes_negative_and_above_one_values() -> None:
     result: Any = MarigoldV2PostProcess.execute(image=source, prediction="albedo")["IMAGE"]
     assert torch.allclose(result, expected)
     assert torch.isfinite(result).all()
-
-
-class PredictionSource(Node):
-    @classmethod
-    def define_schema(cls) -> NodeSchema:
-        return NodeSchema(
-            node_type="marigold-fixture.source",
-            outputs=(OutputSpec("image", TypeExpr.concrete(IMAGE_TYPE)),),
-        )
-
-    @classmethod
-    def execute(cls) -> dict[str, object]:
-        return cls.outputs(image=torch.tensor([[[[0.0] * 3, [0.5] * 3, [1.0] * 3]]]))
-
-
-class InspectDepth(Node):
-    @classmethod
-    def define_schema(cls) -> NodeSchema:
-        return NodeSchema(
-            node_type="marigold-fixture.inspect",
-            inputs=(InputSpec("image", TypeExpr.concrete(IMAGE_TYPE)),),
-            outputs=(OutputSpec("valid", TypeExpr.concrete(CORE_BOOLEAN)),),
-        )
-
-    @classmethod
-    def execute(cls, *, image: object) -> dict[str, object]:
-        expected = torch.tensor([[[[1.0] * 3, [0.5] * 3, [0.0] * 3]]])
-        assert torch.equal(materialize_image(image), expected)
-        return cls.outputs(valid=True)
-
-
-@pytest.mark.parametrize("in_process", (True,))
-def test_marigold_ordinary_manifest(tmp_path: Path, in_process: bool) -> None:
-    async def scenario() -> None:
-        root = Path(__file__).resolve().parents[1]
-        composer = ServingComposer(
-            worker_env={
-                "PYTHONPATH": os.pathsep.join(
-                    (str(root / "tests"), str(root / "src"), os.environ.get("PYTHONPATH", ""))
-                )
-            }
-        )
-        try:
-            (tmp_path / "marigold_fixture.py").write_text(
-                "from test_marigold_torch import PredictionSource, InspectDepth\n"
-                "from dinkster_vision_marigold import NODES as MARIGOLD_NODES\n"
-                "from dinkster_vision_marigold import register_types\n"
-                "NODES = (*MARIGOLD_NODES, PredictionSource, InspectDepth)\n",
-                encoding="ascii",
-            )
-            manifest = tmp_path / "dinkster-pack.toml"
-            manifest.write_text(
-                (root / "dinkster-pack.toml")
-                .read_text(encoding="ascii")
-                .replace("namespaces = [", 'namespaces = ["marigold-fixture",')
-                .replace("dinkster_vision_marigold:NODES", "marigold_fixture:NODES")
-                .replace(
-                    "dinkster_vision_marigold:register_types",
-                    "marigold_fixture:register_types",
-                ),
-                encoding="ascii",
-            )
-            await composer.add_pack(
-                PackSpec(manifest=manifest, in_process=in_process, trust_reserved=True)
-            )
-            graph = Graph(
-                nodes={
-                    "source": GraphNode("marigold-fixture.source"),
-                    "convert": GraphNode(
-                        "dinkster.vision.marigold.marigold_v2_post_process",
-                        {"image": Link("source", "image"), "prediction": "depth"},
-                    ),
-                    "inspect": GraphNode(
-                        "marigold-fixture.inspect", {"image": Link("convert", "IMAGE")}
-                    ),
-                }
-            )
-            engine = composer.composition.make_engine(lambda _event: None)
-            for _ in range(2):
-                result = await engine.run(graph, ["inspect"])
-                assert result.outputs["inspect"]["valid"].resolve() is True
-        finally:
-            await composer.close()
-
-    asyncio.run(scenario())

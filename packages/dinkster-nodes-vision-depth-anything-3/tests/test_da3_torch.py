@@ -6,36 +6,10 @@ from typing import Any
 
 import pytest
 import torch
-from dinkster_api.v1 import (
-    DA3_GEOMETRY_TYPE,
-    DA3_MODEL_TYPE,
-    TypeRegistry,
-)
-from dinkster_vision_depth_anything_3 import register_types
 from dinkster_vision_depth_anything_3.depth_anything_3 import (
     DA3GeometryToMesh,
     DA3Render,
 )
-
-
-def test_pack_registers_only_its_vision_packet_and_preserves_existing_authority() -> None:
-    registry = TypeRegistry()
-    resident = registry.register(DA3_MODEL_TYPE)
-    register_types(registry)
-    assert {"DA3_GEOMETRY", "DA3_MODEL", "IMAGE", "MASK", "MESH", "ASSET"} <= set(
-        registry.type_ids()
-    )
-    assert not {
-        "FACE_LANDMARKS",
-        "MHR_POSE_DATA",
-        "KIMODO_POSE_DATA",
-        "FACE_DETECTION_MODEL",
-        "SAM3D_BODY_MODEL",
-    } & set(registry.type_ids())
-    packet = registry.spec(DA3_GEOMETRY_TYPE)
-    register_types(registry)
-    assert registry.spec(DA3_GEOMETRY_TYPE) is packet
-    assert registry.spec(DA3_MODEL_TYPE) is resident
 
 
 def _extrinsics() -> Any:

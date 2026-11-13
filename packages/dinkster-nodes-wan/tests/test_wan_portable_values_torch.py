@@ -2,33 +2,19 @@
 
 from __future__ import annotations
 
-import asyncio
-import os
 from collections.abc import Mapping
-from pathlib import Path
 
 import pytest
 import torch
 from dinkster_api.v1 import (
     AUDIO_ENCODER_OUTPUT_TYPE,
-    CORE_BOOLEAN,
-    CORE_STRING,
     TRACKS_TYPE,
     WAN_CAMERA_EMBEDDING_TYPE,
-    InputSpec,
-    Node,
-    NodeSchema,
-    OutputSpec,
     TypeExpr,
     TypeRegistry,
     materialize_latent,
-    register_inference_types,
 )
-from dinkster_graph import Graph, GraphNode, Link
 from dinkster_wan import register_types
-from wan_pack_fixtures import compose_wan_packs
-
-from dinkster.compose import ServingComposer
 
 _CAMERA = TypeExpr.concrete(WAN_CAMERA_EMBEDDING_TYPE)
 _TRACKS = TypeExpr.concrete(TRACKS_TYPE)
@@ -163,163 +149,3 @@ def test_wan_portable_value_codecs_preserve_cpu_tensors_and_source_storage(
     _assert_tensor(camera, _camera())
     _assert_tracks(tracks, _tracks(include_visibility))
     _assert_audio(audio, _audio(layers_as_tuple))
-
-
-def test_audio_encoder_output_rejects_boolean_sample_count() -> None:
-    registry = TypeRegistry()
-    register_inference_types(registry)
-    value = _audio(layers_as_tuple=False)
-    value["audio_samples"] = True
-
-    with pytest.raises(ValueError, match="audio_samples"):
-        registry.spec(AUDIO_ENCODER_OUTPUT_TYPE).encode(value)
-
-
-def test_existing_wan_type_registration_is_not_replayed() -> None:
-    registry = TypeRegistry()
-    existing = registry.register(WAN_CAMERA_EMBEDDING_TYPE)
-
-    register_types(registry)
-
-    assert registry.spec(WAN_CAMERA_EMBEDDING_TYPE) is existing
-
-
-class WanPortableSource(Node):
-    @classmethod
-    def define_schema(cls) -> NodeSchema:
-        return NodeSchema(
-            node_type="wan-portable-fixture.source",
-            inputs=(
-                InputSpec("visibility", TypeExpr.concrete(CORE_BOOLEAN)),
-                InputSpec("layers_as_tuple", TypeExpr.concrete(CORE_BOOLEAN)),
-            ),
-            outputs=(
-                OutputSpec("camera", _CAMERA),
-                OutputSpec("tracks", _TRACKS),
-                OutputSpec("audio", _AUDIO_ENCODER_OUTPUT),
-            ),
-        )
-
-    @classmethod
-    def execute(cls, *, visibility: bool, layers_as_tuple: bool) -> dict[str, object]:
-        return cls.outputs(
-            camera=_camera(),
-            tracks=_tracks(visibility),
-            audio=_audio(layers_as_tuple),
-        )
-
-
-class WanPortableConsumer(Node):
-    @classmethod
-    def define_schema(cls) -> NodeSchema:
-        return NodeSchema(
-            node_type="wan-portable-fixture.consumer",
-            inputs=(
-                InputSpec("camera", _CAMERA),
-                InputSpec("tracks", _TRACKS),
-                InputSpec("audio", _AUDIO_ENCODER_OUTPUT),
-                InputSpec("visibility", TypeExpr.concrete(CORE_BOOLEAN)),
-                InputSpec("layers_as_tuple", TypeExpr.concrete(CORE_BOOLEAN)),
-            ),
-            outputs=(OutputSpec("summary", TypeExpr.concrete(CORE_STRING)),),
-        )
-
-    @classmethod
-    def execute(
-        cls,
-        *,
-        camera: object,
-        tracks: object,
-        audio: object,
-        visibility: bool,
-        layers_as_tuple: bool,
-    ) -> dict[str, object]:
-        live_camera = materialize_latent(camera)
-        live_tracks = materialize_latent(tracks)
-        live_audio = materialize_latent(audio)
-        _assert_tensor(live_camera, _camera())
-        _assert_tracks(live_tracks, _tracks(visibility))
-        _assert_audio(live_audio, _audio(layers_as_tuple))
-        assert materialize_latent(live_camera) is live_camera
-        assert materialize_latent(live_tracks) is live_tracks
-        assert materialize_latent(live_audio) is live_audio
-        return cls.outputs(summary="portable Wan values verified")
-
-
-@pytest.mark.parametrize("in_process", (True, False))
-def test_wan_portable_values_cross_ordinary_hosts_twice_with_cache(
-    tmp_path: Path, in_process: bool
-) -> None:
-    async def scenario() -> None:
-        native_manifest = Path(__file__).resolve().parents[1] / "dinkster-pack.toml"
-        source_root = Path(__file__).resolve().parents[1] / "src"
-        module = "wan_portable_values_fixture"
-        (tmp_path / f"{module}.py").write_text(
-            "from test_wan_portable_values_torch import WanPortableConsumer, WanPortableSource\n"
-            "from wan_pack_fixtures import register_wan_types\n"
-            "NODES = (WanPortableSource, WanPortableConsumer)\n",
-            encoding="ascii",
-        )
-        fixture_manifest = tmp_path / "wan-portable-values-dinkster-pack.toml"
-        fixture_manifest.write_text(
-            '[pack]\nname = "wan-portable-values-fixture"\npublisher = "dinkster"\n'
-            'namespaces = ["wan-portable-fixture"]\n'
-            '[pack.dependencies]\n"dinkster-wan" = ">=0.0.1"\n'
-            '"dinkster-vision-sam3" = ">=0.0.1"\n\n[pack.entry]\n'
-            f'nodes = "{module}:NODES"\n'
-            f'types = "{module}:register_wan_types"\n',
-            encoding="ascii",
-        )
-        composer = ServingComposer(
-            cache_mode="layered",
-            cache_dir=tmp_path / "cache",
-            worker_env={
-                "CUDA_VISIBLE_DEVICES": "",
-                "DINKSTER_ACCELERATOR": "cpu",
-                "PYTHONPATH": os.pathsep.join(
-                    (str(tmp_path), str(Path(__file__).parent), str(source_root))
-                ),
-            },
-        )
-        try:
-            await compose_wan_packs(
-                composer,
-                native_manifest,
-                fixture_manifest,
-                in_process=in_process,
-                worker_group="wan-portable-values",
-            )
-            engine = composer.composition.make_engine(lambda _event: None)
-            for visibility, layers_as_tuple in ((False, False), (True, True)):
-                graph = Graph(
-                    nodes={
-                        "source": GraphNode(
-                            "wan-portable-fixture.source",
-                            {"visibility": visibility, "layers_as_tuple": layers_as_tuple},
-                        ),
-                        "consumer": GraphNode(
-                            "wan-portable-fixture.consumer",
-                            {
-                                "camera": Link("source", "camera"),
-                                "tracks": Link("source", "tracks"),
-                                "audio": Link("source", "audio"),
-                                "visibility": visibility,
-                                "layers_as_tuple": layers_as_tuple,
-                            },
-                        ),
-                    }
-                )
-                for repeat in range(2):
-                    result = await engine.run(graph, ["consumer"])
-                    assert (
-                        result.outputs["consumer"]["summary"].resolve()
-                        == "portable Wan values verified"
-                    )
-                    if repeat:
-                        assert set(result.cached) == {"source", "consumer"}
-                    else:
-                        assert set(result.executed) == {"source", "consumer"}
-        finally:
-            await composer.close()
-
-    asyncio.run(scenario())

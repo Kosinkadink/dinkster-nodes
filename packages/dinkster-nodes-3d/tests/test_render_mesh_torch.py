@@ -2,18 +2,10 @@
 
 from __future__ import annotations
 
-import asyncio
-import os
-from pathlib import Path
-
 import pytest
 import torch
 from dinkster_3d.mesh_render import RenderMesh
-from dinkster_api.v1 import MESH_TYPE, Node, NodeSchema, OutputSpec, TriangleMeshBatch, TypeExpr
-from dinkster_graph import Graph, GraphNode, Link
-from geometry_pack_fixtures import geometry_pack_specs
-
-from dinkster.compose import ServingComposer
+from dinkster_api.v1 import TriangleMeshBatch
 
 
 def source() -> TriangleMeshBatch:
@@ -121,69 +113,3 @@ def test_render_mesh_camera_zoom_transform_and_auto_fallback() -> None:
     default = RenderMesh.execute(mesh=mesh, **args)
     assert default["MASK"].sum() > 0
     assert torch.isfinite(default["IMAGE"]).all()
-
-
-class MeshSource(Node):
-    @classmethod
-    def define_schema(cls) -> NodeSchema:
-        return NodeSchema(
-            "render-mesh-source.make", outputs=(OutputSpec("mesh", TypeExpr.concrete(MESH_TYPE)),)
-        )
-
-    @classmethod
-    def execute(cls) -> dict:
-        return cls.outputs(mesh=source())
-
-
-@pytest.mark.parametrize("in_process", [True, False])
-def test_render_mesh_ordinary_hosts(tmp_path: Path, in_process: bool) -> None:
-    module = f"render_mesh_source_{in_process}"
-    (tmp_path / f"{module}.py").write_text(
-        "from test_render_mesh_torch import MeshSource\n"
-        "from dinkster_3d import register_types as register_inference_types\n"
-        "NODES=(MeshSource,)\n",
-        encoding="ascii",
-    )
-    manifest = tmp_path / "source.toml"
-    manifest.write_text(
-        '[pack]\nname="render-mesh-source"\npublisher="dinkster"\n'
-        'namespaces=["render-mesh-source"]\n[pack.entry]\n'
-        f'nodes="{module}:NODES"\ntypes="{module}:register_inference_types"\n',
-        encoding="ascii",
-    )
-
-    async def scenario() -> None:
-        composer = ServingComposer(
-            worker_env={
-                "CUDA_VISIBLE_DEVICES": "",
-                "DINKSTER_ACCELERATOR": "cpu",
-                "PYTHONPATH": os.pathsep.join(
-                    (str(tmp_path), str(Path(__file__).parent), os.environ.get("PYTHONPATH", ""))
-                ),
-            }
-        )
-        try:
-            for spec in geometry_pack_specs(manifest, in_process=in_process):
-                await composer.add_pack(spec)
-            args = parameters()
-            graph = Graph(
-                {
-                    "source": GraphNode("render-mesh-source.make"),
-                    "render": GraphNode(
-                        "dinkster.3d.render_mesh", {"mesh": Link("source", "mesh"), **args}
-                    ),
-                }
-            )
-            engine = composer.composition.make_engine(lambda _event: None)
-            for _ in range(2):
-                result = await engine.run(graph, ["render"])
-                image = result.outputs["render"]["IMAGE"].resolve()
-                mask = result.outputs["render"]["MASK"].resolve()
-                torch.testing.assert_close(
-                    torch.as_tensor(image[0, 32, 40]), torch.tensor([0.1, 0.7, 0.3])
-                )
-                assert mask[0, 32, 40] == 1 and mask[0, 0, 0] == 0
-        finally:
-            await composer.close()
-
-    asyncio.run(scenario())

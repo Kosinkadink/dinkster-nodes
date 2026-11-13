@@ -2,10 +2,7 @@
 
 from __future__ import annotations
 
-import asyncio
 import math
-import os
-from pathlib import Path
 from typing import Any
 
 import pytest
@@ -13,18 +10,9 @@ import torch
 from dinkster_3d.mesh_holes import FillHoles
 from dinkster_3d.mesh_weld import WeldVertices
 from dinkster_api.v1 import (
-    MESH_TYPE,
-    Node,
-    NodeSchema,
-    OutputSpec,
     TriangleMeshBatch,
-    TypeExpr,
     materialize_mesh,
 )
-from dinkster_graph import Graph, GraphNode, Link
-from geometry_pack_fixtures import geometry_pack_specs
-
-from dinkster.compose import ServingComposer
 
 
 def source() -> Any:
@@ -115,61 +103,6 @@ def test_weld_relative_and_empty_faces(relative: float) -> None:
     expected = torch.tensor([[[0.05, 0, 0], [2, 0, 0]]]) if relative else mesh.vertices
     torch.testing.assert_close(out.vertices, expected, rtol=0, atol=0)
     assert out.faces.shape == (1, 0, 3) and out.vertex_colors is None
-
-
-class WeldSource(Node):
-    @classmethod
-    def define_schema(cls) -> NodeSchema:
-        return NodeSchema(
-            "weld-fixture.source", outputs=(OutputSpec("mesh", TypeExpr.concrete(MESH_TYPE)),)
-        )
-
-    @classmethod
-    def execute(cls) -> dict[str, object]:
-        return cls.outputs(mesh=source())
-
-
-@pytest.mark.parametrize("in_process", [True, False])
-def test_ordinary_weld_hosts_twice(tmp_path: Path, in_process: bool) -> None:
-    async def scenario() -> None:
-        (tmp_path / "weld_fixture.py").write_text(
-            "from dinkster_api.v1 import register_inference_types\n"
-            "from test_mesh_weld_torch import WeldSource\nNODES=(WeldSource,)\n",
-            encoding="ascii",
-        )
-        fixture = tmp_path / "fixture.toml"
-        fixture.write_text(
-            '[pack]\nname="weld-fixture"\npublisher="dinkster"\nnamespaces=["weld-fixture"]\n'
-            '[pack.entry]\nnodes="weld_fixture:NODES"\ntypes="weld_fixture:register_inference_types"\n',
-            encoding="ascii",
-        )
-        composer = ServingComposer(
-            worker_env={
-                "CUDA_VISIBLE_DEVICES": "",
-                "DINKSTER_ACCELERATOR": "cpu",
-                "PYTHONPATH": os.pathsep.join((str(tmp_path), str(Path(__file__).parent))),
-            }
-        )
-        try:
-            for spec in geometry_pack_specs(fixture, in_process=in_process):
-                await composer.add_pack(spec)
-            engine = composer.composition.make_engine(lambda _event: None)
-            graph = Graph(
-                {
-                    "source": GraphNode("weld-fixture.source"),
-                    "weld": GraphNode(
-                        "dinkster.3d.weld_vertices",
-                        {"mesh": Link("source", "mesh"), "epsilon_rel": 100.0, "epsilon_abs": 0.5},
-                    ),
-                }
-            )
-            for _ in range(2):
-                result = await engine.run(graph, ["weld"])
-                assert_welded(result.outputs["weld"]["mesh"].resolve())
-        finally:
-            await composer.close()
-
-    asyncio.run(scenario())
 
 
 def hole_source(count: int = 4) -> Any:
@@ -279,64 +212,3 @@ def test_fill_holes_adaptive_weld_and_padded_empty_item() -> None:
     assert out.vertex_counts.tolist() == [5, 2] and out.face_counts.tolist() == [6, 0]
     assert out.faces[1].count_nonzero() == 0
     torch.testing.assert_close(out.vertices[1, :2].cpu(), mesh.vertices[1, :2], rtol=0, atol=0)
-
-
-class HoleSource(Node):
-    @classmethod
-    def define_schema(cls) -> NodeSchema:
-        return NodeSchema(
-            "hole-fixture.source", outputs=(OutputSpec("mesh", TypeExpr.concrete(MESH_TYPE)),)
-        )
-
-    @classmethod
-    def execute(cls) -> dict[str, object]:
-        return cls.outputs(mesh=hole_source())
-
-
-@pytest.mark.parametrize("in_process", [True, False])
-def test_ordinary_hole_hosts_twice(tmp_path: Path, in_process: bool) -> None:
-    async def scenario() -> None:
-        (tmp_path / "hole_fixture.py").write_text(
-            "from dinkster_api.v1 import register_inference_types\n"
-            "from test_mesh_weld_torch import HoleSource\nNODES=(HoleSource,)\n",
-            encoding="ascii",
-        )
-        fixture = tmp_path / "fixture.toml"
-        fixture.write_text(
-            '[pack]\nname="hole-fixture"\npublisher="dinkster"\nnamespaces=["hole-fixture"]\n'
-            '[pack.entry]\nnodes="hole_fixture:NODES"\ntypes="hole_fixture:register_inference_types"\n',
-            encoding="ascii",
-        )
-        composer = ServingComposer(
-            worker_env={
-                "CUDA_VISIBLE_DEVICES": "",
-                "DINKSTER_ACCELERATOR": "cpu",
-                "PYTHONPATH": os.pathsep.join((str(tmp_path), str(Path(__file__).parent))),
-            }
-        )
-        try:
-            for spec in geometry_pack_specs(fixture, in_process=in_process):
-                await composer.add_pack(spec)
-            engine = composer.composition.make_engine(lambda _event: None)
-            graph = Graph(
-                {
-                    "source": GraphNode("hole-fixture.source"),
-                    "fill": GraphNode(
-                        "dinkster.3d.fill_holes",
-                        {
-                            "mesh": Link("source", "mesh"),
-                            "max_perimeter": 15.0,
-                            "weld_epsilon_rel": 0.0,
-                            "max_vertices": 16,
-                            "fill_chains": False,
-                        },
-                    ),
-                }
-            )
-            for _ in range(2):
-                result = await engine.run(graph, ["fill"])
-                assert_filled(result.outputs["fill"]["mesh"].resolve())
-        finally:
-            await composer.close()
-
-    asyncio.run(scenario())

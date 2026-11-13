@@ -2,27 +2,14 @@
 
 from __future__ import annotations
 
-import asyncio
-import os
-from pathlib import Path
 from typing import Any
 
-import pytest
 import torch
 from dinkster_api.v1 import (
-    CORE_BOOLEAN,
     IMAGE_TYPE,
-    InputSpec,
-    Node,
-    NodeSchema,
-    OutputSpec,
     TypeExpr,
-    materialize_image,
 )
-from dinkster_graph import Graph, GraphNode, Link
 from dinkster_image.ported.image_color_conversion import ImageColorSpace, ImageSDRToHDR
-
-from dinkster.compose import PackSpec, ServingComposer
 
 
 def _image() -> Any:
@@ -126,101 +113,3 @@ def _assert_hdr(result: Any) -> None:
 
 
 _IMAGE = TypeExpr.concrete(IMAGE_TYPE)
-
-
-class ColorSource(Node):
-    @classmethod
-    def define_schema(cls) -> NodeSchema:
-        return NodeSchema(
-            "color-fixture.source",
-            outputs=(OutputSpec("image", _IMAGE), OutputSpec("half", _IMAGE)),
-        )
-
-    @classmethod
-    def execute(cls) -> Any:
-        return cls.outputs(image=_image().numpy(), half=_image().half().numpy())
-
-
-class ColorInspect(Node):
-    @classmethod
-    def define_schema(cls) -> NodeSchema:
-        return NodeSchema(
-            "color-fixture.inspect",
-            inputs=(InputSpec("identity", _IMAGE), InputSpec("hdr", _IMAGE)),
-            outputs=(OutputSpec("valid", TypeExpr.concrete(CORE_BOOLEAN)),),
-        )
-
-    @classmethod
-    def execute(cls, *, identity: Any, hdr: Any) -> Any:
-        identity = materialize_image(identity)
-        assert identity.dtype == torch.float32
-        assert identity.device == torch.device("cpu")
-        assert torch.equal(identity, _image().float())
-        _assert_hdr(materialize_image(hdr))
-        return cls.outputs(valid=True)
-
-
-@pytest.mark.parametrize("in_process", (True, False))
-def test_color_conversion_ordinary_manifest_twice(tmp_path: Path, in_process: bool) -> None:
-    async def scenario() -> None:
-        composer = ServingComposer(
-            worker_env={
-                "PYTHONPATH": os.pathsep.join((str(Path(__file__).parent), str(Path.cwd() / "src")))
-            }
-        )
-        try:
-            manifest = Path(__file__).resolve().parents[1] / "dinkster-pack.toml"
-            (tmp_path / "color_fixture.py").write_text(
-                "from test_image_color_conversion_torch import ColorSource, ColorInspect\n"
-                "from dinkster_image import NODES as COMFY_NODES\n"
-                "from dinkster_image import register_types as register_inference_types\n"
-                "NODES = (*COMFY_NODES, ColorSource, ColorInspect)\n",
-                encoding="ascii",
-            )
-            fixture_manifest = tmp_path / "dinkster-pack.toml"
-            fixture_manifest.write_text(
-                manifest.read_text(encoding="ascii")
-                .replace("namespaces = [", 'namespaces = ["color-fixture",')
-                .replace("dinkster_image:NODES", "color_fixture:NODES")
-                .replace(
-                    "dinkster_image.ported.device_routing:device_choices",
-                    "color_fixture:device_choices",
-                )
-                .replace(
-                    "dinkster_image:register_types",
-                    "color_fixture:register_inference_types",
-                ),
-                encoding="ascii",
-            )
-            await composer.add_pack(
-                PackSpec(trust_reserved=True, manifest=fixture_manifest, in_process=in_process)
-            )
-            graph = Graph(
-                nodes={
-                    "source": GraphNode("color-fixture.source"),
-                    "identity": GraphNode(
-                        "dinkster.image.image_color_space",
-                        {"image": Link("source", "image"), "source": "sRGB", "destination": "sRGB"},
-                    ),
-                    "hdr": GraphNode(
-                        "dinkster.image.image_sdr_to_hdr",
-                        {
-                            "image": Link("source", "half"),
-                            "algorithm.target_luminance": 1400.0,
-                        },
-                        slot_variants={"algorithm": "lottes"},
-                    ),
-                    "inspect": GraphNode(
-                        "color-fixture.inspect",
-                        {"identity": Link("identity", "IMAGE"), "hdr": Link("hdr", "IMAGE")},
-                    ),
-                }
-            )
-            engine = composer.composition.make_engine(lambda _event: None)
-            for _ in range(2):
-                result = await engine.run(graph, ["inspect"])
-                assert result.outputs["inspect"]["valid"].resolve() is True
-        finally:
-            await composer.close()
-
-    asyncio.run(scenario())

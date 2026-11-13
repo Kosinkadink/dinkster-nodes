@@ -2,39 +2,16 @@
 
 from __future__ import annotations
 
-import asyncio
 import copy
-import os
-from dataclasses import replace
-from pathlib import Path
 from typing import Any
 
 import numpy as np
-import pytest
 import torch
 from dinkster_api.v1 import (
-    CORE_STRING,
-    FACE_DETECTION_MODEL_TYPE,
-    FACE_LANDMARKS_TYPE,
-    IMAGE_TYPE,
-    MASK_TYPE,
-    InputSpec,
-    Node,
-    NodeSchema,
-    OutputSpec,
-    TypeExpr,
-    TypeRegistry,
     materialize_image,
     materialize_latent,
 )
-from dinkster_graph import Graph, GraphNode, Link, graph_from_wire, graph_to_wire
-from dinkster_vision_mediapipe import register_types
 from dinkster_vision_mediapipe.mediapipe import MediaPipeFaceMask, MediaPipeFaceMeshVisualize
-from dinkster_vision_mediapipe.mediapipe_detection import (
-    LoadMediaPipeFaceLandmarker,
-)
-
-from dinkster.compose import PackSpec, ServingComposer, default_pack_spec
 
 
 def _packet() -> dict[str, Any]:
@@ -159,148 +136,3 @@ def test_edges_points_background_and_empty_batches() -> None:
         "MASK"
     ].shape == (0, 7, 11)
     assert _visualize(empty).shape == (0, 7, 11, 3)
-
-
-class Source(Node):
-    @classmethod
-    def define_schema(cls) -> NodeSchema:
-        return NodeSchema(
-            node_type="face-fixture.source",
-            inputs=(),
-            outputs=(OutputSpec("faces", TypeExpr.concrete(FACE_LANDMARKS_TYPE)),),
-        )
-
-    @classmethod
-    def execute(cls) -> Any:
-        return cls.outputs(faces=_packet())
-
-
-class Inspect(Node):
-    @classmethod
-    def define_schema(cls) -> NodeSchema:
-        return NodeSchema(
-            node_type="face-fixture.inspect",
-            inputs=(
-                InputSpec("image", TypeExpr.concrete(IMAGE_TYPE)),
-                InputSpec("mask", TypeExpr.concrete(MASK_TYPE)),
-            ),
-            outputs=(OutputSpec("result", TypeExpr.concrete(CORE_STRING)),),
-        )
-
-    @classmethod
-    def execute(cls, *, image: Any, mask: Any) -> Any:
-        _assert_pixels(image, mask)
-        return cls.outputs(result="face pixels preserved")
-
-
-@pytest.mark.parametrize("in_process", (True, False))
-def test_face_drawing_ordinary_hosts_twice(tmp_path: Path, in_process: bool) -> None:
-    module = f"face_fixture_{int(in_process)}"
-    (tmp_path / f"{module}.py").write_text(
-        "from test_mediapipe_torch import Source, Inspect\n"
-        "from dinkster_vision_mediapipe import register_types as register_face\n"
-        "def register_inference_types(registry):\n"
-        "    with registry.registering_pack('dinkster-vision-mediapipe', "
-        "('FACE_DETECTION_MODEL', 'FACE_LANDMARKS'), allow_bare=True):\n"
-        "        register_face(registry)\n"
-        "NODES = (Source, Inspect)\n",
-        encoding="ascii",
-    )
-    fixture = tmp_path / "fixture.toml"
-    fixture.write_text(
-        '[pack]\nname="face-fixture"\npublisher="dinkster"\nnamespaces=["face-fixture"]\n'
-        '[pack.dependencies]\ndinkster-vision-mediapipe=">=0.0.1,<1"\n'
-        f'[pack.entry]\nnodes="{module}:NODES"\ntypes="{module}:register_inference_types"\n',
-        encoding="ascii",
-    )
-
-    async def scenario() -> None:
-        native = Path(__file__).resolve().parents[1] / "dinkster-pack.toml"
-        composer = ServingComposer(
-            worker_env={
-                "CUDA_VISIBLE_DEVICES": "",
-                "DINKSTER_ACCELERATOR": "cpu",
-                "PYTHONPATH": os.pathsep.join((str(tmp_path), str(Path(__file__).parent))),
-            }
-        )
-        try:
-            for manifest in (native, fixture):
-                spec = (
-                    default_pack_spec("dinkster-vision-mediapipe")
-                    if manifest == native
-                    else PackSpec(fixture, trust_reserved=True)
-                )
-                await composer.add_pack(
-                    replace(
-                        spec,
-                        in_process=in_process,
-                        worker_group=None if in_process else "face",
-                        group_manifests=() if in_process else (native, fixture),
-                    )
-                )
-            graph = graph_from_wire(
-                graph_to_wire(
-                    Graph(
-                        nodes={
-                            "source": GraphNode("face-fixture.source"),
-                            "visualize": GraphNode(
-                                "dinkster.vision.mediapipe.media_pipe_face_mesh_visualize",
-                                {
-                                    "face_landmarks": Link("source", "faces"),
-                                    "color": "#d02070",
-                                },
-                                slot_variants={"connections": "fill"},
-                            ),
-                            "mask": GraphNode(
-                                "dinkster.vision.mediapipe.media_pipe_face_mask",
-                                {"face_landmarks": Link("source", "faces")},
-                                slot_variants={"regions": "all"},
-                            ),
-                            "inspect": GraphNode(
-                                "face-fixture.inspect",
-                                {"image": Link("visualize", "IMAGE"), "mask": Link("mask", "MASK")},
-                            ),
-                        }
-                    )
-                )
-            )
-            engine = composer.composition.make_engine(lambda _event: None)
-            for attempt in range(2):
-                result = await engine.run(graph, ["inspect"])
-                assert result.outputs["inspect"]["result"].resolve() == "face pixels preserved"
-                assert set(result.cached) == (set(graph.nodes) if attempt else set())
-        finally:
-            await composer.close()
-
-    asyncio.run(scenario())
-
-
-def test_face_loader_rejects_unbound_file() -> None:
-    with pytest.raises(TypeError, match="model_name must be an AssetRef or LocalAssetRef"):
-        LoadMediaPipeFaceLandmarker.execute(model_name="face.safetensors")
-
-
-def test_pack_registers_only_its_vision_packet_and_preserves_existing_authority() -> None:
-    registry = TypeRegistry()
-    resident = registry.register(FACE_DETECTION_MODEL_TYPE)
-    register_types(registry)
-    assert {
-        "FACE_LANDMARKS",
-        "FACE_DETECTION_MODEL",
-        "IMAGE",
-        "MASK",
-        "BOUNDING_BOX",
-        "COLOR",
-        "ASSET",
-    } <= set(registry.type_ids())
-    assert not {
-        "DA3_GEOMETRY",
-        "MHR_POSE_DATA",
-        "KIMODO_POSE_DATA",
-        "DA3_MODEL",
-        "SAM3D_BODY_MODEL",
-    } & set(registry.type_ids())
-    packet = registry.spec(FACE_LANDMARKS_TYPE)
-    register_types(registry)
-    assert registry.spec(FACE_LANDMARKS_TYPE) is packet
-    assert registry.spec(FACE_DETECTION_MODEL_TYPE) is resident

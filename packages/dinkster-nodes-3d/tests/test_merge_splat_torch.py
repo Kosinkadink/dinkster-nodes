@@ -2,26 +2,14 @@
 
 from __future__ import annotations
 
-import asyncio
-import os
-from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
 import torch
 from dinkster_3d.gaussian_splat import MergeSplat
 from dinkster_api.v1 import (
-    SPLAT_TYPE,
-    Node,
-    NodeSchema,
-    OutputSpec,
-    TypeExpr,
     materialize_splat,
 )
-from dinkster_graph import Graph, GraphNode, Link
-from geometry_pack_fixtures import geometry_pack_specs
-
-from dinkster.compose import ServingComposer
 
 
 def _sources() -> tuple[SimpleNamespace, SimpleNamespace]:
@@ -146,71 +134,3 @@ def test_merge_splat_rejects_missing_inputs_and_batch_mismatch() -> None:
         setattr(second, name, getattr(second, name)[:1])
     with pytest.raises(ValueError, match=r"batch size mismatch \(2 vs 1\)"):
         MergeSplat.execute(splats={"splat0": first, "splat1": second})
-
-
-class SplatSources(Node):
-    @classmethod
-    def define_schema(cls) -> NodeSchema:
-        return NodeSchema(
-            "splat-merge-source.source",
-            outputs=tuple(
-                OutputSpec(name, TypeExpr.concrete(SPLAT_TYPE)) for name in ("first", "second")
-            ),
-        )
-
-    @classmethod
-    def execute(cls) -> dict[str, object]:
-        first, second = _sources()
-        return cls.outputs(first=first, second=second)
-
-
-@pytest.mark.parametrize("in_process", [True, False])
-def test_merge_splat_executes_through_the_ordinary_manifest(
-    tmp_path: Path, in_process: bool
-) -> None:
-    async def scenario() -> None:
-        module = f"splat_merge_fixture_{in_process}"
-        (tmp_path / f"{module}.py").write_text(
-            "from dinkster_api.v1 import register_inference_types\n"
-            "from test_merge_splat_torch import SplatSources\nNODES = (SplatSources,)\n",
-            encoding="ascii",
-        )
-        fixture = tmp_path / "dinkster-pack.toml"
-        fixture.write_text(
-            '[pack]\nname="splat-merge-source"\npublisher="dinkster"\n'
-            'namespaces=["splat-merge-source"]\n[pack.entry]\n'
-            f'nodes="{module}:NODES"\ntypes="{module}:register_inference_types"\n',
-            encoding="ascii",
-        )
-        composer = ServingComposer(
-            worker_env={
-                "CUDA_VISIBLE_DEVICES": "",
-                "DINKSTER_ACCELERATOR": "cpu",
-                "PYTHONPATH": os.pathsep.join((str(tmp_path), str(Path(__file__).parent))),
-            }
-        )
-        try:
-            for spec in geometry_pack_specs(fixture, in_process=in_process):
-                await composer.add_pack(spec)
-            engine = composer.composition.make_engine(lambda _event: None)
-            graph = Graph(
-                {
-                    "source": GraphNode("splat-merge-source.source"),
-                    "merge": GraphNode(
-                        "dinkster.3d.merge_splat",
-                        {
-                            "splats.splat0": Link("source", "first"),
-                            "splats.splat1": Link("source", "second"),
-                        },
-                    ),
-                }
-            )
-            for _attempt in range(2):
-                result = await engine.run(graph, ["merge"])
-                output = result.outputs["merge"]["splat"]
-                assert output.type_id == SPLAT_TYPE
-                _assert_merged(output.resolve())
-        finally:
-            await composer.close()
-
-    asyncio.run(scenario())

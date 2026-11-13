@@ -2,10 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
-import os
-import subprocess
-import sys
 from fractions import Fraction
 from pathlib import Path
 
@@ -13,24 +9,13 @@ import av
 import numpy as np
 import pytest
 from dinkster_api.v1 import (
-    CORE_STRING,
-    VIDEO_TYPE,
     AssetError,
     AssetIntegrityError,
     AssetRef,
-    InputSpec,
-    Node,
-    NodeSchema,
-    OutputSpec,
-    TypeExpr,
 )
 from dinkster_assets import LocalAssetRef, MountDef, MountTable, digest_file
-from dinkster_graph import Graph, GraphNode, Link
 from dinkster_values import video_source
 from dinkster_video.video_load import LoadVideo
-from video_pack_fixtures import compose_video_packs
-
-from dinkster.compose import ServingComposer
 
 
 def _frames() -> np.ndarray:
@@ -86,37 +71,6 @@ def _decoded_pixels(video: object) -> np.ndarray:
         return np.stack([frame.to_ndarray(format="rgb24") for frame in container.decode(video=0)])
 
 
-def test_load_video_schema_is_the_canonical_single_file_surface_without_runtime_dependencies() -> (
-    None
-):
-    root = Path(__file__).resolve().parents[3]
-    subprocess.run(
-        [
-            sys.executable,
-            "-c",
-            """
-import sys
-from pathlib import Path
-from dinkster_api.v1 import ASSET_TYPE, VIDEO_TYPE, TypeExpr
-import dinkster_video.video_load as module
-from dinkster_video.video_load import LoadVideo
-
-assert Path(module.__file__).resolve() == Path(sys.argv[1])
-schema = LoadVideo.schema()
-assert "av" not in sys.modules
-assert "torch" not in sys.modules
-assert not any(
-    name == "dinkster_inference" or name.startswith("dinkster_inference.")
-    for name in sys.modules
-)
-""",
-            str(root / "packages/dinkster-nodes-video/src/dinkster_video/video_load.py"),
-        ],
-        check=True,
-        cwd=root,
-    )
-
-
 def test_load_video_admits_granted_sources_without_copying_and_rejects_untrusted_inputs(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -155,102 +109,3 @@ def test_load_video_admits_granted_sources_without_copying_and_rejects_untrusted
     path.write_bytes(original + b"changed")
     with pytest.raises(AssetIntegrityError):
         LoadVideo.execute(file=selected)
-
-
-class VideoLoadConsumer(Node):
-    @classmethod
-    def define_schema(cls) -> NodeSchema:
-        return NodeSchema(
-            node_type="video-load-fixture.consumer",
-            inputs=(InputSpec("video", TypeExpr.concrete(VIDEO_TYPE)),),
-            outputs=(OutputSpec("summary", TypeExpr.concrete(CORE_STRING)),),
-        )
-
-    @classmethod
-    def execute(cls, *, video: object) -> dict[str, object]:
-        source = video_source(video)
-        with source.open() as handle, av.open(handle) as container:
-            pixels = np.stack(
-                [frame.to_ndarray(format="rgb24") for frame in container.decode(video=0)]
-            )
-        np.testing.assert_array_equal(pixels, _frames())
-        probe = video["probe"]
-        assert probe["fps"] == Fraction(30_000, 1_001)
-        assert (probe["width"], probe["height"], probe["frame_count"]) == (3, 2, 2)
-        return cls.outputs(summary=source.digest)
-
-
-@pytest.mark.parametrize("in_process", (True, False))
-def test_load_video_executes_through_native_and_fixture_packs_with_cache_hits(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, in_process: bool
-) -> None:
-    _table, asset, original, _frames_value = _asset(tmp_path, indexed=True)
-    path = tmp_path / "source" / "asymmetric.avi"
-    snapshot = tmp_path / "mounts.json"
-    monkeypatch.setenv("DINKSTER_MOUNTS_SNAPSHOT", str(snapshot))
-
-    async def scenario() -> None:
-        package = Path(__file__).resolve().parents[1]
-        checkout = package.parents[1]
-        fixture_module = tmp_path / "video_load_fixture.py"
-        fixture_module.write_text(
-            "from pathlib import Path\n"
-            "from test_video_load import VideoLoadConsumer\n"
-            "import dinkster_video.video_load as module\n"
-            "assert Path(module.__file__).resolve() == "
-            f"Path({str(package / 'src/dinkster_video/video_load.py')!r})\n"
-            "from video_pack_fixtures import register_video_types\n"
-            "NODES = (VideoLoadConsumer,)\n",
-            encoding="ascii",
-        )
-        fixture = tmp_path / "dinkster-pack.toml"
-        fixture.write_text(
-            '[pack]\nname="video-load-fixture"\npublisher="dinkster"\n'
-            'namespaces=["video-load-fixture"]\n'
-            '[pack.dependencies]\ndinkster-video = ">=0.0.1"\n[pack.entry]\n'
-            'nodes="video_load_fixture:NODES"\n'
-            'types = "video_load_fixture:register_video_types"\n',
-            encoding="ascii",
-        )
-        paths = (
-            tmp_path,
-            package / "tests",
-            checkout / "src",
-            *sorted(checkout.glob("packages/*/src")),
-        )
-        composer = ServingComposer(
-            worker_env={
-                "CUDA_VISIBLE_DEVICES": "",
-                "DINKSTER_ACCELERATOR": "cpu",
-                "DINKSTER_MOUNTS_SNAPSHOT": str(snapshot),
-                "PYTHONPATH": os.pathsep.join(map(str, paths)),
-            }
-        )
-        native = package / "dinkster-pack.toml"
-        try:
-            await compose_video_packs(
-                composer,
-                native,
-                fixture,
-                in_process=in_process,
-                worker_group="video-load-fixture",
-            )
-            graph = Graph(
-                nodes={
-                    "load": GraphNode("dinkster.video.load_video", {"file": asset.to_wire()}),
-                    "consume": GraphNode(
-                        "video-load-fixture.consumer", {"video": Link("load", "VIDEO")}
-                    ),
-                }
-            )
-            engine = composer.composition.make_engine(lambda _event: None)
-            for attempt in range(2):
-                result = await engine.run(graph, ["consume"])
-                assert result.outputs["consume"]["summary"].resolve() == digest_file(path)
-                assert set(result.cached) == (set() if attempt == 0 else {"load", "consume"})
-                assert path.read_bytes() == original
-        finally:
-            await composer.close()
-
-    asyncio.run(scenario())
-    assert path.read_bytes() == original

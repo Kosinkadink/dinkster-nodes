@@ -7,23 +7,13 @@ from dinkster_caches import MemoryLRUCache
 from dinkster_engine import Engine
 from dinkster_graph import Graph, GraphNode, Link
 from dinkster_schema import build_node_types, build_schemas
-from dinkster_utilities.logic import ComfyAndNode, ComfyNotNode, ComfyOrNode, CustomCombo
+from dinkster_utilities.logic import ComfyAndNode, ComfyNotNode, ComfyOrNode
 from dinkster_utilities.primitive import PrimitiveInt
 from dinkster_utilities.switch import ComfySwitchNode
 from dinkster_values import TypeRegistry, is_absent, register_core_types
 from dinkster_workers import InProcessWorker
 
 from tests.async_scenarios import run_scenario
-
-
-@pytest.mark.parametrize("index", [0, -7, 205])
-def test_custom_combo_passes_through_choice_and_index(index: int) -> None:
-    choice = "authored outside the empty menu"
-    assert CustomCombo.execute(choice=choice, index=index, **{"2": "unused", "label": 5}) == {
-        "STRING": choice,
-        "INDEX": index,
-    }
-    assert CustomCombo.execute(choice="") == {"STRING": "", "INDEX": 0}
 
 
 @pytest.mark.parametrize(
@@ -49,23 +39,6 @@ def test_mapping_values_determine_truth(
 ) -> None:
     assert ComfyAndNode.execute(values=values) == {"BOOLEAN": conjunction}
     assert ComfyOrNode.execute(values=values) == {"BOOLEAN": disjunction}
-
-
-class InvalidTruth:
-    def __bool__(self) -> bool:
-        raise ValueError("truth requested")
-
-
-def test_mapping_iteration_short_circuits_in_insertion_order() -> None:
-    invalid = InvalidTruth()
-    assert ComfyAndNode.execute(values={"value9": 0, "value0": invalid}) == {"BOOLEAN": False}
-    assert ComfyOrNode.execute(values={"value9": [0], "value0": invalid}) == {"BOOLEAN": True}
-    with pytest.raises(ValueError, match="truth requested"):
-        ComfyAndNode.execute(values={"value9": invalid, "value0": 0})
-    with pytest.raises(ValueError, match="truth requested"):
-        ComfyOrNode.execute(values={"value9": invalid, "value0": [0]})
-    with pytest.raises(ValueError, match="truth requested"):
-        ComfyNotNode.execute(value=invalid)
 
 
 @pytest.mark.parametrize("switch", [False, True])

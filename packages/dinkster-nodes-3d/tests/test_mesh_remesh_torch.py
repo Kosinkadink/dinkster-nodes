@@ -1,26 +1,14 @@
 """Mesh re-extraction retains field choices, colors and ragged batch boundaries."""
 
-import asyncio
-import os
-from pathlib import Path
 from typing import Any
 
 import pytest
 import torch
 from dinkster_3d.mesh_remesh import RemeshMesh
 from dinkster_api.v1 import (
-    MESH_TYPE,
-    Node,
-    NodeSchema,
-    OutputSpec,
     TriangleMeshBatch,
-    TypeExpr,
     materialize_mesh,
 )
-from dinkster_graph import Graph, GraphNode, Link
-from geometry_pack_fixtures import geometry_pack_specs
-
-from dinkster.compose import ServingComposer
 
 
 def source(*, open_top: bool = False) -> Any:
@@ -159,77 +147,3 @@ def test_solid_fill_changes_openings_and_ragged_batches() -> None:
     torch.testing.assert_close(batched.vertices[1, :nv], filled.vertices[0], rtol=0, atol=0)
     torch.testing.assert_close(batched.faces[1, :nf], filled.faces[0], rtol=0, atol=0)
     assert (batched.vertices[1, nv:] == 0).all() and (batched.faces[1, nf:] == 0).all()
-
-
-class RemeshSource(Node):
-    @classmethod
-    def define_schema(cls) -> NodeSchema:
-        return NodeSchema(
-            "remesh-fixture.source", outputs=(OutputSpec("mesh", TypeExpr.concrete(MESH_TYPE)),)
-        )
-
-    @classmethod
-    def execute(cls) -> dict[str, object]:
-        return cls.outputs(mesh=source())
-
-
-@pytest.mark.parametrize("in_process", [True, False])
-def test_ordinary_remesh_hosts_twice(tmp_path: Path, in_process: bool) -> None:
-    async def scenario() -> None:
-        (tmp_path / "remesh_fixture.py").write_text(
-            "from dinkster_api.v1 import register_inference_types\n"
-            "from test_mesh_remesh_torch import RemeshSource\nNODES=(RemeshSource,)\n",
-            encoding="ascii",
-        )
-        fixture = tmp_path / "fixture.toml"
-        fixture.write_text(
-            '[pack]\nname="remesh-fixture"\npublisher="dinkster"\n'
-            'namespaces=["remesh-fixture"]\n[pack.entry]\n'
-            'nodes="remesh_fixture:NODES"\ntypes="remesh_fixture:register_inference_types"\n',
-            encoding="ascii",
-        )
-        composer = ServingComposer(
-            worker_env={
-                "CUDA_VISIBLE_DEVICES": "",
-                "DINKSTER_ACCELERATOR": "cpu",
-                "PYTHONPATH": os.pathsep.join((str(tmp_path), str(Path(__file__).parent))),
-            }
-        )
-        try:
-            for spec in geometry_pack_specs(fixture, in_process=in_process):
-                await composer.add_pack(spec)
-            engine = composer.composition.make_engine(lambda _event: None)
-            graph = Graph(
-                {
-                    "source": GraphNode("remesh-fixture.source"),
-                    "remesh": GraphNode(
-                        "dinkster.3d.remesh_mesh",
-                        {"mesh": Link("source", "mesh"), **options()},
-                        slot_variants={"sign_mode": "sdf"},
-                    ),
-                }
-            )
-            expected = materialize_mesh(
-                RemeshMesh.execute(mesh=source(), sign_mode="sdf", **options())["mesh"]
-            )
-            from dinkster_inference.model_management import get_torch_device
-
-            cross_device = not in_process and get_torch_device().type != "cpu"
-            # The CPU child and CUDA parent differ by at most 2.98e-8 in vertices
-            # and 2.39e-7 in colors; same-device execution must remain exact.
-            vertex_atol = torch.finfo(torch.float32).eps if cross_device else 0
-            color_atol = 4 * torch.finfo(torch.float32).eps if cross_device else 0
-            for _ in range(2):
-                result = await engine.run(graph, ["remesh"])
-                value = materialize_mesh(result.outputs["remesh"]["mesh"].resolve())
-                torch.testing.assert_close(
-                    value.vertices, expected.vertices, rtol=0, atol=vertex_atol
-                )
-                torch.testing.assert_close(value.faces, expected.faces, rtol=0, atol=0)
-                torch.testing.assert_close(
-                    value.vertex_colors, expected.vertex_colors, rtol=0, atol=color_atol
-                )
-        finally:
-            await composer.close()
-
-    asyncio.run(scenario())

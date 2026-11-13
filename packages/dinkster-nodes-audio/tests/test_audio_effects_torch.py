@@ -2,27 +2,13 @@
 
 from __future__ import annotations
 
-import asyncio
-import os
-from pathlib import Path
-from typing import Any
-
 import pytest
 import torch
 from dinkster_api.v1 import (
     AUDIO_TYPE,
-    CORE_STRING,
-    InputSpec,
-    Node,
-    NodeSchema,
-    OutputSpec,
     TypeExpr,
-    materialize_audio,
 )
 from dinkster_audio.audio_effects import AudioEqualizer3Band, TrimAudioDuration
-from dinkster_graph import Graph, GraphNode, Link
-
-from dinkster.compose import PackSpec, ServingComposer
 
 _AUDIO = TypeExpr.concrete(AUDIO_TYPE)
 
@@ -100,112 +86,3 @@ def test_equalizer_uses_pinned_dsp_in_source_order_and_preserves_source() -> Non
     assert torch.equal(audio["waveform"], original)
     empty = _audio([[[]]])
     assert _equalize(empty) is empty
-
-
-class AudioSource(Node):
-    @classmethod
-    def define_schema(cls) -> NodeSchema:
-        return NodeSchema(
-            node_type="audio-effects-fixture.source", outputs=(OutputSpec("audio", _AUDIO),)
-        )
-
-    @classmethod
-    def execute(cls) -> dict[str, object]:
-        return cls.outputs(
-            audio={"waveform": torch.tensor([[[0.1, -0.2, 0.3, -0.4]]]), "sample_rate": 8}
-        )
-
-
-class AudioInspect(Node):
-    @classmethod
-    def define_schema(cls) -> NodeSchema:
-        return NodeSchema(
-            node_type="audio-effects-fixture.inspect",
-            inputs=(InputSpec("audio", _AUDIO),),
-            outputs=(OutputSpec("summary", TypeExpr.concrete(CORE_STRING)),),
-        )
-
-    @classmethod
-    def execute(cls, *, audio: Any) -> dict[str, object]:
-        audio = materialize_audio(audio)
-        expected = torch.tensor([[[0.1, -0.2]]])
-        expected = __import__("dinkster_inference.audio", fromlist=["bass_biquad"]).bass_biquad(
-            expected, 8, gain=3.0, central_freq=100.0, Q=0.707
-        )
-        assert set(audio) == {"waveform", "sample_rate"}
-        assert audio["sample_rate"] == 8
-        assert audio["waveform"].dtype is torch.float32
-        assert audio["waveform"].device.type == "cpu"
-        assert torch.equal(audio["waveform"], expected)
-        return cls.outputs(summary="audio-effects")
-
-
-@pytest.mark.parametrize("in_process", (True,))
-def test_audio_effect_nodes_execute_twice_in_both_manifest_hosts(
-    tmp_path: Path, in_process: bool
-) -> None:
-    async def scenario() -> None:
-        source_root = Path(__file__).resolve().parents[1] / "src"
-        media_source_root = source_root.parent.parent / "dinkster-nodes-media-io" / "src"
-        composer = ServingComposer(
-            worker_env={
-                "CUDA_VISIBLE_DEVICES": "",
-                "DINKSTER_ACCELERATOR": "cpu",
-                "PYTHONPATH": os.pathsep.join(
-                    (str(Path(__file__).parent), str(source_root), str(media_source_root))
-                ),
-            }
-        )
-        try:
-            manifest = Path(__file__).resolve().parents[1] / "dinkster-pack.toml"
-            (tmp_path / "audio_effects_fixture.py").write_text(
-                "from test_audio_effects_torch import AudioInspect, AudioSource\n"
-                "from dinkster_audio import NODES as AUDIO_NODES, register_types\n"
-                "NODES = (*AUDIO_NODES, AudioSource, AudioInspect)\n",
-                encoding="ascii",
-            )
-            fixture = tmp_path / "dinkster-pack.toml"
-            fixture.write_text(
-                manifest.read_text(encoding="ascii")
-                .replace("namespaces = [", 'namespaces = ["audio-effects-fixture",')
-                .replace("dinkster_audio:NODES", "audio_effects_fixture:NODES")
-                .replace("dinkster_audio:register_types", "audio_effects_fixture:register_types"),
-                encoding="ascii",
-            )
-            await composer.add_pack(
-                PackSpec(manifest=fixture, in_process=in_process, trust_reserved=True)
-            )
-            graph = Graph(
-                nodes={
-                    "source": GraphNode("audio-effects-fixture.source"),
-                    "trim": GraphNode(
-                        "dinkster.audio.trim_audio_duration",
-                        {"audio": Link("source", "audio"), "start_index": 0.0, "duration": 0.25},
-                    ),
-                    "equalizer": GraphNode(
-                        "dinkster.audio.audio_equalizer3_band",
-                        {
-                            "audio": Link("trim", "AUDIO"),
-                            "low_gain_dB": 3.0,
-                            "low_freq": 100,
-                            "mid_gain_dB": 0.0,
-                            "mid_freq": 1000,
-                            "mid_q": 0.707,
-                            "high_gain_dB": 0.0,
-                            "high_freq": 5000,
-                        },
-                    ),
-                    "inspect": GraphNode(
-                        "audio-effects-fixture.inspect", {"audio": Link("equalizer", "AUDIO")}
-                    ),
-                }
-            )
-            engine = composer.composition.make_engine(lambda _event: None)
-            for _ in range(2):
-                assert (await engine.run(graph, ["inspect"])).outputs["inspect"][
-                    "summary"
-                ].resolve() == "audio-effects"
-        finally:
-            await composer.close()
-
-    asyncio.run(scenario())

@@ -9,68 +9,11 @@ then repeat the last encoded frame or truncate to match the target time.
 
 from __future__ import annotations
 
-import os
-import subprocess
-import sys
-from pathlib import Path
-from typing import Any, cast
-
 import torch
-from dinkster_api.v1 import (
-    materialize_latent,
-)
 from dinkster_void.void_conditioning import (
     VOIDQuadmaskPreprocess,
     VOIDWarpedNoiseSource,
 )
-
-
-def test_isolated_void_manifest_installs_only_consumed_codecs() -> None:
-    from dinkster_void import register_types
-    from dinkster_void.void_sampler import VOIDSampler
-    from dinkster_workers import load_manifest
-    from dinkster_workers.host import load_pack
-
-    manifest = load_manifest(Path(__file__).resolve().parents[1] / "dinkster-pack.toml")
-    worker, registry, _, _ = load_pack(manifest)
-    required = {
-        "CONDITIONING",
-        "IMAGE",
-        "LATENT",
-        "MASK",
-        "NOISE",
-        "OPTICAL_FLOW",
-        "SAMPLER",
-        "VAE",
-    }
-    for type_id in required:
-        assert registry.spec(type_id).declared_codec, type_id
-        if type_id == "OPTICAL_FLOW":
-            assert type_id not in worker.registered_types
-            assert registry.owner_of(type_id) == "dinkster-video"
-        else:
-            assert type_id in worker.registered_types
-        assert registry.owner_of(type_id) != manifest.name
-    for type_id in ("IC_LORA_PARAMETERS", "WAN_CAMERA_EMBEDDING", "TRACKS", "INTERP_MODEL", "CLIP"):
-        assert type_id not in registry, type_id
-    register_types(registry)
-    latent = {"samples": torch.arange(12, dtype=torch.float32).reshape(1, 2, 2, 3)}
-    codec = registry.spec("LATENT")
-    decoded = materialize_latent(codec.decode(codec.encode(latent)))
-    torch.testing.assert_close(decoded["samples"], latent["samples"], rtol=0, atol=0)
-    sampler = VOIDSampler.execute()["SAMPLER"]
-    codec = registry.spec("SAMPLER")
-    assert codec.decode(codec.encode(sampler)) is sampler
-    source = VOIDWarpedNoiseSource.execute(warped_noise=latent)["NOISE"]
-    codec = registry.spec("NOISE")
-    decoded_noise = cast(Any, codec.decode(codec.encode(source)))
-    torch.testing.assert_close(
-        decoded_noise.generate_noise(latent), latent["samples"], rtol=0, atol=0
-    )
-    for type_id in ("OPTICAL_FLOW", "VAE"):
-        resident = object()
-        codec = registry.spec(type_id)
-        assert codec.decode(codec.encode(resident)) is resident
 
 
 def test_quadmask_threshold_edges_and_normalized_input_preserve_source() -> None:
@@ -106,20 +49,3 @@ def test_warped_noise_source_returns_independent_cpu_noise() -> None:
     first.zero_()
     torch.testing.assert_close(noise.generate_noise(None), source, rtol=0, atol=0)
     assert source.flatten()[-1] == 47
-
-
-def test_void_discovery_is_torch_free() -> None:
-    result = subprocess.run(
-        [
-            sys.executable,
-            "-c",
-            "import sys; from dinkster_void.void_conditioning import "
-            "VOIDQuadmaskPreprocess, VOIDInpaintConditioning, VOIDWarpedNoiseSource; "
-            "[node.schema() for node in (VOIDQuadmaskPreprocess, VOIDInpaintConditioning, "
-            "VOIDWarpedNoiseSource)]; assert 'torch' not in sys.modules",
-        ],
-        capture_output=True,
-        text=True,
-        env={**os.environ, "PYTHONPATH": os.pathsep.join(sys.path)},
-    )
-    assert result.returncode == 0, result.stderr

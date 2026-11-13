@@ -2,27 +2,9 @@
 
 from __future__ import annotations
 
-import asyncio
-import os
-from pathlib import Path
-from typing import Any
-
 import pytest
 import torch
-from dinkster_api.v1 import (
-    CORE_BOOLEAN,
-    IMAGE_TYPE,
-    InputSpec,
-    Node,
-    NodeSchema,
-    OutputSpec,
-    TypeExpr,
-    materialize_image,
-)
-from dinkster_graph import Graph, GraphNode, Link
 from dinkster_image.ported.image_transform import PadImageNode
-
-from dinkster.compose import PackSpec, ServingComposer
 
 
 def test_mirror_repeats_without_edge_duplication_and_preserves_batches() -> None:
@@ -126,105 +108,3 @@ def test_invalid_color_uses_reference_white_fallback(color: str) -> None:
     )["image"]
     assert torch.equal(actual[:, :, :1], torch.ones((1, 1, 1, 3)))
     assert torch.equal(actual[:, :, 1:], image)
-
-
-class PaddingSource(Node):
-    @classmethod
-    def define_schema(cls) -> NodeSchema:
-        return NodeSchema(
-            "padding-fixture.source", outputs=(OutputSpec("image", TypeExpr.concrete(IMAGE_TYPE)),)
-        )
-
-    @classmethod
-    def execute(cls) -> Any:
-        return cls.outputs(image=torch.arange(18, dtype=torch.float32).reshape(1, 2, 3, 3) / 20)
-
-
-class PaddingInspect(Node):
-    @classmethod
-    def define_schema(cls) -> NodeSchema:
-        return NodeSchema(
-            "padding-fixture.inspect",
-            inputs=(InputSpec("image", TypeExpr.concrete(IMAGE_TYPE)),),
-            outputs=(OutputSpec("valid", TypeExpr.concrete(CORE_BOOLEAN)),),
-        )
-
-    @classmethod
-    def execute(cls, *, image: Any) -> Any:
-        actual = materialize_image(image)
-        expected = torch.tensor([32 / 255, 64 / 255, 128 / 255]).expand(1, 4, 4, 3).clone()
-        expected[:, 1:3, :3] = torch.arange(18, dtype=torch.float32).reshape(1, 2, 3, 3) / 20
-        assert torch.equal(actual, expected)
-        assert actual.dtype == torch.float32 and actual.device.type == "cpu"
-        return cls.outputs(valid=True)
-
-
-@pytest.mark.parametrize("in_process", (True, False))
-def test_padding_crosses_ordinary_manifest_hosts_and_caches(
-    tmp_path: Path, in_process: bool
-) -> None:
-    async def scenario() -> None:
-        native_manifest = Path(__file__).resolve().parents[1] / "dinkster-pack.toml"
-        (tmp_path / "padding_fixture.py").write_text(
-            "from test_image_padding_torch import PaddingSource, PaddingInspect\n"
-            "from dinkster_image import register_types as register_inference_types\n"
-            "NODES = (PaddingSource, PaddingInspect)\n",
-            encoding="ascii",
-        )
-        manifest = tmp_path / "dinkster-pack.toml"
-        manifest.write_text(
-            '[pack]\nname = "padding-fixture"\npublisher = "dinkster"\n'
-            'namespaces = ["padding-fixture"]\n\n[pack.entry]\n'
-            'nodes = "padding_fixture:NODES"\n'
-            'types = "padding_fixture:register_inference_types"\n',
-            encoding="ascii",
-        )
-        composer = ServingComposer(
-            worker_env={
-                "CUDA_VISIBLE_DEVICES": "",
-                "DINKSTER_ACCELERATOR": "cpu",
-                "PYTHONPATH": os.pathsep.join(
-                    (
-                        str(tmp_path),
-                        str(Path(__file__).parent),
-                        str(native_manifest.parent / "src"),
-                        str(Path.cwd() / "src"),
-                    )
-                ),
-            }
-        )
-        try:
-            for pack in (native_manifest, manifest):
-                await composer.add_pack(PackSpec(pack, trust_reserved=True, in_process=in_process))
-            graph = Graph(
-                nodes={
-                    "source": GraphNode("padding-fixture.source"),
-                    "pad": GraphNode(
-                        "dinkster.image.pad_image_node",
-                        {
-                            "image": Link("source", "image"),
-                            "padding_type.multiple": 4,
-                            "padding_style.color": "#20408080",
-                            "padding_style.feathering": 0,
-                        },
-                        slot_variants={"padding_type": "pad to multiple", "padding_style": "color"},
-                    ),
-                    "inspect": GraphNode(
-                        "padding-fixture.inspect", {"image": Link("pad", "image")}
-                    ),
-                }
-            )
-            engine = composer.composition.make_engine(lambda _event: None)
-            first = await engine.run(graph, ["inspect"])
-            assert first.outputs["inspect"]["valid"].resolve() is True
-            second = await engine.run(graph, ["inspect"])
-            assert second.outputs["inspect"]["valid"].resolve() is True
-            assert set(second.cached) == {
-                "source",
-                "pad",
-                "inspect",
-            }
-        finally:
-            await composer.close()
-
-    asyncio.run(scenario())

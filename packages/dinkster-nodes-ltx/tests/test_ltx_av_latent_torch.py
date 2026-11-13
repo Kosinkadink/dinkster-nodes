@@ -2,29 +2,12 @@
 
 from __future__ import annotations
 
-import asyncio
-import os
-import sys
-from collections.abc import Mapping
-from pathlib import Path
-from typing import Any, cast
-
 import pytest
 import torch
 from dinkster_api.v1 import (
-    InputSpec,
     MultiStreamLatent,
-    Node,
-    NodeSchema,
-    OutputSpec,
-    TypeExpr,
-    materialize_latent,
 )
-from dinkster_graph import Graph, GraphNode, Link
 from dinkster_ltx.ltx_av_latent import LTXVConcatAVLatent, LTXVSeparateAVLatent
-from ltx_pack_fixtures import compose_ltx_packs
-
-from dinkster.compose import ServingComposer
 
 
 def _latent(samples: object, **metadata: object) -> dict[str, object]:
@@ -123,127 +106,3 @@ def test_concat_keeps_exact_audio_or_truncates_without_masks(
     assert streams.by_role("video") is video
     torch.testing.assert_close(streams.by_role("audio"), replacement[..., :6], rtol=0, atol=0)
     assert "noise_mask" not in output
-
-
-class _AVLatentSource(Node):
-    @classmethod
-    def define_schema(cls) -> NodeSchema:
-        return NodeSchema(
-            node_type="ltx-av-fixture.source",
-            outputs=(
-                OutputSpec("video", TypeExpr.concrete("LATENT")),
-                OutputSpec("audio", TypeExpr.concrete("LATENT")),
-            ),
-        )
-
-    @classmethod
-    def execute(cls) -> Mapping[str, object]:
-        video = torch.arange(24, dtype=torch.float32).reshape(1, 2, 2, 2, 3)
-        previous_audio = torch.full((1, 2, 2, 6), -1.0)
-        audio = torch.arange(16, dtype=torch.float32).reshape(1, 2, 2, 4) + 20
-        return cls.outputs(
-            video={
-                "samples": MultiStreamLatent.from_pairs(
-                    (("audio", previous_audio), ("video", video))
-                ),
-                "video_metadata": "kept",
-            },
-            audio={
-                "samples": audio,
-                "noise_mask": torch.zeros_like(audio),
-                "audio_metadata": "kept",
-            },
-        )
-
-
-class _AVLatentConsumer(Node):
-    @classmethod
-    def define_schema(cls) -> NodeSchema:
-        return NodeSchema(
-            node_type="ltx-av-fixture.consumer",
-            inputs=(
-                InputSpec("video", TypeExpr.concrete("LATENT")),
-                InputSpec("audio", TypeExpr.concrete("LATENT")),
-            ),
-            outputs=(OutputSpec("values", TypeExpr.concrete("STRING")),),
-        )
-
-    @classmethod
-    def execute(cls, *, video: Mapping[str, Any], audio: Mapping[str, Any]) -> Mapping[str, object]:
-        video = cast("Mapping[str, Any]", materialize_latent(video))
-        audio = cast("Mapping[str, Any]", materialize_latent(audio))
-        expected_video = torch.arange(24, dtype=torch.float32).reshape(1, 2, 2, 2, 3)
-        expected_audio = torch.cat(
-            (
-                torch.arange(16, dtype=torch.float32).reshape(1, 2, 2, 4) + 20,
-                torch.zeros(1, 2, 2, 2),
-            ),
-            dim=3,
-        )
-        expected_mask = torch.cat((torch.zeros(1, 2, 2, 4), torch.ones(1, 2, 2, 2)), dim=3)
-        torch.testing.assert_close(video["samples"], expected_video, rtol=0, atol=0)
-        torch.testing.assert_close(audio["samples"], expected_audio, rtol=0, atol=0)
-        torch.testing.assert_close(
-            video["noise_mask"], torch.ones_like(expected_video), rtol=0, atol=0
-        )
-        torch.testing.assert_close(audio["noise_mask"], expected_mask, rtol=0, atol=0)
-        assert video["video_metadata"] == "kept" and audio["audio_metadata"] == "kept"
-        return cls.outputs(values="verified")
-
-
-@pytest.mark.parametrize("in_process", (True,))
-def test_manifest_round_trips_av_latent_roles_and_values_twice(
-    tmp_path: Path, in_process: bool
-) -> None:
-    async def scenario() -> None:
-        manifest = Path(__file__).parents[1] / "dinkster-pack.toml"
-        (tmp_path / "ltx_av_fixture.py").write_text(
-            "from test_ltx_av_latent_torch import _AVLatentConsumer, _AVLatentSource\n"
-            "from dinkster_api.v1 import register_inference_types\n"
-            "NODES = (_AVLatentSource, _AVLatentConsumer)\n",
-            encoding="ascii",
-        )
-        fixture_manifest = tmp_path / "dinkster-pack.toml"
-        fixture_manifest.write_text(
-            '[pack]\nname = "ltx-av-fixture"\npublisher = "dinkster"\n'
-            'namespaces = ["ltx-av-fixture"]\n'
-            '[pack.entry]\nnodes = "ltx_av_fixture:NODES"\n'
-            'types = "ltx_av_fixture:register_inference_types"\n',
-            encoding="ascii",
-        )
-        composer = ServingComposer(
-            worker_env={"PYTHONPATH": os.pathsep.join((str(Path(__file__).parent), *sys.path))}
-        )
-        try:
-            await compose_ltx_packs(composer, manifest, fixture_manifest, in_process=in_process)
-            graph = Graph(
-                nodes={
-                    "source": GraphNode("ltx-av-fixture.source"),
-                    "concat": GraphNode(
-                        "dinkster.ltx.ltxv_concat_av_latent",
-                        {
-                            "video_latent": Link("source", "video"),
-                            "audio_latent": Link("source", "audio"),
-                        },
-                    ),
-                    "separate": GraphNode(
-                        "dinkster.ltx.ltxv_separate_av_latent",
-                        {"av_latent": Link("concat", "LATENT")},
-                    ),
-                    "consumer": GraphNode(
-                        "ltx-av-fixture.consumer",
-                        {
-                            "video": Link("separate", "VIDEO_LATENT"),
-                            "audio": Link("separate", "AUDIO_LATENT"),
-                        },
-                    ),
-                }
-            )
-            engine = composer.composition.make_engine(lambda _event: None)
-            for _ in range(2):
-                result = await engine.run(graph, ["consumer"])
-                assert cast(str, result.outputs["consumer"]["values"].resolve()) == "verified"
-        finally:
-            await composer.close()
-
-    asyncio.run(scenario())

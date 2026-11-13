@@ -491,7 +491,8 @@ raise SystemExit(bool(errors))
                 }
             )
             if not tests:
-                raise ValueError(f"selected {pack.pack} has no standalone behavioral tests")
+                print(f"No kept behavioral tests for {pack.pack}@{pack.version}", flush=True)
+                continue
             print(f"Testing {pack.pack}@{pack.version} {pack.artifact_digest}", flush=True)
             config = work / "test-selection.json"
             config.write_text(

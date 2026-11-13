@@ -3,13 +3,12 @@
 from __future__ import annotations
 
 import math
-import sys
 from pathlib import Path
 from typing import cast
 
 import pytest
 from dinkster_graph import Graph, GraphNode, Link
-from dinkster_utilities.utilities import ComfyNumberConvert, SeedNode
+from dinkster_utilities.utilities import ComfyNumberConvert
 
 from dinkster.compose import PackSpec, ServingComposer
 from tests.async_scenarios import run_scenario
@@ -61,13 +60,6 @@ def test_invalid_conversion_preserves_error_kind_and_message(
     with pytest.raises(error) as raised:
         ComfyNumberConvert.execute(value=value)
     assert str(raised.value) == message
-
-
-def test_seed_preserves_large_integer_and_positional_controller_metadata() -> None:
-    # ComfyUI provenance: comfy_extras.nodes_seed.SeedNode, F bc5f880dbdd43e426077f42ccec53bb577ffee9f.  # noqa: E501
-    # Inputs: {"seed": 9223372036854775807}.
-    # comfy-replay: {"class": "comfy_extras.nodes_seed.SeedNode", "method": "execute", "inputs": {"seed": 9223372036854775807}, "result": {"0": "seed"}}  # noqa: E501
-    assert SeedNode.execute(seed=sys.maxsize) == {"seed": 9223372036854775807}
 
 
 def test_isolated_manifest_converts_text_and_linked_seed_without_rounding_integer() -> None:

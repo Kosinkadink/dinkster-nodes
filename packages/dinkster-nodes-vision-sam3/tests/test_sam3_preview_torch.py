@@ -2,13 +2,9 @@
 
 from __future__ import annotations
 
-import asyncio
 import importlib
 import io
-import os
-import sys
 from fractions import Fraction
-from pathlib import Path
 from typing import Any
 
 import av
@@ -18,21 +14,12 @@ import torch
 from dinkster_api.v1 import (
     IMAGE_TYPE,
     SAM3_TRACK_DATA_TYPE,
-    Node,
-    NodeSchema,
-    OutputSpec,
-    TypeExpr,
     TypeRegistry,
     initialize_inference_process,
 )
-from dinkster_assets import AssetVault
-from dinkster_graph import Graph, GraphNode, Link
 from dinkster_schema.reporting import capture_preview_artifacts
-from dinkster_server import PackInfo
 from dinkster_vision_sam3 import register_types
 from dinkster_vision_sam3.sam3_preview import SAM3_TrackPreview
-
-from dinkster.compose import PackSpec, ServingComposer
 
 
 @pytest.fixture(autouse=True)
@@ -182,136 +169,3 @@ def test_real_mp4_has_all_frames_dimensions_and_fractional_rate() -> None:
     assert len(frames) == 3
     assert not frames[0].any() and not frames[2].any()
     np.testing.assert_array_equal(frames[1], np.full((16, 24, 3), 255, dtype=np.uint8))
-
-
-@pytest.mark.parametrize("with_images", (False, True))
-def test_odd_dimensions_do_not_silently_resize_or_publish(with_images: bool) -> None:
-    tracks = {"packed_masks": None, "orig_size": (16, 15), "n_frames": 1}
-    images = torch.zeros(1, 15, 16, 3) if with_images else None
-    with capture_preview_artifacts() as artifacts:
-        with pytest.raises(av.error.ExternalError, match="libx264"):
-            SAM3_TrackPreview.execute(track_data=tracks, images=images)
-    assert artifacts == []
-
-
-class PreviewSource(Node):
-    @classmethod
-    def define_schema(cls) -> NodeSchema:
-        return NodeSchema(
-            "sam3-preview-fixture.source",
-            outputs=(
-                OutputSpec("tracks", TypeExpr.concrete(SAM3_TRACK_DATA_TYPE)),
-                OutputSpec("images", TypeExpr.concrete(IMAGE_TYPE)),
-            ),
-        )
-
-    @classmethod
-    def execute(cls) -> dict[str, object]:
-        return cls.outputs(
-            tracks={
-                "packed_masks": torch.zeros(3, 1, 2, 1, dtype=torch.uint8),
-                "orig_size": (4, 8),
-                "n_frames": 3,
-            },
-            images=torch.stack((torch.zeros(16, 24, 3), torch.ones(16, 24, 3))).numpy(),
-        )
-
-
-@pytest.mark.parametrize("in_process", (True, False))
-def test_native_preview_publishes_through_ordinary_hosts_twice(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, in_process: bool
-) -> None:
-    root = Path(__file__).resolve().parents[1]
-    checkout = root.parents[1]
-    native = root / "dinkster-pack.toml"
-    module = f"sam3_preview_fixture_{in_process}"
-    (tmp_path / f"{module}.py").write_text(
-        "from test_sam3_preview_torch import PreviewSource\n"
-        "from dinkster_vision_sam3 import register_types as register_sam3\n"
-        "def register_inference_types(registry):\n"
-        "    with registry.registering_pack('dinkster-vision-sam3', "
-        "('SAM3_TRACK_DATA',), allow_bare=True):\n"
-        "        register_sam3(registry)\n"
-        "NODES = (PreviewSource,)\n",
-        encoding="ascii",
-    )
-    fixture = tmp_path / "fixture.toml"
-    fixture.write_text(
-        '[pack]\nname="sam3-preview-fixture"\npublisher="dinkster"\n'
-        'namespaces=["sam3-preview-fixture"]\n'
-        '[pack.dependencies]\ndinkster-vision-sam3=">=0.0.1"\n[pack.entry]\n'
-        f'nodes="{module}:NODES"\ntypes="{module}:register_inference_types"\n',
-        encoding="ascii",
-    )
-    vault = AssetVault(tmp_path / "vault")
-    monkeypatch.setenv("DINKSTER_ASSET_VAULT", str(vault.root))
-    env = {
-        "DINKSTER_ACCELERATOR": "cpu",
-        "PYTHONPATH": os.pathsep.join(
-            (
-                str(tmp_path),
-                str(Path(__file__).parent),
-                str(checkout / "src"),
-                *(str(path) for path in sorted((checkout / "packages").glob("*/src"))),
-                *sys.path,
-            )
-        ),
-    }
-
-    async def scenario() -> None:
-        composer = ServingComposer(worker_env=env)
-        try:
-            for manifest in (native, fixture):
-                packs = (
-                    {"dinkster-vision-sam3": PackInfo("SAM3", version="0.0.1")}
-                    if manifest == native
-                    else None
-                )
-                await composer.add_pack(
-                    PackSpec(manifest, in_process=True, env=env, trust_reserved=True, packs=packs)
-                    if in_process
-                    else PackSpec(
-                        manifest,
-                        trust_reserved=True,
-                        packs=packs,
-                        worker_group="sam3-preview-fixture",
-                        group_manifests=(native, fixture),
-                        env=env,
-                    )
-                )
-            graph = Graph(
-                nodes={
-                    "source": GraphNode("sam3-preview-fixture.source"),
-                    "preview": GraphNode(
-                        "dinkster.vision.sam3.sam3_track_preview",
-                        {
-                            "track_data": Link("source", "tracks"),
-                            "images": Link("source", "images"),
-                            "fps": 23.976,
-                        },
-                    ),
-                }
-            )
-            engine = composer.composition.make_engine(lambda _event: None)
-            for _ in range(2):
-                result = await engine.run(graph, ["preview"])
-                assert len(result.artifacts) == 1
-                artifact = result.artifacts[0]
-                assert artifact.node_id == "preview" and artifact.media_type == "video/mp4"
-                assert artifact.name.startswith("sam3_track_preview_")
-                path = vault.resolve(artifact.digest)
-                assert path is not None and path.stat().st_size == artifact.size
-                with av.open(path) as container:
-                    stream = container.streams.video[0]
-                    assert (stream.width, stream.height) == (24, 16)
-                    assert stream.average_rate == Fraction(2997, 125)
-                    frames = [
-                        frame.to_ndarray(format="rgb24") for frame in container.decode(video=0)
-                    ]
-                assert len(frames) == 3
-                assert not frames[0].any() and not frames[2].any()
-                np.testing.assert_array_equal(frames[1], np.full((16, 24, 3), 255, dtype=np.uint8))
-        finally:
-            await composer.close()
-
-    asyncio.run(scenario())

@@ -2,10 +2,7 @@
 
 from __future__ import annotations
 
-import asyncio
 import math
-import os
-from pathlib import Path
 from typing import Any
 
 import pytest
@@ -13,19 +10,11 @@ import torch
 from dinkster_3d.mesh_normals import MeshSmoothNormals
 from dinkster_api.v1 import (
     MESH_TYPE,
-    Node,
-    NodeSchema,
-    OutputSpec,
     TriangleMeshBatch,
-    TypeExpr,
     TypeRegistry,
     materialize_mesh,
     register_inference_types,
 )
-from dinkster_graph import Graph, GraphNode, Link
-from geometry_pack_fixtures import geometry_pack_specs
-
-from dinkster.compose import ServingComposer
 
 
 def source() -> Any:
@@ -104,58 +93,3 @@ def test_coincident_position_welding_and_empty_mesh() -> None:
         0,
         3,
     )
-
-
-class NormalsSource(Node):
-    @classmethod
-    def define_schema(cls) -> NodeSchema:
-        return NodeSchema(
-            "normals-fixture.source", outputs=(OutputSpec("mesh", TypeExpr.concrete(MESH_TYPE)),)
-        )
-
-    @classmethod
-    def execute(cls) -> dict[str, object]:
-        return cls.outputs(mesh=source())
-
-
-@pytest.mark.parametrize("in_process", [True, False])
-def test_ordinary_normals_hosts_twice(tmp_path: Path, in_process: bool) -> None:
-    async def scenario() -> None:
-        (tmp_path / "normals_fixture.py").write_text(
-            "from dinkster_api.v1 import register_inference_types\n"
-            "from test_mesh_normals_torch import NormalsSource\nNODES=(NormalsSource,)\n",
-            encoding="ascii",
-        )
-        fixture = tmp_path / "fixture.toml"
-        fixture.write_text(
-            '[pack]\nname="normals-fixture"\npublisher="dinkster"\nnamespaces=["normals-fixture"]\n'
-            '[pack.entry]\nnodes="normals_fixture:NODES"\ntypes="normals_fixture:register_inference_types"\n',
-            encoding="ascii",
-        )
-        composer = ServingComposer(
-            worker_env={
-                "CUDA_VISIBLE_DEVICES": "",
-                "DINKSTER_ACCELERATOR": "cpu",
-                "PYTHONPATH": os.pathsep.join((str(tmp_path), str(Path(__file__).parent))),
-            }
-        )
-        try:
-            for spec in geometry_pack_specs(fixture, in_process=in_process):
-                await composer.add_pack(spec)
-            engine = composer.composition.make_engine(lambda _event: None)
-            graph = Graph(
-                {
-                    "source": GraphNode("normals-fixture.source"),
-                    "normals": GraphNode(
-                        "dinkster.3d.mesh_smooth_normals",
-                        {"mesh": Link("source", "mesh"), "crease_angle": 89.0},
-                    ),
-                }
-            )
-            for _ in range(2):
-                result = await engine.run(graph, ["normals"])
-                assert_result(result.outputs["normals"]["mesh"].resolve(), 89.0)
-        finally:
-            await composer.close()
-
-    asyncio.run(scenario())

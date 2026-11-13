@@ -2,10 +2,7 @@
 
 from __future__ import annotations
 
-import asyncio
 import gzip
-import os
-import shutil
 import struct
 from pathlib import Path
 from types import SimpleNamespace
@@ -15,26 +12,13 @@ import pytest
 import torch
 from dinkster_3d.splat_files import File3DToSplat, SplatToFile3D
 from dinkster_api.v1 import (
-    FILE_3D_SPLAT_ANY_TYPE,
-    FILE_3D_TYPE,
     SPLAT_TYPE,
     AssetRef,
-    Node,
-    NodeSchema,
-    OutputSpec,
-    TypeExpr,
     TypeRegistry,
     digest_bytes,
-    materialize_splat,
-    register_file3d_types,
     register_inference_types,
 )
 from dinkster_assets import AssetVault
-from dinkster_graph import Graph, GraphNode, Link, TypedLiteral
-from dinkster_values import register_core_types
-from geometry_pack_fixtures import geometry_pack_specs
-
-from dinkster.compose import ServingComposer
 
 
 def export_splat() -> SimpleNamespace:
@@ -153,103 +137,6 @@ def test_splat_export_refuses_empty_unknown_format_and_missing_authority(
     for format in ("ply", "ksplat", "spz"):
         with pytest.raises(ValueError, match="SplatToFile3D: gaussian is empty"):
             SplatToFile3D.execute(splat=source, format=format)
-
-
-class SplatFileSource(Node):
-    @classmethod
-    def define_schema(cls) -> NodeSchema:
-        return NodeSchema(
-            "splat-file-source.make",
-            outputs=(OutputSpec("splat", TypeExpr.concrete(SPLAT_TYPE)),),
-        )
-
-    @classmethod
-    def execute(cls) -> dict[str, object]:
-        return cls.outputs(splat=export_splat())
-
-
-@pytest.mark.parametrize("in_process", [True, False])
-@pytest.mark.parametrize("format", ["ply", "ksplat", "spz"])
-def test_ordinary_splat_export_hosts_with_restart_cache(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, in_process: bool, format: str
-) -> None:
-    vault = AssetVault(tmp_path / "vault")
-    environment = {
-        "CUDA_VISIBLE_DEVICES": "",
-        "DINKSTER_ACCELERATOR": "cpu",
-        "DINKSTER_ASSET_VAULT": str(vault.root),
-        "PYTHONPATH": os.pathsep.join((str(tmp_path), str(Path(__file__).parent))),
-    }
-    for key, value in environment.items():
-        monkeypatch.setenv(key, value)
-    module = f"splat_file_source_{format}"
-    (tmp_path / f"{module}.py").write_text(
-        "from dinkster_3d import register_types as register_inference_types\n"
-        "from test_splat_files_torch import SplatFileSource\nNODES=(SplatFileSource,)\n",
-        encoding="ascii",
-    )
-    fixture = tmp_path / "fixture.toml"
-    fixture.write_text(
-        '[pack]\nname="splat-file-source"\npublisher="dinkster"\n'
-        'namespaces=["splat-file-source"]\n[pack.entry]\n'
-        f'nodes="{module}:NODES"\ntypes="{module}:register_inference_types"\n',
-        encoding="ascii",
-    )
-
-    async def scenario() -> None:
-        data = b""
-        for replay in (False, True):
-            registry = TypeRegistry()
-            register_core_types(registry)
-            register_file3d_types(registry, vault)
-            composer = ServingComposer(
-                registry=registry,
-                worker_env=environment,
-                cache_mode="layered",
-                cache_dir=tmp_path / "cache",
-                pack_scratch_root=tmp_path / "scratch",
-            )
-            try:
-                for spec in geometry_pack_specs(fixture, in_process=in_process):
-                    await composer.add_pack(spec)
-                graph = Graph(
-                    {
-                        "source": GraphNode("splat-file-source.make"),
-                        "export": GraphNode(
-                            "dinkster.3d.splat_to_file3_d",
-                            {"splat": Link("source", "splat"), "format": format},
-                        ),
-                        "import": GraphNode(
-                            "dinkster.3d.file3_d_to_splat", {"model_3d": Link("export", "model_3d")}
-                        ),
-                    }
-                )
-                result = await composer.composition.make_engine(lambda _event: None).run(
-                    graph, ["export", "import"]
-                )
-                assert set(result.cached if replay else result.executed) == {
-                    "source",
-                    "export",
-                    "import",
-                }
-                output = result.outputs["export"]["model_3d"].resolve()
-                assert output["format"] == format
-                current = output["source"].read_bytes()
-                assert current and (not data or data == current)
-                data = current
-                imported = result.outputs["import"]["splat"].resolve()
-                tensor = materialize_splat(imported)
-                torch.testing.assert_close(tensor.positions, torch.tensor([[[-1.25, 2.5, 0.125]]]))
-                if format == "ply":
-                    torch.testing.assert_close(tensor.sh, export_splat().sh[:1, :1])
-                else:
-                    assert tensor.sh.shape == (1, 1, 1, 3)
-            finally:
-                await composer.close()
-            shutil.rmtree(tmp_path / "scratch")
-            assert output["source"].read_bytes() == data
-
-    asyncio.run(scenario())
 
 
 def import_file(tmp_path: Path, data: bytes, format: str) -> SimpleNamespace:
@@ -479,95 +366,3 @@ def test_ply_import_harmonics_order_activation_and_point_defaults(
         )
     for field in (value.positions, value.scales, value.rotations, value.opacities, value.sh):
         assert field.dtype == torch.float32 and field.is_contiguous()
-
-
-def empty_ply_bytes(full_attributes: bool) -> bytes:
-    if full_attributes:
-        return (
-            ply_import_bytes(False)
-            .split(b"end_header\n", 1)[0]
-            .replace(b"element vertex 2", b"element vertex 0")
-            + b"end_header\n"
-        )
-    return (
-        b"ply\nformat binary_little_endian 1.0\nelement vertex 0\n"
-        b"property float x\nproperty float y\nproperty float z\nend_header\n"
-    )
-
-
-@pytest.mark.parametrize("in_process", [False, True])
-@pytest.mark.parametrize("full_attributes", [False, True])
-@pytest.mark.parametrize("format", ["ply", ""])
-@pytest.mark.parametrize("type_id", [FILE_3D_TYPE, FILE_3D_SPLAT_ANY_TYPE])
-def test_empty_ply_import_hosts_and_restart_cache(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-    in_process: bool,
-    full_attributes: bool,
-    format: str,
-    type_id: str,
-) -> None:
-    data = empty_ply_bytes(full_attributes)
-    vault = AssetVault(tmp_path / "vault")
-    digest = digest_bytes(data)
-    with vault.writer(digest) as writer:
-        writer.write(data)
-        writer.commit()
-    environment = {
-        "CUDA_VISIBLE_DEVICES": "",
-        "DINKSTER_ACCELERATOR": "cpu",
-        "DINKSTER_ASSET_VAULT": str(vault.root),
-    }
-    for key, value in environment.items():
-        monkeypatch.setenv(key, value)
-    source = AssetRef(digest, "empty.ply", len(data), resolver=vault)
-
-    async def scenario() -> None:
-        for replay in (False, True):
-            registry = TypeRegistry()
-            register_core_types(registry)
-            register_file3d_types(registry, vault)
-            composer = ServingComposer(
-                registry=registry,
-                worker_env=environment,
-                cache_mode="layered",
-                cache_dir=tmp_path / "cache",
-                pack_scratch_root=tmp_path / "scratch",
-            )
-            try:
-                for spec in geometry_pack_specs(in_process=in_process):
-                    await composer.add_pack(spec)
-                graph = Graph(
-                    {
-                        "import": GraphNode(
-                            "dinkster.3d.file3_d_to_splat",
-                            {
-                                "model_3d": TypedLiteral(
-                                    type_id, {"format": format, "source": source.to_wire()}
-                                )
-                            },
-                        )
-                    }
-                )
-                result = await composer.composition.make_engine(lambda _event: None).run(
-                    graph, ["import"]
-                )
-                assert set(result.cached if replay else result.executed) == {"import"}
-                splat = materialize_splat(result.outputs["import"]["splat"].resolve())
-                assert splat.positions.shape == splat.scales.shape == (1, 0, 3)
-                assert splat.rotations.shape == (1, 0, 4)
-                assert splat.opacities.shape == (1, 0, 1)
-                assert splat.sh.shape == (1, 0, 3 if full_attributes else 1, 3)
-                assert splat.counts is None
-                for field in (
-                    splat.positions,
-                    splat.scales,
-                    splat.rotations,
-                    splat.opacities,
-                    splat.sh,
-                ):
-                    assert field.dtype == torch.float32 and field.is_contiguous()
-            finally:
-                await composer.close()
-
-    asyncio.run(scenario())

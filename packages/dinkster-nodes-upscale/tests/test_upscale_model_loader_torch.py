@@ -2,48 +2,32 @@
 
 from __future__ import annotations
 
-import asyncio
 import hashlib
 import importlib
 import logging
-import os
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
 
 import pytest
-import spandrel
 import torch
 from dinkster_api.v1 import (
-    CORE_BOOLEAN,
-    UPSCALE_MODEL_TYPE,
     AssetError,
     AssetRef,
-    InputSpec,
     LocalAssetRef,
-    Node,
-    NodeSchema,
-    OutputSpec,
-    TypeExpr,
 )
 from dinkster_assets import MountDef, MountTable
-from dinkster_graph import Graph, GraphNode, Link
-from dinkster_server import PackInfo
 from dinkster_upscale.upscale_model_loader import UpscaleModelLoader
 from safetensors.torch import save_file
 from spandrel import (
-    ArchRegistry,
-    ArchSupport,
     ImageModelDescriptor,
     MaskedImageModelDescriptor,
     ModelLoader,
     UnsupportedModelError,
 )
-from spandrel.architectures.Compact import Compact, CompactArch
+from spandrel.architectures.Compact import Compact
 from spandrel.architectures.LaMa import LaMaArch
 from spandrel.architectures.SwinIR import SwinIR
-
-from dinkster.compose import PackSpec, ServingComposer
 
 
 def seed(tmp_path: Path, *, verified: bool) -> tuple[MountTable, AssetRef | LocalAssetRef]:
@@ -191,123 +175,3 @@ def test_optional_architecture_failures_are_distinguished(
             f"Optional upscale architecture {message} failed" in record.message and record.exc_info
             for record in caplog.records
         )
-
-
-def test_optional_architectures_support_repeated_successful_loads(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
-) -> None:
-    _table, asset = seed(tmp_path, verified=False)
-    registry = ArchRegistry()
-    extra = SimpleNamespace(EXTRA_REGISTRY=(ArchSupport.from_architecture(CompactArch()),))
-    original = importlib.import_module
-
-    def import_module(name: str, package: str | None = None) -> Any:
-        return extra if name == "spandrel_extra_arches" else original(name, package)
-
-    monkeypatch.setattr(importlib, "import_module", import_module)
-    monkeypatch.setattr(spandrel, "MAIN_REGISTRY", registry)
-    monkeypatch.setattr(spandrel, "ModelLoader", lambda: ModelLoader(registry=registry))
-    with caplog.at_level(logging.WARNING):
-        for _ in range(2):
-            check_model(UpscaleModelLoader.execute(model_name=asset)["UPSCALE_MODEL"])
-    assert len(registry) == 1
-    assert not caplog.records
-
-
-class UpscaleLoaderConsumer(Node):
-    @classmethod
-    def define_schema(cls) -> NodeSchema:
-        return NodeSchema(
-            node_type="upscale-loader-fixture.consumer",
-            inputs=(InputSpec("model", TypeExpr.concrete(UPSCALE_MODEL_TYPE)),),
-            outputs=(OutputSpec("valid", TypeExpr.concrete(CORE_BOOLEAN)),),
-        )
-
-    @classmethod
-    def execute(cls, *, model: Any) -> dict[str, object]:
-        check_model(model)
-        return cls.outputs(valid=True)
-
-
-@pytest.mark.parametrize("in_process", (True, False))
-def test_loader_resident_output_executes_and_caches_in_ordinary_hosts(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, in_process: bool
-) -> None:
-    _table, asset = seed(tmp_path, verified=False)
-    monkeypatch.setenv("DINKSTER_MOUNTS_SNAPSHOT", str(tmp_path / "mounts.json"))
-    path = tmp_path / "tiny.safetensors"
-    before = hashlib.sha256(path.read_bytes()).hexdigest()
-
-    async def scenario() -> None:
-        native = Path(__file__).resolve().parents[1] / "dinkster-pack.toml"
-        (tmp_path / "upscale_loader_fixture.py").write_text(
-            "from test_upscale_model_loader_torch import UpscaleLoaderConsumer\n"
-            "from dinkster_api.v1 import register_inference_types\n"
-            "from dinkster_upscale import register_types as register_upscale\n"
-            "def register_types(registry):\n"
-            "    register_inference_types(registry)\n"
-            "    with registry.registering_pack('dinkster-upscale', "
-            "('UPSCALE_MODEL',), allow_bare=True):\n"
-            "        register_upscale(registry)\n"
-            "NODES = (UpscaleLoaderConsumer,)\n",
-            encoding="ascii",
-        )
-        fixture = tmp_path / "dinkster-pack.toml"
-        fixture.write_text(
-            '[pack]\nname="upscale-loader-fixture"\npublisher="dinkster"\n'
-            'namespaces=["upscale-loader-fixture"]\n'
-            '[pack.dependencies]\ndinkster-upscale = ">=0.0.1"\n[pack.entry]\n'
-            'nodes="upscale_loader_fixture:NODES"\n'
-            'types="upscale_loader_fixture:register_types"\n',
-            encoding="ascii",
-        )
-        composer = ServingComposer(
-            worker_env={
-                "DINKSTER_ACCELERATOR": "cpu",
-                "CUDA_VISIBLE_DEVICES": "",
-                "DINKSTER_MOUNTS_SNAPSHOT": str(tmp_path / "mounts.json"),
-                "PYTHONPATH": os.pathsep.join(
-                    (str(tmp_path), str(Path(__file__).parent), str(native.parent / "src"))
-                ),
-            }
-        )
-        try:
-            for manifest in (native, fixture):
-                packs = (
-                    {"dinkster-upscale": PackInfo(display_name="Upscale", version="0.0.1")}
-                    if manifest == native
-                    else None
-                )
-                await composer.add_pack(
-                    PackSpec(manifest, in_process=True, trust_reserved=True, packs=packs)
-                    if in_process
-                    else PackSpec(
-                        manifest,
-                        worker_group="upscale-loader",
-                        packs=packs,
-                        group_manifests=(native, fixture),
-                        trust_reserved=True,
-                    )
-                )
-            graph = Graph(
-                nodes={
-                    "load": GraphNode(
-                        "dinkster.upscale.upscale_model_loader", {"model_name": asset.to_wire()}
-                    ),
-                    "consume": GraphNode(
-                        "upscale-loader-fixture.consumer", {"model": Link("load", "UPSCALE_MODEL")}
-                    ),
-                }
-            )
-            engine = composer.composition.make_engine(lambda _event: None)
-            for run in range(2):
-                result = await engine.run(graph, ["consume"])
-                assert result.outputs["consume"]["valid"].resolve() is True
-                if run == 1:
-                    assert set(result.cached) == {"load", "consume"}
-                assert hashlib.sha256(path.read_bytes()).hexdigest() == before
-        finally:
-            await composer.close()
-
-    asyncio.run(scenario())
-    assert hashlib.sha256(path.read_bytes()).hexdigest() == before

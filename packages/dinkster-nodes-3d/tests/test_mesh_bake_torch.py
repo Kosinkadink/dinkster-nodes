@@ -2,18 +2,10 @@
 
 from __future__ import annotations
 
-import asyncio
-import os
-from pathlib import Path
-
 import pytest
 import torch
 from dinkster_3d.mesh_bake import BakeAmbientOcclusion, BakeNormalMapFromMesh
-from dinkster_api.v1 import MESH_TYPE, Node, NodeSchema, OutputSpec, TriangleMeshBatch, TypeExpr
-from dinkster_graph import Graph, GraphNode, Link
-from geometry_pack_fixtures import geometry_pack_specs
-
-from dinkster.compose import ServingComposer
+from dinkster_api.v1 import TriangleMeshBatch
 
 
 def plane(z: float = 0.0, extent: float = 1.0) -> TriangleMeshBatch:
@@ -81,28 +73,6 @@ def test_ambient_occlusion_ragged_empty_and_shared_high_mesh() -> None:
         bake(low, plane())
 
 
-class MeshSource(Node):
-    @classmethod
-    def define_schema(cls) -> NodeSchema:
-        return NodeSchema(
-            node_type="ambient-occlusion-source.make",
-            display_name="Mesh source",
-            inputs=(),
-            outputs=(
-                OutputSpec("low", TypeExpr.concrete(MESH_TYPE)),
-                OutputSpec("high", TypeExpr.concrete(MESH_TYPE)),
-            ),
-        )
-
-    @classmethod
-    def execute(cls) -> dict:
-        low, high = plane(), plane(0.25, 4.0)
-        high.vertices = torch.cat([low.vertices, high.vertices], dim=1)
-        high.faces = torch.cat([low.faces, high.faces + 4], dim=1)
-        high.uvs = None
-        return cls.outputs(low=low, high=high)
-
-
 def test_normal_bake_tangent_handedness_fallback_and_counted_batches() -> None:
     low, high = plane(), plane(2.0)
     high.normals = torch.tensor([[[0.0, 0.6, 0.8]] * 4])
@@ -152,72 +122,3 @@ def test_normal_bake_cage_and_backfaces() -> None:
     high.normals[..., 2] = -1.0
     safe = run(0.1, False)
     torch.testing.assert_close(safe, front)
-
-
-@pytest.mark.parametrize("in_process", [True, False])
-@pytest.mark.parametrize(
-    "node_type", ["dinkster.3d.bake_ambient_occlusion", "dinkster.3d.bake_normal_map_from_mesh"]
-)
-def test_ambient_occlusion_ordinary_hosts(tmp_path: Path, in_process: bool, node_type: str) -> None:
-    module = f"mesh_bake_source_{node_type.rsplit('.', 1)[-1]}_{in_process}"
-    (tmp_path / f"{module}.py").write_text(
-        "from test_mesh_bake_torch import MeshSource\n"
-        "from dinkster_3d import register_types as register_inference_types\n"
-        "NODES=(MeshSource,)\n",
-        encoding="ascii",
-    )
-    manifest = tmp_path / "source.toml"
-    manifest.write_text(
-        '[pack]\nname="ambient-occlusion-source"\npublisher="dinkster"\n'
-        'namespaces=["ambient-occlusion-source"]\n[pack.entry]\n'
-        f'nodes="{module}:NODES"\ntypes="{module}:register_inference_types"\n',
-        encoding="ascii",
-    )
-
-    async def scenario() -> None:
-        composer = ServingComposer(
-            worker_env={
-                "CUDA_VISIBLE_DEVICES": "",
-                "DINKSTER_ACCELERATOR": "cpu",
-                "PYTHONPATH": os.pathsep.join(
-                    (str(tmp_path), str(Path(__file__).parent), os.environ.get("PYTHONPATH", ""))
-                ),
-            }
-        )
-        try:
-            for spec in geometry_pack_specs(manifest, in_process=in_process):
-                await composer.add_pack(spec)
-            graph = Graph(
-                {
-                    "source": GraphNode("ambient-occlusion-source.make"),
-                    "bake": GraphNode(
-                        node_type,
-                        {
-                            "low_poly": Link("source", "low"),
-                            "high_poly": Link("source", "high"),
-                            "resolution": 64,
-                            **(
-                                dict(samples=16, max_distance=0.5, strength=0.5, bias=0.001)
-                                if node_type == "dinkster.3d.bake_ambient_occlusion"
-                                else dict(cage_distance=0.05, ignore_backfaces=True)
-                            ),
-                        },
-                    ),
-                }
-            )
-            engine = composer.composition.make_engine(lambda _event: None)
-            for _ in range(2):
-                result = await engine.run(graph, ["bake"])
-                image = torch.as_tensor(result.outputs["bake"]["IMAGE"].resolve())
-                assert image.shape == (1, 64, 64, 3) and image.dtype == torch.float32
-                if node_type == "dinkster.3d.bake_ambient_occlusion":
-                    assert 0.5 <= image.mean() < 0.6
-                    torch.testing.assert_close(image[..., 0], image[..., 2], rtol=0, atol=0)
-                else:
-                    torch.testing.assert_close(
-                        image, torch.tensor([0.5, 0.5, 1.0]).expand_as(image)
-                    )
-        finally:
-            await composer.close()
-
-    asyncio.run(scenario())

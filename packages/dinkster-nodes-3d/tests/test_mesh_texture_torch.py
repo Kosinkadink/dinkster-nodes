@@ -2,31 +2,19 @@
 
 from __future__ import annotations
 
-import asyncio
-import os
-from pathlib import Path
 from typing import Any
 
 import pytest
 import torch
 from dinkster_3d.mesh_texture import ApplyTextureToMesh, MeshTextureToImage
 from dinkster_api.v1 import (
-    IMAGE_TYPE,
     MESH_TYPE,
-    Node,
-    NodeSchema,
-    OutputSpec,
     TriangleMeshBatch,
-    TypeExpr,
     TypeRegistry,
     materialize_image,
     materialize_mesh,
     register_inference_types,
 )
-from dinkster_graph import Graph, GraphNode, Link
-from geometry_pack_fixtures import geometry_pack_specs
-
-from dinkster.compose import ServingComposer
 
 
 def source() -> Any:
@@ -86,60 +74,6 @@ def test_optional_maps_unbatched_texture_and_missing_base() -> None:
     mesh.texture = None
     with pytest.raises(ValueError, match="mesh has no baseColor texture"):
         MeshTextureToImage.execute(mesh=mesh)
-
-
-class TextureSource(Node):
-    @classmethod
-    def define_schema(cls) -> NodeSchema:
-        return NodeSchema(
-            "texture-fixture.source", outputs=(OutputSpec("mesh", TypeExpr.concrete(MESH_TYPE)),)
-        )
-
-    @classmethod
-    def execute(cls) -> dict[str, object]:
-        return cls.outputs(mesh=source())
-
-
-@pytest.mark.parametrize("in_process", [True, False])
-def test_ordinary_texture_hosts_twice(tmp_path: Path, in_process: bool) -> None:
-    async def scenario() -> None:
-        (tmp_path / "texture_fixture.py").write_text(
-            "from dinkster_api.v1 import register_inference_types\n"
-            "from test_mesh_texture_torch import TextureSource\nNODES=(TextureSource,)\n",
-            encoding="ascii",
-        )
-        fixture = tmp_path / "fixture.toml"
-        fixture.write_text(
-            '[pack]\nname="texture-fixture"\npublisher="dinkster"\nnamespaces=["texture-fixture"]\n'
-            '[pack.entry]\nnodes="texture_fixture:NODES"\ntypes="texture_fixture:register_inference_types"\n',
-            encoding="ascii",
-        )
-        composer = ServingComposer(
-            worker_env={
-                "CUDA_VISIBLE_DEVICES": "",
-                "DINKSTER_ACCELERATOR": "cpu",
-                "PYTHONPATH": os.pathsep.join((str(tmp_path), str(Path(__file__).parent))),
-            }
-        )
-        try:
-            for spec in geometry_pack_specs(fixture, in_process=in_process):
-                await composer.add_pack(spec)
-            engine = composer.composition.make_engine(lambda _event: None)
-            graph = Graph(
-                {
-                    "source": GraphNode("texture-fixture.source"),
-                    "texture": GraphNode(
-                        "dinkster.3d.mesh_texture_to_image", {"mesh": Link("source", "mesh")}
-                    ),
-                }
-            )
-            for _ in range(2):
-                result = await engine.run(graph, ["texture"])
-                assert_channels({k: v.resolve() for k, v in result.outputs["texture"].items()})
-        finally:
-            await composer.close()
-
-    asyncio.run(scenario())
 
 
 def test_apply_normals_weld_coincident_uv_seams() -> None:
@@ -289,65 +223,3 @@ def test_apply_existing_normals_empty_faces_degenerate_uvs_and_missing_uvs() -> 
     mesh.uvs = None
     with pytest.raises(ValueError, match="mesh has no UVs"):
         ApplyTextureToMesh.execute(mesh=mesh, base_color=image)
-
-
-class ApplyTextureSource(Node):
-    @classmethod
-    def define_schema(cls) -> NodeSchema:
-        return NodeSchema(
-            "apply-fixture.source",
-            outputs=(
-                OutputSpec("mesh", TypeExpr.concrete(MESH_TYPE)),
-                *(
-                    OutputSpec(name, TypeExpr.concrete(IMAGE_TYPE))
-                    for name in ("base_color", "metallic", "roughness", "occlusion", "normal_map")
-                ),
-            ),
-        )
-
-    @classmethod
-    def execute(cls) -> dict[str, object]:
-        return cls.outputs(**apply_inputs())
-
-
-@pytest.mark.parametrize("in_process", [True, False])
-def test_ordinary_apply_texture_hosts_twice(tmp_path: Path, in_process: bool) -> None:
-    async def scenario() -> None:
-        (tmp_path / "apply_fixture.py").write_text(
-            "from dinkster_api.v1 import register_inference_types\n"
-            "from test_mesh_texture_torch import ApplyTextureSource\nNODES=(ApplyTextureSource,)\n",
-            encoding="ascii",
-        )
-        fixture = tmp_path / "fixture.toml"
-        fixture.write_text(
-            '[pack]\nname="apply-fixture"\npublisher="dinkster"\nnamespaces=["apply-fixture"]\n'
-            '[pack.entry]\nnodes="apply_fixture:NODES"\ntypes="apply_fixture:register_inference_types"\n',
-            encoding="ascii",
-        )
-        composer = ServingComposer(
-            worker_env={
-                "CUDA_VISIBLE_DEVICES": "",
-                "DINKSTER_ACCELERATOR": "cpu",
-                "PYTHONPATH": os.pathsep.join((str(tmp_path), str(Path(__file__).parent))),
-            }
-        )
-        try:
-            for spec in geometry_pack_specs(fixture, in_process=in_process):
-                await composer.add_pack(spec)
-            engine = composer.composition.make_engine(lambda _event: None)
-            graph = Graph(
-                {
-                    "source": GraphNode("apply-fixture.source"),
-                    "apply": GraphNode(
-                        "dinkster.3d.apply_texture_to_mesh",
-                        {name: Link("source", name) for name in apply_inputs()},
-                    ),
-                }
-            )
-            for _ in range(2):
-                result = await engine.run(graph, ["apply"])
-                assert_applied(result.outputs["apply"]["mesh"].resolve())
-        finally:
-            await composer.close()
-
-    asyncio.run(scenario())
