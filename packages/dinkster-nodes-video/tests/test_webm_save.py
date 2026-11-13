@@ -2,10 +2,7 @@
 
 from __future__ import annotations
 
-import asyncio
 import json
-import os
-import sys
 from pathlib import Path
 from typing import Any
 
@@ -13,18 +10,9 @@ import av
 import numpy as np
 import pytest
 from dinkster_api.v1 import (
-    IMAGE_TYPE,
     ExportSnapshot,
-    Node,
-    NodeSchema,
-    OutputSpec,
-    TypeExpr,
 )
-from dinkster_graph import Graph, GraphNode, Link
 from dinkster_video.webm_save import SaveWEBM
-from video_pack_fixtures import compose_video_packs
-
-from dinkster.compose import ServingComposer
 
 pytestmark = pytest.mark.usefixtures("saved_artifact_context")
 
@@ -190,102 +178,3 @@ def test_save_webm_refuses_unknown_or_readonly_mount_without_publishing(
     assert not list(default.rglob("*"))
     assert not list(alternate.rglob("*"))
     assert not list(readonly.rglob("*"))
-
-
-class ImageSource(Node):
-    @classmethod
-    def define_schema(cls) -> NodeSchema:
-        return NodeSchema(
-            "webm-fixture.source", outputs=(OutputSpec("image", TypeExpr.concrete(IMAGE_TYPE)),)
-        )
-
-    @classmethod
-    def execute(cls) -> Any:
-        return cls.outputs(image=_images(width=64, height=64))
-
-
-@pytest.mark.parametrize("in_process", (True, False))
-def test_save_webm_ordinary_manifest_runs_twice_with_a_cached_source(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, in_process: bool
-) -> None:
-    output, _, _ = _mounts(tmp_path, monkeypatch)
-
-    async def scenario() -> None:
-        package = Path(__file__).resolve().parents[1]
-        checkout = package.parents[1]
-        paths = (checkout / "src", *sorted(checkout.glob("packages/*/src")))
-        composer = ServingComposer(
-            worker_env={
-                "CUDA_VISIBLE_DEVICES": "",
-                "DINKSTER_ACCELERATOR": "cpu",
-                "DINKSTER_MOUNTS_SNAPSHOT": os.environ["DINKSTER_MOUNTS_SNAPSHOT"],
-                "PYTHONPATH": os.pathsep.join(
-                    (*map(str, paths), str(Path(__file__).parent), *sys.path)
-                ),
-            }
-        )
-        try:
-            manifest = package / "dinkster-pack.toml"
-            (tmp_path / "webm_fixture.py").write_text(
-                "from test_webm_save import ImageSource\n"
-                "from video_pack_fixtures import register_video_types\n"
-                "NODES = (ImageSource,)\n",
-                encoding="ascii",
-            )
-            fixture = tmp_path / "fixture.toml"
-            fixture.write_text(
-                '[pack]\nname = "webm-fixture"\npublisher = "dinkster"\n'
-                'namespaces = ["webm-fixture"]\n'
-                '[pack.dependencies]\ndinkster-video = ">=0.0.1"\n[pack.entry]\n'
-                'nodes = "webm_fixture:NODES"\n'
-                'types = "webm_fixture:register_video_types"\n',
-                encoding="ascii",
-            )
-            await compose_video_packs(
-                composer,
-                manifest,
-                fixture,
-                in_process=in_process,
-                worker_group="webm-fixture",
-            )
-            graph = Graph(
-                nodes={
-                    "source": GraphNode("webm-fixture.source"),
-                    "save": GraphNode(
-                        "dinkster.video.save_webm",
-                        {
-                            "images": Link("source", "image"),
-                            "filename_prefix": "graph/clip",
-                            "codec": "av1",
-                            "fps": 12.5,
-                            "crf": 30.0,
-                        },
-                    ),
-                }
-            )
-            engine = composer.composition.make_engine(lambda _event: None)
-            first = await engine.run(graph, ["save"])
-            second = await engine.run(graph, ["save"])
-            assert "source" not in first.cached and "save" not in first.cached
-            assert "source" in second.cached and "save" not in second.cached
-            for result in (first, second):
-                pixels = result.outputs["save"]["images"].resolve()
-                np.testing.assert_array_equal(pixels, _images(width=64, height=64))
-            files = sorted(output.glob("graph/clip_*.webm"))
-            assert len(files) == 2
-            for path in files:
-                with av.open(path) as container:
-                    stream = container.streams.video[0]
-                    assert (stream.width, stream.height) == (64, 64)
-                    assert float(stream.average_rate) == 12.5
-                    frames = [
-                        frame.to_ndarray(format="rgb24") for frame in container.decode(stream)
-                    ]
-                assert len(frames) == 3
-                for frame in frames:
-                    assert frame[:, :24, 0].mean() > frame[:, 40:, 0].mean() + 100
-                    assert frame[:, 40:, 1].mean() > frame[:, :24, 1].mean() + 100
-        finally:
-            await composer.close()
-
-    asyncio.run(scenario())

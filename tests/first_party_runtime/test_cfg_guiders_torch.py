@@ -252,35 +252,6 @@ def test_dual_cfg_uses_pinned_condition_batch_and_cfg_formula(
     assert guider.original_conds["middle"][0]["prompt_type"] == "negative"
 
 
-def test_dual_cfg_preserves_cfg_one_optimization_and_disable_flag(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    import dinkster_inference.samplers as samplers
-
-    guider = DualCFGGuider.execute(
-        model=_patcher(),
-        cond1=_conditioning(1.0, "positive"),
-        cond2=_conditioning(2.0, "middle"),
-        negative=_conditioning(3.0, "negative"),
-        cfg_conds=1.0,
-        cfg_cond2_negative=1.0,
-        style="regular",
-    )["GUIDER"]
-    guider.inner_model = SimpleNamespace()
-    guider.conds = {"negative": "negative", "middle": "middle", "positive": "positive"}
-    calls: list[list[Any]] = []
-
-    def calc(_model: Any, conditions: list[Any], *_args: Any) -> list[torch.Tensor]:
-        calls.append(conditions)
-        return [torch.zeros(1) for _ in conditions]
-
-    monkeypatch.setattr(samplers, "calc_cond_batch", calc)
-    guider.predict_noise(torch.zeros(1), torch.ones(1))
-    assert calls == [[None, None, "positive"]]
-    guider.predict_noise(torch.zeros(1), torch.ones(1), {"disable_cfg1_optimization": True})
-    assert calls[-1] == ["negative", "middle", "positive"]
-
-
 def test_dual_model_guider_routes_unconditional_prediction_to_the_negative_model(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

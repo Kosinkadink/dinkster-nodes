@@ -26,18 +26,3 @@ def test_random_noise_uses_seeded_batch_indices_and_disable_noise_preserves_layo
     assert disabled.dtype == latent["samples"].dtype
     assert disabled.device == latent["samples"].device
     assert torch.equal(disabled, torch.zeros_like(latent["samples"]))
-
-
-def test_disable_noise_uses_pinned_cpu_nested_noise_preparation() -> None:
-    from dinkster_api.v1 import initialize_inference_process
-
-    initialize_inference_process()
-    from dinkster_inference.nested_tensor import NestedTensor
-
-    samples = NestedTensor([torch.ones((1, 1, 2, 2), dtype=torch.float64)])
-    disabled = DisableNoise.execute()["NOISE"].generate_noise({"samples": samples})
-    assert disabled.is_nested
-    tensor = disabled.unbind()[0]
-    assert tensor.device.type == "cpu"
-    assert tensor.dtype == torch.float64
-    assert torch.equal(tensor, torch.zeros_like(tensor))

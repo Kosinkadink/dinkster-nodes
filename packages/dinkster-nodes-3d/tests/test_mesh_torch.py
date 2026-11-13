@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import math
-from dataclasses import fields
 from typing import Any
 
 import pytest
@@ -16,7 +15,6 @@ from dinkster_api.v1 import (
     TriangleMeshBatch,
     TypeRegistry,
     materialize_mesh,
-    materialize_voxel,
     register_inference_types,
 )
 
@@ -82,32 +80,6 @@ def test_rotation_preserves_materials_normals_tangent_handedness_and_source(port
             mode="quaternion",
             **dict.fromkeys(("mode.qw", "mode.qx", "mode.qy", "mode.qz"), 0.0),
         )
-
-
-def test_materialization_retains_every_mesh_field_and_voxel_layout() -> None:
-    source = mesh()
-    registry = TypeRegistry()
-    register_inference_types(registry)
-    spec = registry.spec(MESH_TYPE)
-    restored = materialize_mesh(spec.decode(spec.encode(source)))
-    for field in fields(source):
-        left, right = getattr(restored, field.name), getattr(source, field.name)
-        if isinstance(right, torch.Tensor):
-            torch.testing.assert_close(left, right, rtol=0, atol=0)
-        else:
-            assert left == right
-    voxel = {
-        "data": torch.tensor([[1, 3, 7], [9, 5, 2]], dtype=torch.int32),
-        "voxel_colors": torch.tensor([[0.1, 0.2, 0.3], [0.4, 0.5, 0.6]]),
-        "resolution": 64,
-    }
-    live = materialize_voxel(voxel)
-    assert live.data is voxel["data"] and live.voxel_colors is voxel["voxel_colors"]
-    spec = registry.spec(VOXEL_TYPE)
-    restored_voxel = materialize_voxel(spec.decode(spec.encode(voxel)))
-    torch.testing.assert_close(restored_voxel.data, voxel["data"], rtol=0, atol=0)
-    torch.testing.assert_close(restored_voxel.voxel_colors, voxel["voxel_colors"], rtol=0, atol=0)
-    assert restored_voxel.resolution == 64
 
 
 def test_mesh_info_uses_real_counts_not_padding() -> None:

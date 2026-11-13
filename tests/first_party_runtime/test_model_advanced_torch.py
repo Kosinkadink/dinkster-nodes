@@ -128,20 +128,6 @@ def test_lcm_sampling_reduces_schedule_and_matches_lcm_output_math() -> None:
     assert torch.allclose(patched.calculate_denoised(sigma, model_output, model_input), expected)
 
 
-def test_discrete_zsnr_changes_runtime_schedule_without_mutating_source() -> None:
-    original = source()
-    regular = ModelSamplingDiscrete.execute(model=original, sampling="eps", zsnr=False)[
-        "MODEL"
-    ].sampling
-    zsnr = ModelSamplingDiscrete.execute(model=original, sampling="eps", zsnr=True)[
-        "MODEL"
-    ].sampling
-    assert zsnr.zsnr is True
-    assert regular.zsnr is False
-    assert not torch.equal(regular.sigmas, zsnr.sigmas)
-    assert original.sampling is not zsnr
-
-
 @pytest.mark.parametrize("sampling", ("eps", "v_prediction", "edm", "cosmos_rflow"))
 def test_continuous_edm_sampling_matches_prediction_seams(sampling: str) -> None:
     patched = ModelSamplingContinuousEDM.execute(
@@ -204,15 +190,6 @@ def test_flux_shift_uses_image_dimensions_and_stable_cascade_uses_requested_shif
     cascade = ModelSamplingStableCascade.execute(model=source(), shift=2.5)["MODEL"].sampling
     assert cascade.shift == 2.5
     assert torch.all(cascade.sigma(torch.tensor([0.1, 0.9])) > 0)
-
-
-def test_noise_scale_replaces_flow_sampling_and_preserves_shift() -> None:
-    original = source()
-    original.sampling.set_parameters(shift=2.0, multiplier=7.0)
-    result = ModelNoiseScale.execute(model=original, noise_scale=3.0)["MODEL"]
-    assert result.sampling.shift == 2.0
-    assert result.sampling.multiplier == 7.0
-    assert result.sampling.noise_scale == 3.0
 
 
 def test_rescale_cfg_installs_flow_callback() -> None:

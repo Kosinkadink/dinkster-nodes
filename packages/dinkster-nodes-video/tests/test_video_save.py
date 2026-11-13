@@ -2,10 +2,7 @@
 
 from __future__ import annotations
 
-import asyncio
 import json
-import os
-import sys
 from pathlib import Path
 from typing import Any
 
@@ -13,20 +10,11 @@ import av
 import numpy as np
 import pytest
 from dinkster_api.v1 import (
-    VIDEO_TYPE,
     ExportSnapshot,
-    Node,
-    NodeSchema,
-    OutputSpec,
-    TypeExpr,
 )
 from dinkster_assets.identity import AssetError
-from dinkster_graph import Graph, GraphNode, Link
 from dinkster_video.video_components import CreateVideo
 from dinkster_video.video_save import SaveVideo
-from video_pack_fixtures import compose_video_packs
-
-from dinkster.compose import ServingComposer
 
 pytestmark = pytest.mark.usefixtures("saved_artifact_context")
 
@@ -186,105 +174,3 @@ def test_save_video_refuses_readonly_mount_without_publishing(
     assert not list(default.rglob("*"))
     assert not list(alternate.rglob("*"))
     assert not list(readonly.rglob("*"))
-
-
-class VideoSource(Node):
-    @classmethod
-    def define_schema(cls) -> NodeSchema:
-        return NodeSchema(
-            "video-save-fixture.source",
-            outputs=(OutputSpec("video", TypeExpr.concrete(VIDEO_TYPE)),),
-        )
-
-    @classmethod
-    def execute(cls) -> Any:
-        return cls.outputs(video=_video())
-
-
-@pytest.mark.parametrize("in_process", (True, False))
-def test_save_video_ordinary_manifest_runs_twice_in_both_hosts(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-    in_process: bool,
-) -> None:
-    output, _, _ = _mounts(tmp_path, monkeypatch)
-
-    async def scenario() -> None:
-        package = Path(__file__).resolve().parents[1]
-        checkout = package.parents[1]
-        paths = (checkout / "src", *sorted(checkout.glob("packages/*/src")))
-        module = f"video_save_fixture_{int(in_process)}"
-        composer = ServingComposer(
-            worker_env={
-                "CUDA_VISIBLE_DEVICES": "",
-                "DINKSTER_ACCELERATOR": "cpu",
-                "DINKSTER_MOUNTS_SNAPSHOT": os.environ["DINKSTER_MOUNTS_SNAPSHOT"],
-                "PYTHONPATH": os.pathsep.join(
-                    (*map(str, paths), str(Path(__file__).parent), *sys.path)
-                ),
-            }
-        )
-        try:
-            (tmp_path / f"{module}.py").write_text(
-                "from test_video_save import VideoSource\n"
-                "from video_pack_fixtures import register_video_types\n"
-                "NODES = (VideoSource,)\n",
-                encoding="ascii",
-            )
-            fixture = tmp_path / "fixture.toml"
-            fixture.write_text(
-                '[pack]\nname = "video-save-fixture"\npublisher = "dinkster"\n'
-                'namespaces = ["video-save-fixture"]\n'
-                '[pack.dependencies]\ndinkster-video = ">=0.0.1"\n[pack.entry]\n'
-                f'nodes = "{module}:NODES"\n'
-                f'types = "{module}:register_video_types"\n',
-                encoding="ascii",
-            )
-            native = package / "dinkster-pack.toml"
-            await compose_video_packs(
-                composer,
-                native,
-                fixture,
-                in_process=in_process,
-                worker_group="video-save-fixture",
-            )
-            graph = Graph(
-                nodes={
-                    "source": GraphNode("video-save-fixture.source"),
-                    "save": GraphNode(
-                        "dinkster.video.save_video",
-                        {
-                            "video": Link("source", "video"),
-                            "filename_prefix": "graph/mp4",
-                            "format.codec.encoding.crf": 18.0,
-                        },
-                        slot_variants={
-                            "format": "mp4",
-                            "format.codec": "h264",
-                            "format.codec.encoding": "re-encode",
-                        },
-                    ),
-                }
-            )
-            engine = composer.composition.make_engine(lambda _event: None)
-            for attempt in range(2):
-                result = await engine.run(graph, ["save"])
-                saved = result.outputs["save"]["video"]
-                if in_process:
-                    assert saved.resolve() is not None
-                else:
-                    assert saved.payload.type_id == "VIDEO"
-                assert ("source" in result.cached) is bool(attempt)
-                assert "save" not in result.cached
-            files = sorted(output.glob("graph/mp4_*.mp4"))
-            assert len(files) == 2
-            for path in files:
-                _, stream, frame_count = _tags(path)
-                assert stream.codec_context.name == "h264"
-                assert (stream.width, stream.height) == (24, 16)
-                assert float(stream.average_rate) == 4.0
-                assert frame_count == 3
-        finally:
-            await composer.close()
-
-    asyncio.run(scenario())

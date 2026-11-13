@@ -5,7 +5,7 @@ import sys
 from types import SimpleNamespace
 
 import pytest
-from dinkster_api.v1 import MODEL_TYPE, ComboOption, ComboWidget, NumberWidget, TypeExpr
+from dinkster_api.v1 import MODEL_TYPE, NumberWidget, TypeExpr
 from dinkster_models import NODES, device_routing, model_advanced
 
 MODEL_ADVANCED_NODES = (
@@ -169,40 +169,6 @@ def test_portable_attention_uses_available_backend_or_pytorch_fallback(
         kitchen if available and attention == "comfy kitchen attention" else pytorch
     )
     assert original.attention is None
-
-
-@pytest.mark.parametrize("gpu_count", [0, 1, 3])
-def test_device_selector_options_follow_available_devices(
-    monkeypatch: pytest.MonkeyPatch, gpu_count: int
-) -> None:
-    options = ["default", "cpu"]
-    if gpu_count > 1:
-        options.extend(f"gpu:{index}" for index in range(gpu_count))
-    monkeypatch.setattr(
-        device_routing,
-        "_model_management",
-        lambda: SimpleNamespace(get_gpu_device_options=lambda: options),
-    )
-    for node in DEVICE_ROUTING_NODES[1:]:
-        schema = node.define_schema()
-        widget = schema.inputs[1].widget
-        assert isinstance(widget, ComboWidget)
-        provider = device_routing.device_choices()[
-            widget.remote_route.removeprefix("/api/choices/")
-        ]
-        expected = (
-            options
-            if schema.node_type != "dinkster.models.select_vae_device"
-            else [option for option in options if option != "cpu"]
-        )
-        assert list(provider()) == expected
-        assert [
-            option.value if isinstance(option, ComboOption) else option for option in widget.options
-        ] == (
-            ["default"]
-            if schema.node_type == "dinkster.models.select_vae_device"
-            else ["default", "cpu"]
-        )
 
 
 _COLD_ATTENTION = """

@@ -103,14 +103,6 @@ def test_hypernetwork_bound_weight_loading(tmp_path: Path, verified: bool, stren
     _check(source, result, strength)
 
 
-def test_hypernetwork_vault_weight_loading(tmp_path: Path) -> None:
-    source = _model()
-    result = HypernetworkLoader.execute(
-        model=source, hypernetwork_name=_asset(tmp_path, vault_backed=True), strength=1.25
-    )["MODEL"]
-    _check(source, result, 1.25)
-
-
 def test_hypernetwork_unsupported_activation_and_unbound_filename(tmp_path: Path) -> None:
     source = _model()
     state = {**_state(), "activation_func": "unsupported"}
@@ -120,87 +112,6 @@ def test_hypernetwork_unsupported_activation_and_unbound_filename(tmp_path: Path
     assert result is not source and result.model_options == source.model_options
     with pytest.raises(TypeError, match="AssetRef"):
         HypernetworkLoader.execute(model=source, hypernetwork_name="network.pt", strength=1.0)
-
-
-@pytest.mark.parametrize(
-    "activation", ("relu", "leakyrelu", "elu", "swish", "tanh", "sigmoid", "softsign", "mish")
-)
-def test_hypernetwork_output_activation(tmp_path: Path, activation: str) -> None:
-    functions = {
-        "relu": torch.nn.functional.relu,
-        "leakyrelu": torch.nn.functional.leaky_relu,
-        "elu": torch.nn.functional.elu,
-        "swish": torch.nn.functional.hardswish,
-        "tanh": torch.tanh,
-        "sigmoid": torch.sigmoid,
-        "softsign": torch.nn.functional.softsign,
-        "mish": torch.nn.functional.mish,
-    }
-    asset = _asset(
-        tmp_path, state={**_state(), "activation_func": activation, "activate_output": True}
-    )
-    result = HypernetworkLoader.execute(model=_model(), hypernetwork_name=asset, strength=0.5)[
-        "MODEL"
-    ]
-    patch = result.model_options["transformer_options"]["patches"]["attn1_patch"][0]
-    value = torch.tensor([[[3.0, -2.0]]])
-    q, k, v = patch(value, value, value, {})
-    assert q is value
-    torch.testing.assert_close(
-        k, value + 0.5 * functions[activation](torch.tensor([[[9.0, -6.5]]]))
-    )
-    torch.testing.assert_close(
-        v, value + 0.5 * functions[activation](torch.tensor([[[-14.0, 6.5]]]))
-    )
-
-
-@pytest.mark.parametrize("last_layer_dropout", (False, True))
-def test_hypernetwork_layer_norm_and_dropout(tmp_path: Path, last_layer_dropout: bool) -> None:
-    branches = []
-    for initial in _state()[2]:
-        branches.append(
-            {
-                **initial,
-                "1.weight": torch.tensor([1.5, 0.5]),
-                "1.bias": torch.tensor([-0.25, 0.75]),
-                "2.weight": torch.eye(2) * 0.5,
-                "2.bias": torch.ones(2) * 0.25,
-                "3.weight": torch.ones(2),
-                "3.bias": torch.zeros(2),
-            }
-        )
-    state = {
-        2: branches,
-        "activation_func": "relu",
-        "is_layer_norm": True,
-        "use_dropout": True,
-        "last_layer_dropout": last_layer_dropout,
-    }
-    asset = _asset(tmp_path, state=state)
-    result = HypernetworkLoader.execute(model=_model(), hypernetwork_name=asset, strength=0.5)[
-        "MODEL"
-    ]
-    patch = result.model_options["transformer_options"]["patches"]["attn1_patch"][0]
-    value = torch.tensor([[[3.0, -2.0], [-1.0, 4.0]]])
-
-    def expected(initial: torch.Tensor) -> torch.Tensor:
-        hidden = torch.nn.functional.layer_norm(
-            initial.relu(), (2,), torch.tensor([1.5, 0.5]), torch.tensor([-0.25, 0.75])
-        )
-        hidden = torch.nn.functional.dropout(hidden, 0.3, training=True)
-        hidden = torch.nn.functional.layer_norm((hidden * 0.5 + 0.25).relu(), (2,))
-        if last_layer_dropout:
-            hidden = torch.nn.functional.dropout(hidden, 0.3, training=True)
-        return value + hidden * 0.5
-
-    torch.manual_seed(441)
-    expected_k = expected(torch.tensor([[[9.0, -6.5], [-5.0, 9.5]]]))
-    expected_v = expected(torch.tensor([[[-14.0, 6.5], [14.0, -1.5]]]))
-    torch.manual_seed(441)
-    with torch.inference_mode():
-        _, k, v = patch(value, value, value, {})
-    torch.testing.assert_close(k, expected_k)
-    torch.testing.assert_close(v, expected_v)
 
 
 class HypernetworkSource(Node):

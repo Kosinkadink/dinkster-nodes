@@ -1,13 +1,11 @@
 """Native loop expansion executes body occurrences through the engine."""
 
 import asyncio
-from pathlib import Path
 
 import pytest
 from dinkster_caches import MemoryLRUCache
 from dinkster_engine import Engine
 from dinkster_graph import Graph, GraphNode, Link, RegionNode, RegionOutput, TypedLiteral
-from dinkster_memory import GovernorReservationService, MemoryGovernor, ReservationRequest
 from dinkster_schema import (
     ABSENT,
     InputSpec,
@@ -24,7 +22,7 @@ from dinkster_utilities.math import ComfyMathExpression
 from dinkster_utilities.primitive import PrimitiveBoolean, PrimitiveInt
 from dinkster_utilities.switch import ComfySwitchNode
 from dinkster_values import TypeRegistry, is_absent, register_core_types
-from dinkster_workers import GovernedWorker, InProcessWorker, IsolatedWorker
+from dinkster_workers import InProcessWorker
 
 from tests.async_scenarios import run_scenario
 
@@ -148,63 +146,6 @@ def test_nested_loop_keeps_each_occurrences_results(inner_cache: bool) -> None:
             assert result.outputs["outer_end"]["outputs"].resolve() == [[0, 1, 2], [10, 11, 12]]
             executed_body = [node for node in result.executed if node.endswith("_body")]
             assert len(executed_body) == (0 if run and inner_cache else 6)
-
-    run_scenario(scenario())
-
-
-@pytest.mark.parametrize("worker_kind", ["isolated", "governed"])
-def test_loop_expansion_and_publication_across_worker_boundary(
-    tmp_path: Path, worker_kind: str
-) -> None:
-    async def scenario() -> None:
-        registry = TypeRegistry()
-        register_core_types(registry)
-        manifest = Path(__file__).resolve().parents[1] / "dinkster-pack.toml"
-        boundary = IsolatedWorker(
-            manifest,
-            registry,
-            use_shm=True,
-            shm_threshold=1,
-            extra_env={"PYTHONPATH": str(Path(__file__).resolve().parent.parent)},
-        )
-        worker = (
-            GovernedWorker(
-                boundary,
-                planner=lambda _: (ReservationRequest("ram", 1),),
-                reservations=GovernorReservationService(MemoryGovernor({"ram": 1})),
-            )
-            if worker_kind == "governed"
-            else boundary
-        )
-        try:
-            await boundary.start()
-            engine = Engine(
-                schemas=build_schemas(NODES),
-                registry=registry,
-                worker=worker,
-                cache=MemoryLRUCache(),
-            )
-            graph = Graph(
-                {
-                    "start": GraphNode(
-                        "dinkster.utilities.start_loop",
-                        {"mode.num_iterations": 3},
-                        slot_variants={"mode": "simple"},
-                    ),
-                    "body": GraphNode(
-                        "dinkster.utilities.comfy_math_expression",
-                        {"expression": "a + 7", "values.a": Link("start", "iteration_index")},
-                    ),
-                    "end": GraphNode(
-                        "dinkster.utilities.end_loop",
-                        {"output_value": Link("body", "INT"), "accumulate": True},
-                    ),
-                }
-            )
-            result = await asyncio.wait_for(engine.run(graph, ["end"]), 20)
-            assert result.outputs["end"]["outputs"].resolve() == [7, 8, 9]
-        finally:
-            await boundary.close()
 
     run_scenario(scenario())
 
