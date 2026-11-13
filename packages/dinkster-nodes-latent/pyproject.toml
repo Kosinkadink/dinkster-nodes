@@ -21,4 +21,3 @@ packages = ["src/dinkster_latent"]
 [tool.hatch.build.targets.wheel.force-include]
 "dinkster-pack.toml" = "dinkster_latent/dinkster-pack.toml"
 "locales" = "dinkster_latent/locales"
-

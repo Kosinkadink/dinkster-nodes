@@ -22,4 +22,3 @@ packages = ["src/dinkster_vision_rtdetr"]
 [tool.hatch.build.targets.wheel.force-include]
 "dinkster-pack.toml" = "dinkster_vision_rtdetr/dinkster-pack.toml"
 "locales" = "dinkster_vision_rtdetr/locales"
-

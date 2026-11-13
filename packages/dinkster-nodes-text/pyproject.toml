@@ -18,4 +18,3 @@ packages = ["src/dinkster_text"]
 [tool.hatch.build.targets.wheel.force-include]
 "dinkster-pack.toml" = "dinkster_text/dinkster-pack.toml"
 "locales" = "dinkster_text/locales"
-
