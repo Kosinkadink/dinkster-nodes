@@ -838,6 +838,20 @@ def test_advanced_image_grayscale_width_four_converts_every_column(
             np.testing.assert_allclose(frame.to_ndarray(), expected[index], rtol=1e-6, atol=0)
 
 
+class _AdvancedAVIFHostSource(Node):
+    @classmethod
+    def define_schema(cls) -> NodeSchema:
+        return NodeSchema(
+            "advanced-avif-fixture.source",
+            outputs=(OutputSpec("images", TypeExpr.concrete(IMAGE_TYPE)),),
+        )
+
+    @classmethod
+    def execute(cls):
+        pixels = torch.tensor([[0.75, 0.125, 0.25], [0.125, 0.25, 0.625]])
+        return cls.outputs(images=pixels[:, None, None, :].expand(2, 64, 64, 3).contiguous())
+
+
 @pytest.mark.parametrize("in_process", (True, False))
 @pytest.mark.parametrize("disabled", (False, True))
 @pytest.mark.parametrize("prompt", ({"source": {"inputs": {"seed": 47}}}, None))
