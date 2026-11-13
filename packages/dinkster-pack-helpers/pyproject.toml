@@ -1,6 +1,6 @@
 [project]
 name = "dinkster-pack-helpers"
-version = "0.0.5"
+version = "0.0.6"
 description = "Shared conditioning, model asset and latent helpers for node packs"
 requires-python = ">=3.12"
 dependencies = [
@@ -21,3 +21,6 @@ packages = ["src/dinkster_pack_helpers"]
 [tool.dinkster]
 official-library = true
 engine = ">=0.0.2.dev0,<0.1"
+
+[tool.uv.sources]
+dinkster-api = { workspace = true }

@@ -1,6 +1,6 @@
 [project]
 name = "dinkster-ltx"
-version = "0.0.8"
+version = "0.0.9"
 description = "Dinkster ltx model nodes"
 requires-python = ">=3.12"
 dependencies = [
@@ -26,6 +26,7 @@ packages = ["src/dinkster_ltx"]
 "locales" = "dinkster_ltx/locales"
 
 [tool.uv.sources]
+dinkster-api = { workspace = true }
 dinkster-latent = { workspace = true }
 dinkster-llm = { workspace = true }
 dinkster-models = { workspace = true }

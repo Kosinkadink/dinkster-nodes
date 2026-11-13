@@ -1,6 +1,6 @@
 [project]
 name = "dinkster-vision-marigold"
-version = "0.0.4"
+version = "0.0.5"
 description = "ComfyUI-origin vision-marigold nodes"
 requires-python = ">=3.12"
 dependencies = [
@@ -20,3 +20,6 @@ packages = ["src/dinkster_vision_marigold"]
 [tool.hatch.build.targets.wheel.force-include]
 "dinkster-pack.toml" = "dinkster_vision_marigold/dinkster-pack.toml"
 "locales" = "dinkster_vision_marigold/locales"
+
+[tool.uv.sources]
+dinkster-api = { workspace = true }

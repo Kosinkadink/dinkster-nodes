@@ -1,6 +1,6 @@
 [project]
 name = "dinkster-vision-sdpose"
-version = "0.0.7"
+version = "0.0.8"
 description = "ComfyUI-origin vision-sdpose nodes"
 requires-python = ">=3.12"
 dependencies = [
@@ -25,5 +25,6 @@ packages = ["src/dinkster_vision_sdpose"]
 "locales" = "dinkster_vision_sdpose/locales"
 
 [tool.uv.sources]
+dinkster-api = { workspace = true }
 dinkster-misc-models = { workspace = true }
 dinkster-pack-helpers = { workspace = true }
