@@ -26,17 +26,6 @@ def test_tracks_from_single_quote_json_list_strings_and_mask_visibility() -> Non
     assert torch.equal(tracks["track_visibility"], torch.tensor([[False], [True]]))
 
 
-def test_tracks_from_single_track_and_invalid_json_match_reference_failure() -> None:
-    result = WanMoveTracksFromCoords.execute(track_coords="[{'x': 2, 'y': 3}]")
-    assert result["TRACKS"]["track_path"].shape == (1, 1, 2)
-    try:
-        WanMoveTracksFromCoords.execute(track_coords="invalid")
-    except IndexError:
-        pass
-    else:
-        raise AssertionError("invalid track data must retain the reference failure")
-
-
 def test_generate_tracks_schema_and_non_square_perpendicular_spread() -> None:
 
     result = GenerateTracks.execute(

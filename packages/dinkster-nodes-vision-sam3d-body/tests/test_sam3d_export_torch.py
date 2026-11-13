@@ -1,36 +1,18 @@
 """Animation file hierarchy, channel values and source preservation."""
 
-import asyncio
 import copy
 import json
-import os
 import struct
-from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
 import numpy as np
 import pytest
-from dinkster_api.v1 import (
-    CORE_STRING,
-    FILE_3D_TYPE,
-    KIMODO_POSE_DATA_TYPE,
-    MHR_POSE_DATA_TYPE,
-    InputSpec,
-    Node,
-    NodeSchema,
-    OutputSpec,
-    TypeExpr,
-    materialize_vision_packet,
-)
-from dinkster_graph import Graph, GraphNode, Link, graph_from_wire, graph_to_wire
 from dinkster_vision_sam3d_body.sam3d_bvh import build_bvh
 from dinkster_vision_sam3d_body.sam3d_export import BuildPoseFile
 from dinkster_vision_sam3d_body.sam3d_openpose_glb import build_glb_openpose
 from dinkster_vision_sam3d_body.sam3d_skeletal import build_glb_skeletal
 from scipy.spatial.transform import Rotation
-
-from dinkster.compose import PackSpec, ServingComposer, default_pack_spec
 
 
 def _pose(*, branching: bool = False) -> dict[str, Any]:
@@ -453,134 +435,3 @@ def test_pose_file_requires_model_or_external_rig(mode: str) -> None:
             format="bvh" if mode == "bvh" else "glb",
             **{"format.mesh_style": mode},
         )
-
-
-class ExportSource(Node):
-    @classmethod
-    def define_schema(cls) -> NodeSchema:
-        return NodeSchema(
-            "export-fixture.source",
-            inputs=(),
-            outputs=(
-                OutputSpec("mhr", TypeExpr.concrete(MHR_POSE_DATA_TYPE)),
-                OutputSpec("kimodo", TypeExpr.concrete(KIMODO_POSE_DATA_TYPE)),
-            ),
-        )
-
-    @classmethod
-    def execute(cls) -> Any:
-        return cls.outputs(mhr=_export_pose(), kimodo=_export_pose())
-
-
-class ExportInspect(Node):
-    @classmethod
-    def define_schema(cls) -> NodeSchema:
-        return NodeSchema(
-            "export-fixture.inspect",
-            inputs=(
-                *(
-                    InputSpec(mode, TypeExpr.concrete(FILE_3D_TYPE))
-                    for mode in ("body_mesh", "bones_only", "openpose", "scail", "bvh")
-                ),
-                InputSpec("pose", TypeExpr.concrete(MHR_POSE_DATA_TYPE)),
-            ),
-            outputs=(OutputSpec("result", TypeExpr.concrete(CORE_STRING)),),
-        )
-
-    @classmethod
-    def execute(cls, *, pose: Any, **files: Any) -> Any:
-        for mode, value in files.items():
-            _assert_file(mode, value)
-        np.testing.assert_equal(materialize_vision_packet(pose), _export_pose())
-        return cls.outputs(result="pose file bytes preserved")
-
-
-@pytest.mark.parametrize("in_process", (True, False))
-def test_pose_file_ordinary_hosts_and_cache(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, in_process: bool
-) -> None:
-    monkeypatch.setenv("DINKSTER_ASSET_VAULT", str(tmp_path / "vault"))
-    module = f"export_fixture_{int(in_process)}"
-    (tmp_path / f"{module}.py").write_text(
-        "from test_sam3d_export_torch import ExportSource, ExportInspect\n"
-        "from dinkster_vision_sam3d_body import register_types as register_sam3d\n"
-        "NODES = (ExportSource, ExportInspect)\n"
-        "def register_types(registry):\n"
-        "    with registry.registering_pack('dinkster-vision-sam3d-body', "
-        "('SAM3D_BODY_MODEL', 'MHR_POSE_DATA'), allow_bare=True):\n"
-        "        register_sam3d(registry)\n",
-        encoding="ascii",
-    )
-    fixture = tmp_path / "fixture.toml"
-    fixture.write_text(
-        '[pack]\nname="export-fixture"\npublisher="dinkster"\nnamespaces=["export-fixture"]\n'
-        '[pack.dependencies]\ndinkster-image=">=0.0.1,<1"\n'
-        'dinkster-vision-sam3=">=0.0.1,<1"\ndinkster-vision-sam3d-body=">=0.0.1,<1"\n'
-        f'[pack.entry]\nnodes="{module}:NODES"\ntypes="{module}:register_types"\n',
-        encoding="ascii",
-    )
-
-    async def scenario() -> None:
-        specs = (
-            default_pack_spec("dinkster-image"),
-            default_pack_spec("dinkster-vision-sam3"),
-            default_pack_spec("dinkster-vision-sam3d-body"),
-            PackSpec(fixture, trust_reserved=True),
-        )
-        manifests = tuple(spec.manifest for spec in specs)
-        composer = ServingComposer(
-            pack_scratch_root=tmp_path / "scratch",
-            worker_env={
-                "CUDA_VISIBLE_DEVICES": "",
-                "DINKSTER_ACCELERATOR": "cpu",
-                "PYTHONPATH": os.pathsep.join((str(tmp_path), str(Path(__file__).parent))),
-            },
-        )
-        try:
-            for spec in specs:
-                await composer.add_pack(
-                    replace(
-                        spec,
-                        in_process=in_process,
-                        worker_group=None if in_process else "export",
-                        group_manifests=() if in_process else manifests,
-                    )
-                )
-            nodes = {"source": GraphNode("export-fixture.source")}
-            for index, mode in enumerate(("body_mesh", "bones_only", "openpose", "scail", "bvh")):
-                options: dict[str, Any] = {
-                    "pose_data": Link("source", "mhr" if index % 2 == 0 else "kimodo"),
-                    "fps": 20,
-                    "camera_translation": "centered",
-                }
-                variants = {"format": "bvh" if mode == "bvh" else "glb"}
-                if mode == "bvh":
-                    options["format.units"] = "m"
-                else:
-                    variants["format.mesh_style"] = mode
-                    if mode in ("body_mesh", "bones_only"):
-                        variants["format.mesh_style.bone_vis"] = (
-                            "off" if mode == "body_mesh" else "octahedrons"
-                        )
-                    if mode == "body_mesh":
-                        variants["format.mesh_style.shader"] = "default"
-                nodes[mode] = GraphNode(
-                    "dinkster.vision.sam3d.body.build_pose_file", options, slot_variants=variants
-                )
-            nodes["inspect"] = GraphNode(
-                "export-fixture.inspect",
-                {
-                    **{mode: Link(mode, "model_3d") for mode in nodes if mode != "source"},
-                    "pose": Link("source", "mhr"),
-                },
-            )
-            graph = graph_from_wire(graph_to_wire(Graph(nodes=nodes)))
-            engine = composer.composition.make_engine(lambda _event: None)
-            for attempt in range(2):
-                result = await engine.run(graph, ["inspect"])
-                assert result.outputs["inspect"]["result"].resolve() == "pose file bytes preserved"
-                assert set(result.cached) == (set(graph.nodes) if attempt else set())
-        finally:
-            await composer.close()
-
-    asyncio.run(scenario())

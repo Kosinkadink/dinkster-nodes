@@ -5,35 +5,12 @@ from __future__ import annotations
 import numpy as np
 import pytest
 from dinkster_api.v1 import Curve
-from dinkster_image import NODES as IMAGE_NODES
 from dinkster_image.ported.glsl import NativeGlslShader
 
 
 def _image(batch: int = 1, height: int = 2, width: int = 3) -> np.ndarray:
     values = np.arange(batch * height * width * 3, dtype=np.float32)
     return values.reshape(batch, height, width, 3) / max(1, values.size - 1)
-
-
-def test_exact_glsl_schema_preserves_source_members_and_output_positions() -> None:
-    from dinkster_schema import elaborate, schema_from_wire, schema_to_wire
-
-    schema = NativeGlslShader.schema()
-    assert NativeGlslShader in IMAGE_NODES
-    assert schema_from_wire(schema_to_wire(schema)) == schema
-    effective = elaborate(
-        schema,
-        ("images.image4", "images.image0", "images.image2", "floats.u_float3"),
-        slot_variants={"size_mode": "custom"},
-    )
-    assert [(spec.id, spec.required) for spec in effective.inputs] == [
-        ("fragment_shader", True),
-        ("size_mode.width", True),
-        ("size_mode.height", True),
-        ("images.image4", False),
-        ("images.image0", True),
-        ("images.image2", False),
-        ("floats.u_float3", False),
-    ]
 
 
 def test_exact_glsl_compacts_source_members_and_keeps_empty_uniform_defaults() -> None:

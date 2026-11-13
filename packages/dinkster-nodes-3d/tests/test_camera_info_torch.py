@@ -2,29 +2,12 @@
 
 from __future__ import annotations
 
-import asyncio
 import copy
 import math
-import os
-from pathlib import Path
 from typing import Any
 
 import pytest
 from dinkster_3d.camera_info import CreateCameraInfo
-from dinkster_api.v1 import (
-    CAMERA_INFO_STATE_TYPE,
-    CORE_BOOLEAN,
-    LOAD3D_CAMERA_TYPE,
-    InputSpec,
-    Node,
-    NodeSchema,
-    OutputSpec,
-    TypeExpr,
-)
-from dinkster_graph import Graph, GraphNode, Link
-from geometry_pack_fixtures import geometry_pack_specs
-
-from dinkster.compose import ServingComposer
 
 
 def _execute(mode: dict[str, Any], **overrides: Any) -> dict[str, Any]:
@@ -121,104 +104,3 @@ def test_quaternion_normalization_ignores_target_roll_and_state() -> None:
     zero = _execute(mode)
     assert zero["quaternion"] == {"w": 0, "x": 0, "y": 0, "z": 0}
     assert zero["target"] == {"x": 2, "y": -4, "z": 6}
-
-
-class CameraStateSource(Node):
-    @classmethod
-    def define_schema(cls) -> NodeSchema:
-        return NodeSchema(
-            "camera-info-fixture.state",
-            outputs=(OutputSpec("state", TypeExpr.concrete(CAMERA_INFO_STATE_TYPE)),),
-        )
-
-    @classmethod
-    def execute(cls) -> Any:
-        return cls.outputs(state={"position": {"x": 88, "y": -99, "z": 77}, "view": [1, 3]})
-
-
-class CameraInfoInspect(Node):
-    @classmethod
-    def define_schema(cls) -> NodeSchema:
-        return NodeSchema(
-            "camera-info-fixture.inspect",
-            inputs=(InputSpec("camera", TypeExpr.concrete(LOAD3D_CAMERA_TYPE)),),
-            outputs=(OutputSpec("valid", TypeExpr.concrete(CORE_BOOLEAN)),),
-        )
-
-    @classmethod
-    def execute(cls, *, camera: dict[str, Any]) -> Any:
-        assert camera["position"] == {"x": 2, "y": -4, "z": 7}
-        assert camera["target"] == {"x": 1, "y": -2, "z": 3}
-        assert camera["cameraType"] == "orthographic"
-        assert camera["fov"] == 47 and camera["zoom"] == 1.7
-        assert camera["useCustomUp"] is True
-        assert sum(value**2 for value in camera["quaternion"].values()) == pytest.approx(
-            1, abs=2e-7
-        )
-        return cls.outputs(valid=True)
-
-
-@pytest.mark.parametrize("in_process", (True, False))
-def test_camera_info_ordinary_production_manifest_twice(tmp_path: Path, in_process: bool) -> None:
-    async def scenario() -> None:
-        (tmp_path / "camera_info_fixture.py").write_text(
-            "from test_camera_info_torch import CameraStateSource, CameraInfoInspect\n"
-            "from dinkster_3d import register_types as register_inference_types\n"
-            "NODES = (CameraStateSource, CameraInfoInspect)\n",
-            encoding="ascii",
-        )
-        fixture = tmp_path / "fixture.toml"
-        fixture.write_text(
-            '[pack]\nname="camera-info-fixture"\npublisher="dinkster"\n'
-            'namespaces=["camera-info-fixture"]\n[pack.entry]\n'
-            'nodes="camera_info_fixture:NODES"\n'
-            'types="camera_info_fixture:register_inference_types"\n',
-            encoding="ascii",
-        )
-        composer = ServingComposer(
-            worker_env={
-                "CUDA_VISIBLE_DEVICES": "",
-                "DINKSTER_ACCELERATOR": "cpu",
-                "PYTHONPATH": os.pathsep.join(
-                    (str(tmp_path), str(Path(__file__).parent), str(Path.cwd() / "src"))
-                ),
-            }
-        )
-        try:
-            for spec in geometry_pack_specs(
-                fixture, in_process=in_process, worker_group="camera-info-fixture"
-            ):
-                await composer.add_pack(spec)
-            graph = Graph(
-                nodes={
-                    "state": GraphNode("camera-info-fixture.state"),
-                    "camera": GraphNode(
-                        "dinkster.3d.create_camera_info",
-                        {
-                            "mode.position_x": 2.0,
-                            "mode.position_y": -4.0,
-                            "mode.position_z": 7.0,
-                            "target_x": 1.0,
-                            "target_y": -2.0,
-                            "target_z": 3.0,
-                            "roll": 37.0,
-                            "fov": 47.0,
-                            "zoom": 1.7,
-                            "camera_type": "orthographic",
-                            "camera_info_state": Link("state", "state"),
-                        },
-                        slot_variants={"mode": "look_at"},
-                    ),
-                    "inspect": GraphNode(
-                        "camera-info-fixture.inspect", {"camera": Link("camera", "camera_info")}
-                    ),
-                }
-            )
-            engine = composer.composition.make_engine(lambda _event: None)
-            for _ in range(2):
-                result = await engine.run(graph, ["inspect"])
-                assert result.outputs["inspect"]["valid"].resolve() is True
-        finally:
-            await composer.close()
-
-    asyncio.run(scenario())

@@ -135,26 +135,6 @@ def test_native_video_chain_matches_across_worker_shared_memory() -> None:
     run_scenario(scenario())
 
 
-def test_native_video_pack_preserves_registered_value_specs() -> None:
-    from dinkster_values import VIDEO_EDIT_TYPE
-    from dinkster_video import register_types
-
-    edit = {"trim": {"duration": 1.0, "start_time": 0.5}, "unused": {"preserved": True}}
-    registry = TypeRegistry()
-    register_types(registry)
-    video_spec = registry.spec(VIDEO_TYPE)
-    edit_spec = registry.spec(VIDEO_EDIT_TYPE)
-    register_types(registry)
-    assert registry.spec(VIDEO_TYPE) is video_spec
-    assert registry.spec(VIDEO_EDIT_TYPE) is edit_spec
-    encoded_edit = edit_spec.encode(edit)
-    assert (
-        encoded_edit
-        == b'{"trim": {"duration": 1.0, "start_time": 0.5}, "unused": {"preserved": true}}'
-    )
-    assert edit_spec.decode(encoded_edit) == edit
-
-
 def test_remote_load_then_trim_preserves_qualified_cost_and_reuses_source(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

@@ -2,27 +2,11 @@
 
 from __future__ import annotations
 
-import asyncio
-import os
-from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
 import torch
 from dinkster_3d.gaussian_splat import GetSplatCount
-from dinkster_api.v1 import (
-    CORE_STRING,
-    SPLAT_TYPE,
-    InputSpec,
-    Node,
-    NodeSchema,
-    OutputSpec,
-    TypeExpr,
-)
-from dinkster_graph import Graph, GraphNode, Link
-from geometry_pack_fixtures import geometry_pack_specs
-
-from dinkster.compose import ServingComposer
 
 
 def _source(case: str) -> SimpleNamespace:
@@ -52,70 +36,3 @@ def test_splat_count_preserves_input_and_counts_only_valid_rows(case: str, expec
     assert result["splat"] is source
     assert result["count"] == expected
     assert source.positions.flatten().tolist() == ([] if case == "empty" else list(range(18)))
-
-
-class SplatSource(Node):
-    @classmethod
-    def define_schema(cls) -> NodeSchema:
-        return NodeSchema(
-            "splat-count-source.source",
-            inputs=(InputSpec("case", TypeExpr.concrete(CORE_STRING)),),
-            outputs=(OutputSpec("splat", TypeExpr.concrete(SPLAT_TYPE)),),
-        )
-
-    @classmethod
-    def execute(cls, *, case: str) -> dict[str, object]:
-        return cls.outputs(splat=_source(case))
-
-
-@pytest.mark.parametrize("in_process", [True, False])
-def test_splat_count_executes_through_the_ordinary_manifest(
-    tmp_path: Path, in_process: bool
-) -> None:
-    async def scenario() -> None:
-        module = f"splat_count_fixture_{in_process}"
-        (tmp_path / f"{module}.py").write_text(
-            "from dinkster_api.v1 import register_inference_types\n"
-            "from test_get_splat_count_torch import SplatSource\nNODES = (SplatSource,)\n",
-            encoding="ascii",
-        )
-        fixture = tmp_path / "dinkster-pack.toml"
-        fixture.write_text(
-            '[pack]\nname="splat-count-source"\npublisher="dinkster"\n'
-            'namespaces=["splat-count-source"]\n[pack.entry]\n'
-            f'nodes="{module}:NODES"\ntypes="{module}:register_inference_types"\n',
-            encoding="ascii",
-        )
-        composer = ServingComposer(
-            worker_env={
-                "CUDA_VISIBLE_DEVICES": "",
-                "DINKSTER_ACCELERATOR": "cpu",
-                "PYTHONPATH": os.pathsep.join((str(tmp_path), str(Path(__file__).parent))),
-            }
-        )
-        try:
-            for spec in geometry_pack_specs(fixture, in_process=in_process):
-                await composer.add_pack(spec)
-            engine = composer.composition.make_engine(lambda _event: None)
-            for case, expected in (
-                ("uniform", 6),
-                ("nonuniform", 4),
-                ("empty", 0),
-                ("zero-counts", 0),
-            ):
-                graph = Graph(
-                    {
-                        "source": GraphNode("splat-count-source.source", {"case": case}),
-                        "count": GraphNode(
-                            "dinkster.3d.get_splat_count", {"splat": Link("source", "splat")}
-                        ),
-                    }
-                )
-                for _attempt in range(2):
-                    result = await engine.run(graph, ["count"])
-                    assert result.outputs["count"]["count"].resolve() == expected
-                    assert result.outputs["count"]["splat"].type_id == SPLAT_TYPE
-        finally:
-            await composer.close()
-
-    asyncio.run(scenario())

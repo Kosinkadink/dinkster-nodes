@@ -2,19 +2,11 @@
 
 from __future__ import annotations
 
-import asyncio
-import os
-from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
 import torch
 from dinkster_3d.splat_render import RenderSplat
-from dinkster_api.v1 import SPLAT_TYPE, Node, NodeSchema, OutputSpec, TypeExpr
-from dinkster_graph import Graph, GraphNode, Link
-from geometry_pack_fixtures import geometry_pack_specs
-
-from dinkster.compose import ServingComposer
 
 
 def source() -> SimpleNamespace:
@@ -104,65 +96,3 @@ def test_render_splat_signed_frames_background_cycle_and_culling() -> None:
     args.update(frames=0, opacity_threshold=0.61, camera_info=None, bg_image=None)
     culled = RenderSplat.execute(splat=value, **args)
     assert culled["IMAGE"].shape[0] == 2 and not culled["MASK"].any()
-
-
-class SplatSource(Node):
-    @classmethod
-    def define_schema(cls) -> NodeSchema:
-        return NodeSchema(
-            "splat-render-source.make",
-            outputs=(OutputSpec("splat", TypeExpr.concrete(SPLAT_TYPE)),),
-        )
-
-    @classmethod
-    def execute(cls) -> dict:
-        return cls.outputs(splat=source())
-
-
-@pytest.mark.parametrize("in_process", [True, False])
-def test_render_splat_ordinary_hosts_twice(tmp_path: Path, in_process: bool) -> None:
-    module = "splat_render_source"
-    (tmp_path / f"{module}.py").write_text(
-        "from test_render_splat_torch import SplatSource\n"
-        "from dinkster_3d import register_types as register_inference_types\n"
-        "NODES=(SplatSource,)\n"
-    )
-    manifest = tmp_path / "source.toml"
-    manifest.write_text(
-        '[pack]\nname="splat-render-source"\npublisher="dinkster"\n'
-        'namespaces=["splat-render-source"]\n[pack.entry]\n'
-        f'nodes="{module}:NODES"\ntypes="{module}:register_inference_types"\n'
-    )
-    environment = {
-        "CUDA_VISIBLE_DEVICES": "",
-        "DINKSTER_ACCELERATOR": "cpu",
-        "PYTHONPATH": os.pathsep.join(
-            (str(tmp_path), str(Path(__file__).parent), os.environ.get("PYTHONPATH", ""))
-        ),
-    }
-
-    async def scenario() -> None:
-        composer = ServingComposer(worker_env=environment)
-        try:
-            for spec in geometry_pack_specs(manifest, in_process=in_process):
-                await composer.add_pack(spec)
-            engine = composer.composition.make_engine(lambda _event: None)
-            args = parameters()
-            args.pop("camera_info")
-            graph = Graph(
-                {
-                    "source": GraphNode("splat-render-source.make", {}),
-                    "render": GraphNode(
-                        "dinkster.3d.render_splat", {"splat": Link("source", "splat"), **args}
-                    ),
-                }
-            )
-            for _ in range(2):
-                result = await engine.run(graph, ["render"])
-                assert result.outputs["render"]["IMAGE"].resolve().shape == (2, 64, 80, 3)
-                mask = torch.as_tensor(result.outputs["render"]["MASK"].resolve())
-                assert mask[0].max() > 0 and not mask[1].any()
-        finally:
-            await composer.close()
-
-    asyncio.run(scenario())

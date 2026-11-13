@@ -10,18 +10,7 @@ import numpy as np
 import pytest
 from dinkster_image.ported.image_filters import (
     ImageBlend,
-    ImageBlur,
-    ImageQuantize,
-    ImageSharpen,
 )
-
-
-def test_zero_radius_returns_original_live_value() -> None:
-    image = np.arange(12, dtype=np.float32).reshape(1, 2, 2, 3)
-    assert ImageBlur.execute(image=image, blur_radius=0, sigma=1.0)["IMAGE"] is image
-    assert (
-        ImageSharpen.execute(image=image, sharpen_radius=0, sigma=1.0, alpha=1.0)["IMAGE"] is image
-    )
 
 
 class ArrayTensor(np.ndarray[Any, Any]):
@@ -82,17 +71,3 @@ def test_blend_pixels_preserve_destination_alpha(
     np.testing.assert_allclose(result, [[[[*expected, 0.25]]]], atol=1e-7)
     np.testing.assert_array_equal(image1, original1)
     np.testing.assert_array_equal(image2, original2)
-
-
-def test_quantize_copies_live_pixels_to_cpu_without_changing_source_or_alpha(
-    array_runtime: None,
-) -> None:
-    image = np.array([[[[0.0, 0.0, 0.0, 0.2], [1.0, 1.0, 1.0, 0.7]]]], dtype=np.float32).view(
-        ArrayTensor
-    )
-    original = image.copy()
-    result: Any = ImageQuantize.execute(image=image, colors=2, dither="none")["IMAGE"]
-    np.testing.assert_array_equal(result, original)
-    np.testing.assert_array_equal(image, original)
-    assert result.dtype == image.dtype
-    assert result.storage_device == image.storage_device

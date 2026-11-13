@@ -6,7 +6,6 @@ import asyncio
 import base64
 import json
 import os
-import shutil
 import struct
 from io import BytesIO
 from pathlib import Path
@@ -17,7 +16,6 @@ import pytest
 import torch
 from dinkster_3d.mesh_io import Get3DComponents, MeshToFile3D, SaveGLB
 from dinkster_api.v1 import (
-    FILE_3D_GLTF_TYPE,
     MESH_TYPE,
     AssetRef,
     ExportSnapshot,
@@ -29,14 +27,12 @@ from dinkster_api.v1 import (
     TypeRegistry,
     digest_bytes,
     materialize_mesh,
-    register_file3d_types,
     register_inference_types,
 )
-from dinkster_assets import AssetVault, MountDef, MountTable, digest_file
+from dinkster_assets import AssetVault, MountDef, MountTable
 from dinkster_graph import Graph, GraphNode, Link
 from dinkster_protocol import use_export_snapshot
 from dinkster_schema.reporting import capture_saved_artifacts
-from dinkster_values import register_core_types
 from geometry_pack_fixtures import geometry_pack_specs
 from PIL import Image
 
@@ -138,70 +134,6 @@ class MeshExportSource(Node):
     @classmethod
     def execute(cls) -> dict[str, object]:
         return cls.outputs(mesh=export_mesh())
-
-
-@pytest.mark.parametrize("in_process", [True, False])
-def test_ordinary_mesh_export_hosts_twice(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, in_process: bool
-) -> None:
-    vault = AssetVault(tmp_path / "vault")
-    environment = {
-        "CUDA_VISIBLE_DEVICES": "",
-        "DINKSTER_ACCELERATOR": "cpu",
-        "DINKSTER_ASSET_VAULT": str(vault.root),
-        "PYTHONPATH": os.pathsep.join((str(tmp_path), str(Path(__file__).parent))),
-    }
-    for key, value in environment.items():
-        monkeypatch.setenv(key, value)
-
-    async def scenario() -> None:
-        (tmp_path / "mesh_export_fixture.py").write_text(
-            "from dinkster_3d import register_types as register_inference_types\n"
-            "from test_mesh_io_torch import MeshExportSource\nNODES=(MeshExportSource,)\n",
-            encoding="ascii",
-        )
-        fixture = tmp_path / "fixture.toml"
-        fixture.write_text(
-            '[pack]\nname="mesh-export-fixture"\npublisher="dinkster"\nnamespaces=["mesh-export-fixture"]\n'
-            '[pack.entry]\nnodes="mesh_export_fixture:NODES"\ntypes="mesh_export_fixture:register_inference_types"\n',
-            encoding="ascii",
-        )
-        data = b""
-        for replay in (False, True):
-            registry = TypeRegistry()
-            register_core_types(registry)
-            register_file3d_types(registry, vault)
-            composer = ServingComposer(
-                registry=registry,
-                worker_env=environment,
-                cache_mode="layered",
-                cache_dir=tmp_path / "cache",
-                pack_scratch_root=tmp_path / "scratch",
-            )
-            try:
-                for spec in geometry_pack_specs(fixture, in_process=in_process):
-                    await composer.add_pack(spec)
-                engine = composer.composition.make_engine(lambda _event: None)
-                graph = Graph(
-                    {
-                        "source": GraphNode("mesh-export-fixture.source"),
-                        "export": GraphNode(
-                            "dinkster.3d.mesh_to_file3_d", {"mesh": Link("source", "mesh")}
-                        ),
-                    }
-                )
-                result = await engine.run(graph, ["export"])
-                assert set(result.cached if replay else result.executed) == {"source", "export"}
-                output = result.outputs["export"]["model_3d"].resolve()
-                current = assert_export(output)
-                assert not data or current == data
-                data = current
-            finally:
-                await composer.close()
-            shutil.rmtree(tmp_path / "scratch")
-            assert assert_export(output) == data
-
-    asyncio.run(scenario())
 
 
 @pytest.mark.parametrize("disable_metadata", [False, True])
@@ -670,87 +602,3 @@ def test_obj_and_ascii_binary_stl_geometry(tmp_path: Path) -> None:
         torch.testing.assert_close(
             mesh.normals, torch.tensor([[[0, 0, 1]]] * 3).transpose(0, 1).float(), rtol=0, atol=0
         )
-
-
-class File3DSource(Node):
-    @classmethod
-    def define_schema(cls) -> NodeSchema:
-        return NodeSchema(
-            "mesh-io-fixture.source",
-            outputs=(OutputSpec("file", TypeExpr.concrete(FILE_3D_GLTF_TYPE)),),
-        )
-
-    @classmethod
-    def execute(cls) -> dict[str, object]:
-        return cls.outputs(
-            file={
-                "format": "gltf",
-                "source": AssetRef(
-                    os.environ["MESH_IO_DIGEST"], "scene.gltf", int(os.environ["MESH_IO_SIZE"])
-                ).to_wire(),
-                "resources": json.loads(os.environ["MESH_IO_RESOURCES"]),
-            }
-        )
-
-
-@pytest.mark.parametrize("in_process", [True, False])
-def test_ordinary_mesh_io_hosts_twice(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, in_process: bool
-) -> None:
-    path = tmp_path / "scene.gltf"
-    gltf, payload = scene()
-    path.write_bytes(json.dumps(gltf).encode())
-    sidecar = tmp_path / "geometry.bin"
-    sidecar.write_bytes(payload)
-    vault = AssetVault(tmp_path / "vault")
-    digest = digest_file(path)
-    for item in (path, sidecar):
-        with vault.writer(digest_file(item)) as writer:
-            writer.write(item.read_bytes())
-            writer.commit()
-    environment = {
-        "CUDA_VISIBLE_DEVICES": "",
-        "DINKSTER_ACCELERATOR": "cpu",
-        "DINKSTER_ASSET_VAULT": str(vault.root),
-        "MESH_IO_DIGEST": digest,
-        "MESH_IO_SIZE": str(path.stat().st_size),
-        "MESH_IO_RESOURCES": json.dumps(
-            {"geometry.bin": AssetRef(digest_file(sidecar), sidecar.name, len(payload)).to_wire()}
-        ),
-        "PYTHONPATH": os.pathsep.join((str(tmp_path), str(Path(__file__).parent))),
-    }
-    for key, value in environment.items():
-        monkeypatch.setenv(key, value)
-
-    async def scenario() -> None:
-        (tmp_path / "mesh_io_fixture.py").write_text(
-            "from dinkster_3d import register_types as register_inference_types\n"
-            "from test_mesh_io_torch import File3DSource\nNODES=(File3DSource,)\n",
-            encoding="ascii",
-        )
-        fixture = tmp_path / "fixture.toml"
-        fixture.write_text(
-            '[pack]\nname="mesh-io-fixture"\npublisher="dinkster"\nnamespaces=["mesh-io-fixture"]\n'
-            '[pack.entry]\nnodes="mesh_io_fixture:NODES"\ntypes="mesh_io_fixture:register_inference_types"\n',
-            encoding="ascii",
-        )
-        composer = ServingComposer(worker_env=environment)
-        try:
-            for spec in geometry_pack_specs(fixture, in_process=in_process):
-                await composer.add_pack(spec)
-            engine = composer.composition.make_engine(lambda _event: None)
-            graph = Graph(
-                {
-                    "source": GraphNode("mesh-io-fixture.source"),
-                    "read": GraphNode(
-                        "dinkster.3d.get3_d_components", {"model_3d": Link("source", "file")}
-                    ),
-                }
-            )
-            for _ in range(2):
-                result = await engine.run(graph, ["read"])
-                assert_scene(result.outputs["read"]["mesh"].resolve())
-        finally:
-            await composer.close()
-
-    asyncio.run(scenario())

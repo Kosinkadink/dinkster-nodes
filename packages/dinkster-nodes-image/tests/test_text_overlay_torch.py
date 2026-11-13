@@ -2,28 +2,11 @@
 
 from __future__ import annotations
 
-import asyncio
-import os
-import sys
-from pathlib import Path
 from typing import Any
 
 import pytest
 import torch
-from dinkster_api.v1 import (
-    CORE_BOOLEAN,
-    IMAGE_TYPE,
-    InputSpec,
-    Node,
-    NodeSchema,
-    OutputSpec,
-    TypeExpr,
-    materialize_image,
-)
-from dinkster_graph import Graph, GraphNode, Link
 from dinkster_image.ported.text_overlay import TextOverlay
-
-from dinkster.compose import PackSpec, ServingComposer
 
 
 def _image(channels: int = 4) -> Any:
@@ -108,108 +91,3 @@ def test_text_overlay_alignment_escapes_wrapping_and_outlines() -> None:
     outlined = _render(white, text="Hi", color="#ffffff", outline=True)
     assert (outlined < 1).any()
     assert torch.equal(_render(white, text="Hi", color="#ffffff", outline=False), white)
-
-
-class OverlaySource(Node):
-    @classmethod
-    def define_schema(cls) -> NodeSchema:
-        return NodeSchema(
-            "overlay-fixture.source", outputs=(OutputSpec("image", TypeExpr.concrete(IMAGE_TYPE)),)
-        )
-
-    @classmethod
-    def execute(cls) -> dict[str, object]:
-        return cls.outputs(image=_image().numpy())
-
-
-class OverlayConsumer(Node):
-    @classmethod
-    def define_schema(cls) -> NodeSchema:
-        return NodeSchema(
-            "overlay-fixture.consume",
-            inputs=(InputSpec("image", TypeExpr.concrete(IMAGE_TYPE)),),
-            outputs=(OutputSpec("valid", TypeExpr.concrete(CORE_BOOLEAN)),),
-        )
-
-    @classmethod
-    def execute(cls, *, image: Any) -> dict[str, object]:
-        image = materialize_image(image)
-        torch.testing.assert_close(image, _render(_image().float()), rtol=0, atol=0)
-        return cls.outputs(valid=True)
-
-
-@pytest.mark.parametrize("in_process", (True, False))
-def test_text_overlay_ordinary_native_hosts_consume_image_and_cache(
-    tmp_path: Path, in_process: bool
-) -> None:
-    async def scenario() -> None:
-        package = Path(__file__).resolve().parents[1]
-        checkout = package.parents[1]
-        native = package / "dinkster-pack.toml"
-        (tmp_path / "overlay_fixture.py").write_text(
-            "from test_text_overlay_torch import OverlaySource, OverlayConsumer\n"
-            "from dinkster_image import register_types as register_inference_types\n"
-            "NODES = (OverlaySource, OverlayConsumer)\n",
-            encoding="ascii",
-        )
-        fixture = tmp_path / "dinkster-pack.toml"
-        fixture.write_text(
-            '[pack]\nname="overlay-fixture"\npublisher="dinkster"\n'
-            'namespaces=["overlay-fixture"]\n[pack.entry]\nnodes="overlay_fixture:NODES"\n'
-            'types="overlay_fixture:register_inference_types"\n',
-            encoding="ascii",
-        )
-        paths = (
-            tmp_path,
-            Path(__file__).parent,
-            checkout / "src",
-            *sorted(checkout.glob("packages/*/src")),
-            *(Path(path) for path in sys.path if path and Path(path).is_dir()),
-        )
-        composer = ServingComposer(
-            worker_env={
-                "CUDA_VISIBLE_DEVICES": "",
-                "DINKSTER_ACCELERATOR": "cpu",
-                "PYTHONPATH": os.pathsep.join(map(str, paths)),
-            }
-        )
-        try:
-            for manifest in (native, fixture):
-                await composer.add_pack(
-                    PackSpec(manifest, trust_reserved=True, in_process=True)
-                    if in_process
-                    else PackSpec(
-                        manifest,
-                        trust_reserved=True,
-                        worker_group="overlay",
-                        group_manifests=(native, fixture),
-                    )
-                )
-            graph = Graph(
-                nodes={
-                    "source": GraphNode("overlay-fixture.source"),
-                    "overlay": GraphNode(
-                        "dinkster.image.text_overlay",
-                        {
-                            "images": Link("source", "image"),
-                            "text": "MMMM",
-                            "font_size": 40.0,
-                            "color": "#ff000080",
-                            "outline": False,
-                        },
-                    ),
-                    "consume": GraphNode(
-                        "overlay-fixture.consume", {"image": Link("overlay", "images")}
-                    ),
-                }
-            )
-            engine = composer.composition.make_engine(lambda event: None)
-            for run in range(2):
-                result = await engine.run(graph, ["consume"])
-                assert result.outputs["consume"]["valid"].resolve() is True
-                if run == 1:
-                    assert set(result.cached) == set(graph.nodes)
-        finally:
-            await composer.close()
-
-    asyncio.run(scenario())

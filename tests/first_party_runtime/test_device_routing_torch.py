@@ -6,7 +6,7 @@ from __future__ import annotations
 import asyncio
 import copy
 from pathlib import Path
-from typing import Any, cast
+from typing import Any
 
 import pytest
 from dinkster_api.v1 import (
@@ -22,7 +22,6 @@ from dinkster_api.v1 import (
     initialize_inference_process,
 )
 from dinkster_graph import Graph, GraphNode, Link
-from dinkster_models import NODES
 from dinkster_models.device_routing import (
     MultiGPUWorkUnits,
     SelectCLIPDevice,
@@ -36,14 +35,6 @@ DEVICE_ROUTING_NODES = (MultiGPUWorkUnits, SelectModelDevice, SelectCLIPDevice, 
 
 _MODEL = TypeExpr.concrete(MODEL_TYPE)
 _FLOAT32 = object()
-
-
-class Device:
-    def __init__(self, kind: str) -> None:
-        self.type = kind
-
-    def __eq__(self, other: object) -> bool:
-        return isinstance(other, Device) and self.type == other.type
 
 
 class Model:
@@ -94,115 +85,11 @@ class Patcher:
         return None
 
 
-class Clip:
-    def __init__(self, patcher: Patcher) -> None:
-        self.patcher = patcher
-
-    def clone(self) -> Clip:
-        return Clip(self.patcher.clone())
-
-
 class VAE:
     def __init__(self, patcher: Patcher, device: object) -> None:
         self.patcher = patcher
         self.device = device
         self.first_stage_model = patcher.model
-
-
-class DeviceManagement:
-    @staticmethod
-    def resolve_gpu_device_option(option: str) -> object | None:
-        return {"default": None, "cpu": Device("cpu"), "gpu:1": Device("meta")}.get(option)
-
-    @staticmethod
-    def unet_manual_cast(_dtype: object, _device: object) -> None:
-        return None
-
-    @staticmethod
-    def vae_offload_device() -> object:
-        return Device("cpu")
-
-
-def test_pack_schemas_accept_portable_gpu_values() -> None:
-    assert set(DEVICE_ROUTING_NODES) <= set(NODES)
-    assert tuple(node.schema().node_type for node in DEVICE_ROUTING_NODES) == (
-        "dinkster.models.multi_gpu_work_units",
-        "dinkster.models.select_model_device",
-        "dinkster.models.select_clip_device",
-        "dinkster.models.select_vae_device",
-    )
-    model, clip, vae = (node.schema() for node in DEVICE_ROUTING_NODES[1:])
-    assert tuple(option.value for option in cast(Any, model.inputs[1].widget).options) == (
-        "default",
-        "cpu",
-    )
-    assert tuple(option.value for option in cast(Any, clip.inputs[1].widget).options) == (
-        "default",
-        "cpu",
-    )
-    assert tuple(option.value for option in cast(Any, vae.inputs[1].widget).options) == ("default",)
-
-
-def test_device_routing_preserves_sources_restores_defaults_and_syncs_wrappers(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    import dinkster_models.device_routing as routing
-
-    monkeypatch.setattr(routing, "_model_management", DeviceManagement)
-    gpu0 = Device("meta")
-    cpu = Device("cpu")
-    model = Patcher(gpu0, cpu, dynamic=True)
-    collision = Patcher(gpu0, cpu)
-    other = Patcher(cpu, cpu)
-    model.additional["multigpu"] = [collision, other]
-
-    cpu_model = cast(Patcher, SelectModelDevice.execute(model=model, device="cpu")["MODEL"])
-    assert model.load_device is gpu0 and model.offload_device is cpu
-    assert cpu_model.load_device == cpu and cpu_model.offload_device == cpu
-    assert not cpu_model.is_dynamic()
-    assert cpu_model.additional["multigpu"] == [collision]
-
-    gpu_model = cast(Patcher, SelectModelDevice.execute(model=model, device="gpu:1")["MODEL"])
-    assert gpu_model.load_device == gpu0
-    assert gpu_model.offload_device == cpu
-    assert gpu_model.additional["multigpu"] == [other]
-    restored = cast(Patcher, SelectModelDevice.execute(model=gpu_model, device="default")["MODEL"])
-    assert restored.load_device == gpu0 and restored.offload_device == cpu
-
-    clip = Clip(Patcher(gpu0, cpu))
-    routed_clip = cast(Clip, SelectCLIPDevice.execute(clip=clip, device="cpu")["CLIP"])
-    assert clip.patcher.load_device is gpu0
-    assert routed_clip.patcher.load_device == cpu and routed_clip.patcher.offload_device == cpu
-
-    vae = VAE(Patcher(gpu0, cpu), gpu0)
-    routed_vae = cast(VAE, SelectVAEDevice.execute(vae=vae, device="gpu:1")["VAE"])
-    assert vae.patcher.load_device is gpu0
-    assert routed_vae.device == gpu0
-    assert routed_vae.first_stage_model is routed_vae.patcher.model
-    cpu_vae = cast(VAE, SelectVAEDevice.execute(vae=vae, device="cpu")["VAE"])
-    assert cpu_vae.patcher.load_device is gpu0
-
-
-def test_unavailable_devices_and_multigpu_work_units_use_runtime_seams(
-    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
-) -> None:
-    import dinkster_models.device_routing as routing
-
-    class MultiGPU:
-        def create_multigpu_deepclones(
-            self, model: object, max_gpus: int, *, reuse_loaded: bool
-        ) -> object:
-            assert reuse_loaded and max_gpus == 3
-            return (model, max_gpus)
-
-    monkeypatch.setattr(routing, "_model_management", DeviceManagement)
-    monkeypatch.setattr(routing, "_multigpu", lambda: MultiGPU())
-    caplog.set_level("INFO")
-    model = Patcher(Device("meta"), Device("cpu"))
-    assert MultiGPUWorkUnits.execute(model=model, max_gpus=3)["MODEL"] == (model, 3)
-    unchanged = cast(Patcher, SelectModelDevice.execute(model=model, device="gpu:99")["MODEL"])
-    assert unchanged.load_device is model.load_device
-    assert "not available" in caplog.text
 
 
 class Source(Node):

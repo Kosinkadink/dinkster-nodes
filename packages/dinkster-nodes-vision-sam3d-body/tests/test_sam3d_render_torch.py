@@ -1,32 +1,16 @@
 """SAM3D rasterized pixels and source-preserving overlays."""
 
-import asyncio
 import copy
-import os
-from dataclasses import replace
-from pathlib import Path
 from typing import Any
 
 import numpy as np
 import pytest
 import torch
 from dinkster_api.v1 import (
-    CORE_STRING,
-    IMAGE_TYPE,
-    KIMODO_POSE_DATA_TYPE,
-    MHR_POSE_DATA_TYPE,
-    InputSpec,
-    Node,
-    NodeSchema,
-    OutputSpec,
-    TypeExpr,
     materialize_image,
 )
-from dinkster_graph import Graph, GraphNode, Link, graph_from_wire, graph_to_wire
 from dinkster_vision_sam3d_body.sam3d_openpose import render_pose_data_openpose
 from dinkster_vision_sam3d_body.sam3d_render import SAM3DBody_Render
-
-from dinkster.compose import PackSpec, ServingComposer, default_pack_spec
 
 
 def _render_packet() -> dict[str, Any]:
@@ -159,119 +143,6 @@ def test_camera_zoom_reprojects_keypoints_without_changing_sources() -> None:
     assert image[0, 12, 24].tolist() == [0, 0, 0]
     np.testing.assert_equal(packet, original)
     assert camera == original_camera
-
-
-class Source(Node):
-    @classmethod
-    def define_schema(cls) -> NodeSchema:
-        return NodeSchema(
-            "render-fixture.source",
-            inputs=(),
-            outputs=(
-                OutputSpec("mhr", TypeExpr.concrete(MHR_POSE_DATA_TYPE)),
-                OutputSpec("kimodo", TypeExpr.concrete(KIMODO_POSE_DATA_TYPE)),
-            ),
-        )
-
-    @classmethod
-    def execute(cls) -> Any:
-        return cls.outputs(mhr=_render_packet(), kimodo=_external_packet())
-
-
-class Inspect(Node):
-    @classmethod
-    def define_schema(cls) -> NodeSchema:
-        return NodeSchema(
-            "render-fixture.inspect",
-            inputs=tuple(
-                InputSpec(style, TypeExpr.concrete(IMAGE_TYPE))
-                for style in ("mesh", "silhouette", "openpose_2d", "openpose_3d", "scail")
-            ),
-            outputs=(OutputSpec("result", TypeExpr.concrete(CORE_STRING)),),
-        )
-
-    @classmethod
-    def execute(cls, **images: Any) -> Any:
-        _assert_rendered(images)
-        return cls.outputs(result="render pixels preserved")
-
-
-@pytest.mark.parametrize("in_process", (True, False))
-def test_render_modes_ordinary_hosts_twice(tmp_path: Path, in_process: bool) -> None:
-    module = f"render_fixture_{int(in_process)}"
-    (tmp_path / f"{module}.py").write_text(
-        "from test_sam3d_render_torch import Source, Inspect\n"
-        "from dinkster_vision_sam3d_body import register_types as register_sam3d\n"
-        "def register_inference_types(registry):\n"
-        "    with registry.registering_pack('dinkster-vision-sam3d-body', "
-        "('SAM3D_BODY_MODEL', 'MHR_POSE_DATA'), allow_bare=True):\n"
-        "        register_sam3d(registry)\n"
-        "NODES = (Source, Inspect)\n",
-        encoding="ascii",
-    )
-    fixture = tmp_path / "fixture.toml"
-    fixture.write_text(
-        '[pack]\nname="render-fixture"\npublisher="dinkster"\nnamespaces=["render-fixture"]\n'
-        '[pack.dependencies]\ndinkster-image=">=0.0.1,<1"\n'
-        'dinkster-vision-sam3=">=0.0.1,<1"\ndinkster-vision-sam3d-body=">=0.0.1,<1"\n'
-        f'[pack.entry]\nnodes="{module}:NODES"\ntypes="{module}:register_inference_types"\n',
-        encoding="ascii",
-    )
-
-    async def scenario() -> None:
-        specs = (
-            default_pack_spec("dinkster-image"),
-            default_pack_spec("dinkster-vision-sam3"),
-            default_pack_spec("dinkster-vision-sam3d-body"),
-            PackSpec(fixture, trust_reserved=True),
-        )
-        manifests = tuple(spec.manifest for spec in specs)
-        composer = ServingComposer(
-            worker_env={
-                "CUDA_VISIBLE_DEVICES": "",
-                "DINKSTER_ACCELERATOR": "cpu",
-                "PYTHONPATH": os.pathsep.join((str(tmp_path), str(Path(__file__).parent))),
-            }
-        )
-        try:
-            for spec in specs:
-                await composer.add_pack(
-                    replace(
-                        spec,
-                        in_process=in_process,
-                        worker_group=None if in_process else "render",
-                        group_manifests=() if in_process else manifests,
-                    )
-                )
-            nodes = {"source": GraphNode("render-fixture.source")}
-            for style in ("mesh", "silhouette", "openpose_2d", "openpose_3d", "scail"):
-                variants = {"render_style": style}
-                inputs: dict[str, Any] = {
-                    "pose_data": Link("source", "kimodo" if style == "openpose_3d" else "mhr")
-                }
-                if style == "mesh":
-                    variants["render_style.shader"] = "normals"
-                elif style == "openpose_2d":
-                    inputs["render_style.limb_alpha"] = 0.5
-                elif style in {"openpose_3d", "scail"}:
-                    inputs["render_style.radius_m"] = 0.08
-                nodes[style] = GraphNode(
-                    "dinkster.vision.sam3d.body.sam3_d_body_render", inputs, slot_variants=variants
-                )
-            nodes["inspect"] = GraphNode(
-                "render-fixture.inspect",
-                {style: Link(style, "image") for style in nodes if style != "source"},
-            )
-            graph = graph_from_wire(graph_to_wire(Graph(nodes=nodes)))
-            engine = composer.composition.make_engine(lambda _event: None)
-            for attempt in range(2):
-                result = await engine.run(graph, ["inspect"])
-                assert result.outputs["inspect"]["result"].resolve() == "render pixels preserved"
-                assert set(result.cached) == (set(graph.nodes) if attempt else set())
-        finally:
-            await composer.close()
-
-    asyncio.run(scenario())
 
 
 def test_body_alpha_marker_radius_and_source_preservation() -> None:

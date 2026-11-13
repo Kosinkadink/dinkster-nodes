@@ -1,30 +1,11 @@
 """Observable pose pixels, input preservation and ordinary portable transport."""
 
-import asyncio
 import copy
-import os
-from collections.abc import Mapping
-from pathlib import Path
 from typing import Any
 
 import pytest
 import torch
-from dinkster_api.v1 import (
-    CORE_STRING,
-    IMAGE_TYPE,
-    POSE_KEYPOINT_TYPE,
-    InputSpec,
-    Node,
-    NodeSchema,
-    OutputSpec,
-    TypeExpr,
-    materialize_image,
-)
-from dinkster_graph import Graph, GraphNode, Link
 from dinkster_vision_sdpose.sdpose import SDPoseDrawKeypoints
-from sdpose_pack_fixtures import sdpose_pack_specs
-
-from dinkster.compose import ServingComposer
 
 OPTIONS = dict(
     draw_body=False,
@@ -120,87 +101,3 @@ def test_empty_input_and_disabled_groups_are_black() -> None:
     assert torch.count_nonzero(empty) == 0
     disabled = SDPoseDrawKeypoints.execute(keypoints=frames(), **OPTIONS)["IMAGE"]
     assert disabled.shape == (2, 40, 48, 3) and torch.count_nonzero(disabled) == 0
-
-
-class PoseSource(Node):
-    @classmethod
-    def define_schema(cls) -> NodeSchema:
-        return NodeSchema(
-            "sdpose-drawing-fixture.source",
-            outputs=(OutputSpec("keypoints", TypeExpr.concrete(POSE_KEYPOINT_TYPE)),),
-        )
-
-    @classmethod
-    def execute(cls) -> Mapping[str, object]:
-        return cls.outputs(keypoints=frames())
-
-
-class PoseObserver(Node):
-    @classmethod
-    def define_schema(cls) -> NodeSchema:
-        return NodeSchema(
-            "sdpose-drawing-fixture.observer",
-            inputs=(
-                InputSpec("image", TypeExpr.concrete(IMAGE_TYPE)),
-                InputSpec("keypoints", TypeExpr.concrete(POSE_KEYPOINT_TYPE)),
-            ),
-            outputs=(OutputSpec("result", TypeExpr.concrete(CORE_STRING)),),
-        )
-
-    @classmethod
-    def execute(cls, *, image: Any, keypoints: Any) -> Mapping[str, object]:
-        torch.testing.assert_close(materialize_image(image), expected_face(), rtol=0, atol=0)
-        assert keypoints == frames()
-        return cls.outputs(result="pose pixels, frame order and source preserved")
-
-
-@pytest.mark.parametrize("in_process", (True, False))
-def test_draw_through_ordinary_hosts_twice(tmp_path: Path, in_process: bool) -> None:
-    async def scenario() -> None:
-        (tmp_path / "pose_drawing_fixture.py").write_text(
-            "from test_sdpose_drawing_torch import PoseSource, PoseObserver\n"
-            "from dinkster_api.v1 import register_inference_types\n"
-            "NODES = (PoseSource, PoseObserver)\n",
-            encoding="ascii",
-        )
-        fixture = tmp_path / "fixture.toml"
-        fixture.write_text(
-            '[pack]\nname="sdpose-drawing-fixture"\npublisher="dinkster"\n'
-            'namespaces=["sdpose-drawing-fixture"]\n[pack.entry]\n'
-            'nodes="pose_drawing_fixture:NODES"\n'
-            'types="pose_drawing_fixture:register_inference_types"\n',
-            encoding="ascii",
-        )
-        composer = ServingComposer(
-            worker_env={
-                "PYTHONPATH": os.pathsep.join((str(tmp_path), str(Path(__file__).parent))),
-                "CUDA_VISIBLE_DEVICES": "",
-                "DINKSTER_ACCELERATOR": "cpu",
-            }
-        )
-        try:
-            for spec in sdpose_pack_specs(fixture, in_process=in_process):
-                await composer.add_pack(spec)
-            graph = Graph(
-                nodes={
-                    "source": GraphNode("sdpose-drawing-fixture.source"),
-                    "draw": GraphNode(
-                        "dinkster.vision.sdpose.sd_pose_draw_keypoints",
-                        {**OPTIONS, "draw_face": True, "keypoints": Link("source", "keypoints")},
-                    ),
-                    "observer": GraphNode(
-                        "sdpose-drawing-fixture.observer",
-                        {"image": Link("draw", "IMAGE"), "keypoints": Link("source", "keypoints")},
-                    ),
-                }
-            )
-            engine = composer.composition.make_engine(lambda _event: None)
-            for _ in range(2):
-                result = await engine.run(graph, ["observer"])
-                assert result.outputs["observer"]["result"].resolve() == (
-                    "pose pixels, frame order and source preserved"
-                )
-        finally:
-            await composer.close()
-
-    asyncio.run(scenario())

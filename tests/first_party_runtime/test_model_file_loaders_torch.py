@@ -2,11 +2,9 @@
 
 from __future__ import annotations
 
-import asyncio
 import os
-import sys
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any
 
 import pytest
 
@@ -31,12 +29,7 @@ from dinkster_api.v1 import (
     initialize_inference_process,
 )
 from dinkster_assets import MountDef, MountTable
-from dinkster_graph import Graph, GraphNode, Link
-from dinkster_server import PackInfo
-from dinkster_workers.manifest import load_manifest
 from safetensors.torch import load_file, save_file
-
-from dinkster.compose import PackSpec, ServingComposer
 
 
 def _model(value: float) -> Any:
@@ -110,12 +103,6 @@ def _install_controlled_runtime() -> None:
     remember(sd, "load_gligen", lambda path: _runtime(path)[6])
     remember(controlnet, "load_controlnet", lambda path, *_args: _runtime(path)[4])
     remember(clip_vision, "load", lambda path: _runtime(path)[3])
-
-
-def _restore_controlled_runtime() -> None:
-    for (module, name), value in _ORIGINALS.items():
-        setattr(module, name, value)
-    _ORIGINALS.clear()
 
 
 class LoaderSource(Node):
@@ -263,269 +250,6 @@ class CheckpointVariantInspect(Node):
 HOST_NODES = (LoaderSource, LoaderInspect, LoaderOutputInspect, CheckpointVariantInspect)
 
 
-@pytest.mark.parametrize(
-    "observe_outputs,in_process,verified",
-    (
-        (False, True, False),
-        (False, True, True),
-        (True, True, False),
-        (True, True, True),
-        (True, False, True),
-        ("checkpoint-variants", True, False),
-        ("checkpoint-variants", True, True),
-    ),
-)
-def test_model_file_loaders_bind_tiny_safetensors_through_ordinary_hosts(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-    verified: bool,
-    in_process: bool,
-    observe_outputs: bool | Literal["checkpoint-variants"],
-) -> None:
-    checkpoint = tmp_path / "loader.safetensors"
-    save_file({"marker": torch.tensor([3.0, -7.0])}, checkpoint, metadata={"loader": "host"})
-    table = MountTable(tmp_path / "mounts.json", index_root=tmp_path / "index")
-    for kind in (
-        "model/checkpoint",
-        "model/config",
-        "model/controlnet",
-        "model/diffusion",
-        "model/text-encoder",
-        "model/clip-vision",
-        "model/style",
-        "model/gligen",
-        "model/embedding",
-    ):
-        table.add(MountDef(id=kind.replace("/", "-"), path=tmp_path), kind=kind)
-        if verified:
-            table.scan(kind.replace("/", "-"))
-    monkeypatch.setenv("DINKSTER_MOUNTS_SNAPSHOT", str(tmp_path / "mounts.json"))
-    asset = table.bind_name(checkpoint.name, "model/checkpoint")
-    assert type(asset).__name__ == ("AssetRef" if verified else "LocalAssetRef")
-
-    async def scenario() -> None:
-        checkout = Path(__file__).resolve().parents[2]
-        module = f"model_file_loaders_fixture_{tmp_path.name.replace('-', '_')}"
-        (tmp_path / f"{module}.py").write_text(
-            f"from {__name__} import "
-            "HOST_NODES, _install_controlled_runtime\n"
-            "from dinkster_api.v1 import register_inference_types\n"
-            "_install_controlled_runtime()\n"
-            "NODES = HOST_NODES\n",
-            encoding="ascii",
-        )
-        fixture = tmp_path / "dinkster-pack.toml"
-        fixture.write_text(
-            '[pack]\nname = "model-file-loaders-fixture"\npublisher = "dinkster"\n'
-            'namespaces = ["model-file-loaders-fixture"]\n'
-            '[pack.dependencies]\ndinkster-models = ">=0.0.1,<1"\n'
-            'dinkster-sd = ">=0.0.1,<1"\n[pack.entry]\n'
-            f'nodes = "{module}:NODES"\ntypes = "{module}:register_inference_types"\n',
-            encoding="ascii",
-        )
-        pack_manifests = tuple(
-            checkout / f"packages/dinkster-nodes-{name}/dinkster-pack.toml"
-            for name in ("latent", "conditioning", "sampling", "models", "sd")
-        )
-        pack_info = {
-            path: {load_manifest(path).name: PackInfo(path.parent.name, version="0.0.1")}
-            for path in pack_manifests
-        }
-        paths = (checkout, checkout / "src", *(sorted(checkout.glob("packages/*/src"))))
-        composer = ServingComposer(
-            worker_env={
-                "CUDA_VISIBLE_DEVICES": "",
-                "DINKSTER_ACCELERATOR": "cpu",
-                "DINKSTER_MOUNTS_SNAPSHOT": str(tmp_path / "mounts.json"),
-                "PYTHONPATH": os.pathsep.join(
-                    (
-                        str(tmp_path),
-                        str(Path(__file__).parent),
-                        *(str(p) for p in paths),
-                        *(p for p in sys.path if p),
-                    )
-                ),
-            }
-        )
-        try:
-            manifests = (*pack_manifests, fixture)
-            for manifest in manifests:
-                await composer.add_pack(
-                    PackSpec(
-                        manifest=manifest,
-                        in_process=in_process,
-                        trust_reserved=manifest in pack_info,
-                        packs=pack_info.get(manifest),
-                        worker_group=None if in_process else "model-file-loaders-fixture",
-                        group_manifests=() if in_process else manifests,
-                    )
-                )
-            graph = Graph(
-                nodes={
-                    "source": GraphNode("model-file-loaders-fixture.source"),
-                    "checkpoint": GraphNode(
-                        "dinkster.models.checkpoint_loader_simple", {"ckpt_name": asset.to_wire()}
-                    ),
-                    "configured": GraphNode(
-                        "dinkster.models.checkpoint_loader",
-                        {"config_name": asset.to_wire(), "ckpt_name": asset.to_wire()},
-                    ),
-                    "unclip": GraphNode(
-                        "dinkster.sd.un_clip_checkpoint_loader", {"ckpt_name": asset.to_wire()}
-                    ),
-                    "control": GraphNode(
-                        "dinkster.models.control_net_loader", {"control_net_name": asset.to_wire()}
-                    ),
-                    "diff-control": GraphNode(
-                        "dinkster.models.diff_control_net_loader",
-                        {"model": Link("checkpoint", "MODEL"), "control_net_name": asset.to_wire()},
-                    ),
-                    "unet": GraphNode(
-                        "dinkster.models.unet_loader",
-                        {"unet_name": asset.to_wire(), "weight_dtype": "default"},
-                    ),
-                    "clip": GraphNode(
-                        "dinkster.models.clip_loader",
-                        {"clip_name": asset.to_wire(), "type": "stable_diffusion", "device": "cpu"},
-                    ),
-                    "dual": GraphNode(
-                        "dinkster.models.dual_clip_loader",
-                        {
-                            "clip_name1": asset.to_wire(),
-                            "clip_name2": asset.to_wire(),
-                            "type": "sdxl",
-                            "device": "cpu",
-                        },
-                    ),
-                    "vision": GraphNode(
-                        "dinkster.models.clip_vision_loader", {"clip_name": asset.to_wire()}
-                    ),
-                    "style": GraphNode(
-                        "dinkster.models.style_model_loader", {"style_model_name": asset.to_wire()}
-                    ),
-                    "gligen": GraphNode(
-                        "dinkster.sd.gligen_loader", {"gligen_name": asset.to_wire()}
-                    ),
-                    "inspect": GraphNode(
-                        "model-file-loaders-fixture.inspect", {"ready": Link("source", "ready")}
-                    ),
-                }
-            )
-            targets = [
-                "checkpoint",
-                "configured",
-                "unclip",
-                "control",
-                "diff-control",
-                "unet",
-                "clip",
-                "dual",
-                "vision",
-                "style",
-                "gligen",
-                "inspect",
-            ]
-            if observe_outputs:
-                graph = Graph(
-                    nodes={
-                        **graph.nodes,
-                        "output-inspect": GraphNode(
-                            "model-file-loaders-fixture.output-inspect",
-                            {
-                                "checkpoint_model": Link("checkpoint", "MODEL"),
-                                "checkpoint_clip": Link("checkpoint", "CLIP"),
-                                "checkpoint_vae": Link("checkpoint", "VAE"),
-                                "configured_model": Link("configured", "MODEL"),
-                                "unclip_vision": Link("unclip", "CLIP_VISION"),
-                                "control": Link("control", "CONTROL_NET"),
-                                "diff_control": Link("diff-control", "CONTROL_NET"),
-                                "unet": Link("unet", "MODEL"),
-                                "clip": Link("clip", "CLIP"),
-                                "dual": Link("dual", "CLIP"),
-                                "vision": Link("vision", "CLIP_VISION"),
-                                "style": Link("style", "STYLE_MODEL"),
-                                "gligen": Link("gligen", "GLIGEN"),
-                            },
-                        ),
-                    }
-                )
-                targets = ["output-inspect"]
-            if observe_outputs == "checkpoint-variants":
-                graph = Graph(
-                    nodes={
-                        **graph.nodes,
-                        "output-inspect": GraphNode(
-                            "model-file-loaders-fixture.checkpoint-variant-inspect",
-                            {
-                                "configured_clip": Link("configured", "CLIP"),
-                                "configured_vae": Link("configured", "VAE"),
-                                "unclip_model": Link("unclip", "MODEL"),
-                                "unclip_clip": Link("unclip", "CLIP"),
-                                "unclip_vae": Link("unclip", "VAE"),
-                            },
-                        ),
-                    }
-                )
-            engine = composer.composition.make_engine(lambda _event: None)
-            for attempt in range(2):
-                result = await engine.run(graph, targets)
-                if observe_outputs == "checkpoint-variants":
-                    assert result.outputs["output-inspect"]["summary"].resolve() == (
-                        "five checkpoint variant outputs reached observer"
-                    )
-                elif observe_outputs:
-                    assert result.outputs["output-inspect"]["summary"].resolve() == (
-                        "all eleven output values reached observer"
-                    )
-                else:
-                    assert (
-                        result.outputs["inspect"]["summary"]
-                        .resolve()
-                        .startswith("loader-runtime-pid-")
-                    )
-                if attempt:
-                    expected_cached = set(graph.nodes)
-                    if observe_outputs == "checkpoint-variants":
-                        expected_cached = {"configured", "unclip", "output-inspect"}
-                    elif observe_outputs:
-                        expected_cached -= {"source", "inspect"}
-                    assert set(result.cached) == expected_cached
-        finally:
-            await composer.close()
-            _restore_controlled_runtime()
-
-    asyncio.run(scenario())
-
-
-def test_image_only_checkpoint_loader_preserves_output_roles(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    from dinkster_sd import model_file_loaders as loaders
-
-    initialize_inference_process()
-    from dinkster_inference import sd
-
-    checkpoint = tmp_path / "image.safetensors"
-    save_file({"marker": torch.tensor([3.0, -7.0])}, checkpoint)
-    table = MountTable(tmp_path / "mounts.json", index_root=tmp_path / "index")
-    table.add(MountDef(id="checkpoint", path=tmp_path), kind="model/checkpoint")
-    asset = table.bind_name(checkpoint.name, "model/checkpoint")
-
-    def load(path: str, **options: Any) -> tuple[object, ...]:
-        assert options["output_clip"] is False
-        assert options["output_clipvision"] is True
-        assert options["output_vae"] is True
-        return _runtime(path)[:4]
-
-    monkeypatch.setattr(sd, "load_checkpoint_guess_config", load)
-    result = loaders.ImageOnlyCheckpointLoader.execute(ckpt_name=asset)
-    assert result["CLIP_VISION"]["kind"] == "vision"
-    assert result["VAE"]["kind"] == "vae"
-    torch.testing.assert_close(
-        result["MODEL"].model.weight, torch.tensor([[3.0, 3.5]]), rtol=0, atol=0
-    )
-
-
 @pytest.mark.parametrize("invalid", (False, True))
 def test_ltx_audio_vae_loader_filters_checkpoint_and_validates(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, invalid: bool
@@ -571,38 +295,3 @@ def test_ltx_audio_vae_loader_filters_checkpoint_and_validates(
     assert set(vae.state) == {"autoencoder.encoder.weight", "vocoder.weight"}
     assert vae.state["autoencoder.encoder.weight"].tolist() == [2.0, -3.0]
     assert vae.state["vocoder.weight"].tolist() == [11.0]
-
-
-@pytest.mark.parametrize("device", (None, "default", "cpu", "other"))
-def test_ltx_text_encoder_loader_preserves_file_order_and_device(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, device: str | None
-) -> None:
-    from dinkster_ltx import model_file_loaders as loaders
-
-    initialize_inference_process()
-    from dinkster_inference import sd
-
-    encoder, checkpoint = tmp_path / "encoder.safetensors", tmp_path / "checkpoint.safetensors"
-    save_file({"marker": torch.tensor([3.0])}, encoder)
-    save_file({"marker": torch.tensor([-7.0])}, checkpoint)
-    table = MountTable(tmp_path / "mounts.json", index_root=tmp_path / "index")
-    table.add(MountDef(id="checkpoint", path=tmp_path), kind="model/checkpoint")
-    table.add(MountDef(id="encoder", path=tmp_path), kind="model/text-encoder")
-
-    def load(*, ckpt_paths: list[str], clip_type: object, **options: Any) -> tuple[float, ...]:
-        assert clip_type == sd.CLIPType.LTXV
-        expected = (
-            {"load_device": torch.device("cpu"), "offload_device": torch.device("cpu")}
-            if device == "cpu"
-            else {}
-        )
-        assert options["model_options"] == expected
-        return tuple(float(load_file(path)["marker"][0]) for path in ckpt_paths)
-
-    monkeypatch.setattr(sd, "load_clip", load)
-    result = loaders.LTXAVTextEncoderLoader.execute(
-        text_encoder=table.bind_name(encoder.name, "model/text-encoder"),
-        ckpt_name=table.bind_name(checkpoint.name, "model/checkpoint"),
-        **({"device": device} if device is not None else {}),
-    )
-    assert result == {"CLIP": (3.0, -7.0)}

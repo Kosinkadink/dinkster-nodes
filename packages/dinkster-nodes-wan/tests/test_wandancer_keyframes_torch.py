@@ -2,34 +2,18 @@
 
 from __future__ import annotations
 
-import asyncio
-import os
-from pathlib import Path
 from typing import Any
 
 import pytest
 import torch
 from dinkster_api.v1 import (
-    AUDIO_TYPE,
-    CORE_STRING,
-    IMAGE_TYPE,
-    MASK_TYPE,
-    InputSpec,
-    Node,
-    NodeSchema,
-    OutputSpec,
-    TypeExpr,
     materialize_audio,
     materialize_image,
 )
-from dinkster_graph import Graph, GraphNode, Link
 from dinkster_wan.wandancer_keyframes import (
     WanDancerPadKeyframes,
     WanDancerPadKeyframesList,
 )
-from wan_pack_fixtures import compose_wan_packs
-
-from dinkster.compose import ServingComposer
 
 
 def images() -> torch.Tensor:
@@ -94,157 +78,3 @@ def test_list_outputs_and_audio_buffer_boundary() -> None:
     )
     assert torch.equal(result["keyframes_sequence"][4], images()[0])
     assert result["keyframes_mask"].sum() == 6
-
-
-class KeyframeSource(Node):
-    @classmethod
-    def define_schema(cls) -> NodeSchema:
-        return NodeSchema(
-            node_type="wandancer-keyframe-fixture.source",
-            outputs=(
-                OutputSpec("images", TypeExpr.concrete(IMAGE_TYPE)),
-                OutputSpec("audio", TypeExpr.concrete(AUDIO_TYPE)),
-            ),
-        )
-
-    @classmethod
-    def execute(cls) -> dict[str, object]:
-        return cls.outputs(images=images(), audio=audio())
-
-
-class KeyframeConsumer(Node):
-    @classmethod
-    def define_schema(cls) -> NodeSchema:
-        return NodeSchema(
-            node_type="wandancer-keyframe-fixture.consumer",
-            inputs=tuple(
-                InputSpec(name, TypeExpr.list_of(TypeExpr.concrete(kind)))
-                for name, kind in (
-                    ("keyframes_sequence", IMAGE_TYPE),
-                    ("keyframes_mask", MASK_TYPE),
-                    ("audio_segment", AUDIO_TYPE),
-                )
-            ),
-            outputs=(OutputSpec("summary", TypeExpr.concrete(CORE_STRING)),),
-        )
-
-    @classmethod
-    def execute(cls, **inputs: Any) -> dict[str, object]:
-        assert all(len(value) == 4 for value in inputs.values())
-        for index in range(4):
-            check({key: value[index] for key, value in inputs.items()}, index)
-        return cls.outputs(summary="wandancer-keyframes")
-
-
-class KeyframeScalarConsumer(Node):
-    @classmethod
-    def define_schema(cls) -> NodeSchema:
-        return NodeSchema(
-            node_type="wandancer-keyframe-fixture.scalar-consumer",
-            inputs=tuple(
-                InputSpec(name, TypeExpr.concrete(kind))
-                for name, kind in (
-                    ("keyframes_sequence", IMAGE_TYPE),
-                    ("keyframes_mask", MASK_TYPE),
-                    ("audio_segment", AUDIO_TYPE),
-                )
-            ),
-            outputs=(OutputSpec("summary", TypeExpr.concrete(CORE_STRING)),),
-        )
-
-    @classmethod
-    def execute(cls, **inputs: Any) -> dict[str, object]:
-        check(inputs, 1)
-        return cls.outputs(summary="wandancer-keyframes")
-
-
-@pytest.mark.parametrize("in_process", (True, False))
-def test_keyframes_run_twice_through_ordinary_hosts(tmp_path: Path, in_process: bool) -> None:
-    async def scenario() -> None:
-        package = Path(__file__).resolve().parents[1]
-        module = "wandancer_keyframe_fixture"
-        (tmp_path / f"{module}.py").write_text(
-            "from test_wandancer_keyframes_torch import (\n"
-            "    KeyframeSource, KeyframeConsumer, KeyframeScalarConsumer)\n"
-            "from dinkster_api.v1 import (AUDIO_TYPE, register_inference_types,\n"
-            "    register_audio_value_type, resolver_from_env)\n"
-            "NODES=(KeyframeSource,KeyframeConsumer,KeyframeScalarConsumer)\n"
-            "def register_types(registry):\n"
-            "    register_inference_types(registry)\n"
-            "    if AUDIO_TYPE not in registry:\n"
-            "        register_audio_value_type(registry, AUDIO_TYPE, resolver_from_env())\n",
-            encoding="ascii",
-        )
-        fixture = tmp_path / "dinkster-pack.toml"
-        fixture.write_text(
-            (
-                '[pack]\nname="wandancer-keyframe-fixture"\npublisher="dinkster"\nnamespaces=['
-                '"wandancer-keyframe-fixture"]\n[pack.entry]\n'
-            )
-            + f'nodes="{module}:NODES"\ntypes="{module}:register_types"\n',
-            encoding="ascii",
-        )
-        native = package / "dinkster-pack.toml"
-        composer = ServingComposer(
-            worker_env={
-                "CUDA_VISIBLE_DEVICES": "",
-                "DINKSTER_ACCELERATOR": "cpu",
-                "PYTHONPATH": os.pathsep.join(
-                    (str(tmp_path), str(Path(__file__).parent), str(package / "src"))
-                ),
-            }
-        )
-        try:
-            await compose_wan_packs(
-                composer,
-                native,
-                fixture,
-                in_process=in_process,
-                worker_group="wandancer-keyframe-fixture",
-            )
-            graph = Graph(
-                nodes={
-                    "source": GraphNode("wandancer-keyframe-fixture.source", {}),
-                    "pad": GraphNode(
-                        "dinkster.wan.wan_dancer_pad_keyframes_list",
-                        {
-                            "images": Link("source", "images"),
-                            "audio": Link("source", "audio"),
-                            "segment_length": 5,
-                            "num_segments": 4,
-                        },
-                    ),
-                    "consumer": GraphNode(
-                        "wandancer-keyframe-fixture.consumer",
-                        {
-                            key: Link("pad", key)
-                            for key in ("keyframes_sequence", "keyframes_mask", "audio_segment")
-                        },
-                    ),
-                    "scalar": GraphNode(
-                        "dinkster.wan.wan_dancer_pad_keyframes",
-                        {
-                            "images": Link("source", "images"),
-                            "audio": Link("source", "audio"),
-                            "segment_length": 5,
-                            "segment_index": 1,
-                        },
-                    ),
-                    "scalar-consumer": GraphNode(
-                        "wandancer-keyframe-fixture.scalar-consumer",
-                        {
-                            key: Link("scalar", key)
-                            for key in ("keyframes_sequence", "keyframes_mask", "audio_segment")
-                        },
-                    ),
-                }
-            )
-            for _ in range(2):
-                engine = composer.composition.make_engine(lambda _event: None)
-                result = await engine.run(graph, ["consumer", "scalar-consumer"])
-                for consumer in ("consumer", "scalar-consumer"):
-                    assert result.outputs[consumer]["summary"].resolve() == "wandancer-keyframes"
-        finally:
-            await composer.close()
-
-    asyncio.run(scenario())

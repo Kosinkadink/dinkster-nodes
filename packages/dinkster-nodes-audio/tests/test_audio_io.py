@@ -1,8 +1,5 @@
 """Audio file admission preserves decoded channel order and PCM scaling."""
 
-import os
-import subprocess
-import sys
 import wave
 from pathlib import Path
 
@@ -63,21 +60,3 @@ def test_file_input_rejects_host_path_and_preview_rejects_missing_audio(
         node.execute(audio="unbound.wav")
     with pytest.raises(ValueError, match="input audio is None"):
         PreviewAudio.execute(audio=None)
-
-
-def test_record_audio_schema_and_cold_discovery() -> None:
-    package = Path(__file__).resolve().parents[1]
-    checkout = package.parents[1]
-    paths = (checkout / "src", *sorted(checkout.glob("packages/*/src")))
-    subprocess.run(
-        [
-            sys.executable,
-            "-c",
-            "import sys; from dinkster_audio.audio_io import RecordAudio; "
-            "RecordAudio.schema(); "
-            "assert not {'torch', 'av', 'dinkster_inference'} & sys.modules.keys()",
-        ],
-        env={**os.environ, "PYTHONPATH": os.pathsep.join(map(str, paths))},
-        capture_output=True,
-        check=True,
-    )

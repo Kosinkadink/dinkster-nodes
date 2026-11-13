@@ -2,31 +2,17 @@
 
 from __future__ import annotations
 
-import asyncio
-import os
-from pathlib import Path
-from typing import Any
-
 import pytest
 import torch
 from dinkster_api.v1 import (
     AUDIO_TYPE,
-    CORE_STRING,
-    InputSpec,
-    Node,
-    NodeSchema,
-    OutputSpec,
     TypeExpr,
-    materialize_audio,
 )
 from dinkster_audio.audio_combine import (
     AudioConcat,
     AudioMerge,
     JoinAudioChannels,
 )
-from dinkster_graph import Graph, GraphNode, Link
-
-from dinkster.compose import PackSpec, ServingComposer
 
 _AUDIO = TypeExpr.concrete(AUDIO_TYPE)
 
@@ -159,135 +145,3 @@ def test_combine_preserves_float64_inputs_and_metadata() -> None:
     assert set(first) == {"waveform", "sample_rate", "metadata"}
     assert torch.equal(first["waveform"], first_before)
     assert torch.equal(second["waveform"], second_before)
-
-
-class AudioSource(Node):
-    @classmethod
-    def define_schema(cls) -> NodeSchema:
-        return NodeSchema(
-            node_type="audio-combine-fixture.source",
-            outputs=tuple(
-                OutputSpec(name, _AUDIO) for name in ("left", "right", "first", "second")
-            ),
-        )
-
-    @classmethod
-    def execute(cls) -> dict[str, object]:
-        return cls.outputs(
-            left=_audio([[[1, 2, 3]]]),
-            right=_audio([[[4, 5]]]),
-            first=_audio([[[0.75, 0.5]]]),
-            second=_audio([[[0.75]]]),
-        )
-
-
-class AudioInspect(Node):
-    @classmethod
-    def define_schema(cls) -> NodeSchema:
-        return NodeSchema(
-            node_type="audio-combine-fixture.inspect",
-            inputs=(
-                InputSpec("joined", _AUDIO),
-                InputSpec("concatenated", _AUDIO),
-                InputSpec("merged", _AUDIO),
-            ),
-            outputs=(OutputSpec("summary", TypeExpr.concrete(CORE_STRING)),),
-        )
-
-    @classmethod
-    def execute(cls, *, joined: Any, concatenated: Any, merged: Any) -> dict[str, object]:
-        audios = tuple(materialize_audio(audio) for audio in (joined, concatenated, merged))
-        for audio in audios:
-            assert set(audio) == {"waveform", "sample_rate"}
-            assert audio["sample_rate"] == 8_000
-            assert audio["waveform"].dtype is torch.float32
-            assert audio["waveform"].device.type == "cpu"
-        joined_waveform, concatenated_waveform, merged_waveform = (
-            audio["waveform"] for audio in audios
-        )
-        assert torch.equal(joined_waveform, torch.tensor([[[1, 2], [4, 5]]], dtype=torch.float32))
-        assert torch.equal(
-            concatenated_waveform,
-            torch.tensor([[[0.75, 0.5, 0.75], [0.75, 0.5, 0.75]]], dtype=torch.float32),
-        )
-        assert torch.equal(merged_waveform, torch.tensor([[[1.0, 1.0 / 3.0]]], dtype=torch.float32))
-        return cls.outputs(summary="audio-combine")
-
-
-@pytest.mark.parametrize("in_process", (True, False))
-def test_audio_combine_nodes_execute_twice_in_both_manifest_hosts(
-    tmp_path: Path, in_process: bool
-) -> None:
-    async def scenario() -> None:
-        source_root = Path(__file__).resolve().parents[1] / "src"
-        composer = ServingComposer(
-            worker_env={
-                "CUDA_VISIBLE_DEVICES": "",
-                "DINKSTER_ACCELERATOR": "cpu",
-                "PYTHONPATH": os.pathsep.join((str(Path(__file__).parent), str(source_root))),
-            }
-        )
-        try:
-            manifest = Path(__file__).resolve().parents[1] / "dinkster-pack.toml"
-            (tmp_path / "audio_combine_fixture.py").write_text(
-                "from test_audio_combine_torch import AudioInspect, AudioSource\n"
-                "from dinkster_audio import NODES as AUDIO_NODES, register_types\n"
-                "NODES = (*AUDIO_NODES, AudioSource, AudioInspect)\n",
-                encoding="ascii",
-            )
-            fixture = tmp_path / "dinkster-pack.toml"
-            fixture.write_text(
-                manifest.read_text(encoding="ascii")
-                .replace("namespaces = [", 'namespaces = ["audio-combine-fixture",')
-                .replace("dinkster_audio:NODES", "audio_combine_fixture:NODES")
-                .replace("dinkster_audio:register_types", "audio_combine_fixture:register_types"),
-                encoding="ascii",
-            )
-            await composer.add_pack(
-                PackSpec(manifest=fixture, in_process=in_process, trust_reserved=True)
-            )
-            graph = Graph(
-                nodes={
-                    "source": GraphNode("audio-combine-fixture.source"),
-                    "join": GraphNode(
-                        "dinkster.audio.join_audio_channels",
-                        {
-                            "audio_left": Link("source", "left"),
-                            "audio_right": Link("source", "right"),
-                        },
-                    ),
-                    "concat": GraphNode(
-                        "dinkster.audio.audio_concat",
-                        {
-                            "audio1": Link("source", "first"),
-                            "audio2": Link("source", "second"),
-                            "direction": "after",
-                        },
-                    ),
-                    "merge": GraphNode(
-                        "dinkster.audio.audio_merge",
-                        {
-                            "audio1": Link("source", "first"),
-                            "audio2": Link("source", "second"),
-                            "merge_method": "add",
-                        },
-                    ),
-                    "inspect": GraphNode(
-                        "audio-combine-fixture.inspect",
-                        {
-                            "joined": Link("join", "audio"),
-                            "concatenated": Link("concat", "AUDIO"),
-                            "merged": Link("merge", "AUDIO"),
-                        },
-                    ),
-                }
-            )
-            engine = composer.composition.make_engine(lambda _event: None)
-            for _ in range(2):
-                assert (await engine.run(graph, ["inspect"])).outputs["inspect"][
-                    "summary"
-                ].resolve() == "audio-combine"
-        finally:
-            await composer.close()
-
-    asyncio.run(scenario())

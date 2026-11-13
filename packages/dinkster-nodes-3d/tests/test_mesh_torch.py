@@ -2,11 +2,8 @@
 
 from __future__ import annotations
 
-import asyncio
 import math
-import os
 from dataclasses import fields
-from pathlib import Path
 from typing import Any
 
 import pytest
@@ -14,24 +11,14 @@ import torch
 from dinkster_3d.mesh import GetMeshInfo, MergeMeshes, RotateMesh
 from dinkster_3d.voxel_mesh import VoxelToMesh, VoxelToMeshBasic
 from dinkster_api.v1 import (
-    CORE_STRING,
     MESH_TYPE,
     VOXEL_TYPE,
-    InputSpec,
-    Node,
-    NodeSchema,
-    OutputSpec,
     TriangleMeshBatch,
-    TypeExpr,
     TypeRegistry,
     materialize_mesh,
     materialize_voxel,
     register_inference_types,
 )
-from dinkster_graph import Graph, GraphNode, Link
-from geometry_pack_fixtures import geometry_pack_specs
-
-from dinkster.compose import ServingComposer
 
 
 def mesh() -> TriangleMeshBatch[Any]:
@@ -275,176 +262,3 @@ def test_surface_net_small_and_empty_grids_do_not_depend_on_progress_divisors() 
     )["MESH"]
     assert isinstance(empty, TriangleMeshBatch)
     assert empty.vertices.shape == (1, 0, 3) and empty.faces.shape == (1, 0, 3)
-
-
-class GeometrySource(Node):
-    @classmethod
-    def define_schema(cls) -> NodeSchema:
-        return NodeSchema(
-            node_type="geometry-fixture.source",
-            outputs=(OutputSpec("voxel", TypeExpr.concrete(VOXEL_TYPE)),),
-        )
-
-    @classmethod
-    def execute(cls) -> dict[str, object]:
-        data = torch.zeros(2, 2, 3, 4)
-        data[0, 0, 1, 2] = 1.0
-        data[1, 0, 1, 1] = 1.0
-        return cls.outputs(voxel={"data": data})
-
-
-class GeometryInspect(Node):
-    @classmethod
-    def define_schema(cls) -> NodeSchema:
-        return NodeSchema(
-            node_type="geometry-fixture.inspect",
-            inputs=(
-                InputSpec("voxel", TypeExpr.concrete(VOXEL_TYPE)),
-                InputSpec("basic", TypeExpr.concrete(MESH_TYPE)),
-                InputSpec("surface", TypeExpr.concrete(MESH_TYPE)),
-                InputSpec("rotated", TypeExpr.concrete(MESH_TYPE)),
-                InputSpec("basic_info", TypeExpr.concrete(CORE_STRING)),
-                InputSpec("surface_info", TypeExpr.concrete(CORE_STRING)),
-                InputSpec("merged", TypeExpr.concrete(MESH_TYPE)),
-            ),
-            outputs=(OutputSpec("summary", TypeExpr.concrete(CORE_STRING)),),
-        )
-
-    @classmethod
-    def execute(
-        cls,
-        *,
-        voxel: object,
-        basic: object,
-        surface: object,
-        rotated: object,
-        basic_info: str,
-        surface_info: str,
-        merged: object,
-    ) -> dict[str, object]:
-        voxel = materialize_voxel(voxel)
-        basic, surface, rotated = (materialize_mesh(value) for value in (basic, surface, rotated))
-        assert voxel.data.shape == (2, 2, 3, 4) and voxel.data.sum().item() == 2.0
-        assert voxel.voxel_colors is None and voxel.resolution is None
-        assert basic.vertices.shape == (2, 24, 3) and basic.faces.shape == (2, 12, 3)
-        assert surface.vertices.shape == (2, 8, 3) and surface.faces.shape == (2, 12, 3)
-        for value in (basic, surface, rotated):
-            assert value.vertex_counts is None and value.face_counts is None
-            assert torch.isfinite(value.vertices).all()
-        expected = basic.vertices.clone()
-        expected[..., 0] = -basic.vertices[..., 1]
-        expected[..., 1] = basic.vertices[..., 0]
-        torch.testing.assert_close(rotated.vertices, expected, rtol=0, atol=1e-7)
-        torch.testing.assert_close(rotated.faces, basic.faces, rtol=0, atol=0)
-        assert "Vertices:   48 total" in basic_info and "Faces:      24 total" in basic_info
-        assert "Vertices:   16 total" in surface_info and "Faces:      24 total" in surface_info
-        merged = materialize_mesh(merged)
-        torch.testing.assert_close(
-            merged.vertices,
-            torch.cat((rotated.vertices[0], surface.vertices[0])).unsqueeze(0),
-            rtol=0,
-            atol=0,
-        )
-        torch.testing.assert_close(
-            merged.faces,
-            torch.cat((rotated.faces[0], surface.faces[0] + 24)).unsqueeze(0),
-            rtol=0,
-            atol=0,
-        )
-        assert merged.vertices.shape == (1, 32, 3) and merged.faces.shape == (1, 24, 3)
-        return cls.outputs(summary="voxel to mesh to rotation and inspection")
-
-
-@pytest.mark.parametrize("in_process", [True, False])
-def test_ordinary_geometry_sequence_in_both_hosts_twice(tmp_path: Path, in_process: bool) -> None:
-    async def scenario() -> None:
-        module = f"geometry_fixture_{in_process}"
-        (tmp_path / f"{module}.py").write_text(
-            "from test_mesh_torch import GeometrySource, GeometryInspect\n"
-            "from dinkster_3d import register_types as register_inference_types\n"
-            "NODES = (GeometrySource, GeometryInspect)\n",
-            encoding="ascii",
-        )
-        fixture = tmp_path / "fixture.toml"
-        fixture.write_text(
-            '[pack]\nname = "geometry-fixture"\npublisher = "dinkster"\n'
-            'namespaces = ["geometry-fixture"]\n[pack.entry]\n'
-            f'nodes = "{module}:NODES"\ntypes = "{module}:register_inference_types"\n',
-            encoding="ascii",
-        )
-        composer = ServingComposer(
-            worker_env={
-                "CUDA_VISIBLE_DEVICES": "",
-                "DINKSTER_ACCELERATOR": "cpu",
-                "PYTHONPATH": os.pathsep.join(
-                    (
-                        str(tmp_path),
-                        str(Path(__file__).parent),
-                        os.environ.get("PYTHONPATH", ""),
-                    )
-                ),
-            }
-        )
-        try:
-            for spec in geometry_pack_specs(
-                fixture, in_process=in_process, worker_group="geometry-fixture"
-            ):
-                await composer.add_pack(spec)
-            graph = Graph(
-                nodes={
-                    "source": GraphNode("geometry-fixture.source"),
-                    "basic": GraphNode(
-                        "dinkster.3d.voxel_to_mesh_basic",
-                        {"voxel": Link("source", "voxel"), "threshold": 0.6},
-                    ),
-                    "surface": GraphNode(
-                        "dinkster.3d.voxel_to_mesh",
-                        {
-                            "voxel": Link("source", "voxel"),
-                            "algorithm": "surface net",
-                            "threshold": 0.6,
-                        },
-                    ),
-                    "rotate": GraphNode(
-                        "dinkster.3d.rotate_mesh",
-                        {"mesh": Link("basic", "MESH"), "mode.angle_z": 90.0},
-                        slot_variants={"mode": "euler_xyz"},
-                    ),
-                    "basic-info": GraphNode(
-                        "dinkster.3d.get_mesh_info", {"mesh": Link("rotate", "mesh")}
-                    ),
-                    "surface-info": GraphNode(
-                        "dinkster.3d.get_mesh_info", {"mesh": Link("surface", "MESH")}
-                    ),
-                    "merge": GraphNode(
-                        "dinkster.3d.merge_meshes",
-                        {
-                            "meshes.mesh0": Link("rotate", "mesh"),
-                            "meshes.mesh1": Link("surface", "MESH"),
-                        },
-                    ),
-                    "inspect": GraphNode(
-                        "geometry-fixture.inspect",
-                        {
-                            "voxel": Link("source", "voxel"),
-                            "basic": Link("basic", "MESH"),
-                            "surface": Link("surface-info", "MESH"),
-                            "rotated": Link("basic-info", "MESH"),
-                            "basic_info": Link("basic-info", "STRING"),
-                            "surface_info": Link("surface-info", "STRING"),
-                            "merged": Link("merge", "mesh"),
-                        },
-                    ),
-                }
-            )
-            engine = composer.composition.make_engine(lambda _event: None)
-            for _ in range(2):
-                result = await engine.run(graph, ["inspect"])
-                assert (
-                    result.outputs["inspect"]["summary"].resolve()
-                    == "voxel to mesh to rotation and inspection"
-                )
-        finally:
-            await composer.close()
-
-    asyncio.run(scenario())

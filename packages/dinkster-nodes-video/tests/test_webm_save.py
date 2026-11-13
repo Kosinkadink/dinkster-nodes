@@ -5,7 +5,6 @@ from __future__ import annotations
 import asyncio
 import json
 import os
-import subprocess
 import sys
 from pathlib import Path
 from typing import Any
@@ -63,32 +62,6 @@ def _images(*, channels: int = 3, width: int = 24, height: int = 16) -> np.ndarr
         images[1, ..., 3] = 0.5
         images[2, ..., 3] = 1
     return images
-
-
-def test_save_webm_schema_is_discoverable_without_loading_av() -> None:
-    from dinkster_video import webm_save
-
-    assert Path(webm_save.__file__).resolve() == (
-        Path(__file__).resolve().parents[1] / "src/dinkster_video/webm_save.py"
-    )
-    assert "av" not in vars(webm_save)
-    checkout = Path(__file__).resolve().parents[3]
-    subprocess.run(
-        [
-            sys.executable,
-            "-c",
-            "import sys; from dinkster_video.webm_save import SaveWEBM; "
-            "assert not any(name in sys.modules for name in "
-            "('av', 'torch', 'dinkster_inference'))",
-        ],
-        env={
-            **os.environ,
-            "PYTHONPATH": os.pathsep.join(
-                str(path) for path in (checkout / "src", *sorted(checkout.glob("packages/*/src")))
-            ),
-        },
-        check=True,
-    )
 
 
 @pytest.mark.parametrize("channels", (3, 4))

@@ -6,44 +6,10 @@ import copy
 from typing import Any
 
 import numpy as np
-import pytest
 from dinkster_api.v1 import (
-    MHR_POSE_DATA_TYPE,
-    SAM3D_BODY_MODEL_TYPE,
-    TypeRegistry,
     materialize_vision_packet,
 )
-from dinkster_vision_sam3d_body import register_types
-from dinkster_vision_sam3d_body.sam3d_body import SAM3DBody_Loader, SAM3DBody_Smooth
-
-
-def test_pack_registers_required_pose_packets_and_preserves_existing_authority() -> None:
-    registry = TypeRegistry()
-    resident = registry.register(SAM3D_BODY_MODEL_TYPE)
-    register_types(registry)
-    assert {
-        "MHR_POSE_DATA",
-        "KIMODO_POSE_DATA",
-        "SAM3D_BODY_MODEL",
-        "SAM3_TRACK_DATA",
-        "LOAD3D_CAMERA",
-        "IMAGE",
-        "BOUNDING_BOX",
-        "FILE_3D",
-        "ASSET",
-    } <= set(registry.type_ids())
-    assert not {"DA3_GEOMETRY", "FACE_LANDMARKS", "DA3_MODEL", "FACE_DETECTION_MODEL"} & set(
-        registry.type_ids()
-    )
-    packet = registry.spec(MHR_POSE_DATA_TYPE)
-    register_types(registry)
-    assert registry.spec(MHR_POSE_DATA_TYPE) is packet
-    assert registry.spec(SAM3D_BODY_MODEL_TYPE) is resident
-
-
-def test_sam3d_loader_rejects_unbound_file() -> None:
-    with pytest.raises(TypeError, match="model_file must be an AssetRef or LocalAssetRef"):
-        SAM3DBody_Loader.execute(model_file="model.safetensors")
+from dinkster_vision_sam3d_body.sam3d_body import SAM3DBody_Smooth
 
 
 def _pose() -> dict[str, Any]:

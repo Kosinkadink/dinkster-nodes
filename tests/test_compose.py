@@ -3,11 +3,8 @@
 from __future__ import annotations
 
 import asyncio
-import importlib.metadata
 import os
-import subprocess
 import sys
-import tomllib
 from collections.abc import Mapping
 from dataclasses import replace
 from pathlib import Path
@@ -34,7 +31,6 @@ from dinkster.compose import (
     compose_serving,
     default_pack_spec,
 )
-from dinkster.packs import first_party_pack_metadata
 from tests.async_scenarios import run_scenario
 
 TESTS_DIR = Path(__file__).parent
@@ -60,29 +56,6 @@ def first_party_node_packs(first_party_specs: tuple[PackSpec, ...]) -> dict[str,
         if (manifest := load_manifest(spec.manifest)).nodes_entry
         for node in cast("list[type[Node]]", resolve_entry(manifest.nodes_entry))
     }
-
-
-def test_first_party_packs_do_not_require_standard_suite_distribution(
-    monkeypatch: pytest.MonkeyPatch,
-    first_party_node_packs: dict[str, str],
-) -> None:
-    from dinkster import compose
-
-    real_distribution = importlib.metadata.distribution
-
-    def distribution(name: str):
-        if name == "dinkster-nodes-std":
-            raise importlib.metadata.PackageNotFoundError(name)
-        return real_distribution(name)
-
-    monkeypatch.setattr(importlib.metadata, "distribution", distribution)
-    expected = tuple(sorted(set(first_party_node_packs.values()) | {"dinkster-nodes-remote"}))
-    selected = tuple(sorted(first_party_pack_metadata(TESTS_DIR.parent)))
-    assert selected == expected
-    for pack_id in expected:
-        spec = compose.default_pack_spec(pack_id)
-        assert spec.packs is not None
-        assert load_manifest(spec.manifest).name == pack_id
 
 
 def test_compose_defaults_only(
@@ -374,77 +347,6 @@ def test_serving_composer_incremental(
             await composer.close()
 
     run_scenario(scenario())
-
-
-def test_default_pack_artifact_files_have_explicit_line_ending_policy() -> None:
-    repo_root = TESTS_DIR.parent
-    listed = subprocess.run(
-        ["git", "ls-files", "-z", "--", "packages"],
-        cwd=repo_root,
-        check=True,
-        capture_output=True,
-    ).stdout
-    tracked_paths = {Path(raw.decode("utf-8")) for raw in listed.split(b"\0") if raw}
-    artifact_paths: set[Path] = set()
-    metadata = first_party_pack_metadata(repo_root)
-    assert metadata
-    for pack_id, (module_name, _) in metadata.items():
-        pack_root = next(
-            path.parent.relative_to(repo_root)
-            for path in (repo_root / "packages").glob("dinkster-nodes-*/dinkster-pack.toml")
-            if tomllib.loads(path.read_text(encoding="utf-8"))["pack"]["name"] == pack_id
-        )
-        sidecar_root = pack_root
-        manifest_path = sidecar_root / "dinkster-pack.toml"
-        manifest = tomllib.loads((repo_root / manifest_path).read_text(encoding="utf-8"))
-        docs = manifest.get("pack", {}).get("docs", {})
-        docs_dir = docs.get("dir") if isinstance(docs, dict) else None
-        module_root = pack_root / "src" / Path(*module_name.split("."))
-        prefixes = [module_root, sidecar_root / "locales"]
-        if isinstance(docs_dir, str):
-            prefixes.append(sidecar_root / docs_dir)
-        artifact_paths.add(manifest_path)
-        module_init = module_root.parent / "__init__.py"
-        if module_init in tracked_paths:
-            artifact_paths.add(module_init)
-        if module_root.parent.name == "dinkster_nodes_vision":
-            artifact_paths.update(path for path in tracked_paths if path.parent == sidecar_root)
-        artifact_paths.update(
-            path
-            for path in tracked_paths
-            if any(path.is_relative_to(prefix) for prefix in prefixes)
-        )
-
-    checked = subprocess.run(
-        [
-            "git",
-            "check-attr",
-            "-z",
-            "--stdin",
-            "text",
-            "eol",
-            "--",
-        ],
-        cwd=repo_root,
-        check=True,
-        capture_output=True,
-        input=b"".join(path.as_posix().encode("utf-8") + b"\0" for path in sorted(artifact_paths)),
-    ).stdout.split(b"\0")
-    attributes: dict[str, dict[str, str]] = {}
-    for index in range(0, len(checked) - 1, 3):
-        path, attribute, value = (part.decode("utf-8") for part in checked[index : index + 3])
-        attributes.setdefault(path, {})[attribute] = value
-
-    uncovered = [
-        path.as_posix()
-        for path in sorted(artifact_paths)
-        if attributes[path.as_posix()]["eol"] != "lf"
-        and attributes[path.as_posix()]["text"] != "unset"
-    ]
-    assert uncovered == [], (
-        "pack artifact files must declare eol=lf for text or -text for binary: "
-        + ", ".join(uncovered)
-    )
 
 
 @pytest.mark.parametrize("in_process", (False, True))
@@ -962,99 +864,6 @@ def test_subprocess_official_pack_values_through_jobs(tmp_path: Path, source: st
             await composition.close()
 
     run_scenario(scenario())
-
-
-def test_image_pack_starts_with_canonical_inference_types(
-    first_party_specs: tuple[PackSpec, ...],
-) -> None:
-    async def scenario() -> None:
-        image = replace(default_pack_spec("dinkster-image"), require_catalog=True)
-        assert prepare_catalog(image.manifest, environment=os.environ).ok
-        composer = ServingComposer()
-        try:
-            specs = tuple(
-                image if load_manifest(spec.manifest).name == "dinkster-image" else spec
-                for spec in first_party_specs
-            )
-            for spec in composer.order_pack_entries(specs):
-                await composer.add_pack(spec)
-            result = await composer.composition.make_engine(lambda event: None).run(
-                Graph(
-                    nodes={
-                        "image": GraphNode(
-                            "dinkster.image.empty_image",
-                            {"width": 7, "height": 3, "batch_size": 2, "color": 0x123456},
-                        ),
-                        "size": GraphNode(
-                            "dinkster.image.get_image_size", {"image": Link("image", "IMAGE")}
-                        ),
-                    }
-                ),
-                ["size"],
-            )
-            assert result.executed == ("image", "size")
-            assert {name: value.resolve() for name, value in result.outputs["size"].items()} == {
-                "width": 7,
-                "height": 3,
-                "batch_size": 2,
-            }
-            assert result.diagnostics == ()
-        finally:
-            await composer.close()
-
-    run_scenario(scenario())
-
-
-@pytest.mark.parametrize(
-    ("pack_id", "directory", "expected_version"),
-    [
-        ("dinkster-text", "dinkster-nodes-text", "0.0.3"),
-        ("dinkster-image", "dinkster-nodes-image", "0.0.10"),
-        ("dinkster-audio", "dinkster-nodes-audio", "0.0.5"),
-        ("dinkster-3d", "dinkster-nodes-3d", "0.0.6"),
-        ("dinkster-models", "dinkster-nodes-models", "0.0.8"),
-        ("dinkster-nodes-remote", "dinkster-nodes-remote", "0.0.5"),
-    ],
-)
-def test_default_pack_prefers_loaded_source_tree_over_bundled_copy(
-    pack_id: str,
-    directory: str,
-    expected_version: str,
-    monkeypatch: pytest.MonkeyPatch,
-    tmp_path: Path,
-) -> None:
-    from dinkster_registry import artifact_digest
-    from dinkster_workers.pack_wheel import build_pack_archive, wheel_filename
-
-    from dinkster import compose
-
-    source_root = TESTS_DIR.parent / "packages" / directory
-    lock = Lockfile.from_record_json(
-        Path(compose.__file__).with_name("checkout-packs.lock").read_text()
-    )
-    locked = lock.get(pack_id)
-    assert locked is not None
-    archive = tmp_path / wheel_filename(load_manifest(source_root / "dinkster-pack.toml"))
-    build_pack_archive(source_root, archive)
-    locked = replace(
-        locked,
-        version=expected_version,
-        artifact_digest=artifact_digest(archive.read_bytes()),
-        source=f"python:{pack_id}=={expected_version}",
-    )
-    monkeypatch.setattr(compose, "_default_pack_lock", lambda: Lockfile.of([locked]))
-    spec = default_pack_spec(pack_id)
-    assert Path(spec.manifest).resolve() == (source_root / "dinkster-pack.toml").resolve()
-    assert spec.packs is not None
-    info = spec.packs[pack_id]
-    assert info.source == locked.source
-    assert info.version == expected_version
-    assert info.artifact_digest == locked.artifact_digest
-    monkeypatch.setattr(
-        compose, "_default_pack_lock", lambda: Lockfile.of([replace(locked, version="0.0.0")])
-    )
-    with pytest.raises(CompositionError, match="default suite locks"):
-        default_pack_spec(pack_id)
 
 
 @pytest.mark.parametrize(

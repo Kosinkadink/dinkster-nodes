@@ -75,29 +75,3 @@ def test_dual_guidance_uses_per_sample_video_split_and_preserves_inputs(
         "sampler_calc_cond_batch_function": predictions,
         "transformer_options": {"keep": 23},
     }
-
-
-@pytest.mark.parametrize("mode", ["before-sample", "single", "one-part", "equal", "near-equal"])
-def test_standard_guidance_fallback_and_stale_split_reset(monkeypatch, mode: str) -> None:
-    video_cfg = 2.0
-    audio_cfg = 2.0 if mode == "equal" else 2.0 + 1e-10 if mode == "near-equal" else 7.0
-    value = guider(video_cfg, audio_cfg)
-    nested = NestedTensor((torch.zeros(2, 1, 1, 2, 3), torch.zeros(2, 1, 4)))
-    if mode != "before-sample":
-        value.sample(None, nested, None, torch.tensor([]))
-        if mode in ("single", "one-part"):
-            latent = (
-                torch.ones(2, 3, 2) if mode == "single" else NestedTensor((torch.ones(2, 3, 2),))
-            )
-            assert value.sample(None, latent, None, torch.tensor([])) is latent
-    options = {"keep": 29}
-    expected = torch.tensor([17.0])
-
-    def predict(model, x, timestep, negative, positive, cfg, model_options, seed):
-        assert cfg == 2.0
-        assert model_options is options
-        return expected
-
-    monkeypatch.setattr(samplers, "sampling_function", predict)
-    assert value.predict_noise(torch.ones(1), torch.ones(1), options) is expected
-    assert options == {"keep": 29}

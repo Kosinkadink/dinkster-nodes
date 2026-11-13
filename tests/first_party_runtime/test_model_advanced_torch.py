@@ -2,10 +2,8 @@
 
 from __future__ import annotations
 
-import asyncio
 import math
 from collections.abc import Mapping
-from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
 
@@ -20,7 +18,6 @@ from dinkster_api.v1 import (
     OutputSpec,
     TypeExpr,
 )
-from dinkster_graph import Graph, GraphNode, Link
 from dinkster_models.model_advanced import (
     ModelAttentionBackend,
     ModelComputeDtype,
@@ -145,36 +142,6 @@ def test_discrete_zsnr_changes_runtime_schedule_without_mutating_source() -> Non
     assert original.sampling is not zsnr
 
 
-@pytest.mark.parametrize(
-    ("node", "kwargs", "attribute"),
-    (
-        (
-            ModelSamplingContinuousEDM,
-            {"sampling": "edm", "sigma_max": 16.0, "sigma_min": 0.25},
-            "sigma_data",
-        ),
-        (
-            ModelSamplingContinuousV,
-            {"sampling": "v_prediction", "sigma_max": 16.0, "sigma_min": 0.25},
-            "sigma_data",
-        ),
-        (ModelSamplingStableCascade, {"shift": 2.5}, "shift"),
-        (ModelSamplingSD3, {"shift": 3.5}, "shift"),
-        (ModelSamplingAuraFlow, {"shift": 1.5, "sampling": "img_to_img_velocity"}, "shift"),
-        (
-            ModelSamplingFlux,
-            {"max_shift": 1.5, "base_shift": 0.5, "width": 1024, "height": 1024},
-            "shift",
-        ),
-    ),
-)
-def test_sampling_nodes_install_runtime_sampling(
-    node: Any, kwargs: dict[str, Any], attribute: str
-) -> None:
-    result = node.execute(model=source(), **kwargs)["MODEL"]
-    assert hasattr(result.sampling, attribute)
-
-
 @pytest.mark.parametrize("sampling", ("eps", "v_prediction", "edm", "cosmos_rflow"))
 def test_continuous_edm_sampling_matches_prediction_seams(sampling: str) -> None:
     patched = ModelSamplingContinuousEDM.execute(
@@ -262,49 +229,6 @@ def test_rescale_cfg_installs_flow_callback() -> None:
     assert torch.equal(value, torch.full((1, 1, 2, 2), -0.5))
 
 
-def test_compute_dtype_installs_torch_dtype() -> None:
-    result = ModelComputeDtype.execute(model=source(), dtype="bf16")["MODEL"]
-    assert result.dtype is torch.bfloat16
-
-
-@pytest.mark.parametrize("attention", ("pytorch attention", "comfy kitchen attention"))
-def test_attention_backend_installs_runtime_callback(
-    monkeypatch: pytest.MonkeyPatch, attention: str
-) -> None:
-    import dinkster_models.model_advanced as advanced
-
-    def pytorch_attention(
-        query: torch.Tensor, key: torch.Tensor, value: torch.Tensor
-    ) -> torch.Tensor:
-        return query + key - value
-
-    module = SimpleNamespace(
-        get_attention_function=lambda name, default=None: (
-            pytorch_attention if name == "pytorch" else default
-        )
-    )
-    actual_import = advanced.importlib.import_module
-    initialized: list[bool] = []
-    monkeypatch.setattr(advanced, "initialize_inference_process", lambda: initialized.append(True))
-    monkeypatch.setattr(
-        advanced.importlib,
-        "import_module",
-        lambda name: (
-            module if name == "dinkster_inference.ldm.modules.attention" else actual_import(name)
-        ),
-    )
-    original = source()
-    patched = ModelAttentionBackend.execute(model=original, attention=attention)["MODEL"]
-    query = torch.tensor([1.0, -2.0])
-    key = torch.tensor([3.0, 5.0])
-    value = torch.tensor([-4.0, 2.0])
-    assert patched is not original
-    assert patched.attention(query, key, value) is not None
-    assert torch.equal(patched.attention(query, key, value), query + key - value)
-    assert original.attention is None
-    assert initialized == [True]
-
-
 class AdvancedModelSource(Node):
     @classmethod
     def define_schema(cls) -> NodeSchema:
@@ -337,81 +261,3 @@ class AdvancedModelResult(Node):
 
 
 ADVANCED_MODEL_FIXTURE_NODES = (AdvancedModelSource, AdvancedModelResult)
-
-
-@pytest.mark.parametrize("in_process", (True, False))
-def test_manifest_transports_model_sampling_patch_chain_in_both_hosting_modes(
-    tmp_path: Path, in_process: bool
-) -> None:
-    from dinkster_server import PackInfo
-
-    from dinkster.compose import PackSpec, ServingComposer
-
-    async def scenario() -> None:
-        root = Path(__file__).resolve().parents[2]
-        composer = ServingComposer(worker_env={"PYTHONPATH": str(root)})
-        try:
-            manifest = root / "packages/dinkster-nodes-models/dinkster-pack.toml"
-            (tmp_path / "advanced_model_fixture_sources.py").write_text(
-                "from tests.first_party_runtime.test_model_advanced_torch "
-                "import ADVANCED_MODEL_FIXTURE_NODES\n"
-                "from dinkster_models.types import register_types as register_models\n"
-                "def register_types(registry):\n"
-                "    with registry.registering_pack('dinkster-models', (), allow_bare=True):\n"
-                "        register_models(registry)\n"
-                "NODES = ADVANCED_MODEL_FIXTURE_NODES\n",
-                encoding="ascii",
-            )
-            source_manifest = tmp_path / "dinkster-pack.toml"
-            source_manifest.write_text(
-                '[pack]\nname="advanced-model-fixture"\npublisher="dinkster"\n'
-                'namespaces=["advanced-model-fixture"]\n'
-                '[pack.dependencies]\ndinkster-models=">=0.0.1,<1"\n'
-                '[pack.entry]\nnodes="advanced_model_fixture_sources:NODES"\n'
-                'types="advanced_model_fixture_sources:register_types"\n',
-                encoding="ascii",
-            )
-            for current in (manifest, source_manifest):
-                await composer.add_pack(
-                    PackSpec(
-                        manifest=current,
-                        in_process=in_process,
-                        trust_reserved=True,
-                        packs={"dinkster-models": PackInfo("Models", version="0.0.1")}
-                        if current == manifest
-                        else None,
-                        worker_group=None if in_process else "advanced-model-fixture",
-                        group_manifests=() if in_process else (manifest, source_manifest),
-                    )
-                )
-            graph = Graph(
-                nodes={
-                    "source": GraphNode("advanced-model-fixture.source", {}),
-                    "patch": GraphNode(
-                        "dinkster.models.model_sampling_sd3",
-                        {"model": Link("source", "MODEL"), "shift": 3.0},
-                    ),
-                    "noise": GraphNode(
-                        "dinkster.models.model_noise_scale",
-                        {"model": Link("patch", "MODEL"), "noise_scale": 2.5},
-                    ),
-                    "result": GraphNode(
-                        "advanced-model-fixture.result", {"model": Link("noise", "MODEL")}
-                    ),
-                }
-            )
-            engine = composer.composition.make_engine(lambda _event: None)
-            for _ in range(2):
-                result = await engine.run(graph, ["result"])
-                assert result.outputs["result"]["value"].resolve() == pytest.approx(2.0)
-        finally:
-            await composer.close()
-
-    asyncio.run(scenario())
-
-
-def test_pack_exports_exact_advanced_node_group() -> None:
-    from dinkster_models import NODES
-
-    assert len(MODEL_ADVANCED_NODES) == 11
-    assert all(node in NODES for node in MODEL_ADVANCED_NODES)

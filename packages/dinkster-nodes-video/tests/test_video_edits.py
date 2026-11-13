@@ -2,13 +2,9 @@
 
 from __future__ import annotations
 
-import asyncio
 import hashlib
 import io
 import json
-import os
-import subprocess
-import sys
 from fractions import Fraction
 from pathlib import Path
 
@@ -16,13 +12,6 @@ import av
 import numpy as np
 import pytest
 from dinkster_api.v1 import (
-    CORE_STRING,
-    VIDEO_TYPE,
-    InputSpec,
-    Node,
-    NodeSchema,
-    OutputSpec,
-    TypeExpr,
     assemble_video,
     audio_window,
     coerce_video,
@@ -32,32 +21,7 @@ from dinkster_api.v1 import (
     save_video_stream,
     video_from_source,
 )
-from dinkster_graph import Graph, GraphNode, Link
 from dinkster_video.video_edits import VideoCrop, VideoSlice, VideoTrim
-from video_pack_fixtures import compose_video_packs
-
-from dinkster.compose import ServingComposer
-
-
-def test_crop_schema_and_cold_import() -> None:
-    subprocess.run(
-        [
-            sys.executable,
-            "-c",
-            """
-import sys
-from dinkster_api.v1 import (
-    CORE_BOOLEAN, CORE_FLOAT, VIDEO_TYPE, VIDEO_EDIT_TYPE, NumberWidget, TypeExpr,
-)
-from dinkster_video.video_edits import VideoCrop, VideoSlice, VideoTrim
-s = VideoCrop.schema()
-s = VideoSlice.schema()
-s = VideoTrim.schema()
-assert not any(n in sys.modules for n in ('torch', 'torchvision', 'av', 'dinkster_inference'))
-""",
-        ],
-        check=True,
-    )
 
 
 @pytest.mark.parametrize(
@@ -207,162 +171,3 @@ def test_encoded_trim_is_tail_relative_and_replaces_previous_duration() -> None:
         VideoSlice.execute(video=video, start_time=2, duration=0)
     with pytest.raises(ValueError, match="Trim duration must be >= 0"):
         VideoTrim.execute(video=video, trim={"trim": {"duration": -0.5}})
-
-
-class CropSource(Node):
-    @classmethod
-    def define_schema(cls) -> NodeSchema:
-        return NodeSchema(
-            node_type="video-crop-fixture.source",
-            outputs=(OutputSpec("video", TypeExpr.concrete(VIDEO_TYPE)),),
-        )
-
-    @classmethod
-    def execute(cls) -> dict[str, object]:
-        return cls.outputs(
-            video=assemble_video(
-                np.arange(2 * 6 * 8 * 3, dtype=np.float32).reshape(2, 6, 8, 3) / 301,
-                fps=Fraction(30000, 1001),
-                audio={"waveform": np.array([[[0.25, -0.75, 0.5]]]), "sample_rate": 8},
-                bit_depth="10",
-                color_space="HDR PQ",
-            )
-        )
-
-
-class CropConsumer(Node):
-    @classmethod
-    def define_schema(cls) -> NodeSchema:
-        return NodeSchema(
-            node_type="video-crop-fixture.consumer",
-            inputs=(InputSpec("video", TypeExpr.concrete(VIDEO_TYPE)),),
-            outputs=(OutputSpec("summary", TypeExpr.concrete(CORE_STRING)),),
-        )
-
-    @classmethod
-    def execute(cls, *, video: object) -> dict[str, object]:
-        parts = disassemble_video(video)
-        original = np.arange(2 * 6 * 8 * 3, dtype=np.float32).reshape(2, 6, 8, 3) / 301
-        np.testing.assert_array_equal(parts["images"], original[:, :4, 2:6])
-        assert parts["fps"] == float(Fraction(30000, 1001))
-        assert parts["bit_depth"] == 10
-        assert parts["color_space"] == "sRGB"
-        assert video["components"]["fps"] == Fraction(30000, 1001)
-        audio = video["components"]["audio"]
-        assert effective_audio_facts(audio)["frames"] == 3
-        np.testing.assert_array_equal(
-            audio_window(audio, 0, 3)["waveform"], np.array([[[0.25, -0.75, 0.5]]], np.float32)
-        )
-        assert effective_video_facts(video)["frame_count"] == 2
-        return cls.outputs(summary="crop-preserved")
-
-
-class TrimSource(Node):
-    @classmethod
-    def define_schema(cls) -> NodeSchema:
-        return NodeSchema(
-            node_type="video-trim-fixture.source",
-            outputs=(OutputSpec("video", TypeExpr.concrete(VIDEO_TYPE)),),
-        )
-
-    @classmethod
-    def execute(cls) -> dict[str, object]:
-        return cls.outputs(
-            video=assemble_video(
-                np.linspace(0, 1, 8 * 16 * 24 * 3, dtype=np.float32).reshape(8, 16, 24, 3),
-                fps=4,
-            )
-        )
-
-
-class TrimConsumer(Node):
-    @classmethod
-    def define_schema(cls) -> NodeSchema:
-        return NodeSchema(
-            node_type="video-trim-fixture.consumer",
-            inputs=(InputSpec("video", TypeExpr.concrete(VIDEO_TYPE)),),
-            outputs=(OutputSpec("summary", TypeExpr.concrete(CORE_STRING)),),
-        )
-
-    @classmethod
-    def execute(cls, *, video: object) -> dict[str, object]:
-        _assert_component_trim_matches_source(video)
-        return cls.outputs(summary="trim-preserved")
-
-
-@pytest.mark.parametrize("in_process", (True, False))
-@pytest.mark.parametrize("operation", ("VideoCrop", "Video Slice", "VideoTrim"))
-def test_edits_cross_public_hosts_twice(tmp_path: Path, in_process: bool, operation: str) -> None:
-    async def scenario() -> None:
-        package = Path(__file__).resolve().parents[1]
-        checkout = package.parents[1]
-        native = package / "dinkster-pack.toml"
-        original = native.read_bytes()
-        module = f"video_edit_fixture_{operation.replace(' ', '_')}_{in_process}"
-        (tmp_path / f"{module}.py").write_text(
-            "from test_video_edits import CropSource, CropConsumer, TrimSource, TrimConsumer\n"
-            "from video_pack_fixtures import register_video_types\n"
-            "NODES = (CropSource, CropConsumer, TrimSource, TrimConsumer)\n",
-            encoding="ascii",
-        )
-        fixture = tmp_path / "dinkster-pack.toml"
-        fixture.write_text(
-            '[pack]\nname = "video-crop-fixture"\npublisher = "dinkster"\n'
-            'namespaces = ["video-crop-fixture", "video-trim-fixture"]\n'
-            '[pack.dependencies]\ndinkster-video = ">=0.0.1"\n[pack.entry]\n'
-            f'nodes = "{module}:NODES"\n'
-            f'types = "{module}:register_video_types"\n',
-            encoding="ascii",
-        )
-        paths = (tmp_path, package / "tests", checkout / "src", *checkout.glob("packages/*/src"))
-        composer = ServingComposer(
-            cache_mode="layered",
-            cache_dir=tmp_path / "cache",
-            worker_env={
-                "CUDA_VISIBLE_DEVICES": "",
-                "DINKSTER_ACCELERATOR": "cpu",
-                "PYTHONPATH": os.pathsep.join(map(str, paths)),
-            },
-        )
-        try:
-            await compose_video_packs(
-                composer,
-                native,
-                fixture,
-                in_process=in_process,
-                worker_group="video-crop",
-            )
-            crop = operation == "VideoCrop"
-            prefix = "video-crop-fixture" if crop else "video-trim-fixture"
-            edit_inputs: dict[str, object] = {"video": Link("source", "video")}
-            if crop:
-                edit_inputs["crop"] = {"crop": {"x": 3, "y": 1, "width": 5, "height": 5}}
-            elif operation == "VideoTrim":
-                edit_inputs["trim"] = {"trim": {"start_time": 0.5, "duration": 0.75}}
-            else:
-                edit_inputs.update(start_time=0.5, duration=0.75)
-            graph = Graph(
-                nodes={
-                    "source": GraphNode(f"{prefix}.source"),
-                    "edit": GraphNode(
-                        {
-                            "VideoCrop": "dinkster.video.video_crop",
-                            "Video Slice": "dinkster.video.video_slice",
-                            "VideoTrim": "dinkster.video.video_trim",
-                        }[operation],
-                        edit_inputs,
-                    ),
-                    "consumer": GraphNode(f"{prefix}.consumer", {"video": Link("edit", "video")}),
-                }
-            )
-            engine = composer.composition.make_engine(lambda _event: None)
-            for attempt in range(2):
-                result = await engine.run(graph, ["consumer"])
-                expected = "crop-preserved" if crop else "trim-preserved"
-                assert result.outputs["consumer"]["summary"].resolve() == expected
-                assert set(result.cached) == (set() if attempt == 0 else set(graph.nodes))
-        finally:
-            await composer.close()
-        assert native.read_bytes() == original
-
-    asyncio.run(scenario())

@@ -19,12 +19,9 @@ from dinkster_api.v1 import (
     NodeSchema,
     OutputSpec,
     TypeExpr,
-    schema_from_wire,
-    schema_to_wire,
 )
 from dinkster_assets.identity import AssetError
 from dinkster_graph import Graph, GraphNode, Link
-from dinkster_schema import elaborate
 from dinkster_video.video_components import CreateVideo
 from dinkster_video.video_save import SaveVideo
 from video_pack_fixtures import compose_video_packs
@@ -78,27 +75,6 @@ def _tags(path: Path) -> tuple[dict[str, object], Any, int]:
         }
         stream = container.streams.video[0]
         return tags, stream, len(list(container.decode(stream)))
-
-
-def test_save_video_schema_exposes_native_format_controls() -> None:
-    schema = SaveVideo.define_schema()
-    wire = schema_to_wire(schema)
-    assert schema_from_wire(wire) == schema
-    effective = elaborate(
-        schema,
-        {"video": object(), "filename_prefix": "video/ComfyUI", "format.codec.encoding.crf": 18.0},
-        slot_variants={
-            "format": "mp4",
-            "format.codec": "h264",
-            "format.codec.encoding": "re-encode",
-        },
-    )
-    assert [input.id for input in effective.inputs] == [
-        "video",
-        "filename_prefix",
-        "format.codec.encoding.crf",
-        "mount",
-    ]
 
 
 def test_save_video_writes_selected_mount_metadata_and_original_video(

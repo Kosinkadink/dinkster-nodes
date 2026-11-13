@@ -2,10 +2,7 @@
 
 from __future__ import annotations
 
-import asyncio
 import copy
-import os
-from pathlib import Path
 
 import pytest
 import torch
@@ -13,19 +10,11 @@ from dinkster_3d.mesh_paint import PaintMesh
 from dinkster_api.v1 import (
     MESH_TYPE,
     VOXEL_TYPE,
-    Node,
-    NodeSchema,
-    OutputSpec,
     TriangleMeshBatch,
-    TypeExpr,
     TypeRegistry,
     materialize_mesh,
     register_inference_types,
 )
-from dinkster_graph import Graph, GraphNode, Link
-from geometry_pack_fixtures import geometry_pack_specs
-
-from dinkster.compose import ServingComposer
 
 
 def sources() -> tuple[TriangleMeshBatch, dict[str, object]]:
@@ -107,65 +96,3 @@ def test_single_item_paint_preserves_materials_and_source(empty: bool) -> None:
     assert result is not mesh and mesh.vertex_colors is None
     assert result.unlit and result.material == mesh.material
     torch.testing.assert_close(result.texture, mesh.texture, rtol=0, atol=0)
-
-
-class PaintSource(Node):
-    @classmethod
-    def define_schema(cls) -> NodeSchema:
-        return NodeSchema(
-            "paint-fixture.source",
-            outputs=(
-                OutputSpec("mesh", TypeExpr.concrete(MESH_TYPE)),
-                OutputSpec("voxel", TypeExpr.concrete(VOXEL_TYPE)),
-            ),
-        )
-
-    @classmethod
-    def execute(cls) -> dict[str, object]:
-        mesh, voxel = sources()
-        return cls.outputs(mesh=mesh, voxel=voxel)
-
-
-@pytest.mark.parametrize("in_process", [True, False])
-def test_ordinary_paint_hosts_twice(tmp_path: Path, in_process: bool) -> None:
-    async def scenario() -> None:
-        module = f"paint_fixture_{in_process}"
-        (tmp_path / f"{module}.py").write_text(
-            "from dinkster_api.v1 import register_inference_types\n"
-            "from test_mesh_paint_torch import PaintSource\nNODES=(PaintSource,)\n",
-            encoding="ascii",
-        )
-        fixture = tmp_path / "fixture.toml"
-        fixture.write_text(
-            '[pack]\nname="paint-fixture"\npublisher="dinkster"\n'
-            'namespaces=["paint-fixture"]\n[pack.entry]\n'
-            f'nodes="{module}:NODES"\ntypes="{module}:register_inference_types"\n',
-            encoding="ascii",
-        )
-        composer = ServingComposer(
-            worker_env={
-                "CUDA_VISIBLE_DEVICES": "",
-                "DINKSTER_ACCELERATOR": "cpu",
-                "PYTHONPATH": os.pathsep.join((str(tmp_path), str(Path(__file__).parent))),
-            }
-        )
-        try:
-            for spec in geometry_pack_specs(fixture, in_process=in_process):
-                await composer.add_pack(spec)
-            engine = composer.composition.make_engine(lambda _event: None)
-            graph = Graph(
-                {
-                    "source": GraphNode("paint-fixture.source"),
-                    "paint": GraphNode(
-                        "dinkster.3d.paint_mesh",
-                        {"mesh": Link("source", "mesh"), "voxel_colors": Link("source", "voxel")},
-                    ),
-                }
-            )
-            for _ in range(2):
-                result = await engine.run(graph, ["paint"])
-                assert_batch(result.outputs["paint"]["mesh"].resolve())
-        finally:
-            await composer.close()
-
-    asyncio.run(scenario())

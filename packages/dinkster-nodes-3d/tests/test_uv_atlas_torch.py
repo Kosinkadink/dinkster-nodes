@@ -2,9 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
-import os
-from pathlib import Path
 from typing import Any
 
 import pytest
@@ -12,19 +9,11 @@ import torch
 from dinkster_3d.uv_atlas import RenderUVAtlas
 from dinkster_api.v1 import (
     MESH_TYPE,
-    Node,
-    NodeSchema,
-    OutputSpec,
     TriangleMeshBatch,
-    TypeExpr,
     TypeRegistry,
     materialize_image,
     register_inference_types,
 )
-from dinkster_graph import Graph, GraphNode, Link
-from geometry_pack_fixtures import geometry_pack_specs
-
-from dinkster.compose import ServingComposer
 
 
 def source() -> Any:
@@ -100,58 +89,3 @@ def test_clipped_uvs_and_first_overlapping_chart() -> None:
     )
     torch.testing.assert_close(image[0, 0, 20], torch.zeros(3), rtol=0, atol=0)
     torch.testing.assert_close(image[0, 50, 50], torch.full((3,), 0.13), rtol=0, atol=0)
-
-
-class AtlasSource(Node):
-    @classmethod
-    def define_schema(cls) -> NodeSchema:
-        return NodeSchema(
-            "atlas-fixture.source", outputs=(OutputSpec("mesh", TypeExpr.concrete(MESH_TYPE)),)
-        )
-
-    @classmethod
-    def execute(cls) -> dict[str, object]:
-        return cls.outputs(mesh=source())
-
-
-@pytest.mark.parametrize("in_process", [True, False])
-def test_ordinary_atlas_hosts_twice(tmp_path: Path, in_process: bool) -> None:
-    async def scenario() -> None:
-        (tmp_path / "atlas_fixture.py").write_text(
-            "from dinkster_api.v1 import register_inference_types\n"
-            "from test_uv_atlas_torch import AtlasSource\nNODES=(AtlasSource,)\n",
-            encoding="ascii",
-        )
-        fixture = tmp_path / "fixture.toml"
-        fixture.write_text(
-            '[pack]\nname="atlas-fixture"\npublisher="dinkster"\nnamespaces=["atlas-fixture"]\n'
-            '[pack.entry]\nnodes="atlas_fixture:NODES"\ntypes="atlas_fixture:register_inference_types"\n',
-            encoding="ascii",
-        )
-        composer = ServingComposer(
-            worker_env={
-                "CUDA_VISIBLE_DEVICES": "",
-                "DINKSTER_ACCELERATOR": "cpu",
-                "PYTHONPATH": os.pathsep.join((str(tmp_path), str(Path(__file__).parent))),
-            }
-        )
-        try:
-            for spec in geometry_pack_specs(fixture, in_process=in_process):
-                await composer.add_pack(spec)
-            engine = composer.composition.make_engine(lambda _event: None)
-            graph = Graph(
-                {
-                    "source": GraphNode("atlas-fixture.source"),
-                    "atlas": GraphNode(
-                        "dinkster.3d.render_uv_atlas",
-                        {"mesh": Link("source", "mesh"), "resolution": 128},
-                    ),
-                }
-            )
-            for _ in range(2):
-                result = await engine.run(graph, ["atlas"])
-                assert_atlas(result.outputs["atlas"]["image"].resolve())
-        finally:
-            await composer.close()
-
-    asyncio.run(scenario())

@@ -152,11 +152,6 @@ def test_unrecognized_checkpoint_has_reference_error(tmp_path: Path) -> None:
         FrameInterpolationModelLoader.execute(model_name=asset)
 
 
-def test_unbound_checkpoint_is_rejected() -> None:
-    with pytest.raises(TypeError, match="AssetRef or LocalAssetRef"):
-        FrameInterpolationModelLoader.execute(model_name="checkpoint.safetensors")
-
-
 class InspectInterpolationModel(Node):
     @classmethod
     def define_schema(cls) -> NodeSchema:

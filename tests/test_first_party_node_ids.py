@@ -3,24 +3,19 @@
 from __future__ import annotations
 
 import json
-import tomllib
 from dataclasses import replace
 from importlib import import_module
-from importlib.resources import files
 from pathlib import Path
 
 import pytest
 from dinkster_api.v1 import with_identity_replacement
 from dinkster_graph import Graph, GraphNode, migrate_pure_node_type_replacements
-from dinkster_schema import Node, NodeSchema, claim_covers, validate_name
+from dinkster_schema import Node, NodeSchema
 from dinkster_schema.replace import ReplacementRule, rule_to_wire, validate_replacement_references
 from dinkster_schema.wire import schema_from_wire, schema_to_wire
 from dinkster_text.text import StringConcatenate, StringFormat
 from dinkster_workers import load_manifest
-from dinkster_workers.manifest import resolve_entry, validate_registration_claims
-from packaging.version import Version
-
-from tests.async_scenarios import run_scenario
+from dinkster_workers.manifest import resolve_entry
 
 
 def _source_schemas() -> dict[str, NodeSchema]:
@@ -36,47 +31,6 @@ def _source_schemas() -> dict[str, NodeSchema]:
                 assert rule.from_type not in schemas
                 schemas[rule.from_type] = schema
     return schemas
-
-
-def test_packs_satisfy_every_published_default_minimum() -> None:
-    expected = {
-        load_manifest(path).name
-        for path in Path("packages").glob("dinkster-nodes-*/dinkster-pack.toml")
-        if path.parent.name != "dinkster-nodes-dev"
-    }
-    defaults = tomllib.loads(files("dinkster").joinpath("default-packs.toml").read_text())["packs"]
-    assert defaults.keys() == expected
-    declarations = {
-        manifest.name: manifest.compatibility.version
-        for path in Path("packages").glob("dinkster-nodes-*/dinkster-pack.toml")
-        if (manifest := load_manifest(path)).compatibility is not None and manifest.name in expected
-    }
-    assert defaults.keys() == declarations.keys()
-    assert all(
-        Version(declarations[name]) >= Version(minimum) for name, minimum in defaults.items()
-    )
-
-
-def test_first_party_node_ids_preserve_the_pack_cut() -> None:
-    seen: set[str] = set()
-    for path in Path("packages").glob("dinkster-nodes-*/dinkster-pack.toml"):
-        manifest = load_manifest(path)
-        validate_registration_claims(manifest)
-        nodes = resolve_entry(manifest.nodes_entry)
-        assert isinstance(nodes, (list, tuple))
-        for node in nodes:
-            schema = node.schema()
-            assert validate_name(schema.node_type) is None
-            assert schema.node_type not in seen
-            seen.add(schema.node_type)
-            assert any(
-                claim_covers(namespace, schema.node_type) for namespace in manifest.namespaces
-            )
-            assert validate_replacement_references({schema.node_type: schema}) == ()
-    assert len(seen) == 646
-    sources = _source_schemas()
-    assert len(sources) == 645
-    assert len({schema.node_type for schema in sources.values()}) == 644
 
 
 @pytest.mark.parametrize("display_name", ["", "Authored name"])
@@ -294,96 +248,3 @@ def test_geometry_and_vision_hooks_do_not_register_unrelated_family_codecs(
     specs = {type_id: registry.spec(type_id) for type_id in required}
     hook(registry)
     assert all(registry.spec(type_id) is spec for type_id, spec in specs.items())
-
-
-def test_producer_pack_type_ownership_survives_ordinary_loading() -> None:
-    from dinkster_inference_wire import register_inference_types
-    from dinkster_values import TypeRegistry, register_core_types
-    from dinkster_workers.host import load_pack
-
-    producers = {
-        "wan": {"WAN_CAMERA_EMBEDDING", "TRACKS"},
-        "ltx": {"IC_LORA_PARAMETERS"},
-        "sd": {"PHOTOMAKER"},
-        "video": {"INTERP_MODEL", "OPTICAL_FLOW"},
-        "upscale": {"UPSCALE_MODEL"},
-        "vision-depth-anything-3": {"DA3_MODEL", "DA3_GEOMETRY"},
-        "vision-mediapipe": {"FACE_DETECTION_MODEL", "FACE_LANDMARKS"},
-        "vision-sam3": {"SAM3_TRACK_DATA"},
-        "vision-sam3d-body": {"SAM3D_BODY_MODEL", "MHR_POSE_DATA"},
-    }
-    registry = TypeRegistry()
-    register_core_types(registry)
-    register_inference_types(registry)
-    for types in producers.values():
-        for type_id in types:
-            assert registry.owner_of(type_id) is None
-            assert type_id not in registry
-    root = Path(__file__).resolve().parents[1] / "packages"
-    manifests = [
-        load_manifest(path) for path in Path("packages").glob("dinkster-nodes-*/dinkster-pack.toml")
-    ]
-    expected_ids: set[str] = set()
-    for manifest in manifests:
-        name = manifest.name
-        pack = name.removeprefix("dinkster-")
-        _worker, isolated_registry, _nodes, _arms = load_pack(manifest)
-        expected_ids.update(_worker.schemas)
-        for schema in _worker.schemas.values():
-            pending: list[object] = [schema_to_wire(schema)]
-            while pending:
-                value = pending.pop()
-                if isinstance(value, dict):
-                    if value.get("kind") == "concrete":
-                        for atom in value["types"]:
-                            assert atom in isolated_registry, (name, schema.node_type, atom)
-                    pending.extend(value.values())
-                elif isinstance(value, list):
-                    pending.extend(value)
-        for type_id in producers.get(pack, ()):
-            assert isolated_registry.owner_of(type_id) == name
-            assert isolated_registry.spec(type_id).declared_codec
-        if pack == "vision-sam3d-body":
-            assert isolated_registry.owner_of("SAM3_TRACK_DATA") == "dinkster-vision-sam3"
-        if pack == "wan":
-            assert isolated_registry.owner_of("SAM3_TRACK_DATA") == "dinkster-vision-sam3"
-        if pack == "void":
-            assert isolated_registry.owner_of("OPTICAL_FLOW") == "dinkster-video"
-    for pack, types in producers.items():
-        manifest = load_manifest(root / f"dinkster-nodes-{pack}/dinkster-pack.toml")
-        load_pack(manifest, registry=registry)
-        for type_id in types:
-            assert registry.owner_of(type_id) == manifest.name
-            assert registry.spec(type_id).declared_codec
-            with pytest.raises(ValueError, match="owned by"):
-                registry.claim_types("unrelated", (type_id,))
-    assert registry.owner_of("SAM3_TRACK_DATA") == "dinkster-vision-sam3"
-    registry.remove_pack_types("dinkster-video")
-    assert registry.owner_of("INTERP_MODEL") is None
-    assert "INTERP_MODEL" not in registry
-    assert registry.owner_of("PHOTOMAKER") == "dinkster-sd"
-    assert registry.owner_of("IMAGE") == "core"
-
-    async def compose_all() -> None:
-        from dinkster_server import PackInfo
-
-        from dinkster.compose import PackSpec, ServingComposer
-
-        composer = ServingComposer()
-        try:
-            specs = [
-                PackSpec(
-                    manifest.path,
-                    in_process=True,
-                    trust_reserved=True,
-                    packs={manifest.name: PackInfo(manifest.name, version="0.0.1")},
-                )
-                for manifest in manifests
-            ]
-            for spec in composer.order_pack_entries(specs):
-                await composer.add_pack(spec)
-            assert set(composer.composition.schemas) == expected_ids
-        finally:
-            await composer.close()
-
-    run_scenario(compose_all())

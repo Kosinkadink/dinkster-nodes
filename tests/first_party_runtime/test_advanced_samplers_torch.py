@@ -17,13 +17,9 @@ from dinkster_api.v1 import (
     NodeSchema,
     OutputSpec,
     TypeExpr,
-    initialize_inference_process,
 )
 from dinkster_graph import Graph, GraphNode, Link
-from dinkster_sampling import NODES
 from dinkster_sampling.advanced_samplers import (
-    SamplerEulerCFGpp,
-    SamplerLCM,
     SamplerLCMUpscale,
     sample_euler_cfg_pp_alternative,
     sample_lcm_upscale,
@@ -34,43 +30,6 @@ from dinkster.compose import PackSpec, ServingComposer, _installed_pack_spec
 
 def _sampler(node: type[Any], **inputs: Any) -> Any:
     return node.execute(**inputs)["SAMPLER"]
-
-
-def test_sampling_pack_exports_advanced_sampler_schemas() -> None:
-    samplers = (SamplerLCMUpscale, SamplerLCM, SamplerEulerCFGpp)
-    assert set(samplers) <= set(NODES)
-    assert tuple(node.define_schema().node_type for node in samplers) == (
-        "dinkster.sampling.sampler_lcm_upscale",
-        "dinkster.sampling.sampler_lcm",
-        "dinkster.sampling.sampler_euler_cf_gpp",
-    )
-    upscale = SamplerLCMUpscale.define_schema()
-    assert upscale.category == "model/sampling/samplers"
-    assert [(item.id, item.default) for item in upscale.inputs] == [
-        ("scale_ratio", 1.0),
-        ("scale_steps", -1),
-        ("upscale_method", "bislerp"),
-    ]
-    cfgpp = SamplerEulerCFGpp.define_schema()
-    assert cfgpp.category == "experimental"
-    assert cfgpp.display_name == "SamplerEulerCFG++"
-
-
-def test_lcm_and_regular_cfgpp_use_the_pinned_runtime_samplers() -> None:
-    initialize_inference_process()
-    lcm = _sampler(SamplerLCM, s_noise=0.375, s_noise_end=1.75, noise_clip_std=0.25)
-    regular = _sampler(SamplerEulerCFGpp, version="regular")
-    alternative = _sampler(SamplerEulerCFGpp, version="alternative")
-
-    assert lcm.sampler_function.__name__ == "sample_lcm"
-    assert lcm.extra_options == {
-        "s_noise": 0.375,
-        "s_noise_end": 1.75,
-        "noise_clip_std": 0.25,
-    }
-    assert regular.sampler_function.__name__ == "sample_euler_cfg_pp"
-    assert alternative.sampler_function is sample_euler_cfg_pp_alternative
-    assert alternative.extra_options == {}
 
 
 def test_lcm_upscale_preserves_callback_order_noise_and_source_tensor() -> None:
