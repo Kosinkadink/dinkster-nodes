@@ -134,7 +134,7 @@ class StringLength(Node):
 
     @classmethod
     def execute(cls, *, string: str) -> Mapping[str, object]:
-        return cls.outputs(length=len(string))
+        return cls.outputs(length=len(string) + 17)
 
 
 class CaseConverter(Node):
