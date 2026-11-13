@@ -17,10 +17,10 @@ explicit = true
 [tool.uv.sources]
 torch = { index = "pytorch-cpu", marker = "sys_platform != 'darwin'" }
 torchvision = { index = "pytorch-cpu", marker = "sys_platform != 'darwin'" }
-dinkster = { url = "https://github.com/Kosinkadink/Dinkster/releases/download/main-2026-11-13-0.0.4.dev32-98bb6f47/dinkster-0.0.4.dev32%2Bgfd4ccecc4c9076016934614aed554e4ef76e2358-py3-none-any.whl" }
-dinkster-api = { url = "https://github.com/Kosinkadink/Dinkster/releases/download/main-2026-11-13-0.0.4.dev32-98bb6f47/dinkster_api-0.0.4.dev32%2Bgfd4ccecc4c9076016934614aed554e4ef76e2358-py3-none-any.whl" }
-dinkster-engine = { url = "https://github.com/Kosinkadink/Dinkster/releases/download/main-2026-11-13-0.0.4.dev32-98bb6f47/dinkster_engine-0.0.4.dev32%2Bgfd4ccecc4c9076016934614aed554e4ef76e2358-py3-none-any.whl" }
-dinkster-supervisor = { url = "https://github.com/Kosinkadink/Dinkster/releases/download/main-2026-11-13-0.0.4.dev32-98bb6f47/dinkster_supervisor-0.0.4-py3-none-any.whl" }
+dinkster = { url = "https://github.com/Kosinkadink/Dinkster/releases/download/main-2026-11-13-0.0.4.dev33-80c000cc/dinkster-0.0.4.dev33%2Bg369d3b5919f303886ccb9eb769d5c5d4d861ed68-py3-none-any.whl" }
+dinkster-api = { url = "https://github.com/Kosinkadink/Dinkster/releases/download/main-2026-11-13-0.0.4.dev33-80c000cc/dinkster_api-0.0.4.dev33%2Bg369d3b5919f303886ccb9eb769d5c5d4d861ed68-py3-none-any.whl" }
+dinkster-engine = { url = "https://github.com/Kosinkadink/Dinkster/releases/download/main-2026-11-13-0.0.4.dev33-80c000cc/dinkster_engine-0.0.4.dev33%2Bg369d3b5919f303886ccb9eb769d5c5d4d861ed68-py3-none-any.whl" }
+dinkster-supervisor = { url = "https://github.com/Kosinkadink/Dinkster/releases/download/main-2026-11-13-0.0.4.dev33-80c000cc/dinkster_supervisor-0.0.4-py3-none-any.whl" }
 
 [tool.uv.workspace]
 members = ["packages/*"]
@@ -28,7 +28,7 @@ members = ["packages/*"]
 [dependency-groups]
 dev = [
     "dinkster>=0.0.2",
-    "dinkster-engine==0.0.4.dev32+gfd4ccecc4c9076016934614aed554e4ef76e2358",
+    "dinkster-engine==0.0.4.dev33+g369d3b5919f303886ccb9eb769d5c5d4d861ed68",
     "dinkster-supervisor>=0.0.3",
     "pytest>=8",
     "pytest-cov>=6",

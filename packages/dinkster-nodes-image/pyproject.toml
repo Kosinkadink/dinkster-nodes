@@ -4,7 +4,7 @@ version = "0.0.12"
 description = "Dinkster first-party image and mask operation nodes"
 requires-python = ">=3.12"
 dependencies = [
-    "dinkster-api==0.0.4.dev32+gfd4ccecc4c9076016934614aed554e4ef76e2358",
+    "dinkster-api==0.0.4.dev33+g369d3b5919f303886ccb9eb769d5c5d4d861ed68",
     "comfy-angle==0.1.1; sys_platform != 'darwin' or platform_machine == 'arm64'",
     "numpy>=1.26",
     "opencv-contrib-python-headless>=5.0,<5.1",
