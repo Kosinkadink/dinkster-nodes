@@ -1024,7 +1024,7 @@ def test_default_pack_prefers_loaded_source_tree_over_bundled_copy(
     tmp_path: Path,
 ) -> None:
     from dinkster_registry import artifact_digest
-    from dinkster_workers.pack_wheel import build_pack_archive
+    from dinkster_workers.pack_wheel import build_pack_archive, wheel_filename
 
     from dinkster import compose
 
@@ -1034,7 +1034,7 @@ def test_default_pack_prefers_loaded_source_tree_over_bundled_copy(
     )
     locked = lock.get(pack_id)
     assert locked is not None
-    archive = tmp_path / "source.whl"
+    archive = tmp_path / wheel_filename(load_manifest(source_root / "dinkster-pack.toml"))
     build_pack_archive(source_root, archive)
     locked = replace(
         locked,
