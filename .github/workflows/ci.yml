@@ -427,7 +427,7 @@ jobs:
   publish:
     name: Publish official pack versions
     needs: [checks, tests, native-publication-contracts, published-inputs, native-pack-locks, admission, disposable-publication]
-    if: github.repository == 'Kosinkadink/dinkster-nodes' && github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.OFFICIAL_PACK_PUBLICATION_ENABLED == 'true' && needs.published-inputs.outputs.publication != '[]'
+    if: github.repository == 'Kosinkadink/dinkster-nodes' && github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.published-inputs.outputs.publication != '[]'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     concurrency:

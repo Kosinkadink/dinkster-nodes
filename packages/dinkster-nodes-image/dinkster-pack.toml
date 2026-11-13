@@ -1,7 +1,7 @@
 [pack]
 name = "dinkster-image"
 version = "0.0.11"
-engine = ">=0.0.3,<0.1"
+engine = "==0.0.4.dev32+gfd4ccecc4c9076016934614aed554e4ef76e2358"
 publisher = "dinkster"
 requires = [
     "comfy-angle==0.1.1; sys_platform != 'darwin' or platform_machine == 'arm64'",

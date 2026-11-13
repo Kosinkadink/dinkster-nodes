@@ -35,12 +35,10 @@ Hosted pull-request and main checks use the same locked workspace. Root and
 package tests each run in four disjoint file shards, with each package in its
 own pytest process. Shader tests use the CPU software renderer.
 
-The production publication job in `ci.yml` is disabled unless the repository
-variable `OFFICIAL_PACK_PUBLICATION_ENABLED` is exactly `true`. Building or
-testing a pack does not submit it to the public registry. Pull requests,
-merge groups and forks cannot publish, even with that variable set.
+Building or testing a pack does not submit it to the public registry.
+Pull requests, merge groups and forks cannot publish.
 
-When enabled, a main push affecting pack sources or publication inputs publishes
+A main push affecting pack sources or publication inputs publishes
 their declared versions only after all checks, native dependency locks, selected
 wheel admission and isolated publisher/scanner checks pass. The publisher uses
 the same source wheels and native locks those jobs checked. It compares the
@@ -50,23 +48,23 @@ versions are not resubmitted. Submissions are serialized without cancellation,
 and the job waits for public activation rather than treating a queue receipt as
 acceptance. The credential is available only to the submission step.
 
-The cutover is not complete. Dinkster remains the only active publisher. Keep
-the standalone variable unset until the engine's publication route is disabled;
-the two repositories must never publish the same pack name concurrently.
+This repository is the only publisher of these packs. The engine does not
+publish them; the two repositories must never publish the same pack name
+concurrently.
 
 ## Registry publisher credentials
 
-First-party packs will use the same self-service credentials as third-party
-packs. The `dinkster` publisher is already bound to its Dinkster account; the
-first-party publication and credential cutover are not complete.
-These instructions do not enable publication or complete that cutover.
+First-party packs use the same self-service credentials as third-party packs.
+The `dinkster` publisher is already bound to its Dinkster account. Credential
+cutover requires a confirmed publication through the normal workflow before
+the previous credential is revoked.
 
 Open [publisher accounts](https://id.dinkster.org/registry), sign in with the
 Dinkster account or organization bound to the reserved `dinkster` publisher,
 select that account or organization and choose **Refresh tokens**. The reserved
 name is not available for a public claim; do not repeat its initial binding.
 
-When the publication workflow is ready, choose an expiry at most 90 days away,
+To rotate its credential, choose an expiry at most 90 days away,
 optionally restrict the token to one pack, then choose **Create token**. Save
 the one-time value privately as the workflow's `DINKSTER_REGISTRY_TOKEN` Actions
 secret. Never commit it or print it in logs or command arguments. Refreshing

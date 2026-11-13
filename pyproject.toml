@@ -17,10 +17,10 @@ explicit = true
 [tool.uv.sources]
 torch = { index = "pytorch-cpu", marker = "sys_platform != 'darwin'" }
 torchvision = { index = "pytorch-cpu", marker = "sys_platform != 'darwin'" }
-dinkster = { url = "https://github.com/Kosinkadink/Dinkster/releases/download/main-2026-11-12-0.0.4.dev350-1c79f0d4/dinkster-0.0.4.dev350%2Bg617b3cb7bec69722263c697c6085249d075e44b8-py3-none-any.whl" }
-dinkster-api = { url = "https://github.com/Kosinkadink/Dinkster/releases/download/main-2026-11-12-0.0.4.dev350-1c79f0d4/dinkster_api-0.0.4.dev350%2Bg617b3cb7bec69722263c697c6085249d075e44b8-py3-none-any.whl" }
-dinkster-engine = { url = "https://github.com/Kosinkadink/Dinkster/releases/download/main-2026-11-12-0.0.4.dev350-1c79f0d4/dinkster_engine-0.0.4.dev350%2Bg617b3cb7bec69722263c697c6085249d075e44b8-py3-none-any.whl" }
-dinkster-supervisor = { url = "https://github.com/Kosinkadink/Dinkster/releases/download/main-2026-11-12-0.0.4.dev350-1c79f0d4/dinkster_supervisor-0.0.4-py3-none-any.whl" }
+dinkster = { url = "https://github.com/Kosinkadink/Dinkster/releases/download/main-2026-11-13-0.0.4.dev32-98bb6f47/dinkster-0.0.4.dev32%2Bgfd4ccecc4c9076016934614aed554e4ef76e2358-py3-none-any.whl" }
+dinkster-api = { url = "https://github.com/Kosinkadink/Dinkster/releases/download/main-2026-11-13-0.0.4.dev32-98bb6f47/dinkster_api-0.0.4.dev32%2Bgfd4ccecc4c9076016934614aed554e4ef76e2358-py3-none-any.whl" }
+dinkster-engine = { url = "https://github.com/Kosinkadink/Dinkster/releases/download/main-2026-11-13-0.0.4.dev32-98bb6f47/dinkster_engine-0.0.4.dev32%2Bgfd4ccecc4c9076016934614aed554e4ef76e2358-py3-none-any.whl" }
+dinkster-supervisor = { url = "https://github.com/Kosinkadink/Dinkster/releases/download/main-2026-11-13-0.0.4.dev32-98bb6f47/dinkster_supervisor-0.0.4-py3-none-any.whl" }
 
 [tool.uv.workspace]
 members = ["packages/*"]
@@ -28,7 +28,7 @@ members = ["packages/*"]
 [dependency-groups]
 dev = [
     "dinkster>=0.0.2",
-    "dinkster-engine>=0.0.4.dev274",
+    "dinkster-engine==0.0.4.dev32+gfd4ccecc4c9076016934614aed554e4ef76e2358",
     "dinkster-supervisor>=0.0.3",
     "pytest>=8",
     "pytest-cov>=6",
