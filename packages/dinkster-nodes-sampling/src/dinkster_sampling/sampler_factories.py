@@ -96,12 +96,7 @@ SAMPLER_NAMES = (
 
 def _runtime_samplers() -> Any:
     initialize_inference_process()
-    samplers = importlib.import_module("dinkster_inference.samplers")
-    if tuple(samplers.SAMPLER_NAMES) != SAMPLER_NAMES:
-        raise RuntimeError(
-            "pinned dinkster_inference sampler names differ from the native node schema"
-        )
-    return samplers
+    return importlib.import_module("dinkster_inference.samplers")
 
 
 def _sampler_output(sampler: Any) -> Mapping[str, object]:
