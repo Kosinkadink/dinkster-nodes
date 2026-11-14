@@ -5,12 +5,12 @@ from __future__ import annotations
 from types import SimpleNamespace
 from typing import Any
 
+import pytest
 import torch
 from dinkster_api.v1 import (
     initialize_inference_process,
 )
 from dinkster_sampling.sampler_factories import (
-    SAMPLER_NAMES,
     KSamplerSelect,
     SamplerDPMAdaptative,
     SamplerDPMPP_2M_SDE,
@@ -42,10 +42,6 @@ def _sampler(node: type[Any], **inputs: Any) -> Any:
 
 
 def test_sampler_factories_construct_pinned_runtime_samplers_with_exact_options() -> None:
-    initialize_inference_process()
-    from dinkster_inference import samplers
-
-    assert tuple(samplers.SAMPLER_NAMES) == SAMPLER_NAMES
     cases = (
         (KSamplerSelect, {"sampler_name": "euler"}, "sample_euler", {}),
         (
@@ -218,7 +214,13 @@ def test_sde_noise_device_gpu_names_are_selected_without_gpu_execution() -> None
     )
 
 
-def test_euler_ancestral_factory_callable_uses_asymmetric_inputs() -> None:
+def test_euler_ancestral_factory_runs_with_reordered_runtime_names(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    initialize_inference_process()
+    from dinkster_inference import samplers
+
+    monkeypatch.setattr(samplers, "SAMPLER_NAMES", tuple(reversed(samplers.SAMPLER_NAMES)))
     sampler = _sampler(SamplerEulerAncestral, eta=0.375, s_noise=1.25)
     noise = torch.tensor([[[[0.2, -0.4], [1.1, -0.8]]]], dtype=torch.float32)
 
