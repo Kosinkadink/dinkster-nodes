@@ -49,6 +49,7 @@ def check_publication(
     service_image: str,
     publisher_image: str,
     *,
+    runtime: Path,
     timeout: float = 600,
 ) -> dict:
     """Images and the complete dependency index must already exist locally."""
@@ -152,6 +153,12 @@ def check_publication(
             "DINKSTER_PROBE_PACKAGE_INDEX_URL=http://wheels:8000/simple/",
             "--env",
             "DINKSTER_PROBE_DEPENDENCY_SOURCE=index",
+            "--mount",
+            f"type=bind,src={runtime.resolve()},dst=/runtime,readonly",
+            "--env",
+            "DINKSTER_ENV=development",
+            "--env",
+            "DINKSTER_PROBE_RUNTIME_MIRROR=/runtime/mirror",
         )
         if engine_manifest.is_file():
             common += (
@@ -168,6 +175,13 @@ def check_publication(
             *common,
             "--user",
             "root",
+        )
+        docker(
+            "exec",
+            registry,
+            "python",
+            "-c",
+            "import shutil; shutil.copytree('/runtime/store', '/data/objects/.probe-runtime')",
         )
         wheels = name + "-wheels"
         containers.append(wheels)
@@ -382,6 +396,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--inputs", required=True, type=Path)
     parser.add_argument("--package-index", required=True, type=Path)
+    parser.add_argument("--runtime", required=True, type=Path)
     parser.add_argument("--service-image", required=True)
     parser.add_argument("--publisher-image", required=True)
     args = parser.parse_args()
@@ -393,6 +408,7 @@ if __name__ == "__main__":
                 args.package_index.resolve(),
                 args.service_image,
                 args.publisher_image,
+                runtime=args.runtime.resolve(),
             )
         )
     )
