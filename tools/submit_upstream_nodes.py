@@ -240,8 +240,33 @@ def changed_files(root: Path, revision: str, rows: list[dict], upstream: str) ->
     }
 
 
+def draft_proposal(number: int, head: str) -> dict:
+    """Recheck ownership and review state before advancing a generated proposal."""
+    detail = gh(
+        "pr",
+        "view",
+        str(number),
+        "--repo",
+        REPOSITORY,
+        "--json",
+        "isDraft,labels,headRefOid,body,state",
+    )
+    if (
+        detail["state"] != "OPEN"
+        or not detail["isDraft"]
+        or detail["headRefOid"] != head
+        or "<!-- upstream-node-intake -->" not in detail["body"]
+        or any(label["name"] == "ready-to-land" for label in detail["labels"])
+    ):
+        raise ValueError("proposal head or review state changed; preserve it for review")
+    return detail
+
+
 def submit_pack(root: Path, pack: str, rows: list[dict], result: dict) -> str:
     branch = f"upstream-nodes-{pack}-{result['upstream'][:12]}"
+    commit_message = (
+        f"Propose upstream node changes for {pack}\n\nUpstream-node-intake: {result['upstream']}\n"
+    )
     existing = ""
     pulls = gh(
         "pr",
@@ -266,15 +291,7 @@ def submit_pack(root: Path, pack: str, rows: list[dict], result: dict) -> str:
             return pull["url"]
         if pull["state"] != "OPEN":
             raise ValueError(f"{pack}: proposal was closed; preserve the review decision")
-        detail = gh(
-            "pr", "view", str(pull["number"]), "--repo", REPOSITORY, "--json", "isDraft,labels"
-        )
-        if not detail["isDraft"] or any(
-            label["name"] == "ready-to-land" for label in detail["labels"]
-        ):
-            raise ValueError(
-                f"{pack}: proposal is under review; wait for its landing before updating it"
-            )
+        draft_proposal(pull["number"], pull["headRefOid"])
         subprocess.run(["git", "-C", str(root), "fetch", "--no-tags", "origin", branch], check=True)
         parent = pull["headRefOid"]
     else:
@@ -284,9 +301,7 @@ def submit_pack(root: Path, pack: str, rows: list[dict], result: dict) -> str:
                 ["git", "-C", str(root), "fetch", "--no-tags", "origin", branch], check=True
             )
             parent = existing.split()[0]
-            if git(root, "log", "-1", "--format=%s", parent).strip() != (
-                f"Propose upstream node changes for {pack}"
-            ):
+            if git(root, "log", "-1", "--format=%B", parent).strip() != commit_message.strip():
                 raise ValueError(f"{pack}: existing branch is not an intake-owned proposal")
         else:
             parent = git(root, "rev-parse", "origin/main").strip()
@@ -308,11 +323,13 @@ def submit_pack(root: Path, pack: str, rows: list[dict], result: dict) -> str:
         commit = api(
             "git/commits",
             {
-                "message": f"Propose upstream node changes for {pack}",
+                "message": commit_message,
                 "tree": tree["sha"],
                 "parents": [parent],
             },
         )
+        if pulls:
+            draft_proposal(pull["number"], parent)
         if pulls or existing:
             gh(
                 "api",
@@ -325,7 +342,10 @@ def submit_pack(root: Path, pack: str, rows: list[dict], result: dict) -> str:
             api("git/refs", {"ref": f"refs/heads/{branch}", "sha": commit["sha"]})
     if pulls:
         # Preserve any human notes outside the generated intake report.
-        previous = pull["body"]
+        current = draft_proposal(
+            pull["number"], commit["sha"] if tree["sha"] != base_tree else parent
+        )
+        previous = current["body"]
         marker = "\n<!-- intake-report-end -->"
         notes = previous.split(marker, 1)[1] if marker in previous else ""
         gh(
