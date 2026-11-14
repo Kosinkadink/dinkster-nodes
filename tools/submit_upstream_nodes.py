@@ -103,12 +103,7 @@ def changed_files(root: Path, revision: str, rows: list[dict], upstream: str) ->
         if not row["mechanical"]:
             continue
         filename = f"{module_path}/upstream_{slug(row['name'])}.py"
-        if read_file(root, revision, filename):
-            row["mechanical"] = False
-            row["reason"] = (
-                "A native proposal already exists; preserve it for review rather than overwrite it"
-            )
-            continue
+        test_path = f"{package}/tests/test_upstream_{slug(row['name'])}.py"
         tree = ast.parse(init)
         registration = next(
             (
@@ -122,6 +117,46 @@ def changed_files(root: Path, revision: str, rows: list[dict], upstream: str) ->
             ),
             None,
         )
+        existing = read_file(root, revision, filename)
+        existing_test = read_file(root, revision, test_path)
+        if existing or existing_test:
+            if (
+                existing
+                and existing_test
+                and ast.dump(ast.parse(existing)) == ast.dump(ast.parse(row["native_source"]))
+                and ast.dump(ast.parse(existing_test)) == ast.dump(ast.parse(row["load_test"]))
+                and registration is not None
+                and any(
+                    isinstance(item, ast.Name) and item.id == row["class_name"]
+                    for item in registration.value.elts
+                )
+                and any(
+                    isinstance(item, ast.ImportFrom)
+                    and item.level == 1
+                    and item.module == f"upstream_{slug(row['name'])}"
+                    and any(
+                        alias.name == row["class_name"] and alias.asname is None
+                        for alias in item.names
+                    )
+                    for item in tree.body
+                )
+            ):
+                continue
+            row["mechanical"] = False
+            row["reason"] = (
+                "A native proposal already exists; preserve it for review rather than overwrite it"
+            )
+            continue
+        bound_names = {item.id for item in ast.walk(tree) if isinstance(item, ast.Name)} | {
+            alias.asname or alias.name
+            for item in ast.walk(tree)
+            if isinstance(item, (ast.Import, ast.ImportFrom))
+            for alias in item.names
+        }
+        if filename in changes or row["class_name"] in bound_names:
+            row["mechanical"] = False
+            row["reason"] = "Generated module or class name collides with an existing registration"
+            continue
         if registration is None:
             row["mechanical"] = False
             row["reason"] = (
@@ -214,15 +249,23 @@ def submit_pack(root: Path, pack: str, rows: list[dict], result: dict) -> str:
         "--repo",
         REPOSITORY,
         "--state",
-        "open",
+        "all",
         "--head",
         branch,
         "--json",
-        "number,url,headRefOid,body",
+        "number,url,headRefOid,body,state",
     )
     if pulls:
         # The workflow owns only its marked draft PRs, never an accepted head.
+        if len(pulls) != 1:
+            raise ValueError(f"{pack}: multiple proposals for the same upstream point need review")
         pull = pulls[0]
+        if "<!-- upstream-node-intake -->" not in pull["body"]:
+            raise ValueError(f"{pack}: branch is not an intake-owned proposal")
+        if pull["state"] == "MERGED":
+            return pull["url"]
+        if pull["state"] != "OPEN":
+            raise ValueError(f"{pack}: proposal was closed; preserve the review decision")
         detail = gh(
             "pr", "view", str(pull["number"]), "--repo", REPOSITORY, "--json", "isDraft,labels"
         )
@@ -232,8 +275,6 @@ def submit_pack(root: Path, pack: str, rows: list[dict], result: dict) -> str:
             raise ValueError(
                 f"{pack}: proposal is under review; wait for its landing before updating it"
             )
-        if "<!-- upstream-node-intake -->" not in pull["body"]:
-            raise ValueError(f"{pack}: branch is not an intake-owned proposal")
         subprocess.run(["git", "-C", str(root), "fetch", "--no-tags", "origin", branch], check=True)
         parent = pull["headRefOid"]
     else:
