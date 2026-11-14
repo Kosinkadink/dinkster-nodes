@@ -12,10 +12,17 @@ import zipfile
 from collections.abc import Sequence
 from pathlib import Path
 from typing import cast
-from urllib.parse import quote, urlsplit
+from urllib.parse import quote, urlencode, urljoin, urlsplit
 
 from blake3 import blake3
-from dinkster_registry import LockedPack, Lockfile, artifact_digest, unpack_artifact
+from dinkster_registry import (
+    LockedPack,
+    Lockfile,
+    artifact_digest,
+    unpack_artifact,
+    validate_artifact_digest,
+)
+from dinkster_schema.units import MEBIBYTE
 from dinkster_supervisor.environment_artifacts import validate_dependency_base, validate_manifest
 from dinkster_supervisor.environment_state import content_digest
 from dinkster_workers import load_manifest
@@ -305,6 +312,81 @@ def publish_official_packs(
                     f"{pack.pack}@{pack.version}: registry lookup failed: {exc}"
                 ) from exc
             bindings = json.loads((output / f"{pack.pack}-{pack.version}.json").read_bytes())
+            actual = published.get("installLocks", {})
+            if (
+                published.get("state") != "active"
+                or published.get("packName") != pack.pack
+                or published.get("version") != pack.version
+                or published.get("publishedBy", {}).get("principalId") != pack.publisher
+                or published.get("artifact", {}).get("digest") != pack.artifact_digest
+                or published.get("artifact", {}).get("size")
+                != (sources / f"{pack.pack.replace('-', '_')}-{pack.version}-py3-none-any.whl")
+                .stat()
+                .st_size
+                or actual.keys() != bindings.keys()
+            ):
+                raise RegistryPublishError(
+                    f"{pack.pack}@{pack.version}: published archive or install locks differ; "
+                    "bump the pack version"
+                )
+            # Existing artifact/base bindings are immutable, including candidate order.
+            for variant, binding in bindings.items():
+                recorded = actual[variant]
+                if any(recorded.get(key) != binding[key] for key in ("baseId", "artifactDigest")):
+                    raise RegistryPublishError(
+                        f"{pack.pack}@{pack.version}: published binding differs: {variant}"
+                    )
+                digest, size = recorded.get("digest"), recorded.get("size")
+                expected_path = (
+                    f"/v1/packs/{quote(pack.pack, safe='')}/versions/"
+                    f"{quote(pack.version, safe='')}/locks/{variant}"
+                )
+                if (
+                    recorded.get("url") != expected_path
+                    or not isinstance(digest, str)
+                    or validate_artifact_digest(digest)
+                    or type(size) is not int
+                    or not 1 <= size <= MEBIBYTE
+                ):
+                    raise RegistryPublishError("invalid published lock URL, digest or size")
+                lock_url = urljoin(endpoint.rstrip("/") + "/", recorded["url"])
+                origin, registry_origin = urlsplit(lock_url), urlsplit(endpoint)
+                if (
+                    (origin.scheme, origin.netloc)
+                    != (registry_origin.scheme, registry_origin.netloc)
+                    or origin.query
+                    or origin.fragment
+                    or not recorded.get("url")
+                ):
+                    raise RegistryPublishError("published lock URL must belong to its registry")
+                lock_url += "?" + urlencode({"baseId": binding["baseId"]})
+                try:
+                    with urllib.request.urlopen(lock_url, timeout=60) as response:
+                        raw = response.read(size + 1)
+                    if len(raw) != size or artifact_digest(raw) != digest:
+                        raise ValueError("published lock digest or size mismatch")
+                    retained = json.loads(raw)
+                    payload = json.dumps(
+                        retained, sort_keys=True, separators=(",", ":"), allow_nan=False
+                    ).encode("ascii")
+                    if "blake3:" + blake3(payload).hexdigest() != recorded.get("digest") or len(
+                        payload
+                    ) != recorded.get("size"):
+                        raise ValueError("published lock digest or size mismatch")
+                    lock = PackLock.from_json(payload)
+                    if (lock.pack, lock.variant) != (pack.pack, variant):
+                        raise ValueError("published lock identity mismatch")
+                    if any(package.name == pack.pack for package in lock.packages):
+                        raise ValueError("published lock repeats the outer pack wheel")
+                    if not SpecifierSet(lock.requires_python).contains(
+                        bases[variant]["python"], prereleases=True
+                    ):
+                        raise ValueError("published lock excludes supported base Python")
+                except (OSError, ValueError) as exc:
+                    raise RegistryPublishError(
+                        f"{pack.pack}@{pack.version}: cannot verify published lock: {exc}"
+                    ) from exc
+                binding["lock"] = retained
             expected = {}
             for variant, binding in bindings.items():
                 payload = json.dumps(
@@ -316,26 +398,18 @@ def publish_official_packs(
                     "digest": "blake3:" + blake3(payload).hexdigest(),
                     "size": len(payload),
                 }
-            actual = published.get("installLocks", {})
-            if (
-                published.get("packName") != pack.pack
-                or published.get("version") != pack.version
-                or published.get("publishedBy", {}).get("principalId") != pack.publisher
-                or published.get("artifact", {}).get("digest") != pack.artifact_digest
-                or published.get("artifact", {}).get("size")
-                != (sources / f"{pack.pack.replace('-', '_')}-{pack.version}-py3-none-any.whl")
-                .stat()
-                .st_size
-                or actual.keys() != expected.keys()
-                or any(
-                    {key: actual[variant].get(key) for key in binding} != binding
-                    for variant, binding in expected.items()
-                )
+            if any(
+                {key: actual[variant].get(key) for key in binding} != binding
+                for variant, binding in expected.items()
             ):
                 raise RegistryPublishError(
                     f"{pack.pack}@{pack.version}: published archive or install locks differ; "
                     "bump the pack version"
                 )
+            (output / f"{pack.pack}-{pack.version}.json").write_text(
+                json.dumps(bindings, sort_keys=True, indent=2, allow_nan=False) + "\n",
+                encoding="ascii",
+            )
             public.add(pack.pack)
     result: list[dict[str, object]] = []
     candidates: dict[str, str] = {}

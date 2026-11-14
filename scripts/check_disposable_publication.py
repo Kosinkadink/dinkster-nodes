@@ -6,10 +6,13 @@ import argparse
 import hashlib
 import json
 import os
+import secrets
 import subprocess
 import sys
+import threading
 import time
 import uuid
+from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
@@ -49,6 +52,7 @@ def check_publication(
     service_image: str,
     publisher_image: str,
     *,
+    runtime: Path,
     timeout: float = 600,
 ) -> dict:
     """Images and the complete dependency index must already exist locally."""
@@ -58,7 +62,11 @@ def check_publication(
     containers: list[str] = []
     network_created = volume_created = False
     token: str | None = None
+    scanner_token = secrets.token_urlsafe(32)
     environment = {key: os.environ[key] for key in ("PATH", "HOME") if key in os.environ}
+    environment["DINKSTER_SCANNER_TOKEN"] = scanner_token
+    stopped = threading.Event()
+    scanner_executor = ThreadPoolExecutor(max_workers=1)
 
     def docker(*arguments: str, token: str | None = None) -> str:
         env = environment | ({"DINKSTER_REGISTRY_TOKEN": token} if token else {})
@@ -71,7 +79,9 @@ def check_publication(
             check=False,
         )
         if result.returncode:
-            message = result.stderr.replace(token, "<redacted>") if token else result.stderr
+            message = result.stderr.replace(scanner_token, "<redacted>")
+            if token:
+                message = message.replace(token, "<redacted>")
             raise RuntimeError(f"disposable command failed: {message}")
         return result.stdout.strip()
 
@@ -152,16 +162,9 @@ def check_publication(
             "DINKSTER_PROBE_PACKAGE_INDEX_URL=http://wheels:8000/simple/",
             "--env",
             "DINKSTER_PROBE_DEPENDENCY_SOURCE=index",
+            "--env",
+            "DINKSTER_SCANNER_TOKEN_SHA256=" + hashlib.sha256(scanner_token.encode()).hexdigest(),
         )
-        if engine_manifest.is_file():
-            common += (
-                "--mount",
-                f"type=bind,src={engine_directory.resolve()},dst=/engine,readonly",
-                "--env",
-                "DINKSTER_ENV=development",
-                "--env",
-                "DINKSTER_PROBE_ENGINE_RELEASE=/engine",
-            )
         registry = run_container(
             "registry",
             service_id,
@@ -226,8 +229,42 @@ def check_publication(
             "--expires",
             (datetime.now(UTC) + timedelta(hours=1)).isoformat(),
         )
+        delivery = name + "-delivery"
+        containers.append(delivery)
+        docker(
+            "run",
+            "--detach",
+            "--pull=never",
+            "--name",
+            delivery,
+            "--network",
+            name,
+            "--dns",
+            "127.0.0.1",
+            "--user",
+            "root",
+            *common,
+            service_id,
+            "dinkster-registry",
+            "deliver",
+        )
         scanner = name + "-scanner"
         containers.append(scanner)
+        worker = (
+            "import socket\n"
+            "try: socket.create_connection(('1.1.1.1',443),timeout=2)\n"
+            "except OSError: pass\n"
+            "else: raise RuntimeError('external network is reachable')\n"
+            "import os,shutil; from pathlib import Path; "
+            "from dinkster_workers.sandbox import detect_probe_jail; "
+            "from dinkster_registry_service.scanner_worker import ScannerWorker; "
+            "assert detect_probe_jail().user_namespaces, 'full probe jail required'; "
+            "store=Path('/scan-runtime'); "
+            "shutil.copytree('/runtime/store',store) if not store.exists() else None; "
+            "worker=ScannerWorker('http://registry:8000',os.environ['DINKSTER_SCANNER_TOKEN'],"
+            "store,development=True,development_runtime=Path('/runtime/mirror'))\n"
+            "while worker.run_once(): pass\n"
+        )
         docker(
             "run",
             "--detach",
@@ -241,11 +278,33 @@ def check_publication(
             "--user",
             "root",
             "--privileged",
-            *common,
+            "--mount",
+            f"type=bind,src={runtime.resolve()},dst=/runtime,readonly",
+            "--env",
+            "DINKSTER_SCANNER_TOKEN",
+            "--entrypoint",
+            "python",
             service_id,
-            "dinkster-registry",
-            "scanner",
+            "-c",
+            worker,
         )
+
+        def scan_queue() -> None:
+            queued = (
+                "import sqlite3; db=sqlite3.connect('/data/registry.sqlite'); "
+                'print(db.execute("SELECT count(*) FROM release_candidates '
+                "WHERE status IN ('queued','retrying')\").fetchone()[0])"
+            )
+            while not stopped.wait(0.5):
+                state = json.loads(docker("inspect", "--format", "{{json .State}}", scanner))
+                if state["Running"]:
+                    continue
+                if state["ExitCode"] != 0:
+                    raise RuntimeError("isolated scanner worker failed")
+                if int(docker("exec", registry, "python", "-c", queued)):
+                    docker("start", scanner)
+
+        scanning = scanner_executor.submit(scan_queue)
         publisher = name + "-publisher"
         containers.append(publisher)
         docker(
@@ -280,7 +339,7 @@ def check_publication(
             "except OSError: pass\n"
             "else: raise RuntimeError('external network is reachable')\n"
         )
-        for container in (registry, scanner, publisher, wheels):
+        for container in (registry, delivery, publisher, wheels):
             docker("exec", container, "python", "-c", denied)
         arguments = [
             "--sources",
@@ -327,7 +386,12 @@ def check_publication(
                 str(max(1, deadline - time.monotonic())),
                 token=token,
             )
+        stopped.set()
+        scanning.result()
+        if docker("wait", scanner) != "0":
+            raise RuntimeError("isolated scanner worker did not exit cleanly on an empty queue")
         return {
+            "scannerTopology": "assignment-only-worker-with-separate-delivery",
             "serviceImage": service_id,
             "publisherImage": publisher_id,
             "externalNetworkDenied": True,
@@ -368,6 +432,8 @@ def check_publication(
             pass
         raise
     finally:
+        stopped.set()
+        scanner_executor.shutdown(wait=True)
         # Cleanup has its own bound even when the publication deadline expired.
         deadline = time.monotonic() + 60
         for container in reversed(containers):
@@ -382,6 +448,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--inputs", required=True, type=Path)
     parser.add_argument("--package-index", required=True, type=Path)
+    parser.add_argument("--runtime", required=True, type=Path)
     parser.add_argument("--service-image", required=True)
     parser.add_argument("--publisher-image", required=True)
     args = parser.parse_args()
@@ -393,6 +460,7 @@ if __name__ == "__main__":
                 args.package_index.resolve(),
                 args.service_image,
                 args.publisher_image,
+                runtime=args.runtime.resolve(),
             )
         )
     )

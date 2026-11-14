@@ -15,7 +15,6 @@ from aiohttp.test_utils import TestClient, TestServer
 from dinkster_assets import AssetError, AssetRef, AssetVault, LibraryStore, digest_bytes
 from dinkster_assets.scratch import claim_inactive_produced_job
 from dinkster_graph import Graph, GraphNode, Link, TypedLiteral, graph_to_wire
-from dinkster_registry import Lockfile
 from dinkster_schema import Node
 from dinkster_server import ServerLibrary, create_app
 from dinkster_values import TypeRegistry, Value
@@ -40,12 +39,9 @@ WORKER_ENV = {"PYTHONPATH": os.pathsep.join((str(ATTENTION_PROVIDER), str(TESTS_
 
 @pytest.fixture
 def first_party_specs() -> tuple[PackSpec, ...]:
-    from dinkster import compose
-
-    catalog = Path(compose.__file__).with_name("checkout-packs.lock")
-    lock = Lockfile.from_record_json(catalog.read_text(encoding="utf-8"))
-    assert lock.packs
-    return tuple(default_pack_spec(pack.pack) for pack in lock.packs)
+    manifests = sorted((TESTS_DIR.parent / "packages").glob("*/dinkster-pack.toml"))
+    assert manifests
+    return tuple(default_pack_spec(load_manifest(path).name) for path in manifests)
 
 
 @pytest.fixture

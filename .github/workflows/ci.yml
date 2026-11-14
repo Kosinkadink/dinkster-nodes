@@ -293,7 +293,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: Kosinkadink/dinkster-registry-service
-          ref: 8e504d21d6fa56fc81cd23579d4e57123ac9fca5
+          ref: d5bbcfb6eb439b9a1defddaed507ac06049e3d12
           persist-credentials: false
           path: .disposable-registry-source
       - uses: actions/download-artifact@v4
@@ -400,18 +400,30 @@ jobs:
           enable-cache: true
           cache-dependency-glob: uv.lock
       - run: uv sync --locked --all-packages
+      - name: Stage the verified scanner runtime before network isolation
+        run: |
+          uv run --no-sync python - <<'PY'
+          from pathlib import Path
+          from scripts.stage_publication_probe_index import stage_runtime
+          stage_runtime(
+              Path(".admission-inputs/engine").resolve(),
+              Path(".admission-inputs/bases").resolve(),
+              Path(".admission-inputs/locks").resolve(),
+              Path(".disposable-runtime").resolve(),
+          )
+          PY
       - name: Load the immutable images without pulling
         run: docker load --input .disposable-images/disposable-images.tar
       - name: Check ordering, replay, incompatible dependency and missing API export refusal
         run: |
           uv run --no-sync python -m scripts.check_publication_controls check \
-            --fixtures .publication-controls \
+            --fixtures .publication-controls --runtime .disposable-runtime \
             --service-image dinkster-disposable-registry:local \
             --publisher-image dinkster-disposable-publisher:local > disposable-controls.json
       - name: Publish candidate wheels only inside the isolated disposable registry
         run: |
           uv run --no-sync python -m scripts.check_disposable_publication \
-            --inputs .admission-inputs --package-index .probe-index \
+            --inputs .admission-inputs --package-index .probe-index --runtime .disposable-runtime \
             --service-image dinkster-disposable-registry:local \
             --publisher-image dinkster-disposable-publisher:local > disposable-publication.json
       - uses: actions/upload-artifact@v4
@@ -427,7 +439,7 @@ jobs:
   publish:
     name: Publish official pack versions
     needs: [checks, tests, native-publication-contracts, published-inputs, native-pack-locks, admission, disposable-publication]
-    if: github.repository == 'Kosinkadink/dinkster-nodes' && github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.OFFICIAL_PACK_PUBLICATION_ENABLED == 'true' && needs.published-inputs.outputs.publication != '[]'
+    if: github.repository == 'Kosinkadink/dinkster-nodes' && github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.published-inputs.outputs.publication != '[]'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     concurrency:

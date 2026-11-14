@@ -145,7 +145,7 @@ def prepare_fixture(
         stage_index(sources, index, engine=engine)
 
 
-def check_controls(fixtures: Path, service_image: str, publisher_image: str) -> dict:
+def check_controls(fixtures: Path, service_image: str, publisher_image: str, runtime: Path) -> dict:
     root = Path(__file__).resolve().parents[1]
     good, broken = fixtures / "good", fixtures / "broken"
     results = []
@@ -155,7 +155,9 @@ def check_controls(fixtures: Path, service_image: str, publisher_image: str) -> 
             catalog = json.loads(path.read_bytes())
             catalog["packs"].reverse()
             path.write_text(json.dumps(catalog), encoding="ascii")
-        result = check_publication(root, good, good / "index", service_image, publisher_image)
+        result = check_publication(
+            root, good, good / "index", service_image, publisher_image, runtime=runtime
+        )
         first, replay = result["submissions"]
         if [row["pack"] for row in first] != [HELPER, CONSUMER]:
             raise RuntimeError("publisher did not submit the library before its consumer")
@@ -165,7 +167,9 @@ def check_controls(fixtures: Path, service_image: str, publisher_image: str) -> 
     try:
         # The incompatible requirement is rejected by the publisher, not resolved
         # during staging. Keep the same complete index as the compatible control.
-        check_publication(root, broken, good / "index", service_image, publisher_image)
+        check_publication(
+            root, broken, good / "index", service_image, publisher_image, runtime=runtime
+        )
     except RuntimeError as exc:
         expected = f"{CONSUMER}: selected {HELPER} excludes >=2"
         if expected not in str(exc):
@@ -173,10 +177,14 @@ def check_controls(fixtures: Path, service_image: str, publisher_image: str) -> 
     else:
         raise RuntimeError("publisher accepted an incompatible selected dependency")
     selected = fixtures / "matching-engine"
-    matching = check_publication(root, selected, selected / "index", service_image, publisher_image)
+    matching = check_publication(
+        root, selected, selected / "index", service_image, publisher_image, runtime=runtime
+    )
     missing = fixtures / "missing-export"
     try:
-        check_publication(root, missing, missing / "index", service_image, publisher_image)
+        check_publication(
+            root, missing, missing / "index", service_image, publisher_image, runtime=runtime
+        )
     except RuntimeError as exc:
         if "entry.unresolvable" not in str(exc):
             raise
@@ -199,6 +207,7 @@ if __name__ == "__main__":
     prepare.add_argument("--output", required=True, type=Path)
     check = commands.add_parser("check")
     check.add_argument("--fixtures", required=True, type=Path)
+    check.add_argument("--runtime", required=True, type=Path)
     check.add_argument("--service-image", required=True)
     check.add_argument("--publisher-image", required=True)
     args = parser.parse_args()
@@ -226,6 +235,11 @@ if __name__ == "__main__":
     else:
         print(
             json.dumps(
-                check_controls(args.fixtures.resolve(), args.service_image, args.publisher_image)
+                check_controls(
+                    args.fixtures.resolve(),
+                    args.service_image,
+                    args.publisher_image,
+                    args.runtime.resolve(),
+                )
             )
         )

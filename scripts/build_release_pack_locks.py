@@ -18,7 +18,7 @@ from dinkster_supervisor.environment_artifacts import (
 )
 from dinkster_supervisor.environment_channels import engine_publication_names
 from dinkster_supervisor.environment_state import content_digest
-from dinkster_workers.pack_lock import PackLock
+from dinkster_workers.pack_lock import LockedWheel, PackLock
 
 from scripts.build_official_packs import build
 from scripts.prepare_admission_engine import read_runtime
@@ -99,7 +99,7 @@ def build_locks(
                 lock = PackLock.read(path)
                 packages = []
                 for package in lock.packages:
-                    wheels = []
+                    wheels: dict[tuple[str, int, str, str], LockedWheel] = {}
                     for wheel in package.wheels:
                         if urlsplit(wheel.url).scheme == "file":
                             key = (wheel.filename, wheel.size, wheel.sha256)
@@ -109,8 +109,11 @@ def build_locks(
                                     f"{wheel.filename}"
                                 )
                             wheel = replace(wheel, url=wheel_urls[key])
-                        wheels.append(wheel)
-                    packages.append(replace(package, wheels=tuple(wheels)))
+                        identity = (wheel.filename, wheel.size, wheel.sha256, wheel.url)
+                        # A local copy and an index candidate can become the same portable wheel.
+                        if identity not in wheels or wheel.registry is not None:
+                            wheels[identity] = wheel
+                    packages.append(replace(package, wheels=tuple(wheels.values())))
                 replace(
                     lock,
                     packages=tuple(packages),

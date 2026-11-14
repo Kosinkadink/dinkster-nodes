@@ -131,6 +131,83 @@ def stage_index(sources: Path, output: Path, *, engine: Path | None = None) -> d
     return receipt
 
 
+def stage_runtime(engine: Path, bases: Path, locks: Path, output: Path) -> None:
+    """Acquire the submitted engine and CPU base before scanner network isolation."""
+    from dinkster_supervisor.environment_artifacts import (
+        EnvironmentCatalog,
+        acquire,
+        validate_manifest,
+    )
+    from dinkster_supervisor.environment_state import Channel, writer_lock
+
+    from scripts.base_manifest import read_base_manifest
+
+    manifest = engine / "release-manifest.json"
+    identity = content_digest(manifest)
+    data = manifest.read_bytes()
+    release = validate_manifest(data, identity, None)
+    mirror = output / "mirror"
+    engine_path = f"engine/{identity[7:]}"
+    shutil.copytree(engine, mirror / engine_path)
+    (mirror / "engine/index.json").write_text(
+        json.dumps([{**release, "sha256": identity[7:], "path": engine_path}]), encoding="ascii"
+    )
+    selected = {}
+    locations = {}
+    for path in sorted(bases.glob("*/manifest.json")):
+        base = read_base_manifest(path)
+        variant = base["variant"]
+        base_path = f"base/{variant}/{base['id'][7:]}"
+        destination = mirror / base_path
+        destination.mkdir(parents=True)
+        shutil.copyfile(path, destination / "manifest.json")
+        (destination.parent / "index.json").write_text(
+            json.dumps([{"id": base["id"], "path": base_path}]), encoding="ascii"
+        )
+        selected[variant] = base
+        locations[variant] = {
+            "id": base["id"],
+            "locations": [{"type": "mirror", "path": f"{base_path}/manifest.json"}],
+        }
+    document = {
+        "format": "dinkster.channel/1",
+        "minimumDesktopVersion": "0.0.0",
+        "engine": {
+            "version": release["version"],
+            "release": identity,
+            "locations": [{"type": "mirror", "path": f"{engine_path}/release-manifest.json"}],
+        },
+        "base": locations,
+    }
+    variant = "linux-cpu"
+    base = selected[variant]
+    catalog = EnvironmentCatalog(
+        "main",
+        document,
+        Channel.parse(document),
+        release,
+        (str(engine),),
+        selected,
+        {
+            variant: (
+                f"https://releases.dinkster.org/base/{variant}/{base.get('label', base['id'][7:])}",
+            )
+        },
+        data,
+    )
+    store = output / "store"
+    store.mkdir(exist_ok=True)
+    with writer_lock(store):
+        acquire(catalog, variant, store)
+        from dinkster_workers.pack_lock import PackLock
+        from dinkster_workers.wheel_download import fetch_wheel
+
+        for path in sorted(locks.glob("*-linux-cpu.pack-lock.json")):
+            for package in PackLock.read(path).packages:
+                for wheel in package.wheels:
+                    fetch_wheel(wheel, store / "wheels")
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--sources", required=True, type=Path)
