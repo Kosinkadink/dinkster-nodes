@@ -15,6 +15,8 @@ import tomllib
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
+from tools.upstream_node_proposals import translate
+
 
 @dataclass(frozen=True)
 class UpstreamNode:
@@ -183,10 +185,13 @@ def snapshot(root: Path, revision: str) -> dict[str, UpstreamNode]:
     return result
 
 
-def pack_owners(root: Path) -> tuple[dict[str, set[str]], dict[str, str]]:
+def pack_owners(
+    root: Path,
+) -> tuple[dict[str, set[str]], dict[str, str], dict[str, list[dict[str, str]]]]:
     """Index original replacement IDs and upstream filenames already used by packs."""
     owners: dict[str, set[str]] = {}
     sources: dict[str, str] = {}
+    targets: dict[str, list[dict[str, str]]] = {}
     for manifest in sorted((root / "packages").glob("*/dinkster-pack.toml")):
         name = tomllib.loads(manifest.read_text())["pack"]["name"]
         sources[name] = str(manifest.parent.relative_to(root))
@@ -200,7 +205,13 @@ def pack_owners(root: Path) -> tuple[dict[str, set[str]], dict[str, str]]:
                         source = call.args[1].value
                         if isinstance(source, str):
                             owners.setdefault(source, set()).add(name)
-    return owners, sources
+                            targets.setdefault(source, []).append(
+                                {
+                                    "pack": name,
+                                    "path": str(path.relative_to(root)),
+                                }
+                            )
+    return owners, sources, targets
 
 
 def route(node: UpstreamNode, owners: dict[str, set[str]], before: dict[str, UpstreamNode]) -> str:
@@ -209,6 +220,20 @@ def route(node: UpstreamNode, owners: dict[str, set[str]], before: dict[str, Ups
         return next(iter(existing))
     if node.api:
         return "dinkster-nodes-remote"
+    for family in (
+        "minimax",
+        "hunyuan",
+        "hidream",
+        "seedvr",
+        "cosmos",
+        "qwen",
+        "flux",
+        "ltx",
+        "wan",
+        "void",
+    ):
+        if node.class_name.lower().startswith(family):
+            return f"dinkster-{family}"
     siblings = {
         owner
         for name, previous in before.items()
@@ -253,7 +278,7 @@ def inspect_changes(root: Path, inference: Path, base: str, head: str) -> dict[s
     ).returncode:
         raise ValueError("intake baseline is not an ancestor of the inference upstream point")
     after = snapshot(inference, target)
-    owners, sources = pack_owners(root)
+    owners, sources, targets = pack_owners(root)
     rows = []
     for name, node in sorted(after.items()):
         old = before.get(name)
@@ -263,15 +288,38 @@ def inspect_changes(root: Path, inference: Path, base: str, head: str) -> dict[s
         if pack not in sources:
             raise ValueError(f"{name}: destination pack {pack} is absent")
         existing = sorted(owners.get(name, set()))
+        manifest = tomllib.loads((root / sources[pack] / "dinkster-pack.toml").read_text())["pack"]
+        entry = manifest.get("entry", {}).get("nodes", "")
+        reason = node.blocker
+        if node.api:
+            reason = "Partner API node needs the remote gateway catalog and credential contract"
+        elif node.path in {"comfy_extras/nodes_train.py", "comfy_extras/nodes_dataset.py"}:
+            reason = "Training-origin node is excluded by the supported engine contract"
+        elif existing:
+            reason = "Update the existing native replacement; do not register a duplicate node"
+        elif not entry:
+            reason = "Destination pack needs a native static node entry point"
+        proposal = None
+        if not reason:
+            proposal = translate(
+                name, node.class_name, node.source, manifest["namespaces"][0], entry.split(":")[0]
+            )
+            reason = proposal.reason
         rows.append(
             {
                 **asdict(node),
                 "change": "changed" if old else "added",
                 "pack": pack,
                 "package": sources[pack],
+                "mechanical": not reason,
+                "reason": reason,
+                "native_source": proposal.source if proposal and not reason else "",
+                "load_test": proposal.test if proposal and not reason else "",
+                "replacements": targets.get(name, []),
                 "consolidation": (
-                    f"Update the existing replacement in {', '.join(existing)}; "
-                    "preserve its node ID and extend its schema/implementation."
+                    "Update the existing native schema and execute method in "
+                    + ", ".join(sorted({entry["path"] for entry in targets[name]}))
+                    + "; preserve its node ID and replacement mapping."
                     if existing
                     else "No identity replacement exists; add the node to this pack. "
                     "Review related schemas before folding it into a consolidated node."
