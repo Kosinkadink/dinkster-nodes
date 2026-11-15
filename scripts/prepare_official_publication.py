@@ -28,18 +28,18 @@ def prepare_inputs(root: Path, output: Path, packs: list[str]) -> list[dict[str,
     pin = unquote(project["tool"]["uv"]["sources"]["dinkster"]["url"])
     match = re.fullmatch(
         r"https://github.com/Kosinkadink/Dinkster/releases/download/([^/]+)/"
-        r"dinkster-[^/]+\+g([0-9a-f]{40})-py3-none-any.whl",
+        r"dinkster-[^/]+-py3-none-any.whl",
         pin,
     )
     if match is None:
         raise ValueError("publication requires a commit-bound published engine pin")
-    tag, commit = match.groups()
+    tag = match[1]
     if output.exists():
         raise ValueError("publication output must be a new directory")
     with tempfile.TemporaryDirectory(prefix="pack-publication-", dir=output.parent) as temporary:
         work = Path(temporary) / "prepared"
         work.mkdir()
-        engine = published_engine(work, commit, tag)
+        engine = published_engine(work, tag)
         if pin.rsplit("/", 1)[1] not in {row["name"] for row in engine["artifacts"]}:
             raise ValueError("pinned engine wheel is absent from the published manifest")
         identity = content_digest(work / "engine/release-manifest.json")
@@ -107,19 +107,32 @@ def prepare_inputs(root: Path, output: Path, packs: list[str]) -> list[dict[str,
     return rows
 
 
-def published_engine(work: Path, commit: str, tag: str) -> dict:
+def published_engine(work: Path, tag: str) -> dict:
     """Verify indexed manifest bytes and artifacts against the pinned release identity."""
     index = json.loads(read_metadata("https://releases.dinkster.org", "engine/index.json"))
     if not isinstance(index, list) or any(not isinstance(row, dict) for row in index):
         raise ValueError("engine index must contain release objects")
-    matches = [row for row in index if row.get("commit") == commit]
+    channel = "stable" if tag.startswith("v") else "main"
+    matches = []
+    for row in index:
+        identity = digest(f"sha256:{row.get('sha256')}")
+        candidate_tag = (
+            engine_publication_names(row, identity, channel)[1]
+            if row.get("label") is not None
+            else f"main-{row['commit']}"
+        )
+        if candidate_tag == tag:
+            matches.append(row)
     if len(matches) != 1:
-        raise ValueError("engine index must identify one published release for the pinned commit")
+        raise ValueError("engine index must identify one published release for the pinned tag")
     selected = matches[0]
+    commit = selected["commit"]
     identity = digest(f"sha256:{selected.get('sha256')}")
-    name, expected_tag = identity[7:], f"main-{commit}"
-    if selected.get("label") is not None:
-        name, expected_tag = engine_publication_names(selected, identity, "main")
+    name, expected_tag = (
+        engine_publication_names(selected, identity, channel)
+        if selected.get("label") is not None
+        else (identity[7:], f"main-{commit}")
+    )
     if expected_tag != tag or selected.get("path") != f"engine/{name}":
         raise ValueError("engine publication differs from the workspace pin")
     data = read_metadata("https://releases.dinkster.org", f"engine/{name}/release-manifest.json")
@@ -128,7 +141,7 @@ def published_engine(work: Path, commit: str, tag: str) -> dict:
         engine.get("repository") != "Kosinkadink/Dinkster"
         or engine["commit"] != commit
         or engine["version"] != selected.get("version")
-        or engine_publication_names(engine, identity, "main") != (name, tag)
+        or engine_publication_names(engine, identity, channel) != (name, tag)
     ):
         raise ValueError("published engine identity mismatch")
     release = work / "engine"
