@@ -101,6 +101,8 @@ def report(result: dict, links: dict[str, str] | None = None) -> str:
             "",
             "Every proposal stays draft until its node load/value tests, compatible published "
             "engine and inference prerequisites, normal hosted checks and independent review pass.",
+            "Proposals containing non-mechanical nodes carry the parked label for semantic review; "
+            "each node's reason and consolidation path are listed above.",
         ]
     )
     return "\n".join(lines).encode("ascii", "backslashreplace").decode() + "\n"
@@ -456,18 +458,22 @@ def submit_pack(root: Path, pack: str, rows: list[dict], result: dict) -> str:
             f"repos/{REPOSITORY}/pulls/{pull['number']}",
             data={"body": body + marker + notes},
         )
-        return pull["url"]
-    created = api(
-        "pulls",
-        {
-            "title": f"Add upstream ComfyUI nodes to {pack}",
-            "head": branch,
-            "base": "main",
-            "draft": True,
-            "body": body + "\n<!-- intake-report-end -->",
-        },
-    )
-    return created["html_url"]
+        number, url = pull["number"], pull["url"]
+    else:
+        created = api(
+            "pulls",
+            {
+                "title": f"Add upstream ComfyUI nodes to {pack}",
+                "head": branch,
+                "base": "main",
+                "draft": True,
+                "body": body + "\n<!-- intake-report-end -->",
+            },
+        )
+        number, url = created["number"], created["html_url"]
+    if any(not row["mechanical"] for row in rows):
+        api(f"issues/{number}/labels", {"labels": ["parked"]})
+    return url
 
 
 def save_publications(number: int, records: list[dict], comments: list[dict]) -> None:
@@ -512,16 +518,13 @@ def main() -> int:
     baseline = reference["source_commit"]
     issue = None
     if args.submit:
-        labels = gh("label", "list", "--repo", REPOSITORY, "--search", LABEL, "--json", "name")
-        if not any(label["name"] == LABEL for label in labels or []):
-            api(
-                "labels",
-                {
-                    "name": LABEL,
-                    "description": "Automatic upstream node arrivals",
-                    "color": "1d76db",
-                },
-            )
+        for name, description in (
+            (LABEL, "Automatic upstream node arrivals"),
+            ("parked", "Awaiting review of non-mechanical upstream node changes"),
+        ):
+            labels = gh("label", "list", "--repo", REPOSITORY, "--search", name, "--json", "name")
+            if not any(label["name"] == name for label in labels or []):
+                api("labels", {"name": name, "description": description, "color": "1d76db"})
         issues = gh(
             "issue",
             "list",
