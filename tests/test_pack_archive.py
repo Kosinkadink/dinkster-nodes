@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import io
+import json
 import tarfile
 from pathlib import Path
 
@@ -130,6 +131,69 @@ def test_official_publication_uses_selected_manifest_versions(
         assert manifest.compatibility is not None
         assert manifest.compatibility.version == expected[pack.pack]
         assert manifest.compatibility.engine == ">=0.0.2,<0.1"
+
+
+def test_catch_up_selects_only_missing_declared_official_versions(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from scripts.select_official_packs import select_packs
+
+    versions = {"existing": "1.0", "ltx": "0.0.10", "uncatalogued": "3.1"}
+    committed = {
+        f"packages/dinkster-nodes-{name}/dinkster-pack.toml": (
+            f'[pack]\nname = "{name}"\npublisher = "dinkster"\n'
+            f'version = "{version}"\nengine = ">=0.2,<1"\n'
+            f'[pack.entry]\nnodes = "{name}:NODES"\n'
+        ).encode()
+        for name, version in versions.items()
+    }
+    committed["packages/dinkster-pack-helpers/pyproject.toml"] = (
+        b'[project]\nname = "dinkster-pack-helpers"\nversion = "0.0.6"\n'
+        b"[tool.dinkster]\nofficial-library = true\n"
+    )
+
+    def git(command, **kwargs):
+        if "rev-parse" in command:
+            return "a" * 40 + "\n"
+        if "ls-tree" in command:
+            return ("\0".join(committed) + "\0").encode()
+        if "show" in command:
+            return committed[command[-1].split(":", 1)[1]]
+        raise AssertionError(command)
+
+    releases = {
+        "existing": ["0.9", "1.0", "1.1"],
+        "ltx": ["0.0.9"],
+        "dinkster-pack-helpers": ["0.0.5"],
+        "not-declared": ["2.0"],
+    }
+
+    def metadata(registry, path):
+        if path == "static/packs/index.json":
+            items = [
+                {"name": name, "latestVersion": versions[-1], "url": f"packs/{name}/index.json"}
+                for name, versions in releases.items()
+            ]
+            document = {"schemaVersion": 2, "items": items}
+        else:
+            name = path.split("/")[2]
+            document = {
+                "schemaVersion": 2,
+                "name": name,
+                "items": [{"name": name, "version": version} for version in releases[name]],
+            }
+        return json.dumps(document).encode()
+
+    monkeypatch.setattr("scripts.select_official_packs.subprocess.check_output", git)
+    monkeypatch.setattr("dinkster_supervisor.environment_downloads.read_metadata", metadata)
+    assert select_packs(tmp_path, unpublished_at="https://registry.example") == (
+        "dinkster-pack-helpers",
+        "ltx",
+        "uncatalogued",
+    )
+    releases.update({name: [version] for name, version in versions.items()})
+    releases["dinkster-pack-helpers"] = ["0.0.6"]
+    assert select_packs(tmp_path, unpublished_at="https://registry.example") == ()
 
 
 @pytest.mark.parametrize(
