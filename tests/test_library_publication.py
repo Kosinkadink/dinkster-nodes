@@ -7,6 +7,52 @@ from pathlib import Path
 import pytest
 
 
+@pytest.mark.parametrize("version", ["0.0.7.dev1053", "0.0.7", "0.0.7.dev4+g" + "a" * 40])
+def test_published_engine_uses_indexed_provenance_not_a_local_version(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, version: str
+) -> None:
+    from scripts.prepare_official_publication import published_engine
+
+    payload = b"verified engine constraints\n"
+    manifest = {
+        "format": "dinkster.engine/1",
+        "repository": "Kosinkadink/Dinkster",
+        "version": version,
+        "label": f"2026-11-15-{version.split('+')[0]}",
+        "commit": "a" * 40,
+        "workerProtocol": 12,
+        "artifacts": [
+            {
+                "name": "constraints.txt",
+                "size": len(payload),
+                "sha256": hashlib.sha256(payload).hexdigest(),
+            }
+        ],
+    }
+    data = json.dumps(manifest).encode()
+    sha = hashlib.sha256(data).hexdigest()
+    name = f"{manifest['label']}-{sha[:8]}"
+    tag = "main-" + name if ".dev" in version else "v" + version
+    row = {**manifest, "sha256": sha, "path": "engine/" + name}
+
+    def metadata(mirror, path):
+        return json.dumps([row]).encode() if path == "engine/index.json" else data
+
+    def artifact(mirrors, filename, destination, digest, size):
+        assert hashlib.sha256(payload).hexdigest() == digest
+        assert len(payload) == size
+        destination.write_bytes(payload)
+
+    monkeypatch.setattr("scripts.prepare_official_publication.read_metadata", metadata)
+    monkeypatch.setattr("scripts.prepare_official_publication.fetch_artifact", artifact)
+    assert published_engine(tmp_path, tag) == manifest
+    assert (tmp_path / "engine/constraints.txt").read_bytes() == payload
+    assert (tmp_path / "engine/release-manifest.json").read_bytes() == data
+    row["commit"] = "b" * 40
+    with pytest.raises(ValueError, match="published engine identity mismatch"):
+        published_engine(tmp_path, tag)
+
+
 def test_incompatible_publication_control_reaches_publisher_refusal(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
