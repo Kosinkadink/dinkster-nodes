@@ -5,10 +5,14 @@ from __future__ import annotations
 import hashlib
 import io
 import json
+import urllib.error
 import zipfile
+from datetime import datetime
+from email.message import Message
 from pathlib import Path
 
 import pytest
+from blake3 import blake3
 
 from tools import upstream_node_publications as publications
 
@@ -28,19 +32,14 @@ def test_first_node_publication_uses_time_registered_contents_and_verified_bytes
         )
     payload = data.getvalue()
     sha256 = hashlib.sha256(payload).hexdigest()
-    wheel = {
-        "digest": "blake3:" + "a" * 64,
-        "sha256": sha256,
-        "filename": "demo.whl",
-        "url": f"wheels/{sha256}/demo.whl",
-        "size": len(payload),
-    }
+    digest = "blake3:" + blake3(payload).hexdigest()
     releases = [
         {
             "version": version,
             "state": "active",
             "publishedAt": timestamp,
-            "artifactDigest": wheel["digest"],
+            "artifactDigest": digest,
+            "artifactSize": len(payload),
             "nodeTypes": registered,
         }
         for version, timestamp, registered in [
@@ -49,13 +48,6 @@ def test_first_node_publication_uses_time_registered_contents_and_verified_bytes
             ("3.0", "2026-11-13T23:00:00-08:00", ["demo.native"]),
         ]
     ]
-    static = {
-        "items": [
-            {"version": row["version"], "wheels": [wheel]}
-            for row in releases
-            if not missing_history or row["version"] != "1.0"
-        ]
-    }
     documents = {
         "https://registry.example/v1/packs/demo/versions?limit=100&includeYanked=true": {
             "items": releases[:1],
@@ -68,31 +60,52 @@ def test_first_node_publication_uses_time_registered_contents_and_verified_bytes
             "items": releases[1:],
             "nextCursor": None,
         },
-        "https://registry.example/static/packs/demo/index.json": static,
     }
 
     def read(url: str, limit: int = 0) -> bytes:
-        if url == "https://registry.example/static/" + wheel["url"]:
+        if url == "https://registry.example/v1/artifacts/" + digest:
+            if missing_history:
+                raise urllib.error.HTTPError(url, 404, "missing", Message(), None)
             return payload
         return json.dumps(documents[url]).encode()
 
     monkeypatch.setattr(publications, "read_public", read)
-    result = publications.published_nodes("https://registry.example", "demo", {"UpstreamNode"})
+    result, gap = publications.published_nodes("https://registry.example", "demo", {"UpstreamNode"})
     if missing_history:
-        assert result == {}
+        assert result == {} and gap is not None
         return
     assert result["UpstreamNode"]["version"] == "9.0"
     assert result["UpstreamNode"]["publishedAt"] == "2026-11-14T04:00:00Z"
     assert result["UpstreamNode"]["sha256"] == sha256
-    wheel["sha256"] = "b" * 64
-    wheel["url"] = "wheels/" + "b" * 64 + "/demo.whl"
+    payload = b"changed" + payload[7:]
+    with pytest.raises(ValueError, match="digest differs"):
+        publications.published_nodes("https://registry.example", "demo", {"UpstreamNode"})
+
+
+@pytest.mark.parametrize("history_gap", [False, True])
+def test_first_publication_follows_a_node_across_packs(
+    monkeypatch: pytest.MonkeyPatch, history_gap: bool
+) -> None:
+    packs = {
+        "items": [
+            {"name": name, "owner": {"slug": "dinkster"}} for name in ("new-pack", "old-pack")
+        ],
+        "nextCursor": None,
+    }
+    monkeypatch.setattr(publications, "read_public", lambda *args: json.dumps(packs).encode())
+    older = {"pack": "old-pack", "version": "9.0", "publishedAt": "2026-11-11T01:00:00Z"}
+    newer = {"pack": "new-pack", "version": "1.0", "publishedAt": "2026-11-12T01:00:00Z"}
+    gap = datetime.fromisoformat("2026-11-10T01:00:00Z") if history_gap else None
     monkeypatch.setattr(
         publications,
-        "read_public",
-        lambda url, limit=0: payload if url.endswith("demo.whl") else read(url, limit),
+        "published_nodes",
+        lambda registry, pack, wanted: (
+            {"UpstreamNode": older if pack == "old-pack" else newer},
+            gap,
+        ),
     )
-    with pytest.raises(ValueError, match="SHA256 differs"):
-        publications.published_nodes("https://registry.example", "demo", {"UpstreamNode"})
+    result = publications.first_publications("https://registry.example", {"UpstreamNode"})
+    assert result == ({} if history_gap else {"UpstreamNode": older})
 
 
 def test_pending_node_publication_is_rechecked_without_new_upstream_nodes(
@@ -112,7 +125,7 @@ def test_pending_node_publication_is_rechecked_without_new_upstream_nodes(
         "url": "https://registry.example/v1/packs/demo/versions/2.0",
     }
     monkeypatch.setattr(
-        publications, "published_nodes", lambda *args: {"UpstreamNode": publication}
+        publications, "first_publications", lambda *args: {"UpstreamNode": publication}
     )
     result = publications.publication_records(
         Path("unused"), {"upstream": "b" * 40, "nodes": []}, comments, "https://registry.example"

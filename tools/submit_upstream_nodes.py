@@ -8,15 +8,23 @@ from __future__ import annotations
 
 import argparse
 import ast
+import io
 import json
 import os
 import re
 import subprocess
+import tarfile
+import tempfile
 import tomllib
 from collections import defaultdict
 from pathlib import Path
 
+from packaging.requirements import Requirement
+from packaging.specifiers import SpecifierSet
+from packaging.utils import canonicalize_name
+
 from tools.upstream_node_intake import git, inspect_changes
+from tools.upstream_node_prerequisites import published_api, published_inference
 from tools.upstream_node_proposals import slug
 from tools.upstream_node_publications import publication_records, publication_report
 
@@ -60,6 +68,26 @@ def report(result: dict, links: dict[str, str] | None = None) -> str:
             f"| {name} | {row['change']} | {pack} | "
             f"{'yes' if row['mechanical'] else 'no - draft'} | {explanation} |"
         )
+    if prerequisites := result.get("prerequisites"):
+        api_release = prerequisites["api"]
+        lines.extend(
+            [
+                "",
+                f"Published target API: [{api_release['version']}]({api_release['url']}). "
+                "The existing pack.engine API range is preserved and checked, not guessed.",
+            ]
+        )
+        if inference := prerequisites["inference"]:
+            lines.append(
+                f"Published inference minimum: [{inference['version']}]({inference['url']}), "
+                f"SHA256 `{inference['sha256']}`; annotated tag and wheel provenance agree. "
+                "Inference-dependent additions declare this minimum and publication rechecks it."
+            )
+        else:
+            lines.append(
+                "Inference publication is pending: "
+                "inference-dependent additions stay blocked drafts."
+            )
     if result["removed"]:
         lines.extend(
             [
@@ -88,7 +116,9 @@ def read_file(root: Path, revision: str, path: str) -> str:
     return result.stdout if result.returncode == 0 else ""
 
 
-def changed_files(root: Path, revision: str, rows: list[dict], upstream: str) -> dict[str, str]:
+def changed_files(
+    root: Path, revision: str, rows: list[dict], upstream: str, prerequisites: dict
+) -> dict[str, str]:
     """Prepare native additions and document the concrete unsupported translations."""
     package = rows[0]["package"]
     manifest_path = f"{package}/dinkster-pack.toml"
@@ -100,7 +130,23 @@ def changed_files(root: Path, revision: str, rows: list[dict], upstream: str) ->
     init = read_file(root, revision, init_path)
     changes: dict[str, str] = {}
     added = []
+    needs_inference = any(
+        canonicalize_name(Requirement(value).name) == "dinkster-inference"
+        for value in manifest.get("requires", [])
+    )
+    blocker = ""
+    if not SpecifierSet(manifest["engine"]).contains(
+        prerequisites["api"]["version"], prereleases=True
+    ):
+        blocker = (
+            "Pack API range excludes the published target engine; engine capability needs review"
+        )
+    elif needs_inference and prerequisites["inference"] is None:
+        blocker = "No verified published inference release contains this upstream point"
     for row in rows:
+        if blocker and row["mechanical"]:
+            row["mechanical"] = False
+            row["reason"] = blocker
         if not row["mechanical"]:
             continue
         filename = f"{module_path}/upstream_{slug(row['name'])}.py"
@@ -206,6 +252,60 @@ def changed_files(root: Path, revision: str, rows: list[dict], upstream: str) ->
         if count != 1:
             raise ValueError(f"{manifest['name']}: local lock identity needs regeneration")
         changes["uv.lock"] = lock
+        if needs_inference:
+            record = prerequisites["inference"]
+            requires = manifest["requires"]
+            for value in requires:
+                requirement = Requirement(value)
+                if canonicalize_name(requirement.name) != "dinkster-inference":
+                    continue
+                if requirement.url or not requirement.specifier.contains(
+                    record["version"], prereleases=True
+                ):
+                    raise ValueError("published inference excludes the pack's existing requirement")
+                minimum = str(requirement)
+                if requirement.marker:
+                    minimum = minimum.split(";", 1)[0]
+                minimum += ("," if str(requirement.specifier) else "") + ">=" + record["version"]
+                if requirement.marker:
+                    minimum += "; " + str(requirement.marker)
+                changes[manifest_path] = changes[manifest_path].replace(
+                    json.dumps(value), json.dumps(minimum)
+                )
+                # The runtime manifest owns requirements; keep development metadata synchronized.
+                declaration = tomllib.loads(project)["project"]
+                for dependency in declaration.get("dependencies", []):
+                    if canonicalize_name(Requirement(dependency).name) == "dinkster-inference":
+                        changes[project_path] = changes[project_path].replace(
+                            json.dumps(dependency), json.dumps(minimum)
+                        )
+            provenance_path = f"{package}/upstream-node-prerequisites.json"
+            previous = read_file(root, revision, provenance_path)
+            state = json.loads(previous) if previous else {"nodes": {}}
+            for name in added:
+                state["nodes"][name] = {"upstream": upstream, "inference": record}
+            changes[provenance_path] = json.dumps(state, indent=2, sort_keys=True) + "\n"
+            with tempfile.TemporaryDirectory(prefix="node-proposal-") as directory:
+                work = Path(directory)
+                payload = subprocess.check_output(["git", "-C", str(root), "archive", revision])
+                with tarfile.open(fileobj=io.BytesIO(payload)) as archive:
+                    archive.extractall(work, filter="data")
+                for path, text in changes.items():
+                    destination = work / path
+                    destination.parent.mkdir(parents=True, exist_ok=True)
+                    destination.write_text(text)
+                subprocess.run(
+                    [
+                        "uv",
+                        "lock",
+                        "--directory",
+                        str(work),
+                        "--upgrade-package",
+                        "dinkster-inference",
+                    ],
+                    check=True,
+                )
+                changes["uv.lock"] = (work / "uv.lock").read_text()
     drafts = [row for row in rows if not row["mechanical"]]
     if drafts:
         readme_path = f"{package}/README.md"
@@ -306,7 +406,7 @@ def submit_pack(root: Path, pack: str, rows: list[dict], result: dict) -> str:
                 raise ValueError(f"{pack}: existing branch is not an intake-owned proposal")
         else:
             parent = git(root, "rev-parse", "origin/main").strip()
-    changes = changed_files(root, parent, rows, result["upstream"])
+    changes = changed_files(root, parent, rows, result["upstream"], result["prerequisites"])
     body = "Refs Kosinkadink/comfy-vibe-station#903\n<!-- upstream-node-intake -->\n\n"
     body += report({**result, "nodes": rows, "removed": []})
     base_tree = git(root, "rev-parse", parent + "^{tree}").strip()
@@ -444,6 +544,10 @@ def main() -> int:
             baseline = match[1]
     head = git(args.inference, "rev-parse", "origin/main^{commit}").strip()
     result = inspect_changes(args.root, args.inference, baseline, head)
+    result["prerequisites"] = {
+        "api": published_api(args.root),
+        "inference": published_inference(args.inference, head, result["upstream"]),
+    }
     comments = []
     if issue:
         pages = gh(
@@ -477,8 +581,7 @@ def main() -> int:
         "\n\nThe comments below contain every node and its translation/consolidation reason.\n"
     )
     end_marker = "\n<!-- intake-report-end -->"
-    notes = issue["body"].split(end_marker, 1)[1] if issue and end_marker in issue["body"] else ""
-    body = f"<!-- upstream-node-intake: {result['upstream']} -->\n\n" + summary + end_marker + notes
+    body = f"<!-- upstream-node-intake: {result['upstream']} -->\n\n" + summary + end_marker
     if issue is None:
         issue = api(
             "issues",
@@ -506,12 +609,17 @@ def main() -> int:
         if len(part) > 60_000:
             raise ValueError("arrival report exceeds the GitHub comment limit")
         api(f"issues/{issue['number']}/comments", {"body": marker + "\n" + part})
+    current = gh("api", f"repos/{REPOSITORY}/issues/{issue['number']}")
+    state = STATE.search(current["body"])
+    if state is None or state[1] != baseline or current["state"] != "open":
+        raise ValueError("intake state changed during submission; preserve it for review")
+    notes = current["body"].split(end_marker, 1)[1] if end_marker in current["body"] else ""
     gh(
         "api",
         "--method",
         "PATCH",
         f"repos/{REPOSITORY}/issues/{issue['number']}",
-        data={"body": body},
+        data={"body": body + notes},
     )
     summary = os.environ.get("GITHUB_STEP_SUMMARY")
     if summary:

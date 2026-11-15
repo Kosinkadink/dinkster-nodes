@@ -7,13 +7,15 @@ import hashlib
 import io
 import json
 import re
+import urllib.error
 import urllib.request
 import zipfile
-from collections import defaultdict
 from datetime import datetime
 from pathlib import Path
 from urllib.parse import quote, urlencode
 from zoneinfo import ZoneInfo
+
+from blake3 import blake3
 
 from tools.upstream_node_intake import git, snapshot
 
@@ -95,7 +97,9 @@ def read_public(url: str, limit: int = 16 * 1024 * 1024) -> bytes:
     return payload
 
 
-def published_nodes(registry: str, pack: str, wanted: set[str]) -> dict[str, dict]:
+def published_nodes(
+    registry: str, pack: str, wanted: set[str]
+) -> tuple[dict[str, dict], datetime | None]:
     """Select by publication timestamp, not pack version or the time of observation."""
     registry = registry.rstrip("/")
     releases = []
@@ -115,38 +119,33 @@ def published_nodes(registry: str, pack: str, wanted: set[str]) -> dict[str, dic
         if cursor in seen:
             raise ValueError("registry publication pagination did not advance")
         seen.add(cursor)
-    releases = [row for row in releases if row.get("state") in {"active", "yanked"}]
+    releases = [
+        row for row in releases if row.get("state") in {"active", "yanked"} and row["nodeTypes"]
+    ]
     releases.sort(key=lambda row: (datetime.fromisoformat(row["publishedAt"]), row["version"]))
     result = {}
-    static = None
-    archives: dict[tuple[str, tuple[str, ...]], set[str]] = {}
+    archives: dict[tuple[str, tuple[str, ...]], tuple[set[str], str]] = {}
     for release in releases:
         if not wanted - result.keys():
             break
         version = release["version"]
-        if static is None:
-            static = json.loads(
-                read_public(f"{registry}/static/packs/{quote(pack, safe='')}/index.json")
-            )
-        # Missing historical bytes prevent a claim that a later version was first.
-        row = next((item for item in static["items"] if item["version"] == version), None)
-        if row is None:
-            break
-        wheels = row["wheels"]
-        if len(wheels) != 1 or wheels[0]["digest"] != release["artifactDigest"]:
-            raise ValueError(f"{pack}@{version}: publication archive identity differs")
-        wheel = wheels[0]
-        key = wheel["sha256"], tuple(sorted(release["nodeTypes"]))
+        digest = release["artifactDigest"]
+        if re.fullmatch(r"blake3:[0-9a-f]{64}", digest) is None:
+            raise ValueError("publication artifact must have a content-addressed digest")
+        key = digest, tuple(sorted(release["nodeTypes"]))
         if key not in archives:
-            path = wheel["url"]
-            if path != f"wheels/{wheel['sha256']}/{wheel['filename']}" or "/" in wheel["filename"]:
-                raise ValueError("publication wheel URL is not content-addressed")
-            payload = read_public(f"{registry}/static/{path}", 256 * 1024 * 1024)
+            try:
+                payload = read_public(f"{registry}/v1/artifacts/{digest}", 256 * 1024 * 1024)
+            except urllib.error.HTTPError as error:
+                if error.code != 404:
+                    raise
+                # Missing historical bytes prevent a claim that a later version was first.
+                return result, datetime.fromisoformat(release["publishedAt"])
             if (
-                len(payload) != wheel["size"]
-                or hashlib.sha256(payload).hexdigest() != wheel["sha256"]
+                len(payload) != release["artifactSize"]
+                or "blake3:" + blake3(payload).hexdigest() != digest
             ):
-                raise ValueError(f"{pack}@{version}: published wheel size or SHA256 differs")
+                raise ValueError(f"{pack}@{version}: published archive size or digest differs")
             replacements = set()
             with zipfile.ZipFile(io.BytesIO(payload)) as archive:
                 if sum(info.file_size for info in archive.infolist()) > 256 * 1024 * 1024:
@@ -158,19 +157,55 @@ def published_nodes(registry: str, pack: str, wanted: set[str]) -> dict[str, dic
                                 archive.read(name).decode("utf-8"), set(release["nodeTypes"])
                             )
                         )
-            archives[key] = replacements
-        for name in (wanted - result.keys()) & archives[key]:
+            archives[key] = replacements, hashlib.sha256(payload).hexdigest()
+        replacements, sha256 = archives[key]
+        for name in (wanted - result.keys()) & replacements:
             result[name] = {
                 "pack": pack,
                 "version": version,
                 "publishedAt": release["publishedAt"],
                 "artifactDigest": release["artifactDigest"],
-                "sha256": wheel["sha256"],
+                "sha256": sha256,
                 "url": (
                     f"{registry}/v1/packs/{quote(pack, safe='')}/versions/{quote(version, safe='')}"
                 ),
             }
-    return result
+    return result, None
+
+
+def first_publications(registry: str, wanted: set[str]) -> dict[str, dict]:
+    """Check every public first-party pack, including releases before a node moved packs."""
+    if not wanted:
+        return {}
+    packs = set()
+    cursor = ""
+    seen = set()
+    while True:
+        query = urlencode({"limit": 100, **({"cursor": cursor} if cursor else {})})
+        document = json.loads(read_public(f"{registry.rstrip('/')}/v1/packs?{query}"))
+        packs.update(row["name"] for row in document["items"] if row["owner"]["slug"] == "dinkster")
+        cursor = document.get("nextCursor")
+        if not cursor:
+            break
+        if cursor in seen:
+            raise ValueError("registry pack pagination did not advance")
+        seen.add(cursor)
+    result = {}
+    gaps = []
+    for pack in sorted(packs):
+        releases, gap = published_nodes(registry, pack, wanted)
+        if gap is not None:
+            gaps.append(gap)
+        for name, release in releases.items():
+            if name not in result or datetime.fromisoformat(
+                release["publishedAt"]
+            ) < datetime.fromisoformat(result[name]["publishedAt"]):
+                result[name] = release
+    return {
+        name: release
+        for name, release in result.items()
+        if not gaps or datetime.fromisoformat(release["publishedAt"]) < min(gaps)
+    }
 
 
 def publication_records(
@@ -193,18 +228,14 @@ def publication_records(
             "introduction": origins[name],
             "firstPublished": None,
         }
-    pending = defaultdict(set)
-    for name, row in records.items():
-        if row["firstPublished"] is None:
-            pending[row["pack"]].add(name)
-    for pack, names in pending.items():
-        for name, publication in published_nodes(registry, pack, names).items():
-            origin = datetime.fromisoformat(records[name]["introduction"]["committedAt"])
-            published = datetime.fromisoformat(publication["publishedAt"])
-            records[name]["firstPublished"] = {
-                **publication,
-                "latencySeconds": (published - origin).total_seconds(),
-            }
+    pending = {name for name, row in records.items() if row["firstPublished"] is None}
+    for name, publication in first_publications(registry, pending).items():
+        origin = datetime.fromisoformat(records[name]["introduction"]["committedAt"])
+        published = datetime.fromisoformat(publication["publishedAt"])
+        records[name]["firstPublished"] = {
+            **publication,
+            "latencySeconds": (published - origin).total_seconds(),
+        }
     return [records[name] for name in sorted(records)]
 
 

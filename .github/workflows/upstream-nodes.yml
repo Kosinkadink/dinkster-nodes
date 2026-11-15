@@ -9,6 +9,7 @@ on:
       - tools/upstream_node_intake.py
       - tools/upstream_node_proposals.py
       - tools/upstream_node_publications.py
+      - tools/upstream_node_prerequisites.py
       - tools/submit_upstream_nodes.py
       - .github/workflows/upstream-nodes.yml
 
@@ -33,7 +34,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: python -m pip install ruff==0.16.10
+      - uses: astral-sh/setup-uv@v5
+      - run: python -m pip install ruff==0.16.10 packaging==26.3 blake3==1.0.11
       - name: Read the landed inference sync and its upstream Git objects
         run: git clone --filter=blob:none https://github.com/Kosinkadink/dinkster-inference.git "$RUNNER_TEMP/inference"
       - name: Propose native changes and report upstream arrivals
