@@ -513,7 +513,7 @@ def main() -> int:
     issue = None
     if args.submit:
         labels = gh("label", "list", "--repo", REPOSITORY, "--search", LABEL, "--json", "name")
-        if not any(label["name"] == LABEL for label in labels):
+        if not any(label["name"] == LABEL for label in labels or []):
             api(
                 "labels",
                 {
@@ -534,7 +534,7 @@ def main() -> int:
             "--json",
             "number,body",
         )
-        if len(issues) > 1:
+        if issues and len(issues) > 1:
             raise ValueError("multiple node-intake state issues need review")
         issue = issues[0] if issues else None
         if issue:
