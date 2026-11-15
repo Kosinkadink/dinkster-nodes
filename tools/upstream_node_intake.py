@@ -280,8 +280,22 @@ def route(node: UpstreamNode, owners: dict[str, set[str]], before: dict[str, Ups
 
 
 def inspect_changes(root: Path, inference: Path, base: str, head: str) -> dict[str, object]:
-    before = snapshot(inference, base)
     target = inference_upstream(inference, head)
+    # The ledger names ComfyUI commits that need not be reachable in the inference fork.
+    for revision in (base, target):
+        if subprocess.run(
+            ["git", "-C", str(inference), "cat-file", "-e", revision + "^{commit}"],
+            check=False,
+            capture_output=True,
+        ).returncode:
+            git(
+                inference,
+                "fetch",
+                "--no-tags",
+                "https://github.com/Comfy-Org/ComfyUI.git",
+                revision,
+            )
+    before = snapshot(inference, base)
     if subprocess.run(
         ["git", "-C", str(inference), "merge-base", "--is-ancestor", base, target],
         check=False,
