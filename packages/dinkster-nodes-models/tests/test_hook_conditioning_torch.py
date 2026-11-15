@@ -33,6 +33,7 @@ def _clip() -> Any:
     )
     clip.patcher.is_clip = True
     clip.tokenizer = object()
+    clip.tokenizer_metadata = {}
     clip.layer_idx = None
     clip.tokenizer_options = {}
     clip.use_clip_schedule = False
