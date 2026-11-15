@@ -1,0 +1,54 @@
+name: Upstream node arrivals
+
+on:
+  schedule:
+    - cron: "17 */6 * * *"
+  push:
+    branches: [main]
+    paths:
+      - tools/upstream_node_intake.py
+      - tools/upstream_node_proposals.py
+      - tools/upstream_node_publications.py
+      - tools/upstream_node_prerequisites.py
+      - tools/submit_upstream_nodes.py
+      - .github/workflows/upstream-nodes.yml
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+
+concurrency:
+  group: upstream-node-arrivals
+  cancel-in-progress: false
+
+jobs:
+  intake:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: astral-sh/setup-uv@v5
+      - run: python -m pip install ruff==0.16.10 packaging==26.3 blake3==1.0.11
+      - name: Read the landed inference sync and its upstream Git objects
+        run: git clone --filter=blob:none https://github.com/Kosinkadink/dinkster-inference.git "$RUNNER_TEMP/inference"
+      - name: Propose native changes and report upstream arrivals
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >-
+          python -m tools.submit_upstream_nodes
+          --inference "$RUNNER_TEMP/inference"
+          --output "$RUNNER_TEMP/node-arrivals.md"
+          --submit
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: node-arrivals
+          path: ${{ runner.temp }}/node-arrivals.md
+          if-no-files-found: ignore

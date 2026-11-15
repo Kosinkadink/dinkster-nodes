@@ -36,6 +36,7 @@ from packaging.utils import canonicalize_name
 from dinkster.registries import NamedRegistry, RegistryPublishError, publish_release
 from scripts.base_manifest import read_base_manifest
 from scripts.build_official_packs import library_metadata
+from tools.upstream_node_prerequisites import verify_pack_prerequisites
 
 
 def _wait_active(
@@ -219,6 +220,7 @@ def publish_official_packs(
                 manifest = load_manifest(pack_manifest_path(extracted))
                 dependencies[pack.pack] = manifest.dependencies
                 requirements = manifest.requires
+                verify_pack_prerequisites(manifest.root, requirements)
                 if (
                     manifest.publisher != "dinkster"
                     or manifest.name != pack.pack
