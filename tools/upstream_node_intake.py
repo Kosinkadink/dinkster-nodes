@@ -41,10 +41,17 @@ def inference_upstream(root: Path, revision: str) -> str:
     return match[1]
 
 
-def snapshot(root: Path, revision: str) -> dict[str, UpstreamNode]:
+def snapshot(
+    root: Path,
+    revision: str,
+    *,
+    paths: list[str] | None = None,
+    names: set[str] | None = None,
+) -> dict[str, UpstreamNode]:
     """Discover V1 mappings and V3 node IDs without loading application code."""
     result: dict[str, UpstreamNode] = {}
-    paths = git(root, "ls-tree", "-r", "--name-only", revision).splitlines()
+    if paths is None:
+        paths = git(root, "ls-tree", "-r", "--name-only", revision).splitlines()
     for path in paths:
         if not (
             path == "nodes.py"
@@ -66,6 +73,8 @@ def snapshot(root: Path, revision: str) -> dict[str, UpstreamNode]:
                     continue
                 for key, value in zip(item.value.keys, item.value.values, strict=True):
                     if isinstance(key, ast.Constant) and isinstance(key.value, str):
+                        if names is not None and key.value not in names:
+                            continue
                         if isinstance(value, ast.Name):
                             registrations[key.value] = value.id
                         else:
@@ -146,6 +155,8 @@ def snapshot(root: Path, revision: str) -> dict[str, UpstreamNode]:
                 continue
             context.append(ast.dump(item))
         for name, class_name in registrations.items():
+            if names is not None and name not in names:
+                continue
             if class_name not in classes:
                 raise ValueError(f"{path}: registered class {class_name} is not defined locally")
             dependencies: set[str] = set()
@@ -180,7 +191,7 @@ def snapshot(root: Path, revision: str) -> dict[str, UpstreamNode]:
                     f"duplicate upstream node ID {name}: {path} and {result[name].path}"
                 )
             result[name] = node
-    if not result:
+    if not result and names is None:
         raise ValueError("upstream snapshot has no registered nodes")
     return result
 

@@ -18,6 +18,7 @@ from pathlib import Path
 
 from tools.upstream_node_intake import git, inspect_changes
 from tools.upstream_node_proposals import slug
+from tools.upstream_node_publications import publication_records, publication_report
 
 REPOSITORY = "Kosinkadink/dinkster-nodes"
 LABEL = "upstream-node-intake"
@@ -369,12 +370,43 @@ def submit_pack(root: Path, pack: str, rows: list[dict], result: dict) -> str:
     return created["html_url"]
 
 
+def save_publications(number: int, records: list[dict], comments: list[dict]) -> None:
+    """Keep bounded readable latency records durable even when upstream is unchanged."""
+    for offset in range(0, len(records), 60):
+        marker = f"<!-- node-publications: {offset} -->"
+        rows = records[offset : offset + 60]
+        body = marker + "\n" + publication_report(rows)
+        state = json.dumps(rows, ensure_ascii=True).replace("<", "\\u003c")
+        body += "\n<!-- node-publications-state\n" + state + "\n-->"
+        end = "\n<!-- node-publications-end -->"
+        previous = next((item for item in comments if item["body"].startswith(marker + "\n")), None)
+        if previous:
+            current = gh("api", f"repos/{REPOSITORY}/issues/comments/{previous['id']}")
+            notes = current["body"].split(end, 1)[1] if end in current["body"] else ""
+            body += end + notes
+            if len(body.encode("utf-8")) > 60_000:
+                raise ValueError("publication report exceeds the GitHub comment limit")
+            if body != current["body"]:
+                gh(
+                    "api",
+                    "--method",
+                    "PATCH",
+                    f"repos/{REPOSITORY}/issues/comments/{previous['id']}",
+                    data={"body": body},
+                )
+        else:
+            if len((body + end).encode("utf-8")) > 60_000:
+                raise ValueError("publication report exceeds the GitHub comment limit")
+            api(f"issues/{number}/comments", {"body": body + end})
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--root", type=Path, default=Path.cwd())
     parser.add_argument("--inference", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--submit", action="store_true")
+    parser.add_argument("--registry", default="https://registry.dinkster.org")
     args = parser.parse_args()
     reference = json.loads((args.root / "tools/data/comfy_core_reference.json").read_text())
     baseline = reference["source_commit"]
@@ -412,8 +444,20 @@ def main() -> int:
             baseline = match[1]
     head = git(args.inference, "rev-parse", "origin/main^{commit}").strip()
     result = inspect_changes(args.root, args.inference, baseline, head)
-    args.output.write_text(report(result))
+    comments = []
+    if issue:
+        pages = gh(
+            "api",
+            "--paginate",
+            "--slurp",
+            f"repos/{REPOSITORY}/issues/{issue['number']}/comments?per_page=100",
+        )
+        comments = [comment for page in pages for comment in page]
+    records = publication_records(args.inference, result, comments, args.registry)
+    args.output.write_text(report(result) + "\n" + publication_report(records))
     if not args.submit or result["upstream"] == baseline:
+        if args.submit and issue:
+            save_publications(issue["number"], records, comments)
         print(f"{len(result['nodes'])} node changes; upstream point {result['upstream']}")
         return 0
     groups: dict[str, list[dict]] = defaultdict(list)
@@ -422,7 +466,7 @@ def main() -> int:
     links = {
         pack: submit_pack(args.root, pack, rows, result) for pack, rows in sorted(groups.items())
     }
-    digest = report(result, links)
+    digest = report(result, links) + "\n" + publication_report(records)
     args.output.write_text(digest)
     # GitHub issue bodies have a size limit; the full list lives in bounded comments.
     summary = "# ComfyUI node arrivals\n\n" + "\n".join(
@@ -451,7 +495,9 @@ def main() -> int:
         "--slurp",
         f"repos/{REPOSITORY}/issues/{issue['number']}/comments?per_page=100",
     )
-    previous = {comment["body"].split("\n", 1)[0] for page in pages for comment in page}
+    comments = [comment for page in pages for comment in page]
+    save_publications(issue["number"], records, comments)
+    previous = {comment["body"].split("\n", 1)[0] for comment in comments}
     for offset in range(0, max(1, len(result["nodes"])), 60):
         marker = f"<!-- node-arrivals: {result['upstream']} {offset} -->"
         if marker in previous:

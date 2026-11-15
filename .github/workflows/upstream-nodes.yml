@@ -8,6 +8,7 @@ on:
     paths:
       - tools/upstream_node_intake.py
       - tools/upstream_node_proposals.py
+      - tools/upstream_node_publications.py
       - tools/submit_upstream_nodes.py
       - .github/workflows/upstream-nodes.yml
 
