@@ -144,6 +144,7 @@ class RemoteConfig:
     request_timeout: float
     max_retries: int
     max_retry_after: float
+    environment: str = ""
 
     @classmethod
     def from_env(cls, environment: Mapping[str, str] | None = None) -> RemoteConfig:
@@ -158,6 +159,7 @@ class RemoteConfig:
         return cls(
             catalog_base=catalog_base,
             gateway_base=gateway_base,
+            environment=env.get("DINKSTER_REMOTE_ENVIRONMENT", "production"),
             cache_path=cache_path_from_env(env),
             token="",
             token_file=Path(token_file_raw) if token_file_raw else None,
@@ -357,6 +359,8 @@ class RemoteRuntime:
             config.cache_path,
             timeout=min(config.request_timeout, 5.0),
             auth_token=lambda: config.auth_token(required=False),
+            environment=config.environment,
+            gateway_base=config.gateway_base,
         )
         self.snapshot = self.catalog.startup()
         self.announced_epoch = self.snapshot.epoch
@@ -775,6 +779,22 @@ class RemoteRuntime:
             )
 
     async def invoke(
+        self,
+        remote: RemoteSchema,
+        inputs: Mapping[str, object],
+    ) -> Mapping[str, object]:
+        try:
+            if self.catalog.environment_error:
+                raise GatewayError(
+                    "environment_mismatch", "client", False, self.catalog.environment_error
+                )
+            return await self._invoke(remote, inputs)
+        except GatewayError as exc:
+            if self.config.environment == "qa":
+                exc.args = (f"QA services: {exc}",)
+            raise
+
+    async def _invoke(
         self,
         remote: RemoteSchema,
         inputs: Mapping[str, object],

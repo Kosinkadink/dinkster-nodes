@@ -95,6 +95,7 @@ class FakeGateway:
         self.schemas = schemas or (remote_schema(),)
         self.recording = recording
         self.epoch = 1
+        self.environment = "production"
         self.catalog_etag = '"catalog-1"'
         self.epoch_etag = '"epoch-1"'
         self.catalog_status = 200
@@ -120,6 +121,12 @@ class FakeGateway:
 
     async def __aenter__(self) -> FakeGateway:
         app = web.Application()
+
+        async def environment_document(request: web.Request) -> web.Response:
+            assert "Authorization" not in request.headers
+            return web.json_response({"environment": self.environment})
+
+        app.router.add_get("/.well-known/dinkster-environment", environment_document)
         app.router.add_get("/catalog/nodes", self._catalog)
         app.router.add_get("/catalog/epoch", self._epoch)
         app.router.add_post("/v1/uploads", self._upload)
@@ -409,6 +416,78 @@ def test_catalog_envelope_hook_runs_on_gateway_not_local_adapter(
     asyncio.run(scenario())
 
 
+@pytest.mark.parametrize(("selected", "reported"), [("production", "qa"), ("qa", "production")])
+def test_environment_mismatch_disables_cached_and_live_remote_nodes(
+    tmp_path: Path, selected: str, reported: str, caplog: pytest.LogCaptureFixture
+) -> None:
+    async def scenario() -> None:
+        async with FakeGateway() as gateway:
+            cache = tmp_path / "catalog.json"
+            gateway.environment = selected
+            selected_config = replace(
+                config(gateway.base_url, cache, token=""), environment=selected
+            )
+            before = await asyncio.to_thread(RemoteRuntime, selected_config)
+            assert before.snapshot.schemas
+            assert cache.is_file()
+            remote = before.snapshot.schemas[0]
+            gateway.environment = reported
+            after = await asyncio.to_thread(RemoteRuntime, selected_config)
+            assert build_node_classes(after) == []
+            assert selected in caplog.text and reported in caplog.text
+            assert await before.catalog.changed(before.announced_epoch)
+            refreshed = await before.catalog.refresh(conditional=True)
+            assert refreshed is not None and refreshed.schemas == ()
+            with pytest.raises(
+                GatewayError, match=f"selected {selected}, gateway reports '{reported}'"
+            ):
+                await before.invoke(remote, {"prompt": "not submitted"})
+            assert gateway.submissions == []
+            gateway.environment = selected
+            recovered = await before.catalog.refresh(conditional=False)
+            assert recovered is not None and recovered.schemas
+
+    asyncio.run(scenario())
+
+
+def test_service_switch_preserves_both_catalog_caches_without_epoch_conflicts(
+    tmp_path: Path,
+) -> None:
+    async def scenario() -> None:
+        async with FakeGateway() as gateway:
+            paths: dict[str, Path] = {}
+            saved: dict[str, bytes] = {}
+            for environment, epoch in (
+                ("production", 42),
+                ("qa", 3),
+                ("production", 42),
+                ("qa", 3),
+            ):
+                gateway.environment = environment
+                gateway.epoch = epoch
+                gateway.catalog_etag = f'"{environment}-{epoch}"'
+                selection = RemoteConfig.from_env(
+                    {
+                        "DINKSTER_SERVICES": environment,
+                        "DINKSTER_REMOTE_ENVIRONMENT": environment,
+                        "DINKSTER_REMOTE_CATALOG_BASE": gateway.base_url,
+                        "DINKSTER_REMOTE_GATEWAY_BASE": gateway.base_url,
+                        "DINKSTER_PACK_SCRATCH": str(tmp_path),
+                    }
+                )
+                runtime = await asyncio.to_thread(RemoteRuntime, selection)
+                assert runtime.snapshot.epoch == epoch
+                assert runtime.snapshot.schemas
+                assert selection.cache_path is not None
+                paths[environment] = selection.cache_path
+                saved[environment] = selection.cache_path.read_bytes()
+                for mode, path in paths.items():
+                    assert path.read_bytes() == saved[mode]
+            assert paths["production"] != paths["qa"]
+
+    asyncio.run(scenario())
+
+
 def test_catalog_cache_degrades_startup_and_epoch_reload_uses_etags(tmp_path: Path) -> None:
     async def scenario() -> None:
         cache = tmp_path / "catalog.json"
@@ -657,8 +736,9 @@ def test_digest_mismatch_never_enters_the_vault(
     asyncio.run(scenario())
 
 
+@pytest.mark.parametrize("environment", ["production", "qa"])
 def test_gateway_errors_remain_differentiated_and_honor_retry_after(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, environment: str
 ) -> None:
     async def scenario() -> None:
         codes = (
@@ -674,9 +754,14 @@ def test_gateway_errors_remain_differentiated_and_honor_retry_after(
             "rate_limited",
         )
         async with FakeGateway() as gateway:
+            gateway.environment = environment
             runtime = await asyncio.to_thread(
                 RemoteRuntime,
-                replace(config(gateway.base_url, tmp_path / "catalog.json"), max_retries=0),
+                replace(
+                    config(gateway.base_url, tmp_path / "catalog.json"),
+                    max_retries=0,
+                    environment=environment,
+                ),
             )
             monkeypatch.setenv("DINKSTER_ASSET_VAULT", str(tmp_path / "vault"))
             for code in codes:
@@ -685,6 +770,7 @@ def test_gateway_errors_remain_differentiated_and_honor_retry_after(
                     await runtime.invoke(runtime.snapshot.schemas[0], {"prompt": "hello"})
                 assert raised.value.code == code
                 assert f"code={code}" in str(raised.value)
+                assert ("QA services:" in str(raised.value)) == (environment == "qa")
 
             gateway.submit_error = (429, "rate_limited", True, "9")
             with pytest.raises(GatewayError) as raised:

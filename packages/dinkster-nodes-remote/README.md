@@ -6,7 +6,9 @@ asset inputs, submits authenticated jobs, forwards progress and previews, and
 verifies downloaded output digests before adding them to Dinkster's asset vault.
 
 Public catalogs are cached under the pack scratch directory and bound to their
-catalog endpoint. Authenticated catalogs are kept only in memory, never persisted,
+catalog endpoint. Cache files are separated by expected environment and endpoints,
+so switching between production and QA preserves each public catalog independently.
+Authenticated catalogs are kept only in memory, never persisted,
 and discarded when the bearer changes. Startup continues with the matching public
 cache, or an empty remote pack, if discovery is unavailable. Each catalog request
 selects the client's supported schema wire and reads the current bearer file.
@@ -14,6 +16,12 @@ Signed-in discovery uses the gateway's verified project context without decoding
 JWT authority in the client. Policy-filtered schema changes trigger an atomic
 worker reload even when the public catalog epoch is unchanged. Malformed entries
 are skipped without hiding valid entries.
+
+The engine supplies resolved addresses from its service table and the expected
+`DINKSTER_REMOTE_ENVIRONMENT`. Before catalog discovery, the pack checks the
+unauthenticated gateway environment document. A mismatch or unavailable document
+disables remote nodes, including cached nodes; a subsequent valid document permits
+recovery. QA invocation errors explicitly name QA services.
 
 `dinkster-serve` accepts:
 
