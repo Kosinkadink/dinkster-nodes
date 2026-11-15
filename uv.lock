@@ -1278,9 +1278,10 @@ requires-dist = [
 
 [[package]]
 name = "dinkster-ltx"
-version = "0.0.9"
+version = "0.0.10"
 source = { editable = "packages/dinkster-nodes-ltx" }
 dependencies = [
+    { name = "av" },
     { name = "dinkster-api" },
     { name = "dinkster-inference" },
     { name = "dinkster-latent" },
@@ -1293,6 +1294,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
+    { name = "av", specifier = ">=14" },
     { name = "dinkster-api", url = "https://github.com/Kosinkadink/Dinkster/releases/download/main-2026-11-14-0.0.4.dev45-7df4251d/dinkster_api-0.0.4.dev45%2Bg24a34e6ef5eff7c986aba25a665dc42bda6b9a43-py3-none-any.whl" },
     { name = "dinkster-inference" },
     { name = "dinkster-latent", editable = "packages/dinkster-nodes-latent" },
