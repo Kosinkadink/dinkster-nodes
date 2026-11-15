@@ -413,6 +413,7 @@ jobs:
               Path(".admission-inputs/bases").resolve(),
               Path(".admission-inputs/locks").resolve(),
               Path(".disposable-runtime").resolve(),
+              sources=Path(".admission-inputs/sources").resolve(),
           )
           PY
       - name: Load the immutable images without pulling

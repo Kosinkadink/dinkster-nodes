@@ -116,6 +116,99 @@ def test_incompatible_publication_control_reaches_publisher_refusal(
         )
 
 
+def test_scanner_runtime_stages_unpublished_locked_candidate(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from dataclasses import replace
+
+    from dinkster_workers.pack_lock import LockedDistribution, PackLock
+    from dinkster_workers.wheel_download import fetch_wheel
+
+    from scripts.stage_publication_probe_index import stage_runtime
+    from tests.registry_fixtures import _serve_artifacts, _wheel
+
+    sources = tmp_path / "sources"
+    sources.mkdir()
+    wheel = _wheel(sources, "dinkster-pack-helpers", "0.0.7", "helper", "VALUE = 37\n")
+    external = _wheel(tmp_path, "external", "1.0", "external", "VALUE = 91\n")
+    requests: list[tuple[str, str | None]] = []
+    server = _serve_artifacts({}, requests)
+    wheel = replace(wheel, url=f"http://127.0.0.1:{server.server_port}/{wheel.filename}")
+    engine = tmp_path / "engine"
+    engine.mkdir()
+    (engine / "release-manifest.json").write_text(
+        json.dumps(
+            {
+                "format": "dinkster.engine/1",
+                "version": "0.0.7",
+                "commit": "a" * 40,
+                "workerProtocol": 12,
+                "artifacts": [
+                    {
+                        "name": "constraints.txt",
+                        "size": 0,
+                        "sha256": hashlib.sha256(b"").hexdigest(),
+                    }
+                ],
+            }
+        )
+    )
+    base = {
+        "format": "dinkster.base/1",
+        "variant": "linux-cpu",
+        "platform": {"os": "linux", "arch": "x86_64"},
+        "python": "3.12.9",
+        "interpreter": {},
+        "wheels": [],
+        "replaces": [],
+        "workerProtocol": 12,
+        "nvidia": None,
+        "archive": {"format": "tar+zstd"},
+    }
+    base["id"] = (
+        "sha256:"
+        + hashlib.sha256(
+            json.dumps(base, sort_keys=True, separators=(",", ":")).encode("ascii")
+        ).hexdigest()
+    )
+    base["archive"]["parts"] = []
+    bases = tmp_path / "bases/linux-cpu"
+    bases.mkdir(parents=True)
+    (bases / "manifest.json").write_text(json.dumps(base))
+    locks = tmp_path / "locks"
+    locks.mkdir()
+    PackLock(
+        "consumer",
+        "linux-cpu",
+        ">=3.12",
+        ("dinkster-pack-helpers>=0.0.2,<1",),
+        (),
+        (
+            LockedDistribution("dinkster-pack-helpers", "0.0.7", (wheel,)),
+            LockedDistribution("external", "1.0", (external,)),
+        ),
+    ).write(locks / "consumer-linux-cpu.pack-lock.json")
+    monkeypatch.setattr("dinkster_supervisor.environment_artifacts.acquire", lambda *args: None)
+    try:
+        output = tmp_path / "runtime"
+        stage_runtime(engine, bases.parent, locks, output, sources=sources)
+        cached = fetch_wheel(wheel, output / "store/wheels", offline=True)
+        assert cached.read_bytes() == (sources / wheel.filename).read_bytes()
+        assert (
+            fetch_wheel(external, output / "store/wheels", offline=True).read_bytes()
+            == (tmp_path / external.filename).read_bytes()
+        )
+        assert requests == []
+        candidate = sources / wheel.filename
+        data = candidate.read_bytes()
+        candidate.write_bytes(bytes([data[0] ^ 1]) + data[1:])
+        with pytest.raises(ValueError, match="candidate wheel hash or size mismatch"):
+            stage_runtime(engine, bases.parent, locks, tmp_path / "corrupt", sources=sources)
+    finally:
+        server.shutdown()
+        server.server_close()
+
+
 def test_probe_index_refuses_local_dependency_outside_selected_sources(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
