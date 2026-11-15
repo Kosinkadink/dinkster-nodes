@@ -108,6 +108,8 @@ class FakeGateway:
         self.idempotency_keys: list[str] = []
         self.uploads: list[tuple[str | None, bytes]] = []
         self.catalog_headers: list[str | None] = []
+        self.catalog_authorizations: list[str | None] = []
+        self.catalog_scopes: dict[str, tuple[NodeSchema, ...]] | None = None
         self.epoch_headers: list[str | None] = []
         self.download_authorizations: list[str | None] = []
         self.cancelled = asyncio.Event()
@@ -161,7 +163,14 @@ class FakeGateway:
 
     async def _catalog(self, request: web.Request) -> web.Response:
         self.catalog_headers.append(request.headers.get("If-None-Match"))
-        assert "wire" not in request.query
+        authorization = request.headers.get("Authorization")
+        self.catalog_authorizations.append(authorization)
+        assert request.query.get("wire") == str(SCHEMA_WIRE_VERSION)
+        schemas = self.schemas
+        if self.catalog_scopes is not None and authorization is not None:
+            if authorization not in self.catalog_scopes:
+                return web.Response(status=401)
+            schemas = self.catalog_scopes[authorization]
         if self.catalog_status != 200:
             return web.Response(status=self.catalog_status)
         if request.headers.get("If-None-Match") == self.catalog_etag:
@@ -172,7 +181,7 @@ class FakeGateway:
                 headers={"ETag": self.catalog_etag},
             )
         return web.json_response(
-            catalog_payload(*self.schemas, epoch=self.epoch),
+            catalog_payload(*schemas, epoch=self.epoch),
             headers={"ETag": self.catalog_etag},
         )
 
@@ -404,7 +413,9 @@ def test_catalog_cache_degrades_startup_and_epoch_reload_uses_etags(tmp_path: Pa
     async def scenario() -> None:
         cache = tmp_path / "catalog.json"
         async with FakeGateway() as gateway:
-            runtime = await asyncio.to_thread(RemoteRuntime, config(gateway.base_url, cache))
+            runtime = await asyncio.to_thread(
+                RemoteRuntime, config(gateway.base_url, cache, token="")
+            )
             assert runtime.snapshot.epoch == 1
             assert cache.is_file()
 
@@ -431,7 +442,9 @@ def test_catalog_cache_degrades_startup_and_epoch_reload_uses_etags(tmp_path: Pa
             assert cache.read_bytes() == cached
 
             gateway.catalog_status = 503
-            fallback = await asyncio.to_thread(RemoteRuntime, config(gateway.base_url, cache))
+            fallback = await asyncio.to_thread(
+                RemoteRuntime, config(gateway.base_url, cache, token="")
+            )
             assert fallback.snapshot.epoch == 2
             assert fallback.snapshot.schemas[0].schema.version == 2
 
@@ -440,6 +453,90 @@ def test_catalog_cache_degrades_startup_and_epoch_reload_uses_etags(tmp_path: Pa
             replace(config("http://127.0.0.1:9", tmp_path / "missing"), request_timeout=0.05),
         )
         assert empty.snapshot.schemas == ()
+
+    asyncio.run(scenario())
+
+
+def test_authenticated_catalog_tracks_policy_and_rotation_without_persisting_private_schemas(
+    tmp_path: Path,
+) -> None:
+    async def scenario() -> None:
+        public = remote_schema("dinkster.remote.public")
+        first = remote_schema("dinkster.remote.first")
+        second = remote_schema("dinkster.remote.second")
+        cache = tmp_path / "catalog.json"
+        token = tmp_path / "token"
+        token.write_text("first", encoding="utf-8")
+        async with FakeGateway(public) as gateway:
+            gateway.catalog_scopes = {"Bearer first": (first,), "Bearer second": (second,)}
+            settings = replace(config(gateway.base_url, cache), token_file=token)
+            runtime = await asyncio.to_thread(RemoteRuntime, settings)
+            assert [item.schema.node_type for item in runtime.snapshot.schemas] == [first.node_type]
+            assert not cache.exists()
+            assert gateway.catalog_authorizations[-1] == "Bearer first"
+
+            gateway.catalog_scopes["Bearer first"] = ()
+            gateway.catalog_etag = '"policy-denied"'
+            await asyncio.wait_for(runtime.wait_for_schema_reload(), 2)
+            assert runtime.catalog.snapshot.schemas == ()
+            assert runtime.catalog.snapshot.epoch == 1
+            assert not cache.exists()
+
+            replacement = tmp_path / "replacement"
+            replacement.write_text("second", encoding="utf-8")
+            replacement.replace(token)
+            assert await runtime.catalog.changed(1)
+            snapshot = await runtime.catalog.refresh(conditional=True)
+            assert snapshot is not None
+            assert [item.schema.node_type for item in snapshot.schemas] == [second.node_type]
+            assert gateway.catalog_authorizations[-1] == "Bearer second"
+            assert gateway.catalog_headers[-1] is None
+            assert not cache.exists()
+
+            token.write_text("invalid", encoding="utf-8")
+            snapshot = await runtime.catalog.refresh(conditional=True)
+            assert snapshot is not None and snapshot.schemas == ()
+            token.unlink()
+            snapshot = await runtime.catalog.refresh(conditional=True)
+            assert snapshot is not None
+            assert [item.schema.node_type for item in snapshot.schemas] == [public.node_type]
+            assert gateway.catalog_authorizations[-1] is None
+            assert cache.is_file()
+            assert "second" not in cache.read_text(encoding="utf-8")
+
+            other = await asyncio.to_thread(
+                RemoteRuntime,
+                replace(config("http://127.0.0.1:9", cache, token=""), request_timeout=0.05),
+            )
+            assert other.snapshot.schemas == ()
+
+    asyncio.run(scenario())
+
+
+@pytest.mark.parametrize("conditional", [False, True])
+def test_catalog_discards_schemas_when_bearer_changes_during_response(
+    tmp_path: Path, conditional: bool
+) -> None:
+    async def scenario() -> None:
+        token = tmp_path / "token"
+        token.write_text("first", encoding="utf-8")
+        rotate = False
+
+        class RotatingGateway(FakeGateway):
+            async def _catalog(self, request: web.Request) -> web.Response:
+                response = await super()._catalog(request)
+                if rotate:
+                    token.write_text("second", encoding="utf-8")
+                return response
+
+        async with RotatingGateway(remote_schema("dinkster.remote.first")) as gateway:
+            settings = replace(config(gateway.base_url, tmp_path / "cache"), token_file=token)
+            runtime = await asyncio.to_thread(RemoteRuntime, settings)
+            assert runtime.snapshot.schemas
+            rotate = True
+            snapshot = await runtime.catalog.refresh(conditional=conditional)
+            assert snapshot is not None and snapshot.schemas == ()
+            assert runtime.catalog.snapshot.schemas == ()
 
     asyncio.run(scenario())
 

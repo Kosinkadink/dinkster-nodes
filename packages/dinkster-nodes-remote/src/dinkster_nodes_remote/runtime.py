@@ -188,23 +188,25 @@ class RemoteConfig:
             ),
         )
 
-    def auth_token(self) -> str:
+    def auth_token(self, *, required: bool = True) -> str:
         if self.token_file is not None:
             try:
                 token = self.token_file.read_text(encoding="utf-8").strip()
             except OSError as exc:
+                if not required:
+                    return ""
                 raise GatewayError(
                     "unauthenticated",
                     "client",
                     False,
                     f"The remote session token could not be read: {exc}",
                 ) from exc
-            if token:
+            if token or not required:
                 return token
             raise GatewayError(
                 "unauthenticated", "client", False, "The remote session token file is empty."
             )
-        if self.token:
+        if self.token or not required:
             return self.token
         raise GatewayError("unauthenticated", "client", False, "No remote session token is set.")
 
@@ -354,6 +356,7 @@ class RemoteRuntime:
             config.catalog_base,
             config.cache_path,
             timeout=min(config.request_timeout, 5.0),
+            auth_token=lambda: config.auth_token(required=False),
         )
         self.snapshot = self.catalog.startup()
         self.announced_epoch = self.snapshot.epoch
@@ -391,7 +394,7 @@ class RemoteRuntime:
             if not await self.catalog.changed(self.announced_epoch):
                 continue
             snapshot = await self.catalog.refresh(conditional=True)
-            if snapshot is not None and snapshot.epoch != self.announced_epoch:
+            if snapshot is not None and snapshot.payload != self.snapshot.payload:
                 self._reload_pending = True
                 return
 
