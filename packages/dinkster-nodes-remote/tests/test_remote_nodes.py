@@ -513,6 +513,34 @@ def test_authenticated_catalog_tracks_policy_and_rotation_without_persisting_pri
     asyncio.run(scenario())
 
 
+@pytest.mark.parametrize("conditional", [False, True])
+def test_catalog_discards_schemas_when_bearer_changes_during_response(
+    tmp_path: Path, conditional: bool
+) -> None:
+    async def scenario() -> None:
+        token = tmp_path / "token"
+        token.write_text("first", encoding="utf-8")
+        rotate = False
+
+        class RotatingGateway(FakeGateway):
+            async def _catalog(self, request: web.Request) -> web.Response:
+                response = await super()._catalog(request)
+                if rotate:
+                    token.write_text("second", encoding="utf-8")
+                return response
+
+        async with RotatingGateway(remote_schema("dinkster.remote.first")) as gateway:
+            settings = replace(config(gateway.base_url, tmp_path / "cache"), token_file=token)
+            runtime = await asyncio.to_thread(RemoteRuntime, settings)
+            assert runtime.snapshot.schemas
+            rotate = True
+            snapshot = await runtime.catalog.refresh(conditional=conditional)
+            assert snapshot is not None and snapshot.schemas == ()
+            assert runtime.catalog.snapshot.schemas == ()
+
+    asyncio.run(scenario())
+
+
 def test_recorded_gateway_catalog_submit_progress_and_digest_round_trip(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

@@ -216,11 +216,12 @@ class CatalogClient:
         except ValueError as exc:
             raise CatalogError("catalog response is not JSON") from exc
 
-    def _accept(self, response: httpx.Response) -> CatalogSnapshot:
-        token = self.auth_token()
-        authorization = f"Bearer {token}" if token else ""
+    def _check_session(self, response: httpx.Response) -> None:
+        authorization = self._headers(conditional=False).get("Authorization", "")
         if response.request.headers.get("Authorization", "") != authorization:
             raise CatalogError("remote session changed during catalog request")
+
+    def _accept(self, response: httpx.Response) -> CatalogSnapshot:
         snapshot = parse_catalog(self._response_payload(response))
         if self.snapshot.payload:
             if snapshot.epoch < self.snapshot.epoch:
@@ -255,6 +256,7 @@ class CatalogClient:
                     params={"wire": str(SCHEMA_WIRE_VERSION)},
                     headers=self._headers(conditional=True),
                 )
+            self._check_session(response)
             if response.status_code == 304:
                 return self.snapshot
             if response.status_code == 406:
@@ -277,6 +279,7 @@ class CatalogClient:
                     params={"wire": str(SCHEMA_WIRE_VERSION)},
                     headers=self._headers(conditional=conditional),
                 )
+            self._check_session(response)
             if response.status_code == 304:
                 return self.snapshot
             if response.status_code == 406:
