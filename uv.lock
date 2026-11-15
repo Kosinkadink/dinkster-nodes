@@ -1159,7 +1159,7 @@ requires-dist = [
 
 [[package]]
 name = "dinkster-image"
-version = "0.0.13"
+version = "0.0.14"
 source = { editable = "packages/dinkster-nodes-image" }
 dependencies = [
     { name = "av" },
@@ -1374,7 +1374,7 @@ requires-dist = [
 
 [[package]]
 name = "dinkster-nodes-remote"
-version = "0.0.6"
+version = "0.0.7"
 source = { editable = "packages/dinkster-nodes-remote" }
 dependencies = [
     { name = "dinkster-api" },
@@ -1452,7 +1452,7 @@ wheels = [
 
 [[package]]
 name = "dinkster-pack-helpers"
-version = "0.0.6"
+version = "0.0.7"
 source = { editable = "packages/dinkster-pack-helpers" }
 dependencies = [
     { name = "dinkster-api" },
