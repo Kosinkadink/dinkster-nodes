@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import os
 import tempfile
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from pathlib import Path
 from typing import cast
@@ -17,7 +17,7 @@ from dinkster_api.v1 import (
     schema_signature,
 )
 
-_CACHE_FORMAT = "dinkster.remote.catalog-cache/1"
+_CACHE_FORMAT = "dinkster.remote.catalog-cache/2"
 
 log = pack_logger("dinkster-nodes-remote")
 
@@ -119,8 +119,9 @@ class CacheRecord:
 
 
 class CatalogCache:
-    def __init__(self, path: Path | None) -> None:
+    def __init__(self, path: Path | None, base_url: str) -> None:
         self.path = path
+        self.base_url = base_url
 
     def load(self) -> CacheRecord | None:
         if self.path is None:
@@ -130,6 +131,8 @@ class CatalogCache:
             document = _mapping(raw, "remote catalog cache")
             if document.get("format") != _CACHE_FORMAT:
                 raise CatalogError("unsupported cache format")
+            if document.get("baseUrl") != self.base_url:
+                return None
             snapshot = parse_catalog(document.get("payload"))
             etag = document.get("catalogEtag")
             if etag is not None and not isinstance(etag, str):
@@ -146,6 +149,7 @@ class CatalogCache:
             return
         document = {
             "format": _CACHE_FORMAT,
+            "baseUrl": self.base_url,
             "catalogEtag": catalog_etag,
             "payload": snapshot.payload,
         }
@@ -171,10 +175,13 @@ class CatalogClient:
         cache_path: Path | None,
         *,
         timeout: float,
+        auth_token: Callable[[], str],
     ) -> None:
         self.base_url = base_url.rstrip("/")
         self.timeout = timeout
-        self.cache = CatalogCache(cache_path)
+        self.auth_token = auth_token
+        self._token = ""
+        self.cache = CatalogCache(cache_path, self.base_url)
         cached = self.cache.load()
         self.snapshot = cached.snapshot if cached is not None else CatalogSnapshot.empty()
         self.catalog_etag = cached.catalog_etag if cached is not None else None
@@ -190,9 +197,17 @@ class CatalogClient:
         return f"{self.base_url}/catalog/epoch"
 
     def _headers(self, *, conditional: bool) -> dict[str, str]:
+        token = self.auth_token()
+        if token != self._token:
+            self.snapshot = CatalogSnapshot.empty()
+            self.catalog_etag = None
+            self.epoch_etag = None
+            self.observed_epoch = 0
+            self._token = token
+        headers = {"Authorization": f"Bearer {token}"} if token else {}
         if conditional and self.catalog_etag:
-            return {"If-None-Match": self.catalog_etag}
-        return {}
+            headers["If-None-Match"] = self.catalog_etag
+        return headers
 
     @staticmethod
     def _response_payload(response: httpx.Response) -> object:
@@ -202,23 +217,32 @@ class CatalogClient:
             raise CatalogError("catalog response is not JSON") from exc
 
     def _accept(self, response: httpx.Response) -> CatalogSnapshot:
+        token = self.auth_token()
+        authorization = f"Bearer {token}" if token else ""
+        if response.request.headers.get("Authorization", "") != authorization:
+            raise CatalogError("remote session changed during catalog request")
         snapshot = parse_catalog(self._response_payload(response))
         if self.snapshot.payload:
             if snapshot.epoch < self.snapshot.epoch:
                 raise CatalogError(
                     f"catalog epoch moved backward from {self.snapshot.epoch} to {snapshot.epoch}"
                 )
-            if snapshot.epoch == self.snapshot.epoch and snapshot.payload != self.snapshot.payload:
+            if (
+                not self._token
+                and snapshot.epoch == self.snapshot.epoch
+                and snapshot.payload != self.snapshot.payload
+            ):
                 raise CatalogError(
                     f"catalog payload changed without advancing epoch {snapshot.epoch}"
                 )
         self.catalog_etag = response.headers.get("ETag")
         self.snapshot = snapshot
         self.observed_epoch = snapshot.epoch
-        try:
-            self.cache.store(snapshot, self.catalog_etag)
-        except OSError as exc:
-            log.warning("could not persist the remote catalog cache: %s", exc)
+        if not self._token:
+            try:
+                self.cache.store(snapshot, self.catalog_etag)
+            except OSError as exc:
+                log.warning("could not persist the remote catalog cache: %s", exc)
         return snapshot
 
     def startup(self) -> CatalogSnapshot:
@@ -228,6 +252,7 @@ class CatalogClient:
             with httpx.Client(timeout=self.timeout) as client:
                 response = client.get(
                     self.nodes_url,
+                    params={"wire": str(SCHEMA_WIRE_VERSION)},
                     headers=self._headers(conditional=True),
                 )
             if response.status_code == 304:
@@ -244,10 +269,12 @@ class CatalogClient:
     async def refresh(self, *, conditional: bool) -> CatalogSnapshot | None:
         if not self.base_url:
             return None
+        previous_token = self._token
         try:
             async with httpx.AsyncClient(timeout=self.timeout) as client:
                 response = await client.get(
                     self.nodes_url,
+                    params={"wire": str(SCHEMA_WIRE_VERSION)},
                     headers=self._headers(conditional=conditional),
                 )
             if response.status_code == 304:
@@ -258,11 +285,15 @@ class CatalogClient:
             return self._accept(response)
         except (CatalogError, httpx.HTTPError, OSError) as exc:
             log.warning("remote catalog refresh failed; keeping the current schemas: %s", exc)
-            return None
+            return self.snapshot if previous_token != self._token else None
 
     async def changed(self, announced_epoch: int) -> bool:
         if not self.base_url:
             return False
+        token = self.auth_token()
+        # Project policy can change without changing the public catalog epoch.
+        if token or token != self._token:
+            return True
         headers = {"If-None-Match": self.epoch_etag} if self.epoch_etag else {}
         try:
             async with httpx.AsyncClient(timeout=self.timeout) as client:

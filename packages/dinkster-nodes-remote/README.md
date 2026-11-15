@@ -5,10 +5,15 @@ current `NodeSchema` catalog, exposes valid `dinkster.remote.*` nodes, uploads
 asset inputs, submits authenticated jobs, forwards progress and previews, and
 verifies downloaded output digests before adding them to Dinkster's asset vault.
 
-The last valid catalog is cached under the pack scratch directory. Startup
-continues with that cache, or an empty remote pack, if the catalog is
-unavailable. Catalog epoch changes replace the isolated worker atomically.
-Malformed catalog entries are skipped without hiding valid entries.
+Public catalogs are cached under the pack scratch directory and bound to their
+catalog endpoint. Authenticated catalogs are kept only in memory, never persisted,
+and discarded when the bearer changes. Startup continues with the matching public
+cache, or an empty remote pack, if discovery is unavailable. Each catalog request
+selects the client's supported schema wire and reads the current bearer file.
+Signed-in discovery uses the gateway's verified project context without decoding
+JWT authority in the client. Policy-filtered schema changes trigger an atomic
+worker reload even when the public catalog epoch is unchanged. Malformed entries
+are skipped without hiding valid entries.
 
 `dinkster-serve` accepts:
 
