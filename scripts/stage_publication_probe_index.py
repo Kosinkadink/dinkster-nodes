@@ -131,8 +131,8 @@ def stage_index(sources: Path, output: Path, *, engine: Path | None = None) -> d
     return receipt
 
 
-def stage_runtime(engine: Path, bases: Path, locks: Path, output: Path) -> None:
-    """Acquire the submitted engine and CPU base before scanner network isolation."""
+def stage_runtime(engine: Path, bases: Path, locks: Path, output: Path, *, sources: Path) -> None:
+    """Acquire the submitted engine, base and locked wheels before scanner isolation."""
     from dinkster_supervisor.environment_artifacts import (
         EnvironmentCatalog,
         acquire,
@@ -200,12 +200,21 @@ def stage_runtime(engine: Path, bases: Path, locks: Path, output: Path) -> None:
     with writer_lock(store):
         acquire(catalog, variant, store)
         from dinkster_workers.pack_lock import PackLock
-        from dinkster_workers.wheel_download import fetch_wheel
+        from dinkster_workers.wheel_download import fetch_wheel, verify_wheel
 
+        wheels = store / "wheels"
+        wheels.mkdir(exist_ok=True)
         for path in sorted(locks.glob("*-linux-cpu.pack-lock.json")):
             for package in PackLock.read(path).packages:
                 for wheel in package.wheels:
-                    fetch_wheel(wheel, store / "wheels")
+                    candidate = sources / wheel.filename
+                    if candidate.exists():
+                        if not verify_wheel(candidate, wheel):
+                            raise ValueError(
+                                f"candidate wheel hash or size mismatch: {wheel.filename}"
+                            )
+                        shutil.copyfile(candidate, wheels / wheel.filename)
+                    fetch_wheel(wheel, wheels)
 
 
 if __name__ == "__main__":
