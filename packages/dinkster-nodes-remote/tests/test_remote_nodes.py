@@ -109,6 +109,7 @@ class FakeGateway:
         self.output_digest: str | None = None
         self.submissions: list[dict[str, object]] = []
         self.idempotency_keys: list[str] = []
+        self.partner_headers: list[tuple[str | None, str | None]] = []
         self.uploads: list[tuple[str | None, bytes]] = []
         self.catalog_headers: list[str | None] = []
         self.catalog_authorizations: list[str | None] = []
@@ -126,6 +127,8 @@ class FakeGateway:
 
         async def environment_document(request: web.Request) -> web.Response:
             assert "Authorization" not in request.headers
+            assert "X-Dinkster-Partner-Mode" not in request.headers
+            assert "X-Dinkster-Fake-Outcome" not in request.headers
             return web.json_response(
                 self.environment_payload
                 if self.environment_payload is not None
@@ -161,6 +164,9 @@ class FakeGateway:
         self.epoch_etag = f'"epoch-{self.epoch}"'
 
     def _authorized(self, request: web.Request) -> web.Response | None:
+        if request.path != "/v1/jobs" or request.method != "POST":
+            assert "X-Dinkster-Partner-Mode" not in request.headers
+            assert "X-Dinkster-Fake-Outcome" not in request.headers
         if request.headers.get("Authorization") == "Bearer session-token":
             return None
         return web.json_response(
@@ -239,6 +245,12 @@ class FakeGateway:
         body = cast("dict[str, object]", await request.json())
         self.submissions.append(body)
         self.idempotency_keys.append(request.headers.get("Idempotency-Key", ""))
+        self.partner_headers.append(
+            (
+                request.headers.get("X-Dinkster-Partner-Mode"),
+                request.headers.get("X-Dinkster-Fake-Outcome"),
+            )
+        )
         if self.recording is not None:
             return web.json_response(
                 cast("dict[str, object]", self.recording["submit"]), status=202
@@ -691,15 +703,41 @@ def test_recorded_gateway_catalog_submit_progress_and_digest_round_trip(
     asyncio.run(scenario())
 
 
+@pytest.mark.parametrize(
+    "environment,controls,expected_headers",
+    [
+        ("production", {}, (None, None)),
+        ("qa", {}, (None, None)),
+        ("qa", {"DINKSTER_REMOTE_PARTNER_MODE": "real"}, ("real", None)),
+        (
+            "qa",
+            {"DINKSTER_REMOTE_PARTNER_MODE": "fake", "DINKSTER_REMOTE_FAKE_OUTCOME": "slow"},
+            ("fake", "slow"),
+        ),
+        ("qa", {"DINKSTER_REMOTE_FAKE_OUTCOME": "timeout"}, (None, "timeout")),
+    ],
+)
 def test_upload_submit_poll_preview_and_verified_vault_round_trip(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    environment: str,
+    controls: dict[str, str],
+    expected_headers: tuple[str | None, str | None],
 ) -> None:
     async def scenario() -> None:
         async with FakeGateway() as gateway:
             gateway.submit_failures = 1
-            runtime = await asyncio.to_thread(
-                RemoteRuntime, config(gateway.base_url, tmp_path / "catalog.json")
+            gateway.environment = environment
+            selected = RemoteConfig.from_env(
+                {"DINKSTER_REMOTE_ENVIRONMENT": environment, **controls}
             )
+            configured = replace(
+                config(gateway.base_url, tmp_path / "catalog.json"),
+                environment=environment,
+                partner_mode=selected.partner_mode,
+                fake_outcome=selected.fake_outcome,
+            )
+            runtime = await asyncio.to_thread(RemoteRuntime, configured)
             vault = tmp_path / "output-vault"
             monkeypatch.setenv("DINKSTER_ASSET_VAULT", str(vault))
             source = input_asset(tmp_path / "input-vault")
@@ -711,6 +749,7 @@ def test_upload_submit_poll_preview_and_verified_vault_round_trip(
 
             assert gateway.uploads == [(source.digest, b"input image")]
             assert len(gateway.submissions) == 2
+            assert gateway.partner_headers == [expected_headers, expected_headers]
             assert len(set(gateway.idempotency_keys)) == 1
             uuid.UUID(gateway.idempotency_keys[0])
             submission = gateway.submissions[-1]
@@ -856,6 +895,26 @@ def test_rotated_token_file_is_read_for_each_invocation(
             assert len(gateway.submissions) == 1
 
     asyncio.run(scenario())
+
+
+@pytest.mark.parametrize(
+    "controls",
+    [
+        {"DINKSTER_REMOTE_PARTNER_MODE": ""},
+        {"DINKSTER_REMOTE_PARTNER_MODE": "paid"},
+        {"DINKSTER_REMOTE_PARTNER_MODE": "FAKE"},
+        {"DINKSTER_REMOTE_FAKE_OUTCOME": "unknown", "DINKSTER_REMOTE_PARTNER_MODE": "fake"},
+        {"DINKSTER_REMOTE_FAKE_OUTCOME": "fail"},
+        {
+            "DINKSTER_REMOTE_ENVIRONMENT": "qa",
+            "DINKSTER_REMOTE_PARTNER_MODE": "real",
+            "DINKSTER_REMOTE_FAKE_OUTCOME": "success",
+        },
+    ],
+)
+def test_invalid_partner_controls_are_refused(controls: dict[str, str]) -> None:
+    with pytest.raises(ValueError, match="DINKSTER_REMOTE_(PARTNER_MODE|FAKE_OUTCOME)"):
+        RemoteConfig.from_env(controls)
 
 
 def test_remote_service_urls_require_https_outside_loopback() -> None:
