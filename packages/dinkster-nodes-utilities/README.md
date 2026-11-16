@@ -1,0 +1,7 @@
+
+## Upstream compatibility
+
+- `BranchNode`: V3 schema is inherited or assembled dynamically. No identity replacement exists; add the node to this pack. Review related schemas before folding it into a consolidated node. [Upstream source](https://github.com/Comfy-Org/ComfyUI/blob/eee59185ff4f43ae2d9ad122b245619d27d9daad/comfy_extras/nodes_logic.py).
+- `ResolutionSelector`: Update the existing native replacement; do not register a duplicate node. Update the existing native schema and execute method in packages/dinkster-nodes-utilities/src/dinkster_utilities/color_resolution.py; preserve its node ID and replacement mapping. [Upstream source](https://github.com/Comfy-Org/ComfyUI/blob/eee59185ff4f43ae2d9ad122b245619d27d9daad/comfy_extras/nodes_resolution.py).
+- `UltraTexConditioning`: V3 schema has execution or presentation metadata requiring review. No identity replacement exists; add the node to this pack. Review related schemas before folding it into a consolidated node. [Upstream source](https://github.com/Comfy-Org/ComfyUI/blob/eee59185ff4f43ae2d9ad122b245619d27d9daad/comfy_extras/nodes_ultratex.py).
+- `WeVisOneDetect`: V3 schema has execution or presentation metadata requiring review. No identity replacement exists; add the node to this pack. Review related schemas before folding it into a consolidated node. [Upstream source](https://github.com/Comfy-Org/ComfyUI/blob/eee59185ff4f43ae2d9ad122b245619d27d9daad/comfy_extras/nodes_wevisone.py).
