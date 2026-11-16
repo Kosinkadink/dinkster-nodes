@@ -42,3 +42,13 @@ video nodes; `DINKSTER_REMOTE_IMAGE_POLL_INTERVAL` and
 file is read for each invocation so session rotation does not require
 restarting the pack. Without a token, schemas remain visible and invocation
 fails with a sign-in error.
+
+`DINKSTER_REMOTE_PARTNER_MODE` optionally selects `fake` or `real` through the
+job submission's `X-Dinkster-Partner-Mode` header. When unset, no override is sent:
+QA gateway defaults to fake and production defaults to real. Production refuses
+explicit fake jobs. `DINKSTER_REMOTE_FAKE_OUTCOME` optionally selects `success`,
+`fail`, `timeout`, or `slow` through `X-Dinkster-Fake-Outcome`; it requires effective
+fake mode (explicit fake, or an unset mode under QA). Invalid values fail pack
+configuration. Both controls are read at process startup, not from node inputs,
+and are sent only on job submissions, including retries. They do not change the
+catalog, project or saved workflow and never grant real-partner permission.

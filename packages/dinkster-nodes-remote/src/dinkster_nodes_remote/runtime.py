@@ -145,6 +145,8 @@ class RemoteConfig:
     max_retries: int
     max_retry_after: float
     environment: str = ""
+    partner_mode: str | None = None
+    fake_outcome: str | None = None
 
     @classmethod
     def from_env(cls, environment: Mapping[str, str] | None = None) -> RemoteConfig:
@@ -156,10 +158,25 @@ class RemoteConfig:
             "DINKSTER_REMOTE_GATEWAY_BASE",
         )
         token_file_raw = env.get("DINKSTER_REMOTE_AUTH_TOKEN_FILE", "")
+        selected_environment = env.get("DINKSTER_REMOTE_ENVIRONMENT", "production")
+        partner_mode = env.get("DINKSTER_REMOTE_PARTNER_MODE")
+        fake_outcome = env.get("DINKSTER_REMOTE_FAKE_OUTCOME")
+        if partner_mode not in {None, "fake", "real"}:
+            raise ValueError("DINKSTER_REMOTE_PARTNER_MODE must be fake or real")
+        effective_mode = partner_mode or ("fake" if selected_environment == "qa" else "real")
+        if fake_outcome is not None and (
+            fake_outcome not in {"success", "fail", "timeout", "slow"} or effective_mode != "fake"
+        ):
+            raise ValueError(
+                "DINKSTER_REMOTE_FAKE_OUTCOME requires fake mode and must be success, fail, "
+                "timeout or slow"
+            )
         return cls(
             catalog_base=catalog_base,
             gateway_base=gateway_base,
-            environment=env.get("DINKSTER_REMOTE_ENVIRONMENT", "production"),
+            environment=selected_environment,
+            partner_mode=partner_mode,
+            fake_outcome=fake_outcome,
             cache_path=cache_path_from_env(env),
             token="",
             token_file=Path(token_file_raw) if token_file_raw else None,
@@ -841,7 +858,17 @@ class RemoteRuntime:
                         "resultDelivery": "client",
                         "waitSeconds": 0 if is_video else 30,
                     },
-                    extra_headers={"Idempotency-Key": invocation_key},
+                    extra_headers={
+                        "Idempotency-Key": invocation_key,
+                        **{
+                            name: value
+                            for name, value in (
+                                ("X-Dinkster-Partner-Mode", self.config.partner_mode),
+                                ("X-Dinkster-Fake-Outcome", self.config.fake_outcome),
+                            )
+                            if value is not None
+                        },
+                    },
                     accepted=(200, 202),
                 )
                 document = _json(response, "job submission response")
