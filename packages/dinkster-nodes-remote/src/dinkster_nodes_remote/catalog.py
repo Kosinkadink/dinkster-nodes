@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import tempfile
@@ -176,7 +177,12 @@ class CatalogClient:
         *,
         timeout: float,
         auth_token: Callable[[], str],
+        environment: str = "",
+        gateway_base: str = "",
     ) -> None:
+        self.environment = environment
+        self.gateway_base = gateway_base.rstrip("/")
+        self.environment_error: str | None = None
         self.base_url = base_url.rstrip("/")
         self.timeout = timeout
         self.auth_token = auth_token
@@ -246,11 +252,37 @@ class CatalogClient:
                 log.warning("could not persist the remote catalog cache: %s", exc)
         return snapshot
 
+    def _accept_environment(self, response: httpx.Response) -> None:
+        response.raise_for_status()
+        document = _mapping(self._response_payload(response), "gateway environment")
+        actual = document.get("environment")
+        if actual != self.environment:
+            raise CatalogError(
+                f"Remote nodes disabled: selected {self.environment}, gateway reports {actual!r}"
+            )
+        self.environment_error = None
+
+    def _disable(self, error: Exception) -> CatalogSnapshot:
+        self.environment_error = str(error)
+        self.snapshot = CatalogSnapshot.empty()
+        self.catalog_etag = None
+        self.epoch_etag = None
+        self.observed_epoch = 0
+        log.error("Remote nodes disabled for %s services: %s", self.environment, error)
+        return self.snapshot
+
     def startup(self) -> CatalogSnapshot:
         if not self.base_url:
             return self.snapshot
         try:
             with httpx.Client(timeout=self.timeout) as client:
+                if self.environment:
+                    try:
+                        self._accept_environment(
+                            client.get(f"{self.gateway_base}/.well-known/dinkster-environment")
+                        )
+                    except (CatalogError, httpx.HTTPError, OSError) as exc:
+                        return self._disable(exc)
                 response = client.get(
                     self.nodes_url,
                     params={"wire": str(SCHEMA_WIRE_VERSION)},
@@ -274,6 +306,15 @@ class CatalogClient:
         previous_token = self._token
         try:
             async with httpx.AsyncClient(timeout=self.timeout) as client:
+                if self.environment:
+                    try:
+                        self._accept_environment(
+                            await client.get(
+                                f"{self.gateway_base}/.well-known/dinkster-environment"
+                            )
+                        )
+                    except (CatalogError, httpx.HTTPError, OSError) as exc:
+                        return self._disable(exc)
                 response = await client.get(
                     self.nodes_url,
                     params={"wire": str(SCHEMA_WIRE_VERSION)},
@@ -295,7 +336,7 @@ class CatalogClient:
             return False
         token = self.auth_token()
         # Project policy can change without changing the public catalog epoch.
-        if token or token != self._token:
+        if self.environment or token or token != self._token:
             return True
         headers = {"If-None-Match": self.epoch_etag} if self.epoch_etag else {}
         try:
@@ -318,7 +359,19 @@ class CatalogClient:
 
 def cache_path_from_env(environment: Mapping[str, str]) -> Path | None:
     scratch = environment.get("DINKSTER_PACK_SCRATCH", "")
-    return Path(scratch) / "catalog.json" if scratch else None
+    if not scratch:
+        return None
+    key = hashlib.sha256(
+        json.dumps(
+            [
+                environment.get("DINKSTER_REMOTE_ENVIRONMENT", ""),
+                environment.get("DINKSTER_REMOTE_CATALOG_BASE", ""),
+                environment.get("DINKSTER_REMOTE_GATEWAY_BASE", ""),
+            ],
+            separators=(",", ":"),
+        ).encode()
+    ).hexdigest()
+    return Path(scratch) / f"catalog-{key}.json"
 
 
 __all__ = [
