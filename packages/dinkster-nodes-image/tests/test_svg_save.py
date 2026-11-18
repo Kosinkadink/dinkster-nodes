@@ -203,3 +203,56 @@ def test_svg_save_rejects_invalid_utf8_without_replacing_bytes(tmp_path, monkeyp
         SaveSVGNode.execute(svg=(b"\xff",))
     assert not list(output.rglob("*.svg"))
     assert SaveSVGNode.execute(svg=())["svg"] == ()
+
+
+@pytest.mark.parametrize("disabled", [False, True])
+def test_svg_metadata_preserves_xml_and_honors_disable(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, disabled: bool
+) -> None:
+    from collections import UserDict
+    from xml.etree import ElementTree
+
+    from dinkster_api.v1 import initialize_inference_process
+    from dinkster_image.ported import svg_save
+    from dinkster_inference.cli_args import args
+    from dinkster_schema.reporting import capture_saved_artifacts
+
+    initialize_inference_process()
+    monkeypatch.setattr(args, "disable_metadata", disabled)
+    output = tmp_path / "output"
+    output.mkdir()
+    mounts = tmp_path / "mounts.json"
+    table = MountTable(mounts, index_root=tmp_path / "index")
+    table.add(MountDef("output", output, mode="readwrite"))
+    table.scan("output")
+    table.select_output_mount("output")
+    monkeypatch.setenv("DINKSTER_MOUNTS_SNAPSHOT", str(mounts))
+    prompt = {"seed": 9007199254740993}
+    extra = {
+        "workflow": {"title": "]]>", "nodes": []},
+        "dinkster.modelProvenance": {"caller": "keep"},
+        "dinkster.modelProvenance.1": {"version": 1, "models": [{"name": "same.bin", "size": 31}]},
+    }
+    monkeypatch.setattr(
+        svg_save,
+        "current_export_snapshot",
+        lambda: ExportSnapshot(
+            prompt=UserDict(prompt),
+            extra_pnginfo=extra,
+        ),
+    )
+    source = (b'<svg xmlns="http://www.w3.org/2000/svg"><path d="M1 2L5 1"/></svg>',)
+    with capture_saved_artifacts() as claims:
+        assert SaveSVGNode.execute(svg=source, filename_prefix="vector")["svg"] is source
+    assert len(claims) == 1
+    path = next(output.glob("vector_*.svg"))
+    data = path.read_bytes()
+    root = ElementTree.fromstring(data)
+    assert root.find("{http://www.w3.org/2000/svg}path").attrib == {"d": "M1 2L5 1"}
+    metadata = root.find("{http://www.w3.org/2000/svg}metadata")
+    if disabled:
+        assert metadata is None
+        assert data == source[0]
+    else:
+        assert metadata is not None
+        assert json.loads(metadata.text) == {"prompt": prompt, **extra}

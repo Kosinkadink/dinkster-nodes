@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import importlib
 import json
 import os
 import re
@@ -24,6 +25,7 @@ from dinkster_api.v1 import (
     TypeExpr,
     attach_saved_artifact,
     current_export_snapshot,
+    initialize_inference_process,
     materialize_svg,
     with_identity_replacement,
 )
@@ -74,14 +76,21 @@ class SaveSVGNode(Node):
         if not snapshot:
             raise AssetError("saving requires DINKSTER_MOUNTS_SNAPSHOT")
         writer = AssetWriter(MountSnapshotWriter(snapshot))
-        submitted = current_export_snapshot()
+        initialize_inference_process()
+        submitted = (
+            None
+            if importlib.import_module("dinkster_inference.cli_args").args.disable_metadata
+            else current_export_snapshot()
+        )
         metadata: dict[str, object] = {}
         if submitted is not None:
             if submitted.prompt is not None:
                 metadata["prompt"] = dict(submitted.prompt)
             if submitted.extra_pnginfo is not None:
                 metadata.update(submitted.extra_pnginfo)
-        metadata_json = json.dumps(metadata, indent=2) if metadata else None
+        metadata_json = (
+            json.dumps(metadata, indent=2).replace("]]>", "]]]]><![CDATA[>") if metadata else None
+        )
         element = (
             "  <metadata>\n                <![CDATA[\n            "
             f"{metadata_json}\n                ]]>\n            </metadata>\n            "

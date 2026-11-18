@@ -89,6 +89,11 @@ moving the output. Metadata-disabled or absent snapshots retain the ordinary
 single-file output path and do not add metadata; existing document extensions
 are preserved. No model files are packaged or read to create this metadata.
 
+Save SVG embeds submitted prompt, workflow and model provenance in a JSON-valued
+`metadata` element. XML CDATA delimiters in metadata values are split losslessly,
+so workflow text cannot close the element's CDATA section. The inference
+`disable_metadata` setting leaves the input SVG bytes unchanged.
+
 Structural tensor `LAYERS` values use the existing portable tensor materializer
 before conversion to an image document. The separate-worker transport keeper is
 `tests/test_image_compositor.py::test_pack_compositor_executes_tensor_layers_through_separate_worker`.
