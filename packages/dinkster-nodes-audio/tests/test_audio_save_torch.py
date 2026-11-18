@@ -7,6 +7,7 @@ import json
 import os
 import sys
 import wave
+from collections import UserDict
 from pathlib import Path
 
 import av
@@ -14,7 +15,12 @@ import dinkster_audio.audio_io as audio_io
 import numpy as np
 import pytest
 import torch
-from dinkster_api.v1 import decode_audio, materialize_audio
+from dinkster_api.v1 import (
+    ExportSnapshot,
+    decode_audio,
+    initialize_inference_process,
+    materialize_audio,
+)
 from dinkster_assets import MountDef, MountTable
 from dinkster_audio.audio_save import (
     SaveAudio,
@@ -23,6 +29,7 @@ from dinkster_audio.audio_save import (
     SaveAudioOpus,
 )
 from dinkster_graph import Graph, GraphNode, Link
+from dinkster_protocol import use_export_snapshot
 from dinkster_values import EncodedPayload
 
 from dinkster.compose import PackSpec, ServingComposer
@@ -59,6 +66,7 @@ def _snapshot(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     return root
 
 
+@pytest.mark.parametrize("disabled", (False, True))
 @pytest.mark.parametrize(
     ("node", "kwargs", "suffix", "rate"),
     (
@@ -76,13 +84,31 @@ def test_save_audio_writes_each_asymmetric_stereo_batch_and_passes_through_audio
     kwargs: dict[str, str],
     suffix: str,
     rate: int,
+    disabled: bool,
 ) -> None:
+    from dinkster_inference.cli_args import args
+
+    initialize_inference_process()
+    monkeypatch.setattr(args, "disable_metadata", disabled)
     root = _snapshot(tmp_path, monkeypatch)
     audio = _audio()
     original = audio["waveform"].clone()
-    result = node.execute(
-        audio=audio, filename_prefix="audio/%batch_num%/clip", mount="output", **kwargs
-    )
+    prompt = {"save": {"class_type": node.__name__}}
+    extra = {
+        "workflow": {"nodes": [{"id": 9, "title": "audio source"}]},
+        "dinkster.modelProvenance": {
+            "version": 1,
+            "models": [
+                {"name": "same.bin", "digest": "blake3:" + "13" * 32, "size": 17},
+                {"name": "same.bin", "digest": "blake3:" + "ab" * 32, "size": 29},
+            ],
+        },
+        "dinkster.modelProvenance.2": {"caller": "preserved"},
+    }
+    with use_export_snapshot(ExportSnapshot(prompt=UserDict(prompt), extra_pnginfo=extra)):
+        result = node.execute(
+            audio=audio, filename_prefix="audio/%batch_num%/clip", mount="output", **kwargs
+        )
     assert result["audio"] is audio
     assert torch.equal(audio["waveform"], original)
     paths = sorted(root.glob("audio/*/clip_*." + suffix.removeprefix(".")))
@@ -95,6 +121,13 @@ def test_save_audio_writes_each_asymmetric_stereo_batch_and_passes_through_audio
             stream = container.streams.audio[0]
             assert stream.codec_context.sample_rate == rate
             assert stream.channels == 2
+            tags = {**container.metadata, **stream.metadata}
+            tags = {key.lower(): value for key, value in tags.items()}
+            expected = {"prompt": prompt, **extra}
+            if disabled:
+                assert not {key.lower() for key in expected} & tags.keys()
+            else:
+                assert {key: json.loads(tags[key.lower()]) for key in expected} == expected
         assert path.read_bytes() == source
     assert paths[0].resolve().is_relative_to(root.resolve())
 
@@ -200,7 +233,22 @@ def test_audio_load_preview_and_saves_through_native_hosts(
             graph = Graph(nodes=nodes)
             engine = composer.composition.make_engine(lambda _event: None)
             for attempt in range(2):
-                result = await engine.run(graph, ["flac", "mp3", "opus", "advanced"])
+                before = set(output.glob("audio/*_[0-9]*.*"))
+                prompt = {"attempt": attempt}
+                extra = {"dinkster.modelProvenance": {"version": 1, "models": [], "run": attempt}}
+                result = await engine.run(
+                    graph,
+                    ["flac", "mp3", "opus", "advanced"],
+                    export_snapshot=ExportSnapshot(prompt=UserDict(prompt), extra_pnginfo=extra),
+                )
+                saved_paths = set(output.glob("audio/*_[0-9]*.*")) - before
+                assert len(saved_paths) == 4
+                for saved in saved_paths:
+                    with av.open(saved) as container:
+                        tags = {**container.metadata, **container.streams.audio[0].metadata}
+                        tags = {key.lower(): value for key, value in tags.items()}
+                        expected = {"prompt": prompt, **extra}
+                        assert {key: json.loads(tags[key.lower()]) for key in expected} == expected
                 payload = result.outputs["advanced"]["audio"].payload
                 audio = materialize_audio(
                     decode_audio(payload.data)

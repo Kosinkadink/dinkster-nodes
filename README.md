@@ -35,6 +35,17 @@ Hosted pull-request and main checks use the same locked workspace. Root and
 package tests each run in four disjoint file shards, with each package in its
 own pytest process. Shader tests use the CPU software renderer.
 
+## Audio output metadata
+
+Audio saves in FLAC, MP3 and Opus retain the submitted export snapshot as
+JSON-valued tags, including workflow and model provenance when supplied by the
+host. Readers must check container and audio-stream tags case-insensitively;
+Opus stores these tags on the audio stream. Model provenance describes known
+admission-time selections, not proof of runtime use or provider permission.
+The inference `disable_metadata` setting suppresses these tags.
+
+## Pack publication
+
 Building or testing a pack does not submit it to the public registry.
 Pull requests, merge groups and forks cannot publish.
 

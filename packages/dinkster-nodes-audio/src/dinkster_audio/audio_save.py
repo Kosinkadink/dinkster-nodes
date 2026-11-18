@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib
+import json
 import os
 import tempfile
 from collections.abc import Mapping
@@ -28,6 +29,7 @@ from dinkster_api.v1 import (
     StringWidget,
     TypeExpr,
     attach_saved_artifact,
+    current_export_snapshot,
     initialize_inference_process,
     materialize_audio,
     with_identity_replacement,
@@ -98,6 +100,17 @@ def _save_audio(
             )
         sample_rate = encoded_rate
 
+    submitted = (
+        None
+        if importlib.import_module("dinkster_inference.cli_args").args.disable_metadata
+        else current_export_snapshot()
+    )
+    metadata: dict[str, str] = {}
+    if submitted is not None:
+        if submitted.prompt is not None:
+            metadata["prompt"] = json.dumps(dict(submitted.prompt))
+        for key, item in (submitted.extra_pnginfo or {}).items():
+            metadata[key] = json.dumps(item)
     av: Any = importlib.import_module("av")
     writer = _writer()
     codec = {"flac": "flac", "mp3": "libmp3lame", "opus": "libopus"}[format]
@@ -109,6 +122,7 @@ def _save_audio(
         layout = "mono" if clip.shape[0] == 1 else "stereo"
         with tempfile.TemporaryFile() as output:
             with av.open(output, mode="w", format=format) as container:
+                container.metadata.update(metadata)
                 stream = container.add_stream(codec, rate=sample_rate, layout=layout)
                 if quality in _BIT_RATES:
                     stream.bit_rate = _BIT_RATES[quality]
