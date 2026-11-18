@@ -62,6 +62,10 @@ Receipts expose `installedSnapshot` and `build.json`; `installedGeneration` and
 `generation.json` remain available for existing receipt readers. Wire format
 identifiers and runtime `generation` fields remain unchanged.
 
+The pack builder and selected-test runner accept `--snapshot-python`.
+Their existing `--generation-python` spelling remains an alias for automation;
+both select the same interpreter. Admission runtime paths remain unchanged.
+
 ## Registry publisher credentials
 
 First-party packs use the same self-service credentials as third-party packs.

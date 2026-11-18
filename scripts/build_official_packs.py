@@ -358,7 +358,9 @@ if __name__ == "__main__":
     parser.add_argument("--pack", action="append", default=[], help="Exact official pack id")
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--variant")
-    parser.add_argument("--generation-python", type=Path)
+    parser.add_argument(
+        "--snapshot-python", "--generation-python", dest="generation_python", type=Path
+    )
     parser.add_argument("--constraints", type=Path)
     parser.add_argument("--index", action="append", default=[])
     parser.add_argument("--find-links", type=Path, action="append", default=[])
