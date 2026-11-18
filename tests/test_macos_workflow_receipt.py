@@ -138,6 +138,7 @@ class MacWorkflowReceiptTests(unittest.TestCase):
         for device, state, cached, foreign in (
             ("mps", "completed", [], None),
             ("mps", "completed", [], "legacy-layout"),
+            ("mps", "completed", [], "missing-build"),
             ("cpu", "completed", [], None),
             ("mps", "failed", [], None),
             ("mps", "completed", ["sampler"], None),
@@ -174,6 +175,11 @@ class MacWorkflowReceiptTests(unittest.TestCase):
                 starter = root / "starter.json"
                 starter.write_bytes(STARTER_BYTES)
                 status = installed_status(root, legacy=foreign == "legacy-layout")
+                if foreign == "missing-build":
+                    metadata = root / "project/builds/2/build.json"
+                    stale = root / "project/generations/2/generation.json"
+                    stale.parent.mkdir(parents=True)
+                    metadata.rename(stale)
                 output = root / "receipt"
                 retained_grant = foreign == "retained-grant" or str(foreign).startswith("artifact-")
                 images = root / "retained-images" if retained_grant else output / "images"
@@ -393,10 +399,18 @@ class MacWorkflowReceiptTests(unittest.TestCase):
                 ):
                     if success:
                         receipt.main()
+                    elif foreign == "missing-build":
+                        with self.assertRaises(FileNotFoundError):
+                            receipt.main()
                     else:
                         with self.assertRaises(RuntimeError):
                             receipt.main()
                 report = json.loads((output / "receipt.json").read_text())
+                if foreign == "missing-build":
+                    self.assertEqual(report["status"], "failed")
+                    self.assertIn("build.json", report["error"])
+                    self.assertEqual(submitted, [])
+                    continue
                 if retained_grant:
                     self.assertEqual((images / "old.png").read_bytes(), b"preserved old output")
                 if mount_failure:
