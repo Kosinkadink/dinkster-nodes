@@ -76,6 +76,19 @@ otherwise execution reports stale state and renders the native placements.
 Rendering supports per-layer previews, transparency masks, transforms, 20
 blend modes, and perceptual or linear-light color math.
 
+Save Layers retains the submitted `ExportSnapshot` without changing its input
+document or rendered pixels. Native JSON and ORA store `prompt` and
+`extraPnginfo` as JSON text in `extensions.dinkster.exportSnapshot.json`,
+so large integer seeds remain exact. A numbered suffix on `dinkster.exportSnapshot`
+preserves any existing key. PSD cannot carry that native extension, so it saves
+`document.psd` beside readable `document.psd.metadata.json` in a collision-free
+directory named from the selected output prefix. Both files are reported as
+saved artifacts. The sidecar has the same `prompt` and `extraPnginfo` fields,
+including submitted workflow and model provenance. Keep it beside the PSD when
+moving the output. Metadata-disabled or absent snapshots retain the ordinary
+single-file output path and do not add metadata; existing document extensions
+are preserved. No model files are packaged or read to create this metadata.
+
 Structural tensor `LAYERS` values use the existing portable tensor materializer
 before conversion to an image document. The separate-worker transport keeper is
 `tests/test_image_compositor.py::test_pack_compositor_executes_tensor_layers_through_separate_worker`.

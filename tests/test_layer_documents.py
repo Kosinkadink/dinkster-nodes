@@ -9,7 +9,14 @@ from typing import Any, cast
 
 import numpy as np
 import pytest
-from dinkster_api.v1 import Node, NodeSchema, OutputSpec, TypeExpr, register_media_types
+from dinkster_api.v1 import (
+    ExportSnapshot,
+    Node,
+    NodeSchema,
+    OutputSpec,
+    TypeExpr,
+    register_media_types,
+)
 from dinkster_caches import MemoryLRUCache
 from dinkster_engine import Engine, ExecutionRuntime
 from dinkster_graph import Graph, GraphNode, Link, TypedLiteral
@@ -299,7 +306,9 @@ class LayerNodeSource(Node):
         )
 
 
-def execute_graph_node(node: type[Node], inputs: dict[str, object]) -> dict[str, object]:
+def execute_graph_node(
+    node: type[Node], inputs: dict[str, object], *, export_snapshot: ExportSnapshot | None = None
+) -> dict[str, object]:
     registry = TypeRegistry()
     register_core_types(registry)
     register_media_types(registry)
@@ -325,7 +334,7 @@ def execute_graph_node(node: type[Node], inputs: dict[str, object]) -> dict[str,
 
     async def run() -> dict[str, object]:
         graph = Graph(nodes={"node": GraphNode(node.define_schema().node_type, inputs)})
-        result = await engine.run(graph, ["node"])
+        result = await engine.run(graph, ["node"], export_snapshot=export_snapshot)
         return {name: value.resolve() for name, value in result.outputs["node"].items()}
 
     return run_scenario(run())
@@ -692,6 +701,91 @@ def test_layer_file_nodes(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, forma
     if format != "psd":
         assert loaded.data == value.data
     assert loaded.render().png == value.render().png
+
+
+@pytest.mark.parametrize("format", ["native", "ora", "psd"])
+@pytest.mark.parametrize("disabled", [False, True])
+def test_layer_exports_retain_snapshot_without_mutating_layers(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, format: str, disabled: bool
+) -> None:
+    from collections import UserDict
+
+    from dinkster_api.v1 import ExportSnapshot, initialize_inference_process
+    from dinkster_assets import AssetRef, MountDef, MountTable
+    from dinkster_inference.cli_args import args
+
+    initialize_inference_process()
+    monkeypatch.setattr(args, "disable_metadata", disabled)
+    output = tmp_path / "output"
+    output.mkdir()
+    snapshot = tmp_path / "mounts.json"
+    table = MountTable(snapshot, index_root=tmp_path / "index")
+    table.add(MountDef("output", output, mode="readwrite"))
+    table.scan("output")
+    monkeypatch.setenv("DINKSTER_MOUNTS_SNAPSHOT", str(snapshot))
+    record = document().to_record()
+    record["extensions"] = {"dinkster.exportSnapshot": {"caller": "keep"}}
+    value = ImageDocument.from_record(record)
+    original = value.data
+    saved_files: dict[Path, bytes] = {}
+    for attempt in range(2):
+        prompt = {"attempt": attempt, "seed": 9007199254740993 + attempt}
+        extra = {
+            "workflow": {"nodes": [{"id": 7, "title": "layer source"}]},
+            "dinkster.modelProvenance": {"caller": "keep"},
+            "dinkster.modelProvenance.1": {
+                "version": 1,
+                "models": [
+                    {
+                        "nodePath": ["loader"],
+                        "input": "model",
+                        "kind": "model/checkpoint",
+                        "name": "same.bin",
+                        "size": 17 + attempt,
+                        "digest": "blake3:" + str(attempt + 1) * 64,
+                    }
+                ],
+            },
+        }
+        ref = cast(
+            AssetRef,
+            execute_graph_node(
+                SaveLayers,
+                {
+                    "layers": TypedLiteral("dinkster.layers", value.to_record()),
+                    "target": {"mount": "output", "prefix": "nested/layers"},
+                    "format": format,
+                },
+                export_snapshot=ExportSnapshot(prompt=UserDict(prompt), extra_pnginfo=extra),
+            )["document"],
+        )
+        path = output / ref.virtual_path.removeprefix("mounts/output/")
+        data = path.read_bytes()
+        loaded = load_document(data)
+        assert loaded.render().png == value.render().png
+        assert value.data == original
+        expected = {"prompt": prompt, "extraPnginfo": extra}
+        if format == "psd":
+            sidecar = path.with_name(path.name + ".metadata.json")
+            if disabled:
+                assert not sidecar.exists()
+            else:
+                assert json.loads(sidecar.read_text("utf-8")) == expected
+                saved_files[sidecar] = sidecar.read_bytes()
+        else:
+            extensions = loaded.to_record()["extensions"]
+            assert extensions["dinkster.exportSnapshot"] == {"caller": "keep"}
+            if disabled:
+                assert "dinkster.exportSnapshot.1" not in extensions
+            else:
+                assert json.loads(extensions["dinkster.exportSnapshot.1"]["json"]) == expected
+        for old_path, old_bytes in saved_files.items():
+            assert old_path.read_bytes() == old_bytes
+        assert path not in saved_files
+        saved_files[path] = data
+    assert len(list(output.rglob("*.metadata.json"))) == (
+        2 if format == "psd" and not disabled else 0
+    )
 
 
 @pytest.mark.parametrize(
