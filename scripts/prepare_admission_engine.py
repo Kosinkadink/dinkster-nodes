@@ -33,7 +33,7 @@ def prepare_engine(
     *,
     engine_identity: str,
 ) -> Path:
-    """Use published artifacts and the supervisor's verified generation constructor."""
+    """Use published artifacts and the supervisor's verified snapshot constructor."""
     engine_data = (release / "release-manifest.json").read_bytes()
     engine: dict = validate_manifest(engine_data, engine_identity, None)
     if engine["repository"] != "Kosinkadink/Dinkster":
@@ -150,7 +150,7 @@ def read_runtime(output: Path, engine_identity: str) -> tuple[Path, str, Path, s
     python = interpreter(output / "generation")
     constraints = output / "generation/constraints.txt"
     if str(python) != runtime["python"] or str(constraints) != runtime["constraints"]:
-        raise ValueError("admission runtime paths differ from its generation")
+        raise ValueError("admission runtime paths differ from its snapshot")
     if content_digest(constraints) != runtime["constraintsSha256"]:
         raise ValueError("admission runtime constraints changed")
     facts = GenerationPackages.inspect(python)

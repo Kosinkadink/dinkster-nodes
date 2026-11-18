@@ -42,15 +42,17 @@ SCHEMAS = {
 CATALOG = {"nodes": {name: schema_to_wire(schema) for name, schema in SCHEMAS.items()}}
 
 
-def installed_status(root, commit=STARTER_COMMIT):
+def installed_status(root, commit=STARTER_COMMIT, *, legacy=False):
     project = root / "project"
-    generation = project / "generations/2"
+    generation = project / ("generations/2" if legacy else "builds/2")
     generation.mkdir(parents=True)
+    if not legacy:
+        (project / "environment.json").write_text("{}\n")
     manifest = json.dumps({"format": "dinkster.engine/1", "commit": commit}).encode()
     digest = hashlib.sha256(manifest).hexdigest()
     (root / "release-manifest.json").write_bytes(manifest)
     (project / "current").write_text("2\n")
-    (generation / "generation.json").write_text(
+    (generation / ("generation.json" if legacy else "build.json")).write_text(
         json.dumps(
             {
                 "format": "dinkster.generation/1",
@@ -135,6 +137,8 @@ class MacWorkflowReceiptTests(unittest.TestCase):
     def test_receipt_requires_completed_uncached_mps_job_and_saved_bytes(self):
         for device, state, cached, foreign in (
             ("mps", "completed", [], None),
+            ("mps", "completed", [], "legacy-layout"),
+            ("mps", "completed", [], "missing-build"),
             ("cpu", "completed", [], None),
             ("mps", "failed", [], None),
             ("mps", "completed", ["sampler"], None),
@@ -170,7 +174,12 @@ class MacWorkflowReceiptTests(unittest.TestCase):
                 checkpoint.write_bytes(b"test checkpoint")
                 starter = root / "starter.json"
                 starter.write_bytes(STARTER_BYTES)
-                status = installed_status(root)
+                status = installed_status(root, legacy=foreign == "legacy-layout")
+                if foreign == "missing-build":
+                    metadata = root / "project/builds/2/build.json"
+                    stale = root / "project/generations/2/generation.json"
+                    stale.parent.mkdir(parents=True)
+                    metadata.rename(stale)
                 output = root / "receipt"
                 retained_grant = foreign == "retained-grant" or str(foreign).startswith("artifact-")
                 images = root / "retained-images" if retained_grant else output / "images"
@@ -225,7 +234,8 @@ class MacWorkflowReceiptTests(unittest.TestCase):
                     device == "mps"
                     and state == "completed"
                     and not cached
-                    and foreign in (None, "mount-fresh", "mount-race", "retained-grant")
+                    and foreign
+                    in (None, "legacy-layout", "mount-fresh", "mount-race", "retained-grant")
                 )
                 clock = iter(range(0, 10000, 301 if foreign == "mount-timeout" else 1))
 
@@ -389,10 +399,18 @@ class MacWorkflowReceiptTests(unittest.TestCase):
                 ):
                     if success:
                         receipt.main()
+                    elif foreign == "missing-build":
+                        with self.assertRaises(FileNotFoundError):
+                            receipt.main()
                     else:
                         with self.assertRaises(RuntimeError):
                             receipt.main()
                 report = json.loads((output / "receipt.json").read_text())
+                if foreign == "missing-build":
+                    self.assertEqual(report["status"], "failed")
+                    self.assertIn("build.json", report["error"])
+                    self.assertEqual(submitted, [])
+                    continue
                 if retained_grant:
                     self.assertEqual((images / "old.png").read_bytes(), b"preserved old output")
                 if mount_failure:
@@ -435,7 +453,12 @@ class MacWorkflowReceiptTests(unittest.TestCase):
                     self.assertTrue((output / "memory-status.json").is_file())
                     self.assertTrue(report["installedStatusMatched"])
                     self.assertEqual(report["installedCommit"], STARTER_COMMIT)
+                    self.assertEqual(report["installedSnapshot"], 2)
                     self.assertEqual(report["installedGeneration"], 2)
+                    self.assertEqual(
+                        (output / "build.json").read_bytes(),
+                        (output / "generation.json").read_bytes(),
+                    )
                     self.assertNotIn(
                         "not-public",
                         "".join(path.read_text() for path in output.glob("*.json")),

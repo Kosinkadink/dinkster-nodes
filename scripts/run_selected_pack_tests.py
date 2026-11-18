@@ -528,7 +528,13 @@ if __name__ == "__main__":
     parser.add_argument("root", type=Path)
     parser.add_argument("catalog", type=Path)
     parser.add_argument("artifacts", type=Path)
-    parser.add_argument("--generation-python", type=Path, required=True)
+    parser.add_argument(
+        "--snapshot-python",
+        "--generation-python",
+        dest="generation_python",
+        type=Path,
+        required=True,
+    )
     parser.add_argument("--locks", type=Path, required=True)
     parser.add_argument("--variant", default="linux-cpu")
     parser.add_argument(

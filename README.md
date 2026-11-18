@@ -52,6 +52,20 @@ This repository is the only publisher of these packs. The engine does not
 publish them; the two repositories must never publish the same pack name
 concurrently.
 
+## Installed environment receipts
+
+`tools/macos_workflow_receipt.py` reads the active snapshot from
+`builds/N/build.json` when the install root has `environment.json`. Historical
+roots without that marker still use `generations/N/generation.json`. A migrated
+root never falls back to legacy metadata when its build record is missing.
+Receipts expose `installedSnapshot` and `build.json`; `installedGeneration` and
+`generation.json` remain available for existing receipt readers. Wire format
+identifiers and runtime `generation` fields remain unchanged.
+
+The pack builder and selected-test runner accept `--snapshot-python`.
+Their existing `--generation-python` spelling remains an alias for automation;
+both select the same interpreter. Admission runtime paths remain unchanged.
+
 ## Registry publisher credentials
 
 First-party packs use the same self-service credentials as third-party packs.
