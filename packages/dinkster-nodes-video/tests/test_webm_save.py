@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from collections import UserDict
 from pathlib import Path
 from typing import Any
 
@@ -53,21 +54,44 @@ def _images(*, channels: int = 3, width: int = 24, height: int = 16) -> np.ndarr
 
 
 @pytest.mark.parametrize("channels", (3, 4))
+@pytest.mark.parametrize(
+    ("disabled", "absent_prompt"), [(False, False), (False, True), (True, False)]
+)
 def test_save_webm_vp9_preserves_frames_metadata_source_and_mount(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, channels: int
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    channels: int,
+    disabled: bool,
+    absent_prompt: bool,
 ) -> None:
+    from dinkster_api.v1 import initialize_inference_process
+    from dinkster_inference.cli_args import args
     from dinkster_video import webm_save
 
+    initialize_inference_process()
+    monkeypatch.setattr(args, "disable_metadata", disabled)
     default, alternate, _ = _mounts(tmp_path, monkeypatch)
     images = _images(channels=channels)
     original = images.copy()
-    prompt = {"4": {"class_type": "SaveWEBM", "inputs": {"fps": 3.125}}}
+    prompt = {"4": {"class_type": "SaveWEBM", "inputs": {"fps": 3.125, "seed": 9007199254740993}}}
     workflow = {"nodes": [{"id": 4, "type": "SaveWEBM"}], "opaque": [False, {"n": 2}]}
-    monkeypatch.setattr(
-        webm_save,
-        "current_export_snapshot",
-        lambda: ExportSnapshot(prompt=prompt, extra_pnginfo={"workflow": workflow, "flag": False}),
-    )
+    extra = {
+        "workflow": workflow,
+        "flag": False,
+        "dinkster.modelProvenance": {"caller": "keep"},
+        "dinkster.modelProvenance.1": {"version": 1, "models": [{"name": "same.bin", "size": 29}]},
+    }
+
+    if absent_prompt:
+        extra["prompt"] = {"caller": "keep"}
+
+    def snapshot() -> ExportSnapshot:
+        assert not disabled, "disabled metadata must not read the export snapshot"
+        return ExportSnapshot(
+            prompt=None if absent_prompt else UserDict(prompt), extra_pnginfo=extra
+        )
+
+    monkeypatch.setattr(webm_save, "current_export_snapshot", snapshot)
 
     result = SaveWEBM.execute(
         images=images,
@@ -85,11 +109,10 @@ def test_save_webm_vp9_preserves_frames_metadata_source_and_mount(
     assert len(paths) == 1
     with av.open(paths[0]) as container:
         tags = {name.lower(): value for name, value in container.metadata.items()}
-        assert {name: json.loads(tags[name]) for name in ("prompt", "workflow", "flag")} == {
-            "prompt": prompt,
-            "workflow": workflow,
-            "flag": False,
-        }
+        expected = {"prompt": prompt, **{key.lower(): value for key, value in extra.items()}}
+        assert {key: json.loads(tags[key]) for key in expected if key in tags} == (
+            {} if disabled else expected
+        )
         stream = container.streams.video[0]
         assert stream.codec_context.name == "vp9"
         assert (stream.width, stream.height) == (24, 16)

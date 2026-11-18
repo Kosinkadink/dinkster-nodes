@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from collections import UserDict
 from pathlib import Path
 from typing import Any
 
@@ -56,36 +57,67 @@ def _video() -> object:
 
 def _tags(path: Path) -> tuple[dict[str, object], Any, int]:
     with av.open(path) as container:
+        raw = {name.lower(): value for name, value in container.metadata.items()}
         tags = {
-            name: json.loads(container.metadata[name])
-            for name in ("prompt", "workflow")
-            if name in container.metadata
+            name: json.loads(raw[name])
+            for name in (
+                "prompt",
+                "workflow",
+                "dinkster.modelprovenance",
+                "dinkster.modelprovenance.1",
+            )
+            if name in raw
         }
         stream = container.streams.video[0]
         return tags, stream, len(list(container.decode(stream)))
 
 
+@pytest.mark.parametrize("format", ["mp4", "mkv"])
+@pytest.mark.parametrize(
+    ("disabled", "absent_prompt"), [(False, False), (False, True), (True, False)]
+)
 def test_save_video_writes_selected_mount_metadata_and_original_video(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    format: str,
+    disabled: bool,
+    absent_prompt: bool,
 ) -> None:
+    from dinkster_api.v1 import initialize_inference_process
+    from dinkster_inference.cli_args import args
     from dinkster_video import video_save
 
+    initialize_inference_process()
+    monkeypatch.setattr(args, "disable_metadata", disabled)
     default, alternate, _ = _mounts(tmp_path, monkeypatch)
     video = _video()
-    prompt = {"4": {"class_type": "SaveVideo", "inputs": {"format": "mp4"}}}
+    prompt = {
+        "4": {"class_type": "SaveVideo", "inputs": {"format": format, "seed": 9007199254740993}}
+    }
     workflow = {"nodes": [{"id": 4, "type": "SaveVideo"}]}
-    monkeypatch.setattr(
-        video_save,
-        "current_export_snapshot",
-        lambda: ExportSnapshot(prompt=prompt, extra_pnginfo={"workflow": workflow}),
-    )
+    extra = {
+        "workflow": workflow,
+        "dinkster.modelProvenance": {"caller": "keep"},
+        "dinkster.modelProvenance.1": {"version": 1, "models": [{"name": "same.bin", "size": 23}]},
+    }
+
+    if absent_prompt:
+        extra["prompt"] = {"caller": "keep"}
+
+    def snapshot() -> ExportSnapshot:
+        assert not disabled, "disabled metadata must not read the export snapshot"
+        return ExportSnapshot(
+            prompt=None if absent_prompt else UserDict(prompt), extra_pnginfo=extra
+        )
+
+    monkeypatch.setattr(video_save, "current_export_snapshot", snapshot)
 
     assert (
         SaveVideo.execute(
             video=video,
             filename_prefix="video/%width%x%height%/clip",
             format={
-                "format": "mp4",
+                "format": format,
                 "codec": {"codec": "h264", "encoding": {"crf": 18.0}},
             },
             mount="alternate",
@@ -93,13 +125,14 @@ def test_save_video_writes_selected_mount_metadata_and_original_video(
         is video
     )
     assert not list(default.rglob("*"))
-    files = list(alternate.glob("video/24x16/clip_*.mp4"))
+    files = list(alternate.glob(f"video/24x16/clip_*.{format}"))
     assert len(files) == 1
     tags, stream, frame_count = _tags(files[0])
-    assert {name: tags[name] for name in ("prompt", "workflow")} == {
-        "prompt": prompt,
-        "workflow": workflow,
-    }
+    assert tags == (
+        {}
+        if disabled
+        else {"prompt": prompt, **{key.lower(): value for key, value in extra.items()}}
+    )
     assert stream.codec_context.name == "h264"
     assert (stream.width, stream.height) == (24, 16)
     assert float(stream.average_rate) == 4.0

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import importlib
 import os
 from collections.abc import Mapping
 from typing import BinaryIO, cast
@@ -28,6 +29,7 @@ from dinkster_api.v1 import (
     bind_video_value,
     current_export_snapshot,
     effective_video_facts,
+    initialize_inference_process,
     resolver_from_env,
     save_video_stream,
     with_identity_replacement,
@@ -197,10 +199,17 @@ class SaveVideo(Node):
             image_width=cast(int, facts["width"]),
             image_height=cast(int, facts["height"]),
         )
-        submitted = current_export_snapshot()
+        initialize_inference_process()
+        submitted = (
+            None
+            if importlib.import_module("dinkster_inference.cli_args").args.disable_metadata
+            else current_export_snapshot()
+        )
         metadata = None
         if submitted is not None:
-            metadata = {**(submitted.extra_pnginfo or {}), "prompt": submitted.prompt}
+            metadata = dict(submitted.extra_pnginfo or {})
+            if submitted.prompt is not None:
+                metadata["prompt"] = dict(submitted.prompt)
         with EncodedVideoSpool() as encoded:
             suffix, mime = save_video_stream(
                 value,

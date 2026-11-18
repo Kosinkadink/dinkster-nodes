@@ -44,6 +44,15 @@ Opus stores these tags on the audio stream. Model provenance describes known
 admission-time selections, not proof of runtime use or provider permission.
 The inference `disable_metadata` setting suppresses these tags.
 
+## Video output metadata
+
+Save Video and Save WEBM retain supplied prompt, workflow and model provenance
+in container tags. Prompt mappings are serialized as JSON objects, including
+large integer seeds. Readers should match tag names case-insensitively because
+Matroska and WEBM normalize their case. The inference `disable_metadata` setting
+suppresses newly submitted tags without removing metadata already in source
+media. No model bytes are read to create these tags.
+
 ## Pack publication
 
 Building or testing a pack does not submit it to the public registry.

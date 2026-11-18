@@ -31,6 +31,7 @@ from dinkster_api.v1 import (
     attach_saved_artifact,
     current_export_snapshot,
     image_input,
+    initialize_inference_process,
     with_identity_replacement,
 )
 
@@ -135,9 +136,15 @@ class SaveWEBM(Node):
         save_alpha = pixels.shape[-1] == 4 and codec == "vp9"
         with EncodedVideoSpool() as encoded:
             with av.open(encoded, "w", format="webm") as container:
-                submitted = current_export_snapshot()
+                initialize_inference_process()
+                submitted = (
+                    None
+                    if importlib.import_module("dinkster_inference.cli_args").args.disable_metadata
+                    else current_export_snapshot()
+                )
                 if submitted is not None:
-                    container.metadata["prompt"] = json.dumps(submitted.prompt)
+                    if submitted.prompt is not None:
+                        container.metadata["prompt"] = json.dumps(dict(submitted.prompt))
                     for name, value in (submitted.extra_pnginfo or {}).items():
                         container.metadata[name] = json.dumps(value)
                 stream = container.add_stream(
