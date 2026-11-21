@@ -66,7 +66,7 @@ def _snapshot(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
         (SaveAudioMP3, {"quality": "320k"}, ".mp3", 22_050),
         (SaveAudioOpus, {}, ".opus", 48_000),
         (SaveAudioOpus, {"quality": "96k"}, ".opus", 48_000),
-        (SaveAudioAdvanced, {"format": "opus", "quality": "192k"}, ".opus", 48_000),
+        (SaveAudioAdvanced, {"format": "opus", "format.quality": "192k"}, ".opus", 48_000),
     ),
 )
 def test_save_audio_writes_each_asymmetric_stereo_batch_and_passes_through_audio(

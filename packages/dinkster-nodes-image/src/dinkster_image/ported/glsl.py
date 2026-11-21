@@ -596,7 +596,21 @@ class NativeGlslShader(Node):
         ints: Mapping[str, object] | None = None,
         bools: Mapping[str, object] | None = None,
         curves: Mapping[str, object] | None = None,
+        **size_values: object,
     ) -> Mapping[str, object]:
+        nested_width = size_values.pop("size_mode.width", width)
+        nested_height = size_values.pop("size_mode.height", height)
+        if type(nested_width) is not int:
+            raise TypeError("size_mode.width must be an integer")
+        if type(nested_height) is not int:
+            raise TypeError("size_mode.height must be an integer")
+        width = nested_width
+        height = nested_height
+        if size_values:
+            unexpected = next(iter(size_values))
+            raise TypeError(
+                f"NativeGlslShader.execute() got an unexpected keyword argument {unexpected!r}"
+            )
         normalized: dict[str, dict[str, object]] = {}
         for family, values, prefix, maximum, default in (
             ("images", images, "image", MAX_GLSL_IMAGES, None),

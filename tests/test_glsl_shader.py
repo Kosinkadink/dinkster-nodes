@@ -6,7 +6,7 @@ import os
 import subprocess
 from collections.abc import Mapping
 from pathlib import Path
-from typing import BinaryIO, cast
+from typing import Any, BinaryIO, cast
 
 import numpy as np
 import pytest
@@ -17,6 +17,8 @@ from dinkster_image.glsl import (
     GLSL_NODES,
     GlslShader,
 )
+from dinkster_image.ported import glsl as native_glsl_module
+from dinkster_image.ported.glsl import NativeGlslShader
 from dinkster_schema import use_reporter
 from numpy.lib.format import write_array_header_1_0
 
@@ -120,6 +122,29 @@ def test_execute_projects_exact_uniforms_previews_and_child_request(
         "bools": {"u_bool0": True},
         "curves": {"u_curve0": pytest.approx(np.linspace(0, 1, 256).tolist())},
     }
+
+
+def test_native_execute_accepts_nested_custom_size_keywords(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    captured: dict[str, object] = {}
+
+    def execute_glsl(**kwargs: object) -> dict[str, np.ndarray]:
+        captured.update(kwargs)
+        return {f"image{index}": output for index, output in enumerate(_outputs(1, 4, 5))}
+
+    monkeypatch.setattr(native_glsl_module, "_execute_glsl", execute_glsl)
+    nested_size_values: dict[str, Any] = {"size_mode.width": 5, "size_mode.height": 4}
+
+    result = NativeGlslShader.execute(
+        size_mode="custom",
+        images={"image0": _image()},
+        **nested_size_values,
+    )
+
+    assert captured["width"] == 5
+    assert captured["height"] == 4
+    assert list(result) == ["IMAGE0", "IMAGE1", "IMAGE2", "IMAGE3"]
 
 
 @pytest.mark.parametrize(

@@ -365,7 +365,18 @@ class SaveAudioAdvanced(Node):
         format: str,
         mount: str | None = None,
         quality: str | None = None,
+        **option_values: object,
     ) -> Mapping[str, object]:
+        nested_quality = option_values.pop("format.quality", quality)
+        if nested_quality is None or isinstance(nested_quality, str):
+            quality = nested_quality
+        else:
+            raise TypeError("format.quality must be a string")
+        if option_values:
+            unexpected = next(iter(option_values))
+            raise TypeError(
+                f"SaveAudioAdvanced.execute() got an unexpected keyword argument {unexpected!r}"
+            )
         if format not in _FORMATS:
             raise ValueError(f"Unsupported audio format: {format!r}")
         if format == "mp3" and quality not in _MP3_QUALITIES:
