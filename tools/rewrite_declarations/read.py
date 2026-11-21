@@ -15,7 +15,10 @@ new engine no longer imports them.
 
 from __future__ import annotations
 
+import ast
 import dataclasses
+import importlib
+import inspect
 import json
 import re
 import sys
@@ -23,7 +26,8 @@ from collections import Counter, defaultdict
 from pathlib import Path
 from typing import Any
 
-from tools.node_interface import load_nodes
+from tools.node_interface import ROOT, load_nodes
+from tools.rewrite_declarations import sites
 
 ID = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
 
@@ -119,10 +123,14 @@ def _widget_findings(path: str, widget: Any, out: list[Finding]) -> None:
         out.append(Finding(path, "option_source", "", "stop"))
 
 
+ROW_SITES: dict[str, str] = {}
+
+
 def read_entries(entries: Any, prefix: str, scope: str, out: list[Finding]) -> None:
     for entry in entries:
         name = type(entry).__name__
         path = prefix + entry.id
+        ROW_SITES.setdefault(path, sites.site(entry))
         if not ID.fullmatch(entry.id) and not (name == "InputSpec" and "." in entry.id):
             out.append(Finding(path, f"id {entry.id!r}", "", "stop"))
         if name == "InputSpec":
@@ -268,6 +276,7 @@ def read_combo(combo: Any, path: str, out: list[Finding]) -> None:
 
 def read_schema(schema: Any) -> list[Finding]:
     out: list[Finding] = []
+    ROW_SITES.clear()
     fields = non_default(schema)
     for field in SCHEMA_STOP & set(fields):
         out.append(Finding("", f"schema field {field}", "", "stop"))
@@ -277,6 +286,7 @@ def read_schema(schema: Any) -> list[Finding]:
         out.append(Finding("", "editor_role", "unchanged", "script"))
     read_entries(schema.input_entries, "", "body", out)
     for output in schema.outputs:
+        ROW_SITES.setdefault(f"output {output.id}", sites.site(output))
         for field in non_default(output):
             if field in OUTPUT_RENAMED:
                 out.append(
@@ -289,8 +299,34 @@ def read_schema(schema: Any) -> list[Finding]:
     return out
 
 
+def unregistered(nodes: dict[str, tuple[str, type]]) -> list[type]:
+    """Classes in pack source with define_schema that no pack registers."""
+    registered = set()
+    for _, cls in nodes.values():
+        for base in cls.__mro__:
+            registered.add((base.__module__, base.__name__))
+    found = []
+    for path in sorted(ROOT.glob("packages/*/src/**/*.py")):
+        parts = path.relative_to(ROOT).parts
+        module = ".".join(parts[parts.index("src") + 1 :]).removesuffix(".py")
+        module = module.removesuffix(".__init__")
+        for node in ast.walk(ast.parse(path.read_text())):
+            if not isinstance(node, ast.ClassDef) or (module, node.name) in registered:
+                continue
+            if any(isinstance(b, ast.FunctionDef) and b.name == "define_schema" for b in node.body):
+                cls = getattr(importlib.import_module(module), node.name, None)
+                if inspect.isclass(cls):
+                    found.append(cls)
+                else:
+                    print(f"not importable at module level: {module}.{node.name}")
+    return found
+
+
 def main(argv: list[str]) -> int:
+    sites.record()
     nodes = load_nodes()
+    for cls in unregistered(nodes):
+        nodes[f"unregistered {cls.__module__}.{cls.__qualname__}"] = ("", cls)
     report: dict[str, Any] = {}
     construct_nodes: dict[str, set[str]] = defaultdict(set)
     construct_count: Counter[str] = Counter()
@@ -300,6 +336,7 @@ def main(argv: list[str]) -> int:
             "pack": pack,
             "class": f"{cls.__module__}.{cls.__qualname__}",
             "findings": [dataclasses.asdict(f) for f in findings],
+            "rows": dict(ROW_SITES),
             "by": sorted({f.by for f in findings}),
         }
         for f in findings:
@@ -307,7 +344,8 @@ def main(argv: list[str]) -> int:
             construct_nodes[key].add(node_type)
             construct_count[key] += 1
     Path(argv[0]).write_text(json.dumps(report, indent=1, sort_keys=True) + "\n")
-    print(f"node types read: {len(report)}")
+    print(f"node types read: {sum(not t.startswith('unregistered ') for t in report)}")
+    print(f"unregistered classes read: {sum(t.startswith('unregistered ') for t in report)}")
     for by in ("script", "hand", "stop"):
         print(f"node types with a {by} finding: {sum(by in r['by'] for r in report.values())}")
     print()
