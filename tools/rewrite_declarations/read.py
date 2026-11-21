@@ -164,7 +164,7 @@ def read_input(spec: Any, path: str, scope: str, out: list[Finding]) -> None:
                     Finding(
                         path,
                         "adjacent_to",
-                        "Row(filename_prefix, mount), mount pin=False",
+                        "Row(filename_prefix, mount), both keep their pins",
                         "script",
                     )
                 )
