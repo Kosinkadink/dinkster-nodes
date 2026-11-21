@@ -37,6 +37,57 @@ def wheel_identity(payload: bytes, row: dict, name: str, version: str) -> zipfil
     return archive
 
 
+def tag_identity(annotation: str, version: str) -> dict:
+    """Read the immutable development or stable provenance carried by a release tag."""
+    try:
+        identity = json.loads(annotation)
+    except json.JSONDecodeError as error:
+        raise ValueError("inference publication tag has invalid provenance") from error
+    core = {"version", "sourceCommit", "upstreamCommit"}
+    stable = {
+        "adaptedTestSources",
+        "excludedAdaptedTests",
+        "mainSourceCommit",
+        "releaseSource",
+        "upstreamMergeBase",
+        "upstreamTag",
+        "upstreamTagCommit",
+    }
+    optional_stable = {"branch"}
+    if not isinstance(identity, dict):
+        raise ValueError("inference publication tag has invalid provenance")
+    keys = set(identity)
+    if identity.get("version") != version or any(
+        not isinstance(identity.get(key), str)
+        or re.fullmatch("[0-9a-f]{40}", identity[key]) is None
+        for key in ("sourceCommit", "upstreamCommit")
+    ):
+        raise ValueError("inference publication tag has invalid provenance")
+    if keys == core:
+        return identity
+    if not core | stable <= keys or keys - core - stable - optional_stable:
+        raise ValueError("inference publication tag has invalid provenance")
+    if (
+        identity["releaseSource"] not in {"upstream-tag-branch", "synced-main"}
+        or re.fullmatch(r"v\d+\.\d+\.\d+", identity["upstreamTag"]) is None
+        or not all(
+            isinstance(identity[key], str) and re.fullmatch("[0-9a-f]{40}", identity[key])
+            for key in ("mainSourceCommit", "upstreamMergeBase", "upstreamTagCommit")
+        )
+        or not all(
+            isinstance(identity[key], dict)
+            and all(
+                isinstance(path, str) and isinstance(source, str)
+                for path, source in identity[key].items()
+            )
+            for key in ("adaptedTestSources", "excludedAdaptedTests")
+        )
+        or ("branch" in identity and not isinstance(identity["branch"], str))
+    ):
+        raise ValueError("inference publication tag has invalid provenance")
+    return identity
+
+
 def published_inference(inference: Path, head: str, upstream: str) -> dict | None:
     """Find the minimum published version containing the target's landed upstream code."""
     index = json.loads(read_public("https://pypi.org/pypi/dinkster-inference/json"))
@@ -57,10 +108,9 @@ def published_inference(inference: Path, head: str, upstream: str) -> dict | Non
         if tag != tags[ref] or git(inference, "cat-file", "-t", tag).strip() != "tag":
             raise ValueError("inference publication tag changed during inspection")
         annotation = git(inference, "cat-file", "-p", tag).split("\n\n", 1)[1]
-        identity = json.loads(annotation)
+        identity = tag_identity(annotation, version)
         if (
-            set(identity) != {"version", "sourceCommit", "upstreamCommit"}
-            or identity["version"] != version
+            identity["version"] != version
             or any(
                 re.fullmatch("[0-9a-f]{40}", identity[key]) is None
                 for key in ("sourceCommit", "upstreamCommit")
@@ -87,7 +137,11 @@ def published_inference(inference: Path, head: str, upstream: str) -> dict | Non
         row = {**wheel, "sha256": wheel["digests"]["sha256"]}
         payload = read_public(row["url"], 256 * 1024 * 1024)
         with wheel_identity(payload, row, "dinkster-inference", version) as archive:
-            if json.loads(archive.read("dinkster_inference/_release.json")) != identity:
+            wheel_provenance = json.loads(archive.read("dinkster_inference/_release.json"))
+            expected_wheel_provenance = {
+                key: identity[key] for key in ("version", "sourceCommit", "upstreamCommit")
+            }
+            if wheel_provenance != expected_wheel_provenance:
                 raise ValueError("inference wheel and annotated tag provenance differ")
         return {
             **identity,
