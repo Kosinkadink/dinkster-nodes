@@ -9,6 +9,8 @@ from dinkster_api.v1 import (
     CORE_INT,
     Group,
     Input,
+    Item,
+    Members,
     Node,
     NodeSchema,
     Numbered,
@@ -16,6 +18,7 @@ from dinkster_api.v1 import (
     TypeExpr,
     Value,
     list_children,
+    member_id,
     with_identity_replacement,
 )
 
@@ -56,11 +59,11 @@ class CreateList(Node):
 
     @classmethod
     def execute(
-        cls, *, inputs: Mapping[str, object], input_values: Mapping[str, Value]
+        cls, *, inputs: Members[Item], input_values: Mapping[str, Value]
     ) -> Mapping[str, object]:
         items: list[Value] = []
-        for name in inputs:
-            items.extend(_execution_items(input_values[f"inputs.{name}"]))
+        for member in inputs:
+            items.extend(_execution_items(input_values[member_id("inputs", member.key)]))
         return cls.outputs(list=items)
 
 

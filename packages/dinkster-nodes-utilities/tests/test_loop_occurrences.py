@@ -151,7 +151,7 @@ def test_nested_loop_keeps_each_occurrences_results(inner_cache: bool) -> None:
 
 
 @pytest.mark.parametrize("cache_enabled", [False, True])
-@pytest.mark.parametrize("absent_input", ["output_value", "terminations.0"])
+@pytest.mark.parametrize("absent_input", ["output_value", "terminations.termination0"])
 def test_absent_loop_dependency_completes(cache_enabled: bool, absent_input: str) -> None:
     class Empty(Node):
         @classmethod

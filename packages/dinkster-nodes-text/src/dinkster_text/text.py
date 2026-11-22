@@ -18,6 +18,8 @@ from dinkster_api.v1 import (
     ComboWidget,
     Group,
     Input,
+    Item,
+    Members,
     Named,
     Node,
     NodeSchema,
@@ -84,8 +86,8 @@ class StringFormat(Node):
         return with_identity_replacement(schema, "StringFormat")
 
     @classmethod
-    def execute(cls, *, values: Mapping[str, object], f_string: str) -> Mapping[str, object]:
-        return cls.outputs(STRING=f_string.format(**values))
+    def execute(cls, *, values: Members[Item], f_string: str) -> Mapping[str, object]:
+        return cls.outputs(STRING=f_string.format(**values.as_dict()))
 
 
 class StringConcatenate(Node):

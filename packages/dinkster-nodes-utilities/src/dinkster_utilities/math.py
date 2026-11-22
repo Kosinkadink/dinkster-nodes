@@ -15,6 +15,8 @@ from dinkster_api.v1 import (
     CORE_STRING,
     Group,
     Input,
+    Item,
+    Members,
     Named,
     Node,
     NodeSchema,
@@ -95,11 +97,11 @@ class ComfyMathExpression(Node):
         return with_identity_replacement(schema, "ComfyMathExpression")
 
     @classmethod
-    def execute(cls, *, expression: str, values: Mapping[str, object]) -> Mapping[str, object]:
+    def execute(cls, *, expression: str, values: Members[Item]) -> Mapping[str, object]:
         if not expression.strip():
             raise ValueError("Expression cannot be empty.")
-        context = dict(values)
-        context["values"] = list(values.values())
+        context = values.as_dict()
+        context["values"] = [member.value for member in values]
         result = simple_eval(expression, names=context, functions=MATH_FUNCTIONS)
         if not isinstance(result, (int, float)):
             raise ValueError(

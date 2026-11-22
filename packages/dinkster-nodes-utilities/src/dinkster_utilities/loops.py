@@ -22,10 +22,12 @@ from dinkster_api.v1 import (
     NumberWidget,
     Option,
     Output,
+    Record,
     RunExecutionContext,
     Section,
     StringWidget,
     TypeExpr,
+    member_id,
     report_progress,
     with_identity_replacement,
 )
@@ -40,7 +42,7 @@ OUTPUT = TypeExpr.variable("output_value")
 DEPENDENCIES = Group(
     "dependencies",
     value=Input("dependency", ANY, hidden=True, on_absent="accept"),
-    keys=Numbered("dependency", start=0),
+    keys=Numbered("", start=0),
 )
 
 
@@ -120,27 +122,26 @@ class StartLoop(Node):
         cls,
         *,
         execution_context: RunExecutionContext,
-        mode: str = "simple",
+        mode: Record,
         cache_iterations: bool = False,
         parent_iteration: object = None,
         initial_iteration_value: object = None,
-        **options: Any,
     ) -> Expansion:
-        if mode == "simple":
-            values = list(range(options.get("mode.num_iterations", 4)))
-        elif mode == "For":
-            step = options.get("mode.step", 1)
+        if mode.key == "simple":
+            values = list(range(mode.get("num_iterations", 4)))
+        elif mode.key == "For":
+            step = mode.get("step", 1)
             if step == 0:
                 raise ValueError("Start Loop step must not be 0")
             values = list(
                 range(
-                    options.get("mode.start_iteration_index", 0),
-                    options.get("mode.max_iteration", 4),
+                    mode.get("start_iteration_index", 0),
+                    mode.get("max_iteration", 4),
                     step,
                 )
             )
         else:
-            values = list(range(len(options["mode.list"])))
+            values = list(range(len(mode["list"])))
         document = cast("Any", await execution_context.get_graph())
         start_id = execution_context.node_id
         pair = document["loops"][start_id]
@@ -168,12 +169,14 @@ class StartLoop(Node):
                 is_first=position == 0,
                 is_last=position == len(values) - 1,
                 reuse_cache=cache_iterations,
-                **{f"dependencies.{i}": value for i, value in enumerate(dependencies)},
+                **{
+                    member_id("dependencies", str(i)): value for i, value in enumerate(dependencies)
+                },
             )
             iteration.set_override_display_id(start_id, external=True)
             if previous_carry is not None:
                 iteration.set_input("current_iteration_value", previous_carry)
-            if mode == "List":
+            if mode.key == "List":
                 element = builder.node(
                     "dinkster.utilities.list_element",
                     f"item_{position}",
@@ -229,7 +232,9 @@ class StartLoop(Node):
                 start_id=start_id,
                 position=position + 1,
                 total=len(values),
-                **{f"dependencies.{i}": value for i, value in enumerate(dependencies)},
+                **{
+                    member_id("dependencies", str(i)): value for i, value in enumerate(dependencies)
+                },
             )
             if previous_progress is not None:
                 progress.set_input("previous_progress", previous_progress)
@@ -239,12 +244,14 @@ class StartLoop(Node):
             collected = builder.node(
                 "dinkster.utilities.make_list",
                 "collected",
-                **{f"items.{i}": value for i, value in enumerate(results)},
+                **{member_id("items", str(i)): value for i, value in enumerate(results)},
             )
             result_value: object = collected.out("list")
             if dynamic_accumulate:
                 final = builder.node(
-                    "dinkster.utilities.make_list", "final", **{"items.0": results[-1]}
+                    "dinkster.utilities.make_list",
+                    "final",
+                    **{member_id("items", "0"): results[-1]},
                 )
                 selection = builder.node(
                     "dinkster.utilities.comfy_switch_node",
@@ -266,7 +273,7 @@ class StartLoop(Node):
             "result",
             close_id=end_id,
             result=result_value,
-            **{f"dependencies.{i}": value for i, value in enumerate(dependencies)},
+            **{member_id("dependencies", str(i)): value for i, value in enumerate(dependencies)},
         )
         if previous_progress is not None:
             result.set_input("progress", previous_progress)

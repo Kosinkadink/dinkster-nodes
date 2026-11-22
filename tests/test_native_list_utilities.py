@@ -4,7 +4,12 @@ from __future__ import annotations
 
 import pytest
 from dinkster_api.v1 import (
+    Group,
     Input,
+    Item,
+    Members,
+    Numbered,
+    Output,
     TypeExpr,
     TypeRegistry,
     schema_from_wire,
@@ -31,7 +36,15 @@ def test_list_nodes_preserve_member_order_and_nested_items() -> None:
     registry.register("OPAQUE")
     opaque = registry.wrap("OPAQUE", [2, 5])
     value = CreateList.execute(
-        inputs={"input2": ["first", ["nested", 13]], "input0": [], "input1": 7, "input3": [2, 5]},
+        inputs=Members(
+            Item(key, value)
+            for key, value in (
+                ("input2", ["first", ["nested", 13]]),
+                ("input0", []),
+                ("input1", 7),
+                ("input3", [2, 5]),
+            )
+        ),
         input_values={
             "inputs.input2": registry.wrap("list<*>", [first, nested]),
             "inputs.input0": registry.wrap("list<STRING>", []),
@@ -64,18 +77,21 @@ def test_list_schemas_roundtrip_without_collapsing_list_types() -> None:
     for node in (CreateList, GetItemFromList):
         schema = node.schema()
         assert schema_from_wire(schema_to_wire(schema)) == schema
-    family = CreateList.schema().input_families[0]
-    assert (family.id, family.member_prefix, family.min_members, family.max_members) == (
+    group, create_output = CreateList.schema().body
+    assert isinstance(group, Group) and isinstance(create_output, Output)
+    assert (group.id, group.keys, group.min_members, group.max_members) == (
         "inputs",
-        "input",
+        Numbered("input", start=0),
         1,
         10,
     )
-    assert family.optional_after_minimum
-    assert GetItemFromList.schema().inputs[1].default == 0
-    assert GetItemFromList.schema().inputs[1].accepts_list
-    assert CreateList.schema().outputs[0].type == TypeExpr.list_of(TypeExpr.wildcard())
-    assert GetItemFromList.schema().outputs[0].type == TypeExpr.wildcard()
+    assert group.optional_after_minimum
+    _, index, item_output = GetItemFromList.schema().body
+    assert isinstance(index, Input) and isinstance(item_output, Output)
+    assert index.default == 0
+    assert index.accepts_list
+    assert create_output.type == TypeExpr.list_of(TypeExpr.wildcard())
+    assert item_output.type == TypeExpr.wildcard()
 
 
 def test_native_list_nodes_execute_scalar_and_list_envelopes_without_wrappers() -> None:

@@ -5,6 +5,7 @@ from dataclasses import replace
 from pathlib import Path
 
 import pytest
+from dinkster_api.v1 import Item, Members
 from dinkster_graph import Graph, GraphNode, Link, TypedLiteral
 from dinkster_utilities.loop_lists import ListElement, MakeList
 from dinkster_values import TypeRegistry, ValueMeta, make_list_value, register_core_types
@@ -76,8 +77,8 @@ def test_make_list_preserves_document_order_across_cached_runs(in_process: bool)
                 )
             )
             engine = composer.composition.make_engine(lambda _event: None)
-            values = {"z": 17, "a": -4, "m": 29}
-            for order in (("z", "a", "m"), ("m", "z", "a"), ("z", "a", "m")):
+            values = {"2": 17, "0": -4, "1": 29}
+            for order in (("2", "0", "1"), ("1", "2", "0"), ("2", "0", "1")):
                 graph = Graph(
                     {
                         "list": GraphNode(
@@ -103,7 +104,9 @@ def test_list_support_keeps_whole_typed_elements_and_unbounded_inputs() -> None:
     first = replace(registry.wrap("INT", 17), meta=ValueMeta({"provenance": "first"}))
     second = registry.wrap("INT", -4)
     nested = make_list_value("INT", [first, second])
-    result = MakeList.execute(input_values={"items.a": nested})
+    result = MakeList.execute(
+        items=Members((Item("a", nested.resolve()),)), input_values={"items.a": nested}
+    )
     assert result["list"] == [nested]
     for index, expected in ((0, first), (-1, second)):
         assert ListElement.execute(index=index, input_values={"list": nested})["item"] is expected

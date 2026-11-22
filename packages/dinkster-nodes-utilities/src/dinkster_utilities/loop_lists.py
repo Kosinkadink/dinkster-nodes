@@ -6,6 +6,8 @@ from dinkster_api.v1 import (
     CORE_INT,
     Group,
     Input,
+    Item,
+    Members,
     Node,
     NodeSchema,
     Numbered,
@@ -13,6 +15,7 @@ from dinkster_api.v1 import (
     TypeExpr,
     Value,
     list_children,
+    member_id,
 )
 
 INT = TypeExpr.concrete(CORE_INT)
@@ -37,8 +40,10 @@ class MakeList(Node):
         )
 
     @classmethod
-    def execute(cls, *, input_values: Mapping[str, Value]) -> Mapping[str, object]:
-        return cls.outputs(list=list(input_values.values()))
+    def execute(
+        cls, *, items: Members[Item], input_values: Mapping[str, Value]
+    ) -> Mapping[str, object]:
+        return cls.outputs(list=[input_values[member_id("items", member.key)] for member in items])
 
 
 class ListElement(Node):
