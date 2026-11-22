@@ -28,12 +28,14 @@ from dinkster_api.v1 import (
     AbsentOutput,
     CustomWidgetDescriptor,
     Deprecation,
+    Editor,
     Input,
     Node,
     NodeSchema,
     NumberWidget,
     Output,
     Section,
+    State,
     TypeExpr,
     with_identity_replacement,
 )
@@ -124,10 +126,20 @@ class _Preview3D(Node):
             output_node=True,
             body=(
                 Input("model_3d", TypeExpr.union(*cls.formats)),
-                Input(
-                    "viewport_state",
-                    TypeExpr.concrete(LOAD_3D_TYPE),
-                    widget=CustomWidgetDescriptor("LOAD_3D"),
+                State("viewport_state", TypeExpr.concrete(LOAD_3D_TYPE)),
+                Editor(
+                    "viewport",
+                    CustomWidgetDescriptor(
+                        "LOAD_3D",
+                        writes={"state": "viewport_state"},
+                        reads={
+                            "model_3d": "model_3d",
+                            "width": "width",
+                            "height": "height",
+                            "model_3d_info": "model_3d_info",
+                            "camera_info": "camera_info",
+                        },
+                    ),
                 ),
                 *(
                     Input(

@@ -9,10 +9,12 @@ from dinkster_api.v1 import (
     ABSENT,
     IMAGECOMPARE_TYPE,
     CustomWidgetDescriptor,
+    Editor,
     Input,
     Node,
     NodeSchema,
     Output,
+    State,
     TypeExpr,
     copy_media_semantics,
     report_preview,
@@ -69,12 +71,12 @@ class NativeImageCompare(Node):
             category="image",
             body=(
                 *ImageCompare.schema().inputs,
-                Input(
-                    "compare_view",
-                    TypeExpr.concrete(IMAGECOMPARE_TYPE),
-                    default=None,
-                    pin=False,
-                    widget=CustomWidgetDescriptor("IMAGECOMPARE"),
+                State("compare_view", TypeExpr.concrete(IMAGECOMPARE_TYPE)),
+                Editor(
+                    "comparison",
+                    CustomWidgetDescriptor(
+                        "IMAGECOMPARE", reads={"image_a": "image_a", "image_b": "image_b"}
+                    ),
                 ),
             ),
             output_node=True,

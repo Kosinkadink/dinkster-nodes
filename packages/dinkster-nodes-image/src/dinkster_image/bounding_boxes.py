@@ -23,6 +23,7 @@ from dinkster_api.v1 import (
     Output,
     ReplacementCase,
     ReplacementRule,
+    State,
     TypeExpr,
 )
 from PIL import Image, ImageDraw, ImageEnhance, ImageFont
@@ -369,18 +370,7 @@ class CreateBoundingBoxes(Node):
                         "palette. Start with background element first and foreground last."
                     ),
                 ),
-                Input(
-                    "last_incoming",
-                    TypeExpr.concrete(BOUNDING_BOXES_TYPE),
-                    required=False,
-                    default=[],
-                    pin=False,
-                    tooltip=(
-                        "Internal state managed by the canvas: the upstream bboxes value that "
-                        "last initialized it. Leave empty to re-initialize the canvas from "
-                        "the bboxes input on the next run."
-                    ),
-                ),
+                State("last_incoming", TypeExpr.concrete(BOUNDING_BOXES_TYPE), default=[]),
                 Output("preview", TypeExpr.concrete(IMAGE_TYPE), label="preview"),
                 Output("bboxes", TypeExpr.concrete(BOUNDING_BOX_TYPE), label="bboxes"),
                 Output("elements", TypeExpr.concrete(ARRAY_TYPE), label="elements"),

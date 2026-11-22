@@ -16,12 +16,14 @@ from dinkster_api.v1 import (
     DETECTION_TYPE,
     REGION_TYPE,
     CompositorWidget,
+    Editor,
     ImageDocument,
     Input,
     Node,
     NodeSchema,
     Output,
     Section,
+    State,
     StringWidget,
     TypeExpr,
     append_raster,
@@ -311,13 +313,12 @@ class CreateLayeredImage(Node):
             category="image/compositor",
             body=(
                 Input("layers", LAYERS),
-                Input(
+                State(
                     "compositor",
                     COMPOSITOR,
-                    required=False,
                     default={"version": 2, "documentDigest": None, "commands": []},
-                    widget=CompositorWidget(),
                 ),
+                Editor("composition", CompositorWidget(writes={"value": "compositor"})),
                 Section(
                     "advanced",
                     label="Advanced",

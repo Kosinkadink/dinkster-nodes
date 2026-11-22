@@ -22,6 +22,7 @@ from dinkster_api.v1 import (
     Output,
     Record,
     Section,
+    State,
     TypeExpr,
     Use,
     initialize_inference_process,
@@ -257,12 +258,7 @@ class CreateCameraInfo(Node):
                         "or orthographic (parallel)."
                     ),
                 ),
-                Input(
-                    "camera_info_state",
-                    TypeExpr.concrete(CAMERA_INFO_STATE_TYPE),
-                    required=False,
-                    pin=False,
-                ),
+                State("camera_info_state", TypeExpr.concrete(CAMERA_INFO_STATE_TYPE)),
                 Section(
                     "advanced",
                     label="Advanced",

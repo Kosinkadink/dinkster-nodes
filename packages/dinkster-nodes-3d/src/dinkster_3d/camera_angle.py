@@ -12,11 +12,13 @@ from dinkster_api.v1 import (
     IMAGE_TYPE,
     LOAD3D_CAMERA_TYPE,
     CustomWidgetDescriptor,
+    Editor,
     Input,
     Node,
     NodeSchema,
     NumberWidget,
     Output,
+    State,
     TypeExpr,
     with_identity_replacement,
 )
@@ -91,13 +93,18 @@ class CameraAngle(Node):
                         "in the 3D preview."
                     ),
                 ),
-                Input(
-                    "view",
-                    TypeExpr.concrete(CORE_STRING),
-                    default="",
-                    required=False,
-                    pin=False,
-                    widget=CustomWidgetDescriptor("CAMERA_ANGLE_VIEW", {"multiline": False}),
+                State("view", TypeExpr.concrete(CORE_STRING), default=""),
+                Editor(
+                    "angle_view",
+                    CustomWidgetDescriptor(
+                        "CAMERA_ANGLE_VIEW",
+                        {"multiline": False},
+                        writes={
+                            "horizontal_angle": "horizontal_angle",
+                            "vertical_angle": "vertical_angle",
+                            "zoom": "zoom",
+                        },
+                    ),
                 ),
                 Output("camera_info", TypeExpr.concrete(LOAD3D_CAMERA_TYPE)),
                 Output("prompt", TypeExpr.concrete(CORE_STRING)),

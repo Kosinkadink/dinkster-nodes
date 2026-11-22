@@ -31,6 +31,7 @@ from dinkster_api.v1 import (
     AssetRef,
     AssetWriter,
     CustomWidgetDescriptor,
+    Editor,
     Input,
     LocalAssetRef,
     MountSnapshotWriter,
@@ -41,6 +42,7 @@ from dinkster_api.v1 import (
     Output,
     Row,
     Section,
+    State,
     StringWidget,
     TypeExpr,
     attach_saved_artifact,
@@ -85,10 +87,20 @@ class _Save3D(Node):
                         ),
                     )
                 ),
-                Input(
-                    "viewport_state",
-                    TypeExpr.concrete(LOAD_3D_TYPE),
-                    widget=CustomWidgetDescriptor("LOAD_3D"),
+                State("viewport_state", TypeExpr.concrete(LOAD_3D_TYPE)),
+                Editor(
+                    "viewport",
+                    CustomWidgetDescriptor(
+                        "LOAD_3D",
+                        writes={"state": "viewport_state"},
+                        reads={
+                            "model_3d": "model_3d",
+                            "width": "width",
+                            "height": "height",
+                            "model_3d_info": "model_3d_info",
+                            "camera_info": "camera_info",
+                        },
+                    ),
                 ),
                 *(
                     Input(

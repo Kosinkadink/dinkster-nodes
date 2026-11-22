@@ -53,7 +53,10 @@ class Load3D(Node):
                 Input(
                     "image",
                     TypeExpr.concrete(LOAD_3D_TYPE),
-                    widget=CustomWidgetDescriptor("LOAD_3D"),
+                    widget=CustomWidgetDescriptor(
+                        "LOAD_3D",
+                        reads={"model_file": "model_file", "width": "width", "height": "height"},
+                    ),
                 ),
                 *(
                     Input(

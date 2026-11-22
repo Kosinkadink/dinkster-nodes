@@ -25234,6 +25234,897 @@
    "part": "node",
    "path": "/replacements/0/cases",
    "reason": "Save Video's hidden codec input and its rows are deleted (node master plan section 13, acceptance: the four extra differences; comfy-vibe-station#1101 comment 7058717316)."
+  },
+  {
+   "after": [
+    {
+     "default": 0,
+     "doc": "Azimuth around the subject in degrees. 0 is the front, 90 the right side, 180 the back.",
+     "id": "horizontal_angle",
+     "row": "input",
+     "type": "INT",
+     "widget": {
+      "class": "NumberWidget",
+      "max": 360,
+      "min": 0,
+      "step": 1
+     }
+    },
+    {
+     "default": 0,
+     "doc": "Elevation in degrees. Negative looks up from below, positive looks down from above.",
+     "id": "vertical_angle",
+     "row": "input",
+     "type": "INT",
+     "widget": {
+      "class": "NumberWidget",
+      "max": 60,
+      "min": -30,
+      "step": 1
+     }
+    },
+    {
+     "default": 5.0,
+     "doc": "Lens zoom on the subject: 0 is a wide shot, 10 a close-up. Carried into camera_info.zoom.",
+     "id": "zoom",
+     "row": "input",
+     "type": "FLOAT",
+     "widget": {
+      "class": "NumberWidget",
+      "max": 10.0,
+      "min": 0.0,
+      "step": 0.1
+     }
+    },
+    {
+     "doc": "Optional reference image shown on the front of the subject cube in the 3D preview.",
+     "id": "image",
+     "required": false,
+     "row": "input",
+     "type": "IMAGE"
+    },
+    {
+     "default": "",
+     "id": "view",
+     "row": "state",
+     "type": "STRING"
+    },
+    {
+     "id": "angle_view",
+     "row": "editor",
+     "widget": {
+      "class": "CustomWidgetDescriptor",
+      "params": {
+       "multiline": false
+      },
+      "widget_type": "CAMERA_ANGLE_VIEW",
+      "writes": {
+       "horizontal_angle": "horizontal_angle",
+       "vertical_angle": "vertical_angle",
+       "zoom": "zoom"
+      }
+     }
+    }
+   ],
+   "node_type": "dinkster.3d.camera_angle",
+   "part": "rows",
+   "path": "",
+   "reason": "Becomes a State: no pin, no field and no required mark, kept with the workflow and passed to execute (node master plan section 13, State row; comfy-vibe-station#1101 comment 7058717316). Its editor is an Editor row written where the input stood, and the widget names the rows it writes and reads by today's fixed names, read from the app's editor (node master plan section 2, Editor; comfy-vibe-station#1101 comment 7075165594)."
+  },
+  {
+   "after": null,
+   "node_type": "dinkster.3d.create_camera_info",
+   "part": "rows",
+   "path": "/camera_info_state/required",
+   "reason": "Becomes a State: no pin, no field and no required mark, kept with the workflow and passed to execute (node master plan section 13, State row; comfy-vibe-station#1101 comment 7058717316). It has no widget today, and no widget in the app writes it, so it gets no Editor row (comfy-vibe-station#1101 comment 7075165594)."
+  },
+  {
+   "after": "state",
+   "node_type": "dinkster.3d.create_camera_info",
+   "part": "rows",
+   "path": "/camera_info_state/row",
+   "reason": "Becomes a State: no pin, no field and no required mark, kept with the workflow and passed to execute (node master plan section 13, State row; comfy-vibe-station#1101 comment 7058717316). It has no widget today, and no widget in the app writes it, so it gets no Editor row (comfy-vibe-station#1101 comment 7075165594)."
+  },
+  {
+   "after": null,
+   "node_type": "dinkster.3d.create_camera_info",
+   "part": "rows",
+   "path": "/camera_info_state/socketless",
+   "reason": "Becomes a State: no pin, no field and no required mark, kept with the workflow and passed to execute (node master plan section 13, State row; comfy-vibe-station#1101 comment 7058717316). It has no widget today, and no widget in the app writes it, so it gets no Editor row (comfy-vibe-station#1101 comment 7075165594)."
+  },
+  {
+   "after": {
+    "height": "height",
+    "model_file": "model_file",
+    "width": "width"
+   },
+   "node_type": "dinkster.3d.load3_d",
+   "part": "rows",
+   "path": "/image/widget/reads",
+   "reason": "The Load 3D widget on this input names the sibling rows it reads by today's fixed names; it does not list its own input (node master plan section 13, editor fixed-names row; section 2, Editor)."
+  },
+  {
+   "after": [
+    "LOAD_3D",
+    false,
+    "None"
+   ],
+   "node_type": "dinkster.3d.load3_d_advanced",
+   "part": "inputs",
+   "path": "{} viewport_state",
+   "reason": "Becomes a State: no pin, no field and no required mark, kept with the workflow and passed to execute (node master plan section 13, State row; comfy-vibe-station#1101 comment 7058717316). Its editor is an Editor row written where the input stood, and the widget names the rows it writes and reads by today's fixed names, read from the app's editor (node master plan section 2, Editor; comfy-vibe-station#1101 comment 7075165594)."
+  },
+  {
+   "after": [
+    {
+     "default": "none",
+     "id": "model_file",
+     "row": "input",
+     "source_filename": {
+      "category": "input",
+      "class": "SourceFilenameSpec",
+      "kind": "media/model3d"
+     },
+     "type": "ASSET",
+     "widget": {
+      "allow_upload": true,
+      "class": "AssetWidget",
+      "kind": "media/model3d"
+     }
+    },
+    {
+     "id": "viewport_state",
+     "row": "state",
+     "type": "LOAD_3D"
+    },
+    {
+     "id": "viewport",
+     "row": "editor",
+     "widget": {
+      "class": "CustomWidgetDescriptor",
+      "params": {},
+      "reads": {
+       "height": "height",
+       "model_file": "model_file",
+       "width": "width"
+      },
+      "widget_type": "LOAD_3D",
+      "writes": {
+       "state": "viewport_state"
+      }
+     }
+    },
+    {
+     "default": 1024,
+     "doc": "Render width of the viewport in pixels.",
+     "id": "width",
+     "row": "input",
+     "type": "INT",
+     "widget": {
+      "class": "NumberWidget",
+      "max": 4096,
+      "min": 1,
+      "step": 1
+     }
+    },
+    {
+     "default": 1024,
+     "doc": "Render height of the viewport in pixels.",
+     "id": "height",
+     "row": "input",
+     "type": "INT",
+     "widget": {
+      "class": "NumberWidget",
+      "max": 4096,
+      "min": 1,
+      "step": 1
+     }
+    }
+   ],
+   "node_type": "dinkster.3d.load3_d_advanced",
+   "part": "rows",
+   "path": "",
+   "reason": "Becomes a State: no pin, no field and no required mark, kept with the workflow and passed to execute (node master plan section 13, State row; comfy-vibe-station#1101 comment 7058717316). Its editor is an Editor row written where the input stood, and the widget names the rows it writes and reads by today's fixed names, read from the app's editor (node master plan section 2, Editor; comfy-vibe-station#1101 comment 7075165594)."
+  },
+  {
+   "after": [
+    "LOAD_3D",
+    false,
+    "None"
+   ],
+   "node_type": "dinkster.3d.preview3_d_advanced",
+   "part": "inputs",
+   "path": "{} viewport_state",
+   "reason": "Becomes a State: no pin, no field and no required mark, kept with the workflow and passed to execute (node master plan section 13, State row; comfy-vibe-station#1101 comment 7058717316). Its editor is an Editor row written where the input stood, and the widget names the rows it writes and reads by today's fixed names, read from the app's editor (node master plan section 2, Editor; comfy-vibe-station#1101 comment 7075165594)."
+  },
+  {
+   "after": [
+    {
+     "id": "model_3d",
+     "row": "input",
+     "type": "FILE_3D_GLB|FILE_3D_GLTF|FILE_3D_FBX|FILE_3D_OBJ|FILE_3D_STL|FILE_3D_USDZ|FILE_3D"
+    },
+    {
+     "id": "viewport_state",
+     "row": "state",
+     "type": "LOAD_3D"
+    },
+    {
+     "id": "viewport",
+     "row": "editor",
+     "widget": {
+      "class": "CustomWidgetDescriptor",
+      "params": {},
+      "reads": {
+       "camera_info": "camera_info",
+       "height": "height",
+       "model_3d": "model_3d",
+       "model_3d_info": "model_3d_info",
+       "width": "width"
+      },
+      "widget_type": "LOAD_3D",
+      "writes": {
+       "state": "viewport_state"
+      }
+     }
+    },
+    {
+     "default": 1024,
+     "id": "width",
+     "row": "input",
+     "type": "INT",
+     "widget": {
+      "class": "NumberWidget",
+      "max": 4096,
+      "min": 1,
+      "step": 1
+     }
+    },
+    {
+     "default": 1024,
+     "id": "height",
+     "row": "input",
+     "type": "INT",
+     "widget": {
+      "class": "NumberWidget",
+      "max": 4096,
+      "min": 1,
+      "step": 1
+     }
+    },
+    {
+     "advanced": true,
+     "id": "model_3d_info",
+     "required": false,
+     "row": "input",
+     "type": "LOAD3D_MODEL_INFO"
+    },
+    {
+     "advanced": true,
+     "id": "camera_info",
+     "required": false,
+     "row": "input",
+     "type": "LOAD3D_CAMERA"
+    }
+   ],
+   "node_type": "dinkster.3d.preview3_d_advanced",
+   "part": "rows",
+   "path": "",
+   "reason": "Becomes a State: no pin, no field and no required mark, kept with the workflow and passed to execute (node master plan section 13, State row; comfy-vibe-station#1101 comment 7058717316). Its editor is an Editor row written where the input stood, and the widget names the rows it writes and reads by today's fixed names, read from the app's editor (node master plan section 2, Editor; comfy-vibe-station#1101 comment 7075165594)."
+  },
+  {
+   "after": [
+    "LOAD_3D",
+    false,
+    "None"
+   ],
+   "node_type": "dinkster.3d.preview_gaussian_splat",
+   "part": "inputs",
+   "path": "{} viewport_state",
+   "reason": "Becomes a State: no pin, no field and no required mark, kept with the workflow and passed to execute (node master plan section 13, State row; comfy-vibe-station#1101 comment 7058717316). Its editor is an Editor row written where the input stood, and the widget names the rows it writes and reads by today's fixed names, read from the app's editor (node master plan section 2, Editor; comfy-vibe-station#1101 comment 7075165594)."
+  },
+  {
+   "after": [
+    {
+     "id": "model_3d",
+     "row": "input",
+     "type": "FILE_3D_SPLAT_ANY|FILE_3D_PLY|FILE_3D_SPLAT|FILE_3D_SPZ|FILE_3D_KSPLAT"
+    },
+    {
+     "id": "viewport_state",
+     "row": "state",
+     "type": "LOAD_3D"
+    },
+    {
+     "id": "viewport",
+     "row": "editor",
+     "widget": {
+      "class": "CustomWidgetDescriptor",
+      "params": {},
+      "reads": {
+       "camera_info": "camera_info",
+       "height": "height",
+       "model_3d": "model_3d",
+       "model_3d_info": "model_3d_info",
+       "width": "width"
+      },
+      "widget_type": "LOAD_3D",
+      "writes": {
+       "state": "viewport_state"
+      }
+     }
+    },
+    {
+     "default": 1024,
+     "id": "width",
+     "row": "input",
+     "type": "INT",
+     "widget": {
+      "class": "NumberWidget",
+      "max": 4096,
+      "min": 1,
+      "step": 1
+     }
+    },
+    {
+     "default": 1024,
+     "id": "height",
+     "row": "input",
+     "type": "INT",
+     "widget": {
+      "class": "NumberWidget",
+      "max": 4096,
+      "min": 1,
+      "step": 1
+     }
+    },
+    {
+     "advanced": true,
+     "id": "model_3d_info",
+     "required": false,
+     "row": "input",
+     "type": "LOAD3D_MODEL_INFO"
+    },
+    {
+     "advanced": true,
+     "id": "camera_info",
+     "required": false,
+     "row": "input",
+     "type": "LOAD3D_CAMERA"
+    }
+   ],
+   "node_type": "dinkster.3d.preview_gaussian_splat",
+   "part": "rows",
+   "path": "",
+   "reason": "Becomes a State: no pin, no field and no required mark, kept with the workflow and passed to execute (node master plan section 13, State row; comfy-vibe-station#1101 comment 7058717316). Its editor is an Editor row written where the input stood, and the widget names the rows it writes and reads by today's fixed names, read from the app's editor (node master plan section 2, Editor; comfy-vibe-station#1101 comment 7075165594)."
+  },
+  {
+   "after": [
+    "LOAD_3D",
+    false,
+    "None"
+   ],
+   "node_type": "dinkster.3d.preview_point_cloud",
+   "part": "inputs",
+   "path": "{} viewport_state",
+   "reason": "Becomes a State: no pin, no field and no required mark, kept with the workflow and passed to execute (node master plan section 13, State row; comfy-vibe-station#1101 comment 7058717316). Its editor is an Editor row written where the input stood, and the widget names the rows it writes and reads by today's fixed names, read from the app's editor (node master plan section 2, Editor; comfy-vibe-station#1101 comment 7075165594)."
+  },
+  {
+   "after": [
+    {
+     "id": "model_3d",
+     "row": "input",
+     "type": "FILE_3D_POINT_CLOUD_ANY|FILE_3D_PLY"
+    },
+    {
+     "id": "viewport_state",
+     "row": "state",
+     "type": "LOAD_3D"
+    },
+    {
+     "id": "viewport",
+     "row": "editor",
+     "widget": {
+      "class": "CustomWidgetDescriptor",
+      "params": {},
+      "reads": {
+       "camera_info": "camera_info",
+       "height": "height",
+       "model_3d": "model_3d",
+       "model_3d_info": "model_3d_info",
+       "width": "width"
+      },
+      "widget_type": "LOAD_3D",
+      "writes": {
+       "state": "viewport_state"
+      }
+     }
+    },
+    {
+     "default": 1024,
+     "id": "width",
+     "row": "input",
+     "type": "INT",
+     "widget": {
+      "class": "NumberWidget",
+      "max": 4096,
+      "min": 1,
+      "step": 1
+     }
+    },
+    {
+     "default": 1024,
+     "id": "height",
+     "row": "input",
+     "type": "INT",
+     "widget": {
+      "class": "NumberWidget",
+      "max": 4096,
+      "min": 1,
+      "step": 1
+     }
+    },
+    {
+     "advanced": true,
+     "id": "model_3d_info",
+     "required": false,
+     "row": "input",
+     "type": "LOAD3D_MODEL_INFO"
+    },
+    {
+     "advanced": true,
+     "id": "camera_info",
+     "required": false,
+     "row": "input",
+     "type": "LOAD3D_CAMERA"
+    }
+   ],
+   "node_type": "dinkster.3d.preview_point_cloud",
+   "part": "rows",
+   "path": "",
+   "reason": "Becomes a State: no pin, no field and no required mark, kept with the workflow and passed to execute (node master plan section 13, State row; comfy-vibe-station#1101 comment 7058717316). Its editor is an Editor row written where the input stood, and the widget names the rows it writes and reads by today's fixed names, read from the app's editor (node master plan section 2, Editor; comfy-vibe-station#1101 comment 7075165594)."
+  },
+  {
+   "after": [
+    "LOAD_3D",
+    false,
+    "None"
+   ],
+   "node_type": "dinkster.3d.save3_d_advanced",
+   "part": "inputs",
+   "path": "{} viewport_state",
+   "reason": "Becomes a State: no pin, no field and no required mark, kept with the workflow and passed to execute (node master plan section 13, State row; comfy-vibe-station#1101 comment 7058717316). Its editor is an Editor row written where the input stood, and the widget names the rows it writes and reads by today's fixed names, read from the app's editor (node master plan section 2, Editor; comfy-vibe-station#1101 comment 7075165594)."
+  },
+  {
+   "after": [
+    {
+     "doc": "3D model file from an upstream 3D node.",
+     "id": "model_3d",
+     "row": "input",
+     "type": "FILE_3D_GLB|FILE_3D_GLTF|FILE_3D_FBX|FILE_3D_OBJ|FILE_3D_STL|FILE_3D_USDZ|FILE_3D"
+    },
+    {
+     "default": "3d/ComfyUI",
+     "id": "filename_prefix",
+     "row": "input",
+     "type": "STRING",
+     "widget": {
+      "class": "StringWidget",
+      "multiline": false
+     }
+    },
+    {
+     "adjacent_to": "filename_prefix",
+     "id": "mount",
+     "required": false,
+     "row": "input",
+     "type": "STRING",
+     "widget": {
+      "class": "MountWidget"
+     }
+    },
+    {
+     "id": "viewport_state",
+     "row": "state",
+     "type": "LOAD_3D"
+    },
+    {
+     "id": "viewport",
+     "row": "editor",
+     "widget": {
+      "class": "CustomWidgetDescriptor",
+      "params": {},
+      "reads": {
+       "camera_info": "camera_info",
+       "height": "height",
+       "model_3d": "model_3d",
+       "model_3d_info": "model_3d_info",
+       "width": "width"
+      },
+      "widget_type": "LOAD_3D",
+      "writes": {
+       "state": "viewport_state"
+      }
+     }
+    },
+    {
+     "default": 1024,
+     "doc": "Render width of the viewport in pixels.",
+     "id": "width",
+     "row": "input",
+     "type": "INT",
+     "widget": {
+      "class": "NumberWidget",
+      "max": 4096,
+      "min": 1,
+      "step": 1
+     }
+    },
+    {
+     "default": 1024,
+     "doc": "Render height of the viewport in pixels.",
+     "id": "height",
+     "row": "input",
+     "type": "INT",
+     "widget": {
+      "class": "NumberWidget",
+      "max": 4096,
+      "min": 1,
+      "step": 1
+     }
+    },
+    {
+     "advanced": true,
+     "doc": "Placement of each model in the scene: position, rotation, and scale (Y-up world space).",
+     "id": "model_3d_info",
+     "required": false,
+     "row": "input",
+     "type": "LOAD3D_MODEL_INFO"
+    },
+    {
+     "advanced": true,
+     "doc": "Viewport camera information: position, look-at target, zoom, and type.",
+     "id": "camera_info",
+     "required": false,
+     "row": "input",
+     "type": "LOAD3D_CAMERA"
+    }
+   ],
+   "node_type": "dinkster.3d.save3_d_advanced",
+   "part": "rows",
+   "path": "",
+   "reason": "Becomes a State: no pin, no field and no required mark, kept with the workflow and passed to execute (node master plan section 13, State row; comfy-vibe-station#1101 comment 7058717316). Its editor is an Editor row written where the input stood, and the widget names the rows it writes and reads by today's fixed names, read from the app's editor (node master plan section 2, Editor; comfy-vibe-station#1101 comment 7075165594)."
+  },
+  {
+   "after": [
+    "LOAD_3D",
+    false,
+    "None"
+   ],
+   "node_type": "dinkster.3d.save_gaussian_splat",
+   "part": "inputs",
+   "path": "{} viewport_state",
+   "reason": "Becomes a State: no pin, no field and no required mark, kept with the workflow and passed to execute (node master plan section 13, State row; comfy-vibe-station#1101 comment 7058717316). Its editor is an Editor row written where the input stood, and the widget names the rows it writes and reads by today's fixed names, read from the app's editor (node master plan section 2, Editor; comfy-vibe-station#1101 comment 7075165594)."
+  },
+  {
+   "after": [
+    {
+     "doc": "A gaussian splat 3D file.",
+     "id": "model_3d",
+     "row": "input",
+     "type": "FILE_3D_SPLAT_ANY|FILE_3D_PLY|FILE_3D_SPLAT|FILE_3D_SPZ|FILE_3D_KSPLAT"
+    },
+    {
+     "default": "3d/ComfyUI",
+     "id": "filename_prefix",
+     "row": "input",
+     "type": "STRING",
+     "widget": {
+      "class": "StringWidget",
+      "multiline": false
+     }
+    },
+    {
+     "adjacent_to": "filename_prefix",
+     "id": "mount",
+     "required": false,
+     "row": "input",
+     "type": "STRING",
+     "widget": {
+      "class": "MountWidget"
+     }
+    },
+    {
+     "id": "viewport_state",
+     "row": "state",
+     "type": "LOAD_3D"
+    },
+    {
+     "id": "viewport",
+     "row": "editor",
+     "widget": {
+      "class": "CustomWidgetDescriptor",
+      "params": {},
+      "reads": {
+       "camera_info": "camera_info",
+       "height": "height",
+       "model_3d": "model_3d",
+       "model_3d_info": "model_3d_info",
+       "width": "width"
+      },
+      "widget_type": "LOAD_3D",
+      "writes": {
+       "state": "viewport_state"
+      }
+     }
+    },
+    {
+     "default": 1024,
+     "id": "width",
+     "row": "input",
+     "type": "INT",
+     "widget": {
+      "class": "NumberWidget",
+      "max": 4096,
+      "min": 1,
+      "step": 1
+     }
+    },
+    {
+     "default": 1024,
+     "id": "height",
+     "row": "input",
+     "type": "INT",
+     "widget": {
+      "class": "NumberWidget",
+      "max": 4096,
+      "min": 1,
+      "step": 1
+     }
+    },
+    {
+     "advanced": true,
+     "id": "model_3d_info",
+     "required": false,
+     "row": "input",
+     "type": "LOAD3D_MODEL_INFO"
+    },
+    {
+     "advanced": true,
+     "id": "camera_info",
+     "required": false,
+     "row": "input",
+     "type": "LOAD3D_CAMERA"
+    }
+   ],
+   "node_type": "dinkster.3d.save_gaussian_splat",
+   "part": "rows",
+   "path": "",
+   "reason": "Becomes a State: no pin, no field and no required mark, kept with the workflow and passed to execute (node master plan section 13, State row; comfy-vibe-station#1101 comment 7058717316). Its editor is an Editor row written where the input stood, and the widget names the rows it writes and reads by today's fixed names, read from the app's editor (node master plan section 2, Editor; comfy-vibe-station#1101 comment 7075165594)."
+  },
+  {
+   "after": [
+    "LOAD_3D",
+    false,
+    "None"
+   ],
+   "node_type": "dinkster.3d.save_point_cloud",
+   "part": "inputs",
+   "path": "{} viewport_state",
+   "reason": "Becomes a State: no pin, no field and no required mark, kept with the workflow and passed to execute (node master plan section 13, State row; comfy-vibe-station#1101 comment 7058717316). Its editor is an Editor row written where the input stood, and the widget names the rows it writes and reads by today's fixed names, read from the app's editor (node master plan section 2, Editor; comfy-vibe-station#1101 comment 7075165594)."
+  },
+  {
+   "after": [
+    {
+     "doc": "Point cloud file (.ply)",
+     "id": "model_3d",
+     "row": "input",
+     "type": "FILE_3D_POINT_CLOUD_ANY|FILE_3D_PLY"
+    },
+    {
+     "default": "3d/ComfyUI",
+     "id": "filename_prefix",
+     "row": "input",
+     "type": "STRING",
+     "widget": {
+      "class": "StringWidget",
+      "multiline": false
+     }
+    },
+    {
+     "adjacent_to": "filename_prefix",
+     "id": "mount",
+     "required": false,
+     "row": "input",
+     "type": "STRING",
+     "widget": {
+      "class": "MountWidget"
+     }
+    },
+    {
+     "id": "viewport_state",
+     "row": "state",
+     "type": "LOAD_3D"
+    },
+    {
+     "id": "viewport",
+     "row": "editor",
+     "widget": {
+      "class": "CustomWidgetDescriptor",
+      "params": {},
+      "reads": {
+       "camera_info": "camera_info",
+       "height": "height",
+       "model_3d": "model_3d",
+       "model_3d_info": "model_3d_info",
+       "width": "width"
+      },
+      "widget_type": "LOAD_3D",
+      "writes": {
+       "state": "viewport_state"
+      }
+     }
+    },
+    {
+     "default": 1024,
+     "id": "width",
+     "row": "input",
+     "type": "INT",
+     "widget": {
+      "class": "NumberWidget",
+      "max": 4096,
+      "min": 1,
+      "step": 1
+     }
+    },
+    {
+     "default": 1024,
+     "id": "height",
+     "row": "input",
+     "type": "INT",
+     "widget": {
+      "class": "NumberWidget",
+      "max": 4096,
+      "min": 1,
+      "step": 1
+     }
+    },
+    {
+     "advanced": true,
+     "id": "model_3d_info",
+     "required": false,
+     "row": "input",
+     "type": "LOAD3D_MODEL_INFO"
+    },
+    {
+     "advanced": true,
+     "id": "camera_info",
+     "required": false,
+     "row": "input",
+     "type": "LOAD3D_CAMERA"
+    }
+   ],
+   "node_type": "dinkster.3d.save_point_cloud",
+   "part": "rows",
+   "path": "",
+   "reason": "Becomes a State: no pin, no field and no required mark, kept with the workflow and passed to execute (node master plan section 13, State row; comfy-vibe-station#1101 comment 7058717316). Its editor is an Editor row written where the input stood, and the widget names the rows it writes and reads by today's fixed names, read from the app's editor (node master plan section 2, Editor; comfy-vibe-station#1101 comment 7075165594)."
+  },
+  {
+   "after": null,
+   "node_type": "dinkster.image.create_bounding_boxes",
+   "part": "rows",
+   "path": "/last_incoming/doc",
+   "reason": "Becomes a State: no pin, no field and no required mark, kept with the workflow and passed to execute (node master plan section 13, State row; comfy-vibe-station#1101 comment 7058717316). It has no widget today, and no widget in the app writes it, so it gets no Editor row (comfy-vibe-station#1101 comment 7075165594)."
+  },
+  {
+   "after": null,
+   "node_type": "dinkster.image.create_bounding_boxes",
+   "part": "rows",
+   "path": "/last_incoming/required",
+   "reason": "Becomes a State: no pin, no field and no required mark, kept with the workflow and passed to execute (node master plan section 13, State row; comfy-vibe-station#1101 comment 7058717316). It has no widget today, and no widget in the app writes it, so it gets no Editor row (comfy-vibe-station#1101 comment 7075165594)."
+  },
+  {
+   "after": "state",
+   "node_type": "dinkster.image.create_bounding_boxes",
+   "part": "rows",
+   "path": "/last_incoming/row",
+   "reason": "Becomes a State: no pin, no field and no required mark, kept with the workflow and passed to execute (node master plan section 13, State row; comfy-vibe-station#1101 comment 7058717316). It has no widget today, and no widget in the app writes it, so it gets no Editor row (comfy-vibe-station#1101 comment 7075165594)."
+  },
+  {
+   "after": null,
+   "node_type": "dinkster.image.create_bounding_boxes",
+   "part": "rows",
+   "path": "/last_incoming/socketless",
+   "reason": "Becomes a State: no pin, no field and no required mark, kept with the workflow and passed to execute (node master plan section 13, State row; comfy-vibe-station#1101 comment 7058717316). It has no widget today, and no widget in the app writes it, so it gets no Editor row (comfy-vibe-station#1101 comment 7075165594)."
+  },
+  {
+   "after": [
+    "IMAGECOMPARE",
+    false,
+    "None"
+   ],
+   "node_type": "dinkster.image.image_compare",
+   "part": "inputs",
+   "path": "{} compare_view",
+   "reason": "Becomes a State: no pin, no field and no required mark, kept with the workflow and passed to execute (node master plan section 13, State row; comfy-vibe-station#1101 comment 7058717316). Its editor is an Editor row written where the input stood, and the widget names the rows it writes and reads by today's fixed names, read from the app's editor (node master plan section 2, Editor; comfy-vibe-station#1101 comment 7075165594)."
+  },
+  {
+   "after": [
+    {
+     "id": "image_a",
+     "required": false,
+     "row": "input",
+     "type": "IMAGE"
+    },
+    {
+     "id": "image_b",
+     "required": false,
+     "row": "input",
+     "type": "IMAGE"
+    },
+    {
+     "id": "compare_view",
+     "row": "state",
+     "type": "IMAGECOMPARE"
+    },
+    {
+     "id": "comparison",
+     "row": "editor",
+     "widget": {
+      "class": "CustomWidgetDescriptor",
+      "params": {},
+      "reads": {
+       "image_a": "image_a",
+       "image_b": "image_b"
+      },
+      "widget_type": "IMAGECOMPARE"
+     }
+    }
+   ],
+   "node_type": "dinkster.image.image_compare",
+   "part": "rows",
+   "path": "",
+   "reason": "Becomes a State: no pin, no field and no required mark, kept with the workflow and passed to execute (node master plan section 13, State row; comfy-vibe-station#1101 comment 7058717316). Its editor is an Editor row written where the input stood, and the widget names the rows it writes and reads by today's fixed names, read from the app's editor (node master plan section 2, Editor; comfy-vibe-station#1101 comment 7075165594)."
+  },
+  {
+   "after": [
+    "COMPOSITOR",
+    false,
+    "{}"
+   ],
+   "node_type": "dinkster.image.image_compositor",
+   "part": "inputs",
+   "path": "{} compositor",
+   "reason": "Becomes a State: no pin, no field and no required mark, kept with the workflow and passed to execute (node master plan section 13, State row; comfy-vibe-station#1101 comment 7058717316). Its editor is an Editor row written where the input stood, and the widget names the rows it writes and reads by today's fixed names, read from the app's editor (node master plan section 2, Editor; comfy-vibe-station#1101 comment 7075165594)."
+  },
+  {
+   "after": [
+    {
+     "id": "layers",
+     "row": "input",
+     "type": "LAYERS"
+    },
+    {
+     "default": {},
+     "id": "compositor",
+     "row": "state",
+     "type": "COMPOSITOR"
+    },
+    {
+     "id": "composition",
+     "row": "editor",
+     "widget": {
+      "class": "CompositorWidget",
+      "writes": {
+       "value": "compositor"
+      }
+     }
+    }
+   ],
+   "node_type": "dinkster.image.image_compositor",
+   "part": "rows",
+   "path": "",
+   "reason": "Becomes a State: no pin, no field and no required mark, kept with the workflow and passed to execute (node master plan section 13, State row; comfy-vibe-station#1101 comment 7058717316). Its editor is an Editor row written where the input stood, and the widget names the rows it writes and reads by today's fixed names, read from the app's editor (node master plan section 2, Editor; comfy-vibe-station#1101 comment 7075165594)."
   }
  ],
  "notes": [
