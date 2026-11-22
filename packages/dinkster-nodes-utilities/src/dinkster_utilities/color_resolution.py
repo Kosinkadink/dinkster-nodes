@@ -10,14 +10,14 @@ from dinkster_api.v1 import (
     CORE_COMBO,
     CORE_FLOAT,
     CORE_INT,
-    RESOLUTION_PREVIEW_TYPE,
     ColorWidget,
     ComboOption,
     ComboWidget,
-    CustomWidgetDescriptor,
+    Formula,
     Input,
     Node,
     NodeSchema,
+    Note,
     NumberWidget,
     Output,
     Section,
@@ -35,6 +35,17 @@ _ASPECT_RATIOS = {
     "16:9 (Widescreen)": (16, 9),
     "21:9 (Ultrawide)": (21, 9),
 }
+
+
+def _side_formula(side: int) -> Formula:
+    """The width (0) or height (1) execute gives, for the Note that shows it."""
+    return Formula(
+        f"round(aspect_ratios[aspect_ratio][{side}] * sqrt(megapixels * 1024 * 1024"
+        " / (aspect_ratios[aspect_ratio][0] * aspect_ratios[aspect_ratio][1]))"
+        " / multiple) * multiple"
+    )
+
+
 _INT = TypeExpr.concrete(CORE_INT)
 _FLOAT = TypeExpr.concrete(CORE_FLOAT)
 _COLOR = TypeExpr.concrete(COLOR_TYPE)
@@ -87,6 +98,8 @@ class ResolutionSelector(Node):
                 "Calculate width and height from aspect ratio and megapixel target. Useful for "
                 "setting up Empty Latent Image dimensions."
             ),
+            tables={"aspect_ratios": {name: list(sides) for name, sides in _ASPECT_RATIOS.items()}},
+            derived={"width": _side_formula(0), "height": _side_formula(1)},
             body=(
                 Input(
                     "aspect_ratio",
@@ -102,20 +115,10 @@ class ResolutionSelector(Node):
                     tooltip="Target total megapixels. 1.0 MP is approximately 1024x1024 for square.",
                     widget=NumberWidget(min=0.1, max=16.0, step=0.1),
                 ),
-                Input(
+                Note(
                     "preview",
-                    TypeExpr.concrete(RESOLUTION_PREVIEW_TYPE),
-                    required=False,
-                    default=None,
-                    tooltip="Live preview of the calculated output resolution.",
-                    widget=CustomWidgetDescriptor(
-                        "RESOLUTION_PREVIEW",
-                        {
-                            "ratio_widget": "aspect_ratio",
-                            "megapixels_widget": "megapixels",
-                            "multiple_widget": "multiple",
-                        },
-                    ),
+                    text=Formula('str(width) + " x " + str(height) + " pixels"'),
+                    unknown="Not known until a run",
                 ),
                 Section(
                     "advanced",
@@ -147,7 +150,7 @@ class ResolutionSelector(Node):
 
     @classmethod
     def execute(
-        cls, *, aspect_ratio: str, megapixels: float, multiple: int, preview: object = None
+        cls, *, aspect_ratio: str, megapixels: float, multiple: int
     ) -> Mapping[str, object]:
         width_ratio, height_ratio = _ASPECT_RATIOS[aspect_ratio]
         scale = math.sqrt(megapixels * 1024.0 * 1024.0 / (width_ratio * height_ratio))
