@@ -35,6 +35,7 @@ from dinkster_server import PackInfo
 
 from dinkster.compose import PackSpec, ServingComposer
 from tests.async_scenarios import run_scenario
+from tests.body_rows import wire_entry
 
 
 def test_conditioning_metadata_append_preserves_sources_and_default_overwrite() -> None:
@@ -344,8 +345,7 @@ def test_registered_classes_have_exact_ids_atoms_and_ordered_interfaces() -> Non
             ("positive", "negative") if node is ConditioningStableAudio else ("CONDITIONING",)
         )
     mask_wire = schema_to_wire(ConditioningSetMask.schema())
-    interface = cast(list[dict[str, object]], mask_wire["interface"])
-    mask_input = next(item for item in interface if item["id"] == "set_cond_area")
+    mask_input = wire_entry(mask_wire, "set_cond_area")
     assert mask_input["widget"] == {"type": "COMBO", "options": ["default", "mask bounds"]}
 
 

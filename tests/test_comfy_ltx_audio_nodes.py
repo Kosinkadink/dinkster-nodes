@@ -37,17 +37,17 @@ def test_ltx_audio_interfaces_match_comfy_schemas() -> None:
 
     encode = LTXVAudioVAEEncode.schema()
     decode = LTXVAudioVAEDecode.schema()
-    assert (encode.inputs[0].doc, encode.inputs[1].display_name, encode.inputs[1].doc) == (
+    assert (encode.inputs[0].tooltip, encode.inputs[1].label, encode.inputs[1].tooltip) == (
         "The audio to be encoded.",
         "Audio VAE",
         "The Audio VAE model to use for encoding.",
     )
-    assert (decode.inputs[0].doc, decode.inputs[1].display_name, decode.inputs[1].doc) == (
+    assert (decode.inputs[0].tooltip, decode.inputs[1].label, decode.inputs[1].tooltip) == (
         "The latent to be decoded.",
         "Audio VAE",
         "The Audio VAE model used for decoding the latent.",
     )
-    assert (encode.outputs[0].display_name, decode.outputs[0].display_name) == (
+    assert (encode.outputs[0].label, decode.outputs[0].label) == (
         "Audio Latent",
         "Audio",
     )

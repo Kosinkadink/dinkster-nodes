@@ -2,6 +2,7 @@
 
 import tomllib
 from pathlib import Path
+from typing import cast
 
 import pytest
 from dinkster_3d import NODES
@@ -13,6 +14,7 @@ from dinkster_api.v1 import (
     SPLAT_TYPE,
     Input,
     NodeSchema,
+    Numbered,
     Output,
     TypeExpr,
     schema_from_wire,
@@ -20,7 +22,9 @@ from dinkster_api.v1 import (
 )
 from dinkster_engine import ParentGraphBudget, admit_parent_graph
 from dinkster_graph import Graph, GraphNode, Link, graph_to_wire, validate
-from dinkster_schema import elaborate
+from dinkster_schema import ElaborationError, elaborate
+
+from tests.body_rows import advanced_ids, groups
 
 
 def test_render_splat_schema_and_native_registration() -> None:
@@ -31,17 +35,18 @@ def test_render_splat_schema_and_native_registration() -> None:
         "width",
         "height",
         "frames",
-        "splat_scale",
         "sharpen",
-        "headlight_shading",
-        "opacity_threshold",
         "render_style",
         "background",
         "bg_image",
         "camera_info",
+        "splat_scale",
+        "headlight_shading",
+        "opacity_threshold",
     ]
+    assert advanced_ids(schema.body) == ("splat_scale", "headlight_shading", "opacity_threshold")
     assert schema.inputs[0].type.types == (SPLAT_TYPE,)
-    assert not schema.inputs[-1].required and not schema.inputs[-2].required
+    assert [port.id for port in schema.inputs if not port.required] == ["bg_image", "camera_info"]
     assert [port.id for port in schema.outputs] == ["IMAGE", "MASK"]
     assert sum(node is RenderSplat for node in NODES) == 1
     manifest = Path(__file__).resolve().parents[1] / "packages/dinkster-nodes-3d/dinkster-pack.toml"
@@ -81,37 +86,47 @@ def test_transform_splat_public_schema_and_production_claim() -> None:
 
 
 @pytest.mark.parametrize(
-    ("members", "expected_order"),
+    ("members", "expected"),
     [
-        (("splat0", "splat1"), ("splat0", "splat1")),
-        (("splat10", "splat2"), ("splat10", "splat2", "splat0", "splat1")),
+        (("splat0", "splat1"), (("splat0", True), ("splat1", True))),
+        # The first positions are the required ones, whatever their keys.
+        (("splat10", "splat2", "splat0"), (("splat10", True), ("splat2", True), ("splat0", False))),
     ],
 )
 def test_merge_splat_required_initial_slots_and_optional_authored_tail(
     members: tuple[str, ...],
-    expected_order: tuple[str, ...],
+    expected: tuple[tuple[str, bool], ...],
 ) -> None:
     schema = schema_from_wire(schema_to_wire(MergeSplat.schema()))
-    family = schema.input_families[0]
-    assert (family.id, family.min_members, family.max_members, family.member_prefix) == (
+    family = groups(schema)[0]
+    assert (
+        family.id,
+        family.min_members,
+        family.max_members,
+        cast(Numbered, family.keys).prefix,
+    ) == (
         "splats",
         2,
         32,
         "splat",
     )
-    assert isinstance(family.template[0], Input)
-    assert family.required and family.template[0].required and family.optional_after_minimum
-    assert family.template[0].type == TypeExpr.concrete(SPLAT_TYPE)
+    value = family.value
+    assert isinstance(value, Input)
+    assert value.required and family.optional_after_minimum
+    assert value.type == TypeExpr.concrete(SPLAT_TYPE)
     assert [(port.id, port.type.types) for port in schema.outputs] == [("splat", (SPLAT_TYPE,))]
     assert sum(node is MergeSplat for node in NODES) == 1
     manifest = Path(__file__).resolve().parents[1] / "packages/dinkster-nodes-3d/dinkster-pack.toml"
     assert "dinkster.3d" in tomllib.loads(manifest.read_text())["pack"]["namespaces"]
+    with pytest.raises(ElaborationError, match="needs at least 2 members"):
+        elaborate(schema, ())
     effective = elaborate(schema, tuple(f"splats.{member}" for member in members))
     assert [(port.id, port.required) for port in effective.inputs] == [
-        (f"splats.{member}", member in ("splat0", "splat1")) for member in expected_order
+        (f"splats.{member}", required) for member, required in expected
     ]
+    required = [f"splats.{member}" for member, needed in expected if needed]
     source = NodeSchema("test.source", body=(Output("splat", TypeExpr.concrete(SPLAT_TYPE)),))
-    inputs = {f"splats.splat{index}": Link("source", "splat") for index in range(2)}
+    inputs = {member: Link("source", "splat") for member in required}
     graph = Graph(
         {
             "source": GraphNode(source.node_type),
@@ -130,7 +145,7 @@ def test_merge_splat_required_initial_slots_and_optional_authored_tail(
         schemas=schemas,
     )
     assert graph_to_wire(admitted.graph) == graph_to_wire(graph)
-    for missing in ("splats.splat0", "splats.splat1"):
+    for missing in required:
         incomplete = Graph(
             {
                 **graph.nodes,

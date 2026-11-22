@@ -12,6 +12,8 @@ from dinkster_models.hook_scheduling import (
     SetHookKeyframes,
 )
 
+from tests.body_rows import advanced_ids
+
 
 def test_hook_scheduling_nodes_publish_the_fixed_core_ids_and_sockets() -> None:
     expected = {
@@ -24,14 +26,12 @@ def test_hook_scheduling_nodes_publish_the_fixed_core_ids_and_sockets() -> None:
             "start_percent",
             "end_percent",
             "keyframes_count",
-            "print_keyframes",
             "prev_hook_kf",
         ),
         "dinkster.models.create_hook_keyframes_from_floats": (
             "floats_strength",
             "start_percent",
             "end_percent",
-            "print_keyframes",
             "prev_hook_kf",
         ),
         "dinkster.models.combine_hooks2": ("hooks_A", "hooks_B"),
@@ -47,6 +47,10 @@ def test_hook_scheduling_nodes_publish_the_fixed_core_ids_and_sockets() -> None:
             "hooks_H",
         ),
     }
+    advanced = {
+        "dinkster.models.create_hook_keyframes_interpolated": ("print_keyframes",),
+        "dinkster.models.create_hook_keyframes_from_floats": ("print_keyframes",),
+    }
     nodes = (
         SetHookKeyframes,
         CreateHookKeyframe,
@@ -60,7 +64,9 @@ def test_hook_scheduling_nodes_publish_the_fixed_core_ids_and_sockets() -> None:
     for node in nodes:
         schema = node.schema()
         assert node in NODES
-        assert tuple(input.id for input in schema.inputs) == expected[schema.node_type]
+        shown = advanced.get(schema.node_type, ())
+        assert tuple(input.id for input in schema.inputs) == (*expected[schema.node_type], *shown)
+        assert advanced_ids(schema.body) == shown
         assert all(
             input.type == TypeExpr.concrete(HOOKS_TYPE)
             for input in schema.inputs
@@ -73,7 +79,7 @@ def test_hook_scheduling_nodes_publish_the_fixed_core_ids_and_sockets() -> None:
     assert create_one.outputs[0].type == TypeExpr.concrete(HOOK_KEYFRAMES_TYPE)
     assert interpolated.outputs[0].id == from_floats.outputs[0].id == "HOOK_KF"
     assert from_floats.inputs[0].type == TypeExpr.concrete(FLOATS_TYPE)
-    assert from_floats.inputs[0].force_input
+    assert from_floats.inputs[0].pin_first
     assert from_floats.inputs[0].default == -1
     assert from_floats.inputs[0].widget == NumberWidget(min=-1, step=0.001)
     assert interpolated.inputs[5].widget == NumberWidget(min=2, max=100, step=1)

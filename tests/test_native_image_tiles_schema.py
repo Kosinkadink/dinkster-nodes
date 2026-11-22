@@ -22,30 +22,30 @@ def test_tile_node_schemas_preserve_types_defaults_and_aliases() -> None:
         "slice image",
         "ImageMergeTileList",
     ]
-    assert split["interface"][0]["type"]["types"] == [IMAGE_TYPE]
-    assert split["interface"][-1]["type"] == {
+    assert split["body"][0]["type"]["types"] == [IMAGE_TYPE]
+    assert split["body"][-1]["type"] == {
         "kind": "list",
         "element": {"kind": "concrete", "types": [IMAGE_TYPE]},
     }
-    assert [item["default"] for item in split["interface"][1:4]] == [1024, 1024, 128]
-    assert [item["default"] for item in merge["interface"][1:4]] == [1024, 1024, 128]
+    assert [item["default"] for item in split["body"][1:4]] == [1024, 1024, 128]
+    assert [item["default"] for item in merge["body"][1:4]] == [1024, 1024, 128]
 
 
 def test_mask_preview_schema_declares_preview_output() -> None:
     wire = cast("dict[str, Any]", schema_to_wire(MaskPreview.schema()))
     assert wire["nodeType"] == "dinkster.image.mask_preview"
     assert wire["emitsPreviews"] is True
-    assert wire["interface"] == [
+    assert wire["body"] == [
         {
             "id": "mask",
             "required": True,
-            "role": "input",
+            "kind": "input",
             "type": {"kind": "concrete", "types": [MASK_TYPE]},
         },
         {
             "id": "mask",
             "preview": True,
-            "role": "output",
+            "kind": "output",
             "type": {"kind": "concrete", "types": [MASK_TYPE]},
         },
     ]

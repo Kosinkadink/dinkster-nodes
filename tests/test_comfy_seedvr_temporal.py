@@ -13,7 +13,7 @@ def test_seedvr_temporal_schemas_are_registered_with_bounded_merge_overlap() -> 
     assert chunk.outputs[0].type == TypeExpr.list_of(TypeExpr.concrete(LATENT_TYPE))
     overlap = merge.inputs[1]
     assert overlap.id == "temporal_overlap"
-    assert overlap.force_input
+    assert overlap.pin_first
     assert overlap.widget == NumberWidget(min=0, max=16384)
     assert schema_from_wire(schema_to_wire(chunk)) == chunk
     assert schema_from_wire(schema_to_wire(merge)) == merge

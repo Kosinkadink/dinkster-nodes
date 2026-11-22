@@ -8,68 +8,53 @@ from dinkster_models.context_windows import ContextWindowsManual
 from dinkster_wan import NODES as WAN_NODES
 from dinkster_wan.context_windows import WanContextWindowsManual
 
+from tests.body_rows import advanced_ids
+
 
 def test_context_window_nodes_are_native_pack_schemas() -> None:
+    windowed = (
+        (
+            "model",
+            "context_length",
+            "context_overlap",
+            "context_schedule",
+            "fuse_method",
+            "retain_first_frame",
+        ),
+        ("context_stride", "closed_loop", "freenoise", "split_conds_to_windows"),
+    )
     expected = (
         (
             ContextWindowsManual,
             MODEL_NODES,
             "dinkster.models.context_windows_manual",
             (
-                "model",
-                "context_length",
-                "context_overlap",
-                "context_schedule",
-                "context_stride",
-                "closed_loop",
-                "fuse_method",
-                "dim",
-                "freenoise",
-                "cond_retain_index_list",
-                "split_conds_to_windows",
-                "latent_retain_index_list",
-                "causal_window_fix",
+                (
+                    "model",
+                    "context_length",
+                    "context_overlap",
+                    "context_schedule",
+                    "context_stride",
+                    "closed_loop",
+                    "fuse_method",
+                    "dim",
+                    "freenoise",
+                    "cond_retain_index_list",
+                    "split_conds_to_windows",
+                    "latent_retain_index_list",
+                    "causal_window_fix",
+                ),
+                (),
             ),
         ),
-        (
-            WanContextWindowsManual,
-            WAN_NODES,
-            "dinkster.wan.wan_context_windows_manual",
-            (
-                "model",
-                "context_length",
-                "context_overlap",
-                "context_schedule",
-                "context_stride",
-                "closed_loop",
-                "fuse_method",
-                "freenoise",
-                "retain_first_frame",
-                "split_conds_to_windows",
-            ),
-        ),
-        (
-            LTXVContextWindows,
-            LTX_NODES,
-            "dinkster.ltx.ltxv_context_windows",
-            (
-                "model",
-                "context_length",
-                "context_overlap",
-                "context_schedule",
-                "context_stride",
-                "closed_loop",
-                "fuse_method",
-                "freenoise",
-                "retain_first_frame",
-                "split_conds_to_windows",
-            ),
-        ),
+        (WanContextWindowsManual, WAN_NODES, "dinkster.wan.wan_context_windows_manual", windowed),
+        (LTXVContextWindows, LTX_NODES, "dinkster.ltx.ltxv_context_windows", windowed),
     )
-    for node, registered, node_type, inputs in expected:
+    for node, registered, node_type, (inputs, advanced) in expected:
         schema = node.schema()
         assert schema.node_type == node_type
-        assert tuple(input.id for input in schema.inputs) == inputs
+        assert tuple(input.id for input in schema.inputs) == (*inputs, *advanced)
+        assert advanced_ids(schema.body) == advanced
         assert schema.outputs[0].id == "MODEL"
         assert schema_from_wire(schema_to_wire(schema)) == schema
         assert node in registered

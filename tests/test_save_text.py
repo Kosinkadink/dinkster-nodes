@@ -40,7 +40,7 @@ def test_save_text_schema_preserves_core_contract_and_appends_mount() -> None:
         "format",
         "mount",
     )
-    assert schema.inputs[0].force_input
+    assert schema.inputs[0].pin_first
     assert schema.inputs[0].widget == StringWidget(multiline=False)
     assert schema.inputs[1].default == "ComfyUI"
     assert schema.inputs[2].default == "txt"

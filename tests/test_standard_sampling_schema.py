@@ -11,6 +11,8 @@ from dinkster_sampling.standard_sampling import (
     KSamplerAdvanced,
 )
 
+from tests.body_rows import advanced_ids
+
 STANDARD_SAMPLING_NODES = (KSampler, KSamplerAdvanced)
 
 
@@ -36,7 +38,6 @@ def test_standard_sampling_schemas_match_comfyui() -> None:
     )
     assert tuple(input.id for input in advanced.schema().inputs) == (
         "model",
-        "add_noise",
         "noise_seed",
         "steps",
         "cfg",
@@ -45,20 +46,30 @@ def test_standard_sampling_schemas_match_comfyui() -> None:
         "positive",
         "negative",
         "latent_image",
+        "add_noise",
         "start_at_step",
         "end_at_step",
         "return_with_leftover_noise",
     )
-    seed = standard.schema().inputs[1].widget
-    noise_seed = advanced.schema().inputs[2].widget
-    cfg = standard.schema().inputs[3].widget
+    assert advanced_ids(standard.schema().body) == ()
+    assert advanced_ids(advanced.schema().body) == (
+        "add_noise",
+        "start_at_step",
+        "end_at_step",
+        "return_with_leftover_noise",
+    )
+    standard_inputs = {input.id: input for input in standard.schema().inputs}
+    advanced_inputs = {input.id: input for input in advanced.schema().inputs}
+    seed = standard_inputs["seed"].widget
+    noise_seed = advanced_inputs["noise_seed"].widget
+    cfg = standard_inputs["cfg"].widget
     denoise = standard.schema().inputs[-1].widget
     assert isinstance(seed, NumberWidget) and seed.min == 0 and seed.max == 0xFFFFFFFFFFFFFFFF
     assert isinstance(noise_seed, NumberWidget)
     assert seed.step is None and noise_seed.step is None
-    assert seed.control_after_generate == noise_seed.control_after_generate == "fixed"
-    for index in (3, 10, 11):
-        widget = advanced.schema().inputs[index].widget
+    assert standard_inputs["seed"].after_run == advanced_inputs["noise_seed"].after_run == "fixed"
+    for name in ("steps", "start_at_step", "end_at_step"):
+        widget = advanced_inputs[name].widget
         assert isinstance(widget, NumberWidget) and widget.step is None
     assert isinstance(cfg, NumberWidget) and (cfg.min, cfg.max, cfg.step, cfg.round) == (
         0.0,
@@ -72,7 +83,7 @@ def test_standard_sampling_schemas_match_comfyui() -> None:
         0.01,
     )
     assert standard.schema().outputs[0].id == advanced.schema().outputs[0].id == "LATENT"
-    assert standard.schema().outputs[0].doc == "The denoised latent."
+    assert standard.schema().outputs[0].tooltip == "The denoised latent."
     for node in STANDARD_SAMPLING_NODES:
         assert schema_from_wire(schema_to_wire(node.schema())) == node.schema()
 

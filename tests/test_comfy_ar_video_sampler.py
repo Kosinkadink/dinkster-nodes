@@ -23,7 +23,7 @@ def test_ar_video_sampler_schema_and_cold_discovery() -> None:
     assert input_.type == TypeExpr.concrete(CORE_INT)
     assert input_.default == 1
     assert input_.widget == NumberWidget(min=1, max=64)
-    assert input_.doc == (
+    assert input_.tooltip == (
         "Frames per autoregressive block. 1 = framewise, "
         "3 = chunkwise. Must match the checkpoint's training mode."
     )

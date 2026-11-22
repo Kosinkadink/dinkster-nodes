@@ -6,6 +6,8 @@ from dinkster_api.v1 import NumberWidget, schema_to_wire
 from dinkster_hunyuan import NODES
 from dinkster_hunyuan.hunyuan_latent import EmptyHunyuanImageLatent, HunyuanRefinerLatent
 
+from tests.body_rows import advanced_ids
+
 
 def test_hunyuan_image_latent_schemas_match_the_fixed_reference_contract() -> None:
     empty, refiner = EmptyHunyuanImageLatent, HunyuanRefinerLatent
@@ -44,7 +46,7 @@ def test_hunyuan_image_latent_schemas_match_the_fixed_reference_contract() -> No
     ]
     noise = refiner_schema.inputs[-1]
     assert cast(NumberWidget, noise.widget) == NumberWidget(min=0.0, max=1.0, step=0.01)
-    assert noise.advanced is True
+    assert advanced_ids(refiner_schema.body) == ("noise_augmentation",)
     assert [(output.id, output.type.types) for output in refiner_schema.outputs] == [
         ("positive", ("CONDITIONING",)),
         ("negative", ("CONDITIONING",)),

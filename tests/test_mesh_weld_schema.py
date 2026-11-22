@@ -22,6 +22,7 @@ from dinkster_3d.mesh_render import RenderMesh
 from dinkster_3d.mesh_weld import WeldVertices
 from dinkster_3d.voxel_texture import BakeTextureFromVoxel
 from dinkster_workers import load_manifest
+from tests.body_rows import choices, placed_rows
 assert NODES.count(WeldVertices) == 1
 schema = WeldVertices.schema()
 assert [slot.id for slot in schema.inputs] == ['mesh', 'epsilon_rel', 'epsilon_abs']
@@ -43,18 +44,21 @@ assert 'dinkster.3d' in manifest.namespaces
 schema = DecimateMesh.schema()
 assert schema.inputs[1].default == 200_000
 assert schema.outputs[0].type.types == ('MESH',)
-assert schema.combos[0].id == 'placement_mode'
-assert [option.key for option in schema.combos[0].options] == ['midpoint', 'qem']
-assert [slot.default for slot in schema.combos[0].options[1].inputs] == [0., 0., 30., True]
+placement, = choices(schema)
+assert placement.id == 'placement_mode'
+assert [option.key for option in placement.options] == ['midpoint', 'qem']
+qem = placed_rows(placement, placement.options[1])
+assert [slot.default for slot in qem] == [0., 0., 30., True]
 assert NODES.count(RemeshMesh) == 1
 assert 'dinkster.3d' in manifest.namespaces
 schema = RemeshMesh.schema()
 assert schema.inputs[1].default == 512
 assert schema.outputs[0].type.types == ('MESH',)
-assert [option.key for option in schema.combos[0].options] == ['udf', 'sdf', 'solid']
-assert [slot.default for slot in schema.combos[0].options[0].inputs] == [False, False, False]
-assert [slot.default for slot in schema.combos[0].options[1].inputs] == [True, False]
-assert [slot.default for slot in schema.combos[0].options[2].inputs] == [20., False]
+sign, = choices(schema)
+assert [option.key for option in sign.options] == ['udf', 'sdf', 'solid']
+assert [slot.default for slot in placed_rows(sign, sign.options[0])] == [False, False, False]
+assert [slot.default for slot in placed_rows(sign, sign.options[1])] == [True, False]
+assert [slot.default for slot in placed_rows(sign, sign.options[2])] == [20., False]
 assert NODES.count(RenderMesh) == 1
 schema = RenderMesh.schema()
 assert [slot.id for slot in schema.inputs] == [

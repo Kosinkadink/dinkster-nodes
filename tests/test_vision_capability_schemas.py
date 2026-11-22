@@ -62,7 +62,7 @@ def test_bbox_crop_schema_registers_without_torch_or_inference() -> None:
             "assert schema.node_type.startswith(manifest.namespaces[0] + '.')\n"
             "assert [port.id for port in schema.inputs] == "
             "['image', 'bboxes', 'output_width', 'output_height', 'padding', 'keep_aspect']\n"
-            "assert schema.inputs[1].force_input\n"
+            "assert schema.inputs[1].pin_first\n"
             "assert schema.inputs[1].default == {'x': 0, 'y': 0, 'width': 512, 'height': 512}\n"
             "assert [option.value for option in schema.inputs[-1].widget.options] == "
             "['stretch', 'pad']\n",

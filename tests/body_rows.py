@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+import dataclasses
 from collections.abc import Mapping, Sequence
 from typing import Any, cast
 
 from dinkster_api.v1 import Choice, Group, NodeSchema, Option, Row, Section, TypeChoice, Use
+from dinkster_schema.body import UNSET
 
 
 def scope(rows: Sequence[object], shared: Sequence[object] = ()) -> list[object]:
@@ -22,8 +24,60 @@ def scope(rows: Sequence[object], shared: Sequence[object] = ()) -> list[object]
     return found
 
 
+def advanced_ids(rows: Sequence[object], shared: Sequence[object] = ()) -> tuple[str, ...]:
+    """The ids of the rows in one scope's Advanced section, in order; none without one.
+
+    The section holds what the old declaration marked advanced: it is labeled
+    Advanced and starts closed. ``shared`` resolves an option's Use rows."""
+    sections = [row for row in rows if isinstance(row, Section) and row.id == "advanced"]
+    assert len(sections) <= 1
+    for section in sections:
+        assert (section.label, section.collapsed) == ("Advanced", True)
+    return tuple(
+        getattr(row, "id", "") for section in sections for row in scope(section.rows, shared)
+    )
+
+
+def beside(rows: Sequence[object]) -> dict[str, str]:
+    """Each field a ``Row`` shows beside another, with the id of the Row's first field."""
+    found: dict[str, str] = {}
+    for row in rows:
+        if isinstance(row, Section):
+            found.update(beside(row.rows))
+        elif isinstance(row, Row):
+            first, *others = (getattr(item, "id", "") for item in row.rows)
+            found.update((other, first) for other in others)
+    return found
+
+
 def option_rows(choice: Choice, option: Option) -> list[object]:
     return scope(option.rows, choice.shared)
+
+
+def placed_rows(choice: Choice, option: Option) -> list[object]:
+    """An option's rows as the option shows them: each Use is its shared row with
+    the Use's words, widget, default and required mark."""
+    named = {getattr(row, "id", ""): row for row in scope(choice.shared)}
+
+    def walk(rows: Sequence[object]) -> list[object]:
+        found: list[object] = []
+        for row in rows:
+            if isinstance(row, (Section, Row)):
+                found.extend(walk(row.rows))
+            elif isinstance(row, Use):
+                shared = named[row.id]
+                fields = {field.name for field in dataclasses.fields(cast("Any", shared))}
+                changes = {
+                    name: getattr(row, name)
+                    for name in ("label", "tooltip", "widget", "default", "required")
+                    if name in fields and getattr(row, name) is not UNSET
+                }
+                found.append(dataclasses.replace(cast("Any", shared), **changes))
+            else:
+                found.append(row)
+        return found
+
+    return walk(option.rows)
 
 
 def option_ids(choice: Choice) -> dict[str, tuple[str, ...]]:

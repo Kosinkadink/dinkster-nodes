@@ -1,5 +1,7 @@
 """Torch-free MiniMax H3 guide schema and discovery."""
 
+from typing import cast
+
 from dinkster_api.v1 import (
     AUDIO_TYPE,
     CLIP_TYPE,
@@ -9,6 +11,7 @@ from dinkster_api.v1 import (
     LATENT_TYPE,
     VAE_TYPE,
     Input,
+    Numbered,
     NumberWidget,
     Output,
     TypeExpr,
@@ -18,6 +21,8 @@ from dinkster_api.v1 import (
 from dinkster_minimax import NODES
 from dinkster_minimax.minimax_h3_latent import MiniMaxH3AddGuide
 from dinkster_minimax.minimax_h3_reference import MiniMaxH3ReferenceToVideo
+
+from tests.body_rows import groups
 
 
 def test_minimax_h3_add_guide_schema_and_cold_discovery() -> None:
@@ -90,22 +95,23 @@ def test_minimax_h3_reference_members_are_optional_and_roundtrip() -> None:
         ("ref_video_audios", "ref_video_audio_", AUDIO_TYPE, 3),
         ("ref_audios", "ref_audio_", AUDIO_TYPE, 3),
     )
-    assert len(schema.input_families) == len(expected_families)
-    assert tuple(family.id for family in schema.input_families) == tuple(
+    families = groups(schema)
+    assert len(families) == len(expected_families)
+    assert tuple(family.id for family in families) == tuple(
         family[0] for family in expected_families
     )
-    for family, (family_id, prefix, kind, limit) in zip(
-        schema.input_families, expected_families, strict=True
-    ):
-        assert (family.id, family.member_prefix, family.min_members, family.max_members) == (
+    for family, (family_id, prefix, kind, limit) in zip(families, expected_families, strict=True):
+        assert (
+            family.id,
+            cast(Numbered, family.keys).prefix,
+            family.min_members,
+            family.max_members,
+        ) == (
             family_id,
             prefix,
             0,
             limit,
         )
-        assert not family.required
-        assert family.template == (
-            Input(prefix.rstrip("_"), TypeExpr.concrete(kind), required=False),
-        )
+        assert family.value == Input(prefix.rstrip("_"), TypeExpr.concrete(kind), required=False)
 
     assert schema_from_wire(schema_to_wire(schema)) == schema

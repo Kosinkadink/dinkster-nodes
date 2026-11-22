@@ -25,6 +25,8 @@ from dinkster_hunyuan.hunyuan_video_image import (
 )
 from dinkster_schema import claim_covers
 
+from tests.body_rows import advanced_ids
+
 
 def test_hunyuan_video_image_schemas_match_the_public_contract() -> None:
     manifest = tomllib.loads(
@@ -43,12 +45,13 @@ def test_hunyuan_video_image_schemas_match_the_public_contract() -> None:
                 ("height", CORE_INT),
                 ("length", CORE_INT),
                 ("batch_size", CORE_INT),
-                ("guidance_type", CORE_COMBO),
                 ("start_image", IMAGE_TYPE),
+                ("guidance_type", CORE_COMBO),
             ),
             (("positive", CONDITIONING_TYPE), ("latent", LATENT_TYPE)),
-            (None, None, 848, 480, 53, 1, "v1 (concat)", None),
-            (True, True, True, True, True, True, True, False),
+            (None, None, 848, 480, 53, 1, None, "v1 (concat)"),
+            (True, True, True, True, True, True, False, True),
+            ("guidance_type",),
         ),
         (
             "dinkster.hunyuan.hunyuan_video15_image_to_video",
@@ -70,6 +73,7 @@ def test_hunyuan_video_image_schemas_match_the_public_contract() -> None:
             ),
             (None, None, None, 848, 480, 33, 1, None, None),
             (True, True, True, True, True, True, True, False, False),
+            (),
         ),
         (
             "dinkster.hunyuan.hunyuan_video15_super_resolution",
@@ -89,9 +93,10 @@ def test_hunyuan_video_image_schemas_match_the_public_contract() -> None:
             ),
             (None, None, None, None, None, None, 0.70),
             (True, True, False, False, False, True, True),
+            ("noise_augmentation",),
         ),
     )
-    for node, (node_type, inputs, outputs, defaults, required) in zip(
+    for node, (node_type, inputs, outputs, defaults, required, advanced) in zip(
         (HunyuanImageToVideo, HunyuanVideo15ImageToVideo, HunyuanVideo15SuperResolution),
         expected,
         strict=True,
@@ -107,6 +112,7 @@ def test_hunyuan_video_image_schemas_match_the_public_contract() -> None:
         assert tuple((item.id, item.type.types[0]) for item in schema.outputs) == outputs
         assert tuple(item.default for item in schema.inputs) == defaults
         assert tuple(item.required for item in schema.inputs) == required
+        assert advanced_ids(schema.body) == advanced
         assert schema_from_wire(schema_to_wire(schema)) == schema
         for item, minimum, step in (
             zip(
@@ -124,6 +130,6 @@ def test_hunyuan_video_image_schemas_match_the_public_contract() -> None:
                 4096 if item.id == "batch_size" else 16384,
                 step,
             )
-    guidance = HunyuanImageToVideo.schema().inputs[6]
-    assert guidance.advanced and isinstance(guidance.widget, ComboWidget)
+    guidance = HunyuanImageToVideo.schema().inputs[7]
+    assert guidance.id == "guidance_type" and isinstance(guidance.widget, ComboWidget)
     assert guidance.widget.options == ("v1 (concat)", "v2 (replace)", "custom")

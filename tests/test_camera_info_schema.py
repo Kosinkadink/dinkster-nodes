@@ -11,10 +11,13 @@ from dinkster_3d.camera_info import CreateCameraInfo
 from dinkster_api.v1 import (
     CAMERA_INFO_STATE_TYPE,
     LOAD3D_CAMERA_TYPE,
+    Output,
     schema_from_wire,
     schema_to_wire,
 )
 from dinkster_workers import load_manifest
+
+from tests.body_rows import advanced_ids, choices, scope
 
 
 def test_camera_info_schema_and_production_claim_are_canonical() -> None:
@@ -23,19 +26,22 @@ def test_camera_info_schema_and_production_claim_are_canonical() -> None:
     assert schema.outputs[0].type.types == (LOAD3D_CAMERA_TYPE,)
     state = next(item for item in schema.inputs if item.id == "camera_info_state")
     assert state.type.types == (CAMERA_INFO_STATE_TYPE,)
-    assert state.socketless and not state.required
-    assert schema.input_order == (
+    assert not state.pin and not state.required
+    assert [
+        getattr(row, "id", "") for row in scope(schema.body) if not isinstance(row, Output)
+    ] == [
         "mode",
-        "target_x",
-        "target_y",
-        "target_z",
         "roll",
         "fov",
         "zoom",
         "camera_type",
         "camera_info_state",
-    )
-    assert [option.key for option in schema.combos[0].options] == [
+        "target_x",
+        "target_y",
+        "target_z",
+    ]
+    assert advanced_ids(schema.body) == ("target_x", "target_y", "target_z")
+    assert [option.key for option in choices(schema)[0].options] == [
         "orbit",
         "look_at",
         "quaternion",

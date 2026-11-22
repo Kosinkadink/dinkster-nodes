@@ -7,6 +7,8 @@ from dinkster_minimax.audio_music_conditioning import (
     ReferenceTimbreAudio,
 )
 
+from tests.body_rows import advanced_ids
+
 
 def test_audio_music_conditioning_schemas() -> None:
     music, reference = MiniMaxMusic3TextEncode.schema(), ReferenceTimbreAudio.schema()
@@ -31,7 +33,7 @@ def test_audio_music_conditioning_schemas() -> None:
         ("CONDITIONING", "CONDITIONING"),
         ("seconds", "FLOAT"),
     ]
-    assert music.inputs[5].advanced and music.inputs[6].advanced
+    assert advanced_ids(music.body) == ("cfg_scale", "top_k")
     assert (reference.node_type, reference.display_name, reference.category) == (
         "dinkster.minimax.reference_timbre_audio",
         "Set Reference Audio",

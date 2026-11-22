@@ -20,6 +20,8 @@ from dinkster_schema import claim_covers
 from dinkster_wan import NODES
 from dinkster_workers import load_manifest
 
+from tests.body_rows import advanced_ids
+
 
 def test_wan_image_schemas_and_cold_native_discovery() -> None:
     optional_names = {
@@ -195,14 +197,15 @@ def test_track_schema_preserves_required_image_and_string_tracks() -> None:
         "height",
         "length",
         "batch_size",
-        "temperature",
-        "topk",
         "start_image",
         "clip_vision_output",
+        "temperature",
+        "topk",
     ]
-    assert [i.default for i in schema.inputs[3:10]] == ["[]", 832, 480, 81, 1, 220.0, 2]
+    assert [i.default for i in schema.inputs[3:8]] == ["[]", 832, 480, 81, 1]
+    assert [i.default for i in schema.inputs[10:]] == [220.0, 2]
     assert [i.id for i in schema.inputs if not i.required] == ["clip_vision_output"]
-    assert schema.inputs[8].advanced and schema.inputs[9].advanced
+    assert advanced_ids(schema.body) == ("temperature", "topk")
     assert [o.id for o in schema.outputs] == ["positive", "negative", "latent"]
     assert schema_from_wire(schema_to_wire(schema)) == schema
 

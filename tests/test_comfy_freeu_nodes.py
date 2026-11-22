@@ -6,6 +6,8 @@ from dinkster_api.v1 import CORE_FLOAT, MODEL_TYPE, NumberWidget, TypeExpr
 from dinkster_models import NODES
 from dinkster_models.freeu import FreeU, FreeU_V2
 
+from tests.body_rows import advanced_ids
+
 
 def test_freeu_nodes_expose_pinned_model_patch_schemas() -> None:
     for node, node_type, defaults in (
@@ -20,7 +22,7 @@ def test_freeu_nodes_expose_pinned_model_patch_schemas() -> None:
         assert schema.inputs[0].type == TypeExpr.concrete(MODEL_TYPE)
         assert [input.type for input in schema.inputs[1:]] == [TypeExpr.concrete(CORE_FLOAT)] * 4
         assert [input.default for input in schema.inputs[1:]] == list(defaults)
-        assert all(input.advanced for input in schema.inputs[1:])
+        assert advanced_ids(schema.body) == tuple(input.id for input in schema.inputs[1:])
         assert all(
             input.widget == NumberWidget(min=0.0, max=10.0, step=0.01)
             for input in schema.inputs[1:]
