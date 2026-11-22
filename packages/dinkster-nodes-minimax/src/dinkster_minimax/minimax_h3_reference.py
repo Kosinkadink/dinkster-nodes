@@ -18,6 +18,8 @@ from dinkster_api.v1 import (
     ComboWidget,
     Group,
     Input,
+    Item,
+    Members,
     Node,
     NodeSchema,
     Numbered,
@@ -132,16 +134,17 @@ class MiniMaxH3ReferenceToVideo(Node):
         ref_image_size: str = "match",
         vae: Any = None,
         audio_vae: Any = None,
-        ref_images: Mapping[str, object] | None = None,
-        ref_videos: Mapping[str, object] | None = None,
-        ref_video_audios: Mapping[str, object] | None = None,
-        ref_audios: Mapping[str, object] | None = None,
+        ref_images: Members[Item],
+        ref_videos: Members[Item],
+        ref_video_audios: Members[Item],
+        ref_audios: Members[Item],
     ) -> Mapping[str, object]:
         initialize_inference_process()
         latent, frame_count = empty_av_latent(width, height, length)
         items: list[dict[str, Any]] = []
         blocks: list[dict[str, Any]] = []
-        for image in (ref_images or {}).values():
+        for member in ref_images:
+            image = member.value
             if image is None:
                 continue
             pixels = materialize_image(image)
@@ -163,11 +166,14 @@ class MiniMaxH3ReferenceToVideo(Node):
                         "latent": vae.encode(resized),
                     }
                 )
-        soundtracks = ref_video_audios or {}
-        for name, frames in (ref_videos or {}).items():
+        for position, member in enumerate(ref_videos):
+            frames = member.value
             if frames is None:
                 continue
-            soundtrack = soundtracks.get("ref_video_audio_" + name.rsplit("_", 1)[-1])
+            # A video pairs with the soundtrack at the same position.
+            soundtrack = (
+                ref_video_audios[position].value if position < len(ref_video_audios) else None
+            )
             pixels = materialize_image(frames)
             vh, vw = pixels.shape[1:3]
             ratio = vw / vh
@@ -215,7 +221,8 @@ class MiniMaxH3ReferenceToVideo(Node):
                     "audio_latent": audio_latent,
                 }
             )
-        for audio in (ref_audios or {}).values():
+        for member in ref_audios:
+            audio = member.value
             if audio is None:
                 continue
             items.append({"type": "audio"})
