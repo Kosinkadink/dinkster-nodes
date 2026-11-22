@@ -7,15 +7,12 @@ from typing import Any, cast
 import numpy as np
 from dinkster_api.v1 import (
     ABSENT,
-    IMAGECOMPARE_TYPE,
     CustomWidgetDescriptor,
     Editor,
     Input,
     Node,
     NodeSchema,
     Output,
-    State,
-    TypeExpr,
     copy_media_semantics,
     report_preview,
 )
@@ -71,7 +68,6 @@ class NativeImageCompare(Node):
             category="image",
             body=(
                 *ImageCompare.schema().inputs,
-                State("compare_view", TypeExpr.concrete(IMAGECOMPARE_TYPE)),
                 Editor(
                     "comparison",
                     CustomWidgetDescriptor(
@@ -85,9 +81,7 @@ class NativeImageCompare(Node):
         )
 
     @classmethod
-    def execute(
-        cls, *, image_a: object = None, image_b: object = None, compare_view: object = None
-    ) -> Mapping[str, object]:
+    def execute(cls, *, image_a: object = None, image_b: object = None) -> Mapping[str, object]:
         images = ImageCompare.execute(image_a=image_a, image_b=image_b)
         for name, value in images.items():
             if value is ABSENT:

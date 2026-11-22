@@ -9,7 +9,6 @@ from pathlib import Path
 from dinkster_3d import NODES
 from dinkster_3d.camera_info import CreateCameraInfo
 from dinkster_api.v1 import (
-    CAMERA_INFO_STATE_TYPE,
     LOAD3D_CAMERA_TYPE,
     Output,
     schema_from_wire,
@@ -24,9 +23,6 @@ def test_camera_info_schema_and_production_claim_are_canonical() -> None:
     schema = CreateCameraInfo.schema()
     assert schema_from_wire(schema_to_wire(schema)) == schema
     assert schema.outputs[0].type.types == (LOAD3D_CAMERA_TYPE,)
-    state = next(item for item in schema.inputs if item.id == "camera_info_state")
-    assert state.type.types == (CAMERA_INFO_STATE_TYPE,)
-    assert not state.pin and not state.required
     assert [
         getattr(row, "id", "") for row in scope(schema.body) if not isinstance(row, Output)
     ] == [
@@ -35,7 +31,6 @@ def test_camera_info_schema_and_production_claim_are_canonical() -> None:
         "fov",
         "zoom",
         "camera_type",
-        "camera_info_state",
         "target_x",
         "target_y",
         "target_z",

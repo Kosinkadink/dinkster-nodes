@@ -18,7 +18,6 @@ from dinkster_api.v1 import (
     NodeSchema,
     NumberWidget,
     Output,
-    State,
     TypeExpr,
     with_identity_replacement,
 )
@@ -93,7 +92,6 @@ class CameraAngle(Node):
                         "in the 3D preview."
                     ),
                 ),
-                State("view", TypeExpr.concrete(CORE_STRING), default=""),
                 Editor(
                     "angle_view",
                     CustomWidgetDescriptor(
@@ -120,7 +118,6 @@ class CameraAngle(Node):
         vertical_angle: int,
         zoom: float,
         image: object = None,
-        view: object = None,
     ) -> Mapping[str, object]:
         horizontal_angle = max(0, min(360, int(horizontal_angle)))
         vertical_angle = max(-30, min(60, int(vertical_angle)))

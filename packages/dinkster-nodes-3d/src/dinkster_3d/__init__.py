@@ -2,7 +2,6 @@
 
 from dinkster_api.v1 import (
     ASSET_TYPE,
-    CAMERA_INFO_STATE_TYPE,
     COLOR_TYPE,
     LOAD3D_CAMERA_TYPE,
     LOAD3D_MODEL_INFO_TYPE,
@@ -99,9 +98,8 @@ def register_types(registry: TypeRegistry) -> None:
     register_mesh_type(registry)
     register_splat_type(registry)
     register_voxel_type(registry)
-    for type_id in (CAMERA_INFO_STATE_TYPE, COLOR_TYPE):
-        if type_id not in registry:
-            registry.register(type_id)
+    if COLOR_TYPE not in registry:
+        registry.register(COLOR_TYPE)
     if LOAD3D_CAMERA_TYPE not in registry:
         register_load3d_camera_type(registry)
     if LOAD3D_MODEL_INFO_TYPE not in registry:

@@ -25236,103 +25236,6 @@
    "reason": "Save Video's hidden codec input and its rows are deleted (node master plan section 13, acceptance: the four extra differences; comfy-vibe-station#1101 comment 7058717316)."
   },
   {
-   "after": [
-    {
-     "default": 0,
-     "doc": "Azimuth around the subject in degrees. 0 is the front, 90 the right side, 180 the back.",
-     "id": "horizontal_angle",
-     "row": "input",
-     "type": "INT",
-     "widget": {
-      "class": "NumberWidget",
-      "max": 360,
-      "min": 0,
-      "step": 1
-     }
-    },
-    {
-     "default": 0,
-     "doc": "Elevation in degrees. Negative looks up from below, positive looks down from above.",
-     "id": "vertical_angle",
-     "row": "input",
-     "type": "INT",
-     "widget": {
-      "class": "NumberWidget",
-      "max": 60,
-      "min": -30,
-      "step": 1
-     }
-    },
-    {
-     "default": 5.0,
-     "doc": "Lens zoom on the subject: 0 is a wide shot, 10 a close-up. Carried into camera_info.zoom.",
-     "id": "zoom",
-     "row": "input",
-     "type": "FLOAT",
-     "widget": {
-      "class": "NumberWidget",
-      "max": 10.0,
-      "min": 0.0,
-      "step": 0.1
-     }
-    },
-    {
-     "doc": "Optional reference image shown on the front of the subject cube in the 3D preview.",
-     "id": "image",
-     "required": false,
-     "row": "input",
-     "type": "IMAGE"
-    },
-    {
-     "default": "",
-     "id": "view",
-     "row": "state",
-     "type": "STRING"
-    },
-    {
-     "id": "angle_view",
-     "row": "editor",
-     "widget": {
-      "class": "CustomWidgetDescriptor",
-      "params": {
-       "multiline": false
-      },
-      "widget_type": "CAMERA_ANGLE_VIEW",
-      "writes": {
-       "horizontal_angle": "horizontal_angle",
-       "vertical_angle": "vertical_angle",
-       "zoom": "zoom"
-      }
-     }
-    }
-   ],
-   "node_type": "dinkster.3d.camera_angle",
-   "part": "rows",
-   "path": "",
-   "reason": "Becomes a State: no pin, no field and no required mark, kept with the workflow and passed to execute (node master plan section 13, State row; comfy-vibe-station#1101 comment 7058717316). Its editor is an Editor row written where the input stood, and the widget names the rows it writes and reads by today's fixed names, read from the app's editor (node master plan section 2, Editor; comfy-vibe-station#1101 comment 7075165594)."
-  },
-  {
-   "after": null,
-   "node_type": "dinkster.3d.create_camera_info",
-   "part": "rows",
-   "path": "/camera_info_state/required",
-   "reason": "Becomes a State: no pin, no field and no required mark, kept with the workflow and passed to execute (node master plan section 13, State row; comfy-vibe-station#1101 comment 7058717316). It has no widget today, and no widget in the app writes it, so it gets no Editor row (comfy-vibe-station#1101 comment 7075165594)."
-  },
-  {
-   "after": "state",
-   "node_type": "dinkster.3d.create_camera_info",
-   "part": "rows",
-   "path": "/camera_info_state/row",
-   "reason": "Becomes a State: no pin, no field and no required mark, kept with the workflow and passed to execute (node master plan section 13, State row; comfy-vibe-station#1101 comment 7058717316). It has no widget today, and no widget in the app writes it, so it gets no Editor row (comfy-vibe-station#1101 comment 7075165594)."
-  },
-  {
-   "after": null,
-   "node_type": "dinkster.3d.create_camera_info",
-   "part": "rows",
-   "path": "/camera_info_state/socketless",
-   "reason": "Becomes a State: no pin, no field and no required mark, kept with the workflow and passed to execute (node master plan section 13, State row; comfy-vibe-station#1101 comment 7058717316). It has no widget today, and no widget in the app writes it, so it gets no Editor row (comfy-vibe-station#1101 comment 7075165594)."
-  },
-  {
    "after": {
     "height": "height",
     "model_file": "model_file",
@@ -26039,55 +25942,6 @@
   },
   {
    "after": [
-    "IMAGECOMPARE",
-    false,
-    "None"
-   ],
-   "node_type": "dinkster.image.image_compare",
-   "part": "inputs",
-   "path": "{} compare_view",
-   "reason": "Becomes a State: no pin, no field and no required mark, kept with the workflow and passed to execute (node master plan section 13, State row; comfy-vibe-station#1101 comment 7058717316). Its editor is an Editor row written where the input stood, and the widget names the rows it writes and reads by today's fixed names, read from the app's editor (node master plan section 2, Editor; comfy-vibe-station#1101 comment 7075165594)."
-  },
-  {
-   "after": [
-    {
-     "id": "image_a",
-     "required": false,
-     "row": "input",
-     "type": "IMAGE"
-    },
-    {
-     "id": "image_b",
-     "required": false,
-     "row": "input",
-     "type": "IMAGE"
-    },
-    {
-     "id": "compare_view",
-     "row": "state",
-     "type": "IMAGECOMPARE"
-    },
-    {
-     "id": "comparison",
-     "row": "editor",
-     "widget": {
-      "class": "CustomWidgetDescriptor",
-      "params": {},
-      "reads": {
-       "image_a": "image_a",
-       "image_b": "image_b"
-      },
-      "widget_type": "IMAGECOMPARE"
-     }
-    }
-   ],
-   "node_type": "dinkster.image.image_compare",
-   "part": "rows",
-   "path": "",
-   "reason": "Becomes a State: no pin, no field and no required mark, kept with the workflow and passed to execute (node master plan section 13, State row; comfy-vibe-station#1101 comment 7058717316). Its editor is an Editor row written where the input stood, and the widget names the rows it writes and reads by today's fixed names, read from the app's editor (node master plan section 2, Editor; comfy-vibe-station#1101 comment 7075165594)."
-  },
-  {
-   "after": [
     "COMPOSITOR",
     false,
     "{}"
@@ -26153,6 +26007,774 @@
    "part": "rows",
    "path": "/trim/widget/writes",
    "reason": "The editor's widget on this input names the sibling rows it touches by the fixed names the app's editor uses today; it does not list its own input (node master plan section 13, editor fixed-names row; section 2, Editor)."
+  },
+  {
+   "after": null,
+   "node_type": "dinkster.3d.camera_angle",
+   "part": "inputs",
+   "path": "{} view",
+   "reason": "Removed: no widget writes it and execute does not read it, so with its editor on an Editor row it has no job left, and nothing is kept for backwards compatibility; the ComfyUI importer skips its saved value (comfy-vibe-station#1101 comment 7077499482)."
+  },
+  {
+   "after": null,
+   "node_type": "dinkster.3d.camera_angle",
+   "part": "rows",
+   "path": "/view/default",
+   "reason": "Removed: no widget writes it and execute does not read it, so with its editor on an Editor row it has no job left, and nothing is kept for backwards compatibility; the ComfyUI importer skips its saved value (comfy-vibe-station#1101 comment 7077499482). Its editor stays where the input stood, as an Editor row whose widget names the rows it writes and reads by today's fixed names (node master plan section 2, Editor; comfy-vibe-station#1101 comment 7075165594)."
+  },
+  {
+   "after": "angle_view",
+   "node_type": "dinkster.3d.camera_angle",
+   "part": "rows",
+   "path": "/view/id",
+   "reason": "Removed: no widget writes it and execute does not read it, so with its editor on an Editor row it has no job left, and nothing is kept for backwards compatibility; the ComfyUI importer skips its saved value (comfy-vibe-station#1101 comment 7077499482). Its editor stays where the input stood, as an Editor row whose widget names the rows it writes and reads by today's fixed names (node master plan section 2, Editor; comfy-vibe-station#1101 comment 7075165594)."
+  },
+  {
+   "after": null,
+   "node_type": "dinkster.3d.camera_angle",
+   "part": "rows",
+   "path": "/view/required",
+   "reason": "Removed: no widget writes it and execute does not read it, so with its editor on an Editor row it has no job left, and nothing is kept for backwards compatibility; the ComfyUI importer skips its saved value (comfy-vibe-station#1101 comment 7077499482). Its editor stays where the input stood, as an Editor row whose widget names the rows it writes and reads by today's fixed names (node master plan section 2, Editor; comfy-vibe-station#1101 comment 7075165594)."
+  },
+  {
+   "after": "editor",
+   "node_type": "dinkster.3d.camera_angle",
+   "part": "rows",
+   "path": "/view/row",
+   "reason": "Removed: no widget writes it and execute does not read it, so with its editor on an Editor row it has no job left, and nothing is kept for backwards compatibility; the ComfyUI importer skips its saved value (comfy-vibe-station#1101 comment 7077499482). Its editor stays where the input stood, as an Editor row whose widget names the rows it writes and reads by today's fixed names (node master plan section 2, Editor; comfy-vibe-station#1101 comment 7075165594)."
+  },
+  {
+   "after": null,
+   "node_type": "dinkster.3d.camera_angle",
+   "part": "rows",
+   "path": "/view/socketless",
+   "reason": "Removed: no widget writes it and execute does not read it, so with its editor on an Editor row it has no job left, and nothing is kept for backwards compatibility; the ComfyUI importer skips its saved value (comfy-vibe-station#1101 comment 7077499482). Its editor stays where the input stood, as an Editor row whose widget names the rows it writes and reads by today's fixed names (node master plan section 2, Editor; comfy-vibe-station#1101 comment 7075165594)."
+  },
+  {
+   "after": null,
+   "node_type": "dinkster.3d.camera_angle",
+   "part": "rows",
+   "path": "/view/type",
+   "reason": "Removed: no widget writes it and execute does not read it, so with its editor on an Editor row it has no job left, and nothing is kept for backwards compatibility; the ComfyUI importer skips its saved value (comfy-vibe-station#1101 comment 7077499482). Its editor stays where the input stood, as an Editor row whose widget names the rows it writes and reads by today's fixed names (node master plan section 2, Editor; comfy-vibe-station#1101 comment 7075165594)."
+  },
+  {
+   "after": {
+    "horizontal_angle": "horizontal_angle",
+    "vertical_angle": "vertical_angle",
+    "zoom": "zoom"
+   },
+   "node_type": "dinkster.3d.camera_angle",
+   "part": "rows",
+   "path": "/view/widget/writes",
+   "reason": "Removed: no widget writes it and execute does not read it, so with its editor on an Editor row it has no job left, and nothing is kept for backwards compatibility; the ComfyUI importer skips its saved value (comfy-vibe-station#1101 comment 7077499482). Its editor stays where the input stood, as an Editor row whose widget names the rows it writes and reads by today's fixed names (node master plan section 2, Editor; comfy-vibe-station#1101 comment 7075165594)."
+  },
+  {
+   "after": [
+    [
+     "horizontal_angle",
+     {
+      "class": "MappingSource",
+      "input": "horizontal_angle",
+      "kind": "copy"
+     }
+    ],
+    [
+     "image",
+     {
+      "class": "MappingSource",
+      "input": "image",
+      "kind": "copy"
+     }
+    ],
+    [
+     "vertical_angle",
+     {
+      "class": "MappingSource",
+      "input": "vertical_angle",
+      "kind": "copy"
+     }
+    ],
+    [
+     "zoom",
+     {
+      "class": "MappingSource",
+      "input": "zoom",
+      "kind": "copy"
+     }
+    ]
+   ],
+   "node_type": "dinkster.3d.camera_angle",
+   "part": "node",
+   "path": "/replacements/0/cases/0/inputs",
+   "reason": "Removed: no widget writes it and execute does not read it, so with its editor on an Editor row it has no job left, and nothing is kept for backwards compatibility; the ComfyUI importer skips its saved value (comfy-vibe-station#1101 comment 7077499482)."
+  },
+  {
+   "after": null,
+   "node_type": "dinkster.3d.create_camera_info",
+   "part": "inputs",
+   "path": "{\"mode\": \"look_at\"} camera_info_state",
+   "reason": "Removed: no widget writes it and execute does not read it, so with its editor on an Editor row it has no job left, and nothing is kept for backwards compatibility; the ComfyUI importer skips its saved value (comfy-vibe-station#1101 comment 7077499482)."
+  },
+  {
+   "after": null,
+   "node_type": "dinkster.3d.create_camera_info",
+   "part": "inputs",
+   "path": "{\"mode\": \"orbit\"} camera_info_state",
+   "reason": "Removed: no widget writes it and execute does not read it, so with its editor on an Editor row it has no job left, and nothing is kept for backwards compatibility; the ComfyUI importer skips its saved value (comfy-vibe-station#1101 comment 7077499482)."
+  },
+  {
+   "after": null,
+   "node_type": "dinkster.3d.create_camera_info",
+   "part": "inputs",
+   "path": "{\"mode\": \"quaternion\"} camera_info_state",
+   "reason": "Removed: no widget writes it and execute does not read it, so with its editor on an Editor row it has no job left, and nothing is kept for backwards compatibility; the ComfyUI importer skips its saved value (comfy-vibe-station#1101 comment 7077499482)."
+  },
+  {
+   "after": [
+    {
+     "doc": "How to define the camera: orbit angles, an explicit position, or a position + quaternion.",
+     "id": "mode",
+     "options": [
+      {
+       "key": "orbit",
+       "rows": [
+        {
+         "default": 35.0,
+         "id": "yaw",
+         "row": "input",
+         "type": "FLOAT",
+         "widget": {
+          "class": "NumberWidget",
+          "max": 360.0,
+          "min": -360.0,
+          "step": 1.0
+         }
+        },
+        {
+         "default": 30.0,
+         "id": "pitch",
+         "row": "input",
+         "type": "FLOAT",
+         "widget": {
+          "class": "NumberWidget",
+          "max": 89.0,
+          "min": -89.0,
+          "step": 1.0
+         }
+        },
+        {
+         "default": 4.0,
+         "doc": "Camera distance from the target.",
+         "id": "distance",
+         "row": "input",
+         "type": "FLOAT",
+         "widget": {
+          "class": "NumberWidget",
+          "max": 1000.0,
+          "min": 0.01,
+          "step": 0.01
+         }
+        }
+       ]
+      },
+      {
+       "key": "look_at",
+       "rows": [
+        {
+         "default": 4.0,
+         "doc": "Camera position in world space (right-handed, Y-up).",
+         "id": "position_x",
+         "row": "input",
+         "type": "FLOAT",
+         "widget": {
+          "class": "NumberWidget",
+          "max": 1000.0,
+          "min": -1000.0,
+          "step": 0.01
+         }
+        },
+        {
+         "default": 4.0,
+         "id": "position_y",
+         "row": "input",
+         "type": "FLOAT",
+         "widget": {
+          "class": "NumberWidget",
+          "max": 1000.0,
+          "min": -1000.0,
+          "step": 0.01
+         }
+        },
+        {
+         "default": 4.0,
+         "id": "position_z",
+         "row": "input",
+         "type": "FLOAT",
+         "widget": {
+          "class": "NumberWidget",
+          "max": 1000.0,
+          "min": -1000.0,
+          "step": 0.01
+         }
+        }
+       ]
+      },
+      {
+       "key": "quaternion",
+       "rows": [
+        {
+         "default": 4.0,
+         "doc": "Camera position in world space (right-handed, Y-up).",
+         "id": "position_x",
+         "row": "input",
+         "type": "FLOAT",
+         "widget": {
+          "class": "NumberWidget",
+          "max": 1000.0,
+          "min": -1000.0,
+          "step": 0.01
+         }
+        },
+        {
+         "default": 4.0,
+         "id": "position_y",
+         "row": "input",
+         "type": "FLOAT",
+         "widget": {
+          "class": "NumberWidget",
+          "max": 1000.0,
+          "min": -1000.0,
+          "step": 0.01
+         }
+        },
+        {
+         "default": 4.0,
+         "id": "position_z",
+         "row": "input",
+         "type": "FLOAT",
+         "widget": {
+          "class": "NumberWidget",
+          "max": 1000.0,
+          "min": -1000.0,
+          "step": 0.01
+         }
+        },
+        {
+         "default": 0.0,
+         "id": "quat_x",
+         "row": "input",
+         "type": "FLOAT",
+         "widget": {
+          "class": "NumberWidget",
+          "max": 1.0,
+          "min": -1.0,
+          "step": 0.001
+         }
+        },
+        {
+         "default": 0.0,
+         "id": "quat_y",
+         "row": "input",
+         "type": "FLOAT",
+         "widget": {
+          "class": "NumberWidget",
+          "max": 1.0,
+          "min": -1.0,
+          "step": 0.001
+         }
+        },
+        {
+         "default": 0.0,
+         "id": "quat_z",
+         "row": "input",
+         "type": "FLOAT",
+         "widget": {
+          "class": "NumberWidget",
+          "max": 1.0,
+          "min": -1.0,
+          "step": 0.001
+         }
+        },
+        {
+         "default": 1.0,
+         "doc": "Camera world-rotation quaternion (three.js: looks down local -Z). Normalized for you.",
+         "id": "quat_w",
+         "row": "input",
+         "type": "FLOAT",
+         "widget": {
+          "class": "NumberWidget",
+          "max": 1.0,
+          "min": -1.0,
+          "step": 0.001
+         }
+        }
+       ]
+      }
+     ],
+     "row": "choice"
+    },
+    {
+     "default": 0.0,
+     "doc": "Camera roll about the view axis, degrees.",
+     "id": "roll",
+     "row": "input",
+     "type": "FLOAT",
+     "widget": {
+      "class": "NumberWidget",
+      "max": 180.0,
+      "min": -180.0,
+      "step": 1.0
+     }
+    },
+    {
+     "default": 35.0,
+     "doc": "Vertical field of view in degrees.",
+     "id": "fov",
+     "row": "input",
+     "type": "FLOAT",
+     "widget": {
+      "class": "NumberWidget",
+      "max": 120.0,
+      "min": 1.0,
+      "step": 1.0
+     }
+    },
+    {
+     "default": 1.0,
+     "doc": "Digital zoom (focal-length multiplier). >1 zooms in without moving the camera.",
+     "id": "zoom",
+     "row": "input",
+     "type": "FLOAT",
+     "widget": {
+      "class": "NumberWidget",
+      "max": 100.0,
+      "min": 0.01,
+      "step": 0.01
+     }
+    },
+    {
+     "doc": "Projection used by Render Splat: perspective (foreshortening) or orthographic (parallel).",
+     "id": "camera_type",
+     "row": "input",
+     "type": "COMBO",
+     "widget": {
+      "class": "ComboWidget",
+      "options": [
+       "perspective",
+       "orthographic"
+      ]
+     }
+    },
+    {
+     "advanced": true,
+     "default": 0.0,
+     "doc": "Look-at point (orbit pivot / aim). In orbit mode, move it to pan/translate the whole camera. Ignored in quaternion mode. Defaults to the origin.",
+     "id": "target_x",
+     "row": "input",
+     "type": "FLOAT",
+     "widget": {
+      "class": "NumberWidget",
+      "max": 1000.0,
+      "min": -1000.0,
+      "step": 0.01
+     }
+    },
+    {
+     "advanced": true,
+     "default": 0.0,
+     "id": "target_y",
+     "row": "input",
+     "type": "FLOAT",
+     "widget": {
+      "class": "NumberWidget",
+      "max": 1000.0,
+      "min": -1000.0,
+      "step": 0.01
+     }
+    },
+    {
+     "advanced": true,
+     "default": 0.0,
+     "id": "target_z",
+     "row": "input",
+     "type": "FLOAT",
+     "widget": {
+      "class": "NumberWidget",
+      "max": 1000.0,
+      "min": -1000.0,
+      "step": 0.01
+     }
+    }
+   ],
+   "node_type": "dinkster.3d.create_camera_info",
+   "part": "rows",
+   "path": "",
+   "reason": "Removed: no widget writes it and execute does not read it, so with its editor on an Editor row it has no job left, and nothing is kept for backwards compatibility; the ComfyUI importer skips its saved value (comfy-vibe-station#1101 comment 7077499482)."
+  },
+  {
+   "after": [
+    [
+     "camera_type",
+     {
+      "class": "MappingSource",
+      "input": "camera_type",
+      "kind": "copy"
+     }
+    ],
+    [
+     "fov",
+     {
+      "class": "MappingSource",
+      "input": "fov",
+      "kind": "copy"
+     }
+    ],
+    [
+     "mode.position_x",
+     {
+      "class": "MappingSource",
+      "input": "mode.position_x",
+      "kind": "copy"
+     }
+    ],
+    [
+     "mode.position_y",
+     {
+      "class": "MappingSource",
+      "input": "mode.position_y",
+      "kind": "copy"
+     }
+    ],
+    [
+     "mode.position_z",
+     {
+      "class": "MappingSource",
+      "input": "mode.position_z",
+      "kind": "copy"
+     }
+    ],
+    [
+     "mode.quat_w",
+     {
+      "class": "MappingSource",
+      "input": "mode.quat_w",
+      "kind": "copy"
+     }
+    ],
+    [
+     "mode.quat_x",
+     {
+      "class": "MappingSource",
+      "input": "mode.quat_x",
+      "kind": "copy"
+     }
+    ],
+    [
+     "mode.quat_y",
+     {
+      "class": "MappingSource",
+      "input": "mode.quat_y",
+      "kind": "copy"
+     }
+    ],
+    [
+     "mode.quat_z",
+     {
+      "class": "MappingSource",
+      "input": "mode.quat_z",
+      "kind": "copy"
+     }
+    ],
+    [
+     "roll",
+     {
+      "class": "MappingSource",
+      "input": "roll",
+      "kind": "copy"
+     }
+    ],
+    [
+     "target_x",
+     {
+      "class": "MappingSource",
+      "input": "target_x",
+      "kind": "copy"
+     }
+    ],
+    [
+     "target_y",
+     {
+      "class": "MappingSource",
+      "input": "target_y",
+      "kind": "copy"
+     }
+    ],
+    [
+     "target_z",
+     {
+      "class": "MappingSource",
+      "input": "target_z",
+      "kind": "copy"
+     }
+    ],
+    [
+     "zoom",
+     {
+      "class": "MappingSource",
+      "input": "zoom",
+      "kind": "copy"
+     }
+    ]
+   ],
+   "node_type": "dinkster.3d.create_camera_info",
+   "part": "node",
+   "path": "/replacements/0/cases/0/inputs",
+   "reason": "Removed: no widget writes it and execute does not read it, so with its editor on an Editor row it has no job left, and nothing is kept for backwards compatibility; the ComfyUI importer skips its saved value (comfy-vibe-station#1101 comment 7077499482)."
+  },
+  {
+   "after": [
+    [
+     "camera_type",
+     {
+      "class": "MappingSource",
+      "input": "camera_type",
+      "kind": "copy"
+     }
+    ],
+    [
+     "fov",
+     {
+      "class": "MappingSource",
+      "input": "fov",
+      "kind": "copy"
+     }
+    ],
+    [
+     "mode.position_x",
+     {
+      "class": "MappingSource",
+      "input": "mode.position_x",
+      "kind": "copy"
+     }
+    ],
+    [
+     "mode.position_y",
+     {
+      "class": "MappingSource",
+      "input": "mode.position_y",
+      "kind": "copy"
+     }
+    ],
+    [
+     "mode.position_z",
+     {
+      "class": "MappingSource",
+      "input": "mode.position_z",
+      "kind": "copy"
+     }
+    ],
+    [
+     "roll",
+     {
+      "class": "MappingSource",
+      "input": "roll",
+      "kind": "copy"
+     }
+    ],
+    [
+     "target_x",
+     {
+      "class": "MappingSource",
+      "input": "target_x",
+      "kind": "copy"
+     }
+    ],
+    [
+     "target_y",
+     {
+      "class": "MappingSource",
+      "input": "target_y",
+      "kind": "copy"
+     }
+    ],
+    [
+     "target_z",
+     {
+      "class": "MappingSource",
+      "input": "target_z",
+      "kind": "copy"
+     }
+    ],
+    [
+     "zoom",
+     {
+      "class": "MappingSource",
+      "input": "zoom",
+      "kind": "copy"
+     }
+    ]
+   ],
+   "node_type": "dinkster.3d.create_camera_info",
+   "part": "node",
+   "path": "/replacements/0/cases/1/inputs",
+   "reason": "Removed: no widget writes it and execute does not read it, so with its editor on an Editor row it has no job left, and nothing is kept for backwards compatibility; the ComfyUI importer skips its saved value (comfy-vibe-station#1101 comment 7077499482)."
+  },
+  {
+   "after": [
+    [
+     "camera_type",
+     {
+      "class": "MappingSource",
+      "input": "camera_type",
+      "kind": "copy"
+     }
+    ],
+    [
+     "fov",
+     {
+      "class": "MappingSource",
+      "input": "fov",
+      "kind": "copy"
+     }
+    ],
+    [
+     "mode.distance",
+     {
+      "class": "MappingSource",
+      "input": "mode.distance",
+      "kind": "copy"
+     }
+    ],
+    [
+     "mode.pitch",
+     {
+      "class": "MappingSource",
+      "input": "mode.pitch",
+      "kind": "copy"
+     }
+    ],
+    [
+     "mode.yaw",
+     {
+      "class": "MappingSource",
+      "input": "mode.yaw",
+      "kind": "copy"
+     }
+    ],
+    [
+     "roll",
+     {
+      "class": "MappingSource",
+      "input": "roll",
+      "kind": "copy"
+     }
+    ],
+    [
+     "target_x",
+     {
+      "class": "MappingSource",
+      "input": "target_x",
+      "kind": "copy"
+     }
+    ],
+    [
+     "target_y",
+     {
+      "class": "MappingSource",
+      "input": "target_y",
+      "kind": "copy"
+     }
+    ],
+    [
+     "target_z",
+     {
+      "class": "MappingSource",
+      "input": "target_z",
+      "kind": "copy"
+     }
+    ],
+    [
+     "zoom",
+     {
+      "class": "MappingSource",
+      "input": "zoom",
+      "kind": "copy"
+     }
+    ]
+   ],
+   "node_type": "dinkster.3d.create_camera_info",
+   "part": "node",
+   "path": "/replacements/0/cases/2/inputs",
+   "reason": "Removed: no widget writes it and execute does not read it, so with its editor on an Editor row it has no job left, and nothing is kept for backwards compatibility; the ComfyUI importer skips its saved value (comfy-vibe-station#1101 comment 7077499482)."
+  },
+  {
+   "after": null,
+   "node_type": "dinkster.image.image_compare",
+   "part": "inputs",
+   "path": "{} compare_view",
+   "reason": "Removed: no widget writes it and execute does not read it, so with its editor on an Editor row it has no job left, and nothing is kept for backwards compatibility; the ComfyUI importer skips its saved value (comfy-vibe-station#1101 comment 7077499482)."
+  },
+  {
+   "after": "comparison",
+   "node_type": "dinkster.image.image_compare",
+   "part": "rows",
+   "path": "/compare_view/id",
+   "reason": "Removed: no widget writes it and execute does not read it, so with its editor on an Editor row it has no job left, and nothing is kept for backwards compatibility; the ComfyUI importer skips its saved value (comfy-vibe-station#1101 comment 7077499482). Its editor stays where the input stood, as an Editor row whose widget names the rows it writes and reads by today's fixed names (node master plan section 2, Editor; comfy-vibe-station#1101 comment 7075165594)."
+  },
+  {
+   "after": "editor",
+   "node_type": "dinkster.image.image_compare",
+   "part": "rows",
+   "path": "/compare_view/row",
+   "reason": "Removed: no widget writes it and execute does not read it, so with its editor on an Editor row it has no job left, and nothing is kept for backwards compatibility; the ComfyUI importer skips its saved value (comfy-vibe-station#1101 comment 7077499482). Its editor stays where the input stood, as an Editor row whose widget names the rows it writes and reads by today's fixed names (node master plan section 2, Editor; comfy-vibe-station#1101 comment 7075165594)."
+  },
+  {
+   "after": null,
+   "node_type": "dinkster.image.image_compare",
+   "part": "rows",
+   "path": "/compare_view/socketless",
+   "reason": "Removed: no widget writes it and execute does not read it, so with its editor on an Editor row it has no job left, and nothing is kept for backwards compatibility; the ComfyUI importer skips its saved value (comfy-vibe-station#1101 comment 7077499482). Its editor stays where the input stood, as an Editor row whose widget names the rows it writes and reads by today's fixed names (node master plan section 2, Editor; comfy-vibe-station#1101 comment 7075165594)."
+  },
+  {
+   "after": null,
+   "node_type": "dinkster.image.image_compare",
+   "part": "rows",
+   "path": "/compare_view/type",
+   "reason": "Removed: no widget writes it and execute does not read it, so with its editor on an Editor row it has no job left, and nothing is kept for backwards compatibility; the ComfyUI importer skips its saved value (comfy-vibe-station#1101 comment 7077499482). Its editor stays where the input stood, as an Editor row whose widget names the rows it writes and reads by today's fixed names (node master plan section 2, Editor; comfy-vibe-station#1101 comment 7075165594)."
+  },
+  {
+   "after": {
+    "image_a": "image_a",
+    "image_b": "image_b"
+   },
+   "node_type": "dinkster.image.image_compare",
+   "part": "rows",
+   "path": "/compare_view/widget/reads",
+   "reason": "Removed: no widget writes it and execute does not read it, so with its editor on an Editor row it has no job left, and nothing is kept for backwards compatibility; the ComfyUI importer skips its saved value (comfy-vibe-station#1101 comment 7077499482). Its editor stays where the input stood, as an Editor row whose widget names the rows it writes and reads by today's fixed names (node master plan section 2, Editor; comfy-vibe-station#1101 comment 7075165594)."
+  },
+  {
+   "after": [
+    [
+     "image_a",
+     {
+      "class": "MappingSource",
+      "input": "image_a",
+      "kind": "copy"
+     }
+    ],
+    [
+     "image_b",
+     {
+      "class": "MappingSource",
+      "input": "image_b",
+      "kind": "copy"
+     }
+    ]
+   ],
+   "node_type": "dinkster.image.image_compare",
+   "part": "node",
+   "path": "/replacements/0/cases/0/inputs",
+   "reason": "Removed: no widget writes it and execute does not read it, so with its editor on an Editor row it has no job left, and nothing is kept for backwards compatibility; the ComfyUI importer skips its saved value (comfy-vibe-station#1101 comment 7077499482)."
   }
  ],
  "notes": [

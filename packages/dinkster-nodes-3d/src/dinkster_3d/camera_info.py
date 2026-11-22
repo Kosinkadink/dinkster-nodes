@@ -8,7 +8,6 @@ from collections.abc import Mapping
 from typing import Any, cast
 
 from dinkster_api.v1 import (
-    CAMERA_INFO_STATE_TYPE,
     CORE_COMBO,
     CORE_FLOAT,
     LOAD3D_CAMERA_TYPE,
@@ -22,7 +21,6 @@ from dinkster_api.v1 import (
     Output,
     Record,
     Section,
-    State,
     TypeExpr,
     Use,
     initialize_inference_process,
@@ -258,7 +256,6 @@ class CreateCameraInfo(Node):
                         "or orthographic (parallel)."
                     ),
                 ),
-                State("camera_info_state", TypeExpr.concrete(CAMERA_INFO_STATE_TYPE)),
                 Section(
                     "advanced",
                     label="Advanced",
@@ -309,7 +306,6 @@ class CreateCameraInfo(Node):
         fov: float,
         zoom: float = 1.0,
         camera_type: str = "perspective",
-        camera_info_state: object = None,
     ) -> Mapping[str, object]:
         initialize_inference_process()
         torch = importlib.import_module("torch")

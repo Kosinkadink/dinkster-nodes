@@ -6,7 +6,6 @@ from dinkster_api.v1 import (
     ASSET_TYPE,
     BOUNDING_BOXES_TYPE,
     COLOR_TYPE,
-    IMAGECOMPARE_TYPE,
     LAYERS_TYPE,
     WEBCAM_TYPE,
     TypeRegistry,
@@ -45,7 +44,7 @@ def register_types(registry: TypeRegistry) -> None:
     register_media_types(registry)
     register_box_types(registry)
     register_compositor_type(registry)
-    for type_id in (BOUNDING_BOXES_TYPE, COLOR_TYPE, IMAGECOMPARE_TYPE):
+    for type_id in (BOUNDING_BOXES_TYPE, COLOR_TYPE):
         if type_id not in registry:
             registry.register(type_id)
     if LAYERS_TYPE not in registry:
