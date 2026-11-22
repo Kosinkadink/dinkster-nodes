@@ -45,6 +45,7 @@ def test_save_text_schema_preserves_core_contract_and_appends_mount() -> None:
     assert schema.inputs[1].default == "ComfyUI"
     assert schema.inputs[2].default == "txt"
     assert isinstance(schema.inputs[2].widget, ComboWidget)
+    assert isinstance(schema.inputs[2].widget.options, tuple)
     assert tuple(schema.inputs[2].widget.options) == ("txt", "csv", "md", "json")
     assert not schema.inputs[3].required
     assert schema.inputs[3].default is None

@@ -580,10 +580,10 @@ class NativeGlslShader(Node):
         size_mode: Record,
         images: Members[Item],
         fragment_shader: str = DEFAULT_FRAGMENT_SHADER.replace("precision highp sampler2D;\n", ""),
-        floats: Members[Item] = Members(),
-        ints: Members[Item] = Members(),
-        bools: Members[Item] = Members(),
-        curves: Members[Item] = Members(),
+        floats: Members[Item] = Members[Item](),
+        ints: Members[Item] = Members[Item](),
+        bools: Members[Item] = Members[Item](),
+        curves: Members[Item] = Members[Item](),
     ) -> Mapping[str, object]:
         normalized: dict[str, dict[str, object]] = {}
         for family, members, prefix, default in (

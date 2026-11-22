@@ -134,7 +134,9 @@ def test_animated_savers_preserve_source_controls_and_append_mount() -> None:
         assert schema.output_node and not schema.idempotent
         assert isinstance(output, Output) and output.id == "images"
         if node is SaveAnimatedPNG:
-            assert [row.id for section in advanced for row in section.rows] == ["compress_level"]
+            assert [cast("Any", row).id for section in advanced for row in section.rows] == [
+                "compress_level"
+            ]
             assert fields["compress_level"].default == 4
             assert fields["compress_level"].widget == NumberWidget(min=0, max=9)
         else:

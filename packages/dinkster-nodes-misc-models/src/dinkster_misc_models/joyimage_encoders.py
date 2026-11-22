@@ -133,7 +133,7 @@ class TextEncodeJoyImageEdit(Node):
 
     @classmethod
     def execute(
-        cls, *, clip: Any, prompt: str, vae: Any = None, images: Members[Item] = Members()
+        cls, *, clip: Any, prompt: str, vae: Any = None, images: Members[Item] = Members[Item]()
     ) -> Mapping[str, object]:
         resized = [
             _resize(materialize_image(member.value))

@@ -45,7 +45,8 @@ def test_make_image_and_draw_region_dynamic_combo_schemas_and_materialized_execu
     assert option_ids(choices(draw)[0]) == {"fill": (), "outline": ("line_width",)}
 
     expected = MakeImage.execute(operation="solid", width=2, height=2, color_a="#123456")
-    materialized = MakeImage.execute(
+    materialized = _run(
+        MakeImage,
         operation=Record("solid", {}),
         width=2,
         height=2,

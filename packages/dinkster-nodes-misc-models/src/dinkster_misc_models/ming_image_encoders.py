@@ -67,7 +67,7 @@ class TextEncodeMingImageEdit(Node):
         *,
         clip: Any,
         prompt: str,
-        images: Members[Item] = Members(),
+        images: Members[Item] = Members[Item](),
         vae: Any = None,
     ) -> Mapping[str, object]:
         references = [

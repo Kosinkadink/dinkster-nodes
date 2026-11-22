@@ -5,7 +5,7 @@ from __future__ import annotations
 import importlib
 from collections.abc import Mapping
 from dataclasses import replace
-from typing import Any
+from typing import Any, cast
 
 from dinkster_api.v1 import (
     COLOR_TYPE,
@@ -72,7 +72,7 @@ def _combo(
 
 
 def _schema(
-    node_type: str, display_name: str, category: str, inputs: tuple[Input, ...]
+    node_type: str, display_name: str, category: str, inputs: tuple[Input | Section, ...]
 ) -> NodeSchema:
     return NodeSchema(
         node_type=node_type,
@@ -627,7 +627,7 @@ class PadImageNode(Node):
         selected = padding_type.key
         if selected == "pad dimensions":
             left, top, right, bottom = (
-                padding_type[side] for side in ("left", "top", "right", "bottom")
+                cast("int", padding_type[side]) for side in ("left", "top", "right", "bottom")
             )
         elif selected == "pad by multiplier":
             horizontal = round(width * padding_type["multiplier"]) - width
@@ -655,7 +655,7 @@ class PadImageNode(Node):
             return cls.outputs(image=image[:, rows[:, None], cols[None, :]])
         if style != "color":
             raise ValueError(f"Unsupported padding style: {style}")
-        color = padding_style["color"][:7].lstrip("#")
+        color = cast("str", padding_style["color"])[:7].lstrip("#")
         rgb = [1.0, 1.0, 1.0]
         if len(color) == 6:
             try:
@@ -673,7 +673,7 @@ class PadImageNode(Node):
         result[:] = fill
         inner = result[:, top : top + height, left : left + width]
         inner.copy_(image)
-        feathering = padding_style["feathering"]
+        feathering = cast("int", padding_style["feathering"])
         if feathering > 0:
 
             def weight(size: int, before: int, after: int) -> Any:

@@ -4,13 +4,14 @@ from __future__ import annotations
 
 import importlib
 from collections.abc import Mapping
-from typing import Any
+from typing import Any, cast
 
 from dinkster_api.v1 import (
     CORE_BOOLEAN,
     CORE_FLOAT,
     CORE_INT,
     MESH_TYPE,
+    BodyRow,
     Choice,
     Input,
     Node,
@@ -62,17 +63,20 @@ class RemeshMesh(Node):
                                     "advanced",
                                     label="Advanced",
                                     collapsed=True,
-                                    rows=(
-                                        Use("qef"),
-                                        Input(
-                                            "drop_inverted_components",
-                                            TypeExpr.concrete(CORE_BOOLEAN),
-                                            default=False,
-                                        ),
-                                        Input(
-                                            "drop_enclosed_components",
-                                            TypeExpr.concrete(CORE_BOOLEAN),
-                                            default=False,
+                                    rows=cast(
+                                        "tuple[BodyRow, ...]",
+                                        (
+                                            Use("qef"),
+                                            Input(
+                                                "drop_inverted_components",
+                                                TypeExpr.concrete(CORE_BOOLEAN),
+                                                default=False,
+                                            ),
+                                            Input(
+                                                "drop_enclosed_components",
+                                                TypeExpr.concrete(CORE_BOOLEAN),
+                                                default=False,
+                                            ),
                                         ),
                                     ),
                                 ),
@@ -98,7 +102,7 @@ class RemeshMesh(Node):
                                     "advanced",
                                     label="Advanced",
                                     collapsed=True,
-                                    rows=(Use("qef"),),
+                                    rows=cast("tuple[BodyRow, ...]", (Use("qef"),)),
                                 ),
                             ),
                         ),
@@ -204,7 +208,7 @@ class RemeshMesh(Node):
                 qef=bool(sign_mode.get("qef", sign_mode.key == "sdf")),
                 sign_mode=sign_mode.key,
                 manifold=bool(sign_mode.get("manifold", False)),
-                fill=float(sign_mode.get("fill", 20.0)),
+                fill=float(cast("float", sign_mode.get("fill", 20.0))),
                 fix_poles=fix_poles,
                 smooth_iters=smooth_iters,
                 drop_small_components=drop_small_components,

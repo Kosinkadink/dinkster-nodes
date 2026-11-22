@@ -447,9 +447,9 @@ def test_dynamic_inputs_preserve_v1_types_defaults_and_options() -> None:
                 assert entry.widget.options == ("coverage", "transparency")
                 assert entry.default == "coverage"
                 continue
-            old = old_inputs.get(entry.id)
+            old = old_inputs.get(cast("Any", entry).id)
             if old is None:
-                assert (node_type, entry.id) in {
+                assert (node_type, cast("Any", entry).id) in {
                     ("dinkster.image.crop", "source"),
                     ("dinkster.mask.morphology", "minimum_area"),
                     ("dinkster.mask.morphology", "connectivity"),
@@ -469,6 +469,7 @@ def test_dynamic_inputs_preserve_v1_types_defaults_and_options() -> None:
             elif isinstance(entry, Choice):
                 assert entry.default == old.default
                 assert isinstance(old.widget, ComboWidget)
+                assert isinstance(old.widget.options, tuple)
                 current_only = {option.key for option in entry.options} - set(old.widget.options)
                 assert current_only <= {
                     "fill_holes",

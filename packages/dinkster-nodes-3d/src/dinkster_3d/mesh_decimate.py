@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import importlib
 from collections.abc import Mapping
-from typing import Any
+from typing import Any, cast
 
 from dinkster_api.v1 import (
     CORE_BOOLEAN,
@@ -113,12 +113,14 @@ class DecimateMesh(Node):
         if placement_mode.key == "qem":
             config = QEMConfig(
                 placement_mode="qem",
-                line_quadric_weight=float(placement_mode.get("line_quadric_weight", 0.0)),
+                line_quadric_weight=float(
+                    cast("float", placement_mode.get("line_quadric_weight", 0.0))
+                ),
                 feature_edge_quadric_weight=float(
-                    placement_mode.get("feature_edge_quadric_weight", 0.0)
+                    cast("float", placement_mode.get("feature_edge_quadric_weight", 0.0))
                 ),
                 feature_edge_min_dihedral_deg=float(
-                    placement_mode.get("feature_edge_min_dihedral_deg", 30.0)
+                    cast("float", placement_mode.get("feature_edge_min_dihedral_deg", 30.0))
                 ),
                 clamp_v_to_edge=bool(placement_mode.get("clamp_v_to_edge", True)),
             )

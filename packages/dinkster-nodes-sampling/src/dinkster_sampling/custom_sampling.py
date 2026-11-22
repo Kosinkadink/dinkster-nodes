@@ -122,7 +122,7 @@ def _outputs(
     return {"output": output, "denoised_output": denoised}
 
 
-def _schema(node_type: str, inputs: tuple[Input, ...]) -> NodeSchema:
+def _schema(node_type: str, inputs: tuple[Input | Section, ...]) -> NodeSchema:
     return NodeSchema(
         node_type=node_type,
         category="model/sampling/custom",

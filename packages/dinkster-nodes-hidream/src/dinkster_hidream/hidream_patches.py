@@ -57,7 +57,7 @@ class HiDreamO1ReferenceImages(Node):
 
     @classmethod
     def execute(
-        cls, *, positive: Any, negative: Any, images: Members[Item] = Members()
+        cls, *, positive: Any, negative: Any, images: Members[Item] = Members[Item]()
     ) -> Mapping[str, object]:
         references = [member.value for member in images]
         if not references:

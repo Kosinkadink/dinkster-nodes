@@ -128,20 +128,20 @@ class StartLoop(Node):
         initial_iteration_value: object = None,
     ) -> Expansion:
         if mode.key == "simple":
-            values = list(range(mode.get("num_iterations", 4)))
+            values = list(range(cast("int", mode.get("num_iterations", 4))))
         elif mode.key == "For":
-            step = mode.get("step", 1)
+            step = cast("int", mode.get("step", 1))
             if step == 0:
                 raise ValueError("Start Loop step must not be 0")
             values = list(
                 range(
-                    mode.get("start_iteration_index", 0),
-                    mode.get("max_iteration", 4),
+                    cast("int", mode.get("start_iteration_index", 0)),
+                    cast("int", mode.get("max_iteration", 4)),
                     step,
                 )
             )
         else:
-            values = list(range(len(mode["list"])))
+            values = list(range(len(cast("Sequence[object]", mode["list"]))))
         document = cast("Any", await execution_context.get_graph())
         start_id = execution_context.node_id
         pair = document["loops"][start_id]

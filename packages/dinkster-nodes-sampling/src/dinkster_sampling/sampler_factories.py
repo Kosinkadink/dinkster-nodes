@@ -125,7 +125,7 @@ def _float(
 
 def _schema(
     node_type: str,
-    inputs: tuple[Input, ...],
+    inputs: tuple[Input | Section, ...],
     *,
     display_name: str = "",
     search_terms: tuple[str, ...] = (),

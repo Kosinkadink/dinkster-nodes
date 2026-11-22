@@ -210,7 +210,7 @@ class TextEncodeQwenImage21(Node):
         negative_prompt: str,
         vae: Any = None,
         resolution: int = 1024,
-        images: Members[Item] = Members(),
+        images: Members[Item] = Members[Item](),
     ) -> Mapping[str, object]:
         vision: list[Any] = []
         references: list[Any] = []

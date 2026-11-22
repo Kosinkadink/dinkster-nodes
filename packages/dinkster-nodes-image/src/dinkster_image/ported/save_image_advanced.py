@@ -8,7 +8,7 @@ from collections.abc import Generator, Mapping
 from contextlib import closing
 from io import BytesIO
 from pathlib import Path
-from typing import Any, BinaryIO
+from typing import Any, BinaryIO, cast
 
 from dinkster_api.v1 import (
     CORE_COMBO,
@@ -17,6 +17,7 @@ from dinkster_api.v1 import (
     CORE_STRING,
     ENCODED_MEDIA_LIMIT_BYTES,
     IMAGE_TYPE,
+    BodyRow,
     Choice,
     ComboWidget,
     Input,
@@ -92,7 +93,10 @@ class SaveImageAdvanced(Node):
                                     "advanced",
                                     label="Advanced",
                                     collapsed=True,
-                                    rows=(Use("bit_depth"), Use("input_color_space")),
+                                    rows=cast(
+                                        "tuple[BodyRow, ...]",
+                                        (Use("bit_depth"), Use("input_color_space")),
+                                    ),
                                 ),
                             ),
                         ),
@@ -103,33 +107,43 @@ class SaveImageAdvanced(Node):
                                     "advanced",
                                     label="Advanced",
                                     collapsed=True,
-                                    rows=(
-                                        Use(
-                                            "bit_depth",
-                                            default="16-bit float",
-                                            widget=ComboWidget(
-                                                options=("32-bit float", "16-bit float")
+                                    rows=cast(
+                                        "tuple[BodyRow, ...]",
+                                        (
+                                            Use(
+                                                "bit_depth",
+                                                default="16-bit float",
+                                                widget=ComboWidget(
+                                                    options=("32-bit float", "16-bit float")
+                                                ),
                                             ),
-                                        ),
-                                        Use(
-                                            "input_color_space",
-                                            widget=ComboWidget(
-                                                options=("sRGB", "HDR", "linear", "linear ACEScg")
-                                            ),
-                                            tooltip=(
-                                                "Colorspace of the input tensor. The EXR is always "
-                                                "written as scene-linear in the matching gamut.\n"
-                                                "sRGB - input is sRGB-encoded Rec.709; the inverse "
-                                                "sRGB EOTF is applied.\n"
-                                                "HDR - input is HLG-encoded Rec.2020 (BT.2100); the "
-                                                "inverse HLG OETF is applied to get scene-linear "
-                                                "light.\n"
-                                                "linear - input is already scene-linear (Rec.709 "
-                                                "primaries); written through unchanged. Use this "
-                                                "for renderer/compositor output.\n"
-                                                "linear ACEScg - input is already scene-linear "
-                                                "ACEScg (AP1 / D60); written through unchanged with "
-                                                "ACEScg chromaticities."
+                                            Use(
+                                                "input_color_space",
+                                                widget=ComboWidget(
+                                                    options=(
+                                                        "sRGB",
+                                                        "HDR",
+                                                        "linear",
+                                                        "linear ACEScg",
+                                                    )
+                                                ),
+                                                tooltip=(
+                                                    "Colorspace of the input tensor. The EXR is "
+                                                    "always written as scene-linear in the "
+                                                    "matching gamut.\n"
+                                                    "sRGB - input is sRGB-encoded Rec.709; the "
+                                                    "inverse sRGB EOTF is applied.\n"
+                                                    "HDR - input is HLG-encoded Rec.2020 "
+                                                    "(BT.2100); the inverse HLG OETF is applied to "
+                                                    "get scene-linear light.\n"
+                                                    "linear - input is already scene-linear "
+                                                    "(Rec.709 primaries); written through "
+                                                    "unchanged. Use this for renderer/compositor "
+                                                    "output.\n"
+                                                    "linear ACEScg - input is already scene-linear "
+                                                    "ACEScg (AP1 / D60); written through unchanged "
+                                                    "with ACEScg chromaticities."
+                                                ),
                                             ),
                                         ),
                                     ),
@@ -180,34 +194,43 @@ class SaveImageAdvanced(Node):
                                     "advanced",
                                     label="Advanced",
                                     collapsed=True,
-                                    rows=(
-                                        Use(
-                                            "bit_depth",
-                                            default="auto",
-                                            widget=ComboWidget(
-                                                options=("auto", "8-bit YUV420", "10-bit YUV420")
+                                    rows=cast(
+                                        "tuple[BodyRow, ...]",
+                                        (
+                                            Use(
+                                                "bit_depth",
+                                                default="auto",
+                                                widget=ComboWidget(
+                                                    options=(
+                                                        "auto",
+                                                        "8-bit YUV420",
+                                                        "10-bit YUV420",
+                                                    )
+                                                ),
+                                                tooltip=(
+                                                    "Auto uses 8-bit YUV420 for sRGB and 10-bit "
+                                                    "YUV420 for HDR."
+                                                ),
                                             ),
-                                            tooltip=(
-                                                "Auto uses 8-bit YUV420 for sRGB and 10-bit "
-                                                "YUV420 for HDR."
+                                            Use(
+                                                "input_color_space",
+                                                widget=ComboWidget(
+                                                    options=("sRGB", "HDR", "HDR PQ")
+                                                ),
+                                                tooltip=(
+                                                    "Colorspace of the input images. HDR selects "
+                                                    "BT.2020/HLG and HDR PQ selects BT.2020/PQ."
+                                                ),
                                             ),
-                                        ),
-                                        Use(
-                                            "input_color_space",
-                                            widget=ComboWidget(options=("sRGB", "HDR", "HDR PQ")),
-                                            tooltip=(
-                                                "Colorspace of the input images. HDR selects "
-                                                "BT.2020/HLG and HDR PQ selects BT.2020/PQ."
-                                            ),
-                                        ),
-                                        Input(
-                                            "crf",
-                                            _INT,
-                                            default=18,
-                                            widget=NumberWidget(min=1, max=63),
-                                            tooltip=(
-                                                "Lower values produce higher quality and larger "
-                                                "files."
+                                            Input(
+                                                "crf",
+                                                _INT,
+                                                default=18,
+                                                widget=NumberWidget(min=1, max=63),
+                                                tooltip=(
+                                                    "Lower values produce higher quality and "
+                                                    "larger files."
+                                                ),
                                             ),
                                         ),
                                     ),
@@ -251,8 +274,8 @@ class SaveImageAdvanced(Node):
         defaults = {"png": "8-bit", "exr": "16-bit float", "avif": "auto"}
         if file_format not in defaults:
             raise ValueError(f"Unsupported image format: {file_format!r}")
-        bit_depth = format.get("bit_depth", defaults[file_format])
-        colorspace = format.get("input_color_space", "sRGB")
+        bit_depth = cast("str", format.get("bit_depth", defaults[file_format]))
+        colorspace = cast("str", format.get("input_color_space", "sRGB"))
         initialize_inference_process()
         write_metadata = not importlib.import_module(
             "dinkster_inference.cli_args"
@@ -283,7 +306,7 @@ class SaveImageAdvanced(Node):
 
         def sources() -> Generator[BinaryIO]:
             if file_format == "avif":
-                save_mode: Record = format["save_mode"]
+                save_mode = cast("Record", format["save_mode"])
                 animated = save_mode.key == "animated"
                 batches = (batch,) if animated else batch.unsqueeze(1)
                 metadata: dict[str, Any] | None = None
@@ -301,9 +324,11 @@ class SaveImageAdvanced(Node):
                             str(path),
                             bit_depth,
                             colorspace,
-                            format.get("crf", 18),
-                            fps=save_mode.get("fps", 1.0),
-                            loop_count=save_mode.get("loop_count") if animated else None,
+                            cast("int", format.get("crf", 18)),
+                            fps=cast("float", save_mode.get("fps", 1.0)),
+                            loop_count=cast("int | None", save_mode.get("loop_count"))
+                            if animated
+                            else None,
                             metadata=metadata,
                         )
                         with path.open("rb") as stream:

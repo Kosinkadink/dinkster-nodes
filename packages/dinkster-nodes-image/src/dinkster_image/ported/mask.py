@@ -47,7 +47,9 @@ def _integer(name: str, default: int, minimum: int, maximum: int, step: int) -> 
     )
 
 
-def _mask_schema(node_type: str, display_name: str, inputs: tuple[Input, ...]) -> NodeSchema:
+def _mask_schema(
+    node_type: str, display_name: str, inputs: tuple[Input | Section, ...]
+) -> NodeSchema:
     return NodeSchema(
         node_type=node_type,
         display_name=display_name,

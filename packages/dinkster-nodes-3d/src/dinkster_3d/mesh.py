@@ -7,7 +7,7 @@ import importlib
 import logging
 import math
 from collections.abc import Mapping
-from typing import Any
+from typing import Any, cast
 
 from dinkster_api.v1 import (
     CORE_FLOAT,
@@ -93,7 +93,7 @@ class RotateMesh(Node):
     ) -> Mapping[str, object]:
         mesh = materialize_mesh(mesh)
         if mode.key == "euler_xyz":
-            ax, ay, az = (math.radians(mode[f"angle_{axis}"]) for axis in "xyz")
+            ax, ay, az = (math.radians(cast("float", mode[f"angle_{axis}"])) for axis in "xyz")
             if ax == 0.0 and ay == 0.0 and az == 0.0:
                 return cls.outputs(mesh=mesh)
             cx, sx = math.cos(ax), math.sin(ax)
@@ -105,7 +105,7 @@ class RotateMesh(Node):
                 [-sy, sx * cy, cx * cy],
             ]
         elif mode.key == "quaternion":
-            qw, qx, qy, qz = (mode[f"q{axis}"] for axis in "wxyz")
+            qw, qx, qy, qz = (cast("float", mode[f"q{axis}"]) for axis in "wxyz")
             norm = math.sqrt(qw * qw + qx * qx + qy * qy + qz * qz)
             if norm < 1e-8:
                 raise ValueError("RotateMesh: quaternion has zero magnitude")

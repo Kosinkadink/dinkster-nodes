@@ -83,7 +83,7 @@ class TextEncodeBooguEdit(Node):
         prompt: str,
         negative_prompt: str,
         vae: Any = None,
-        images: Members[Item] = Members(),
+        images: Members[Item] = Members[Item](),
     ) -> Mapping[str, object]:
         references = [
             materialize_image(member.value) for member in images if member.value is not None

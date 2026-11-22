@@ -62,7 +62,7 @@ def _combo(name: str, options: tuple[str, ...]) -> Input:
 
 
 def _schema(
-    node_type: str, display_name: str, category: str, inputs: tuple[Input, ...]
+    node_type: str, display_name: str, category: str, inputs: tuple[Input | Section, ...]
 ) -> NodeSchema:
     return NodeSchema(
         node_type=node_type,

@@ -53,6 +53,8 @@ def test_ace_text_conditioning_schemas_and_registration() -> None:
     assert isinstance(timesignature_widget, ComboWidget)
     assert isinstance(language_widget, ComboWidget)
     assert isinstance(keyscale_widget, ComboWidget)
+    assert isinstance(language_widget.options, tuple)
+    assert isinstance(keyscale_widget.options, tuple)
     assert ace15.inputs[3].after_run == "fixed"
     assert seed_widget.max == 0xFFFFFFFFFFFFFFFF
     assert timesignature_widget.options == ("2", "3", "4", "6")

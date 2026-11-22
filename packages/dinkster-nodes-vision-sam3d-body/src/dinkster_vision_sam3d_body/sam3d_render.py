@@ -231,7 +231,7 @@ class SAM3DBody_Render(Node):
         )
         options = render_style
         shader = cast(Record | None, options.get("shader"))
-        falloff = float(options.get("person_palette_falloff", 0.6))
+        falloff = float(cast("float", options.get("person_palette_falloff", 0.6)))
         if render_style.key == "mesh" and options.get("region", "full_body") == "hands_only":
             hand_mask = pose.get("hand_vert_mask")
             if hand_mask is not None:
@@ -253,10 +253,12 @@ class SAM3DBody_Render(Node):
                     pose,
                     **common,
                     marker_radius_px=max(
-                        1, int(round(options.get("marker_radius_px", 4) * px_scale))
+                        1, int(round(cast("int", options.get("marker_radius_px", 4)) * px_scale))
                     ),
-                    stick_width_px=max(1, int(round(options.get("stick_width_px", 4) * px_scale))),
-                    limb_alpha=float(options.get("limb_alpha", 0.6)),
+                    stick_width_px=max(
+                        1, int(round(cast("int", options.get("stick_width_px", 4)) * px_scale))
+                    ),
+                    limb_alpha=float(cast("float", options.get("limb_alpha", 0.6))),
                     face_style=str(options.get("face_style", "disabled")),
                     include_hands=options.get("hand_style", "disabled") != "disabled",
                     hand_color_style=str(options.get("hand_style", "dwpose")),
@@ -266,7 +268,9 @@ class SAM3DBody_Render(Node):
                 image = capsules.render_capsules(
                     pose,
                     **common,
-                    radius_m=float(options.get("radius_m", 0.015 if is_openpose else 0.030)),
+                    radius_m=float(
+                        cast("float", options.get("radius_m", 0.015 if is_openpose else 0.030))
+                    ),
                     include_hands=bool(options.get("include_hands", True))
                     if is_openpose
                     else False,
@@ -299,13 +303,19 @@ class SAM3DBody_Render(Node):
                     pose,
                     **common,
                     cache=cache,
-                    opacity=float(options.get("opacity", 1.0)),
+                    opacity=float(cast("float", options.get("opacity", 1.0))),
                     shader_preset=shader.key if shader is not None else "default",
                     rainbow_tilt_x_deg=float(
-                        shader.get("rainbow_tilt_x", 0.0) if shader is not None else 0.0
+                        cast(
+                            "float",
+                            shader.get("rainbow_tilt_x", 0.0) if shader is not None else 0.0,
+                        )
                     ),
                     rainbow_tilt_z_deg=float(
-                        shader.get("rainbow_tilt_z", -35.0) if shader is not None else -35.0
+                        cast(
+                            "float",
+                            shader.get("rainbow_tilt_z", -35.0) if shader is not None else -35.0,
+                        )
                     ),
                 )
             else:

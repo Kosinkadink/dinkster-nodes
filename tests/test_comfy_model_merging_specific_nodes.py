@@ -190,6 +190,7 @@ def test_comfy_block_ratios_import_into_their_members() -> None:
     ratios = {name: 0.01 * position for position, name in enumerate(ModelMergeSD1.BLOCKS)}
     graph = Graph({"merge": GraphNode("ModelMergeSD1", dict(ratios))})
     migrated = migrate_node_replacements(graph, {schema.node_type: schema}).nodes["merge"]
+    assert isinstance(migrated, GraphNode)
     assert migrated.node_type == "dinkster.models.model_merge_sd1"
     assert dict(migrated.inputs) == {
         "ratios.time_embed": 0.0,

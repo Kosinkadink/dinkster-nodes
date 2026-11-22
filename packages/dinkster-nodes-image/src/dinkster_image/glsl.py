@@ -393,10 +393,10 @@ class GlslShader(Node):
         size_mode: Record,
         images: Members[Item],
         fragment_shader: str = DEFAULT_FRAGMENT_SHADER,
-        floats: Members[Item] = Members(),
-        ints: Members[Item] = Members(),
-        bools: Members[Item] = Members(),
-        curves: Members[Item] = Members(),
+        floats: Members[Item] = Members[Item](),
+        ints: Members[Item] = Members[Item](),
+        bools: Members[Item] = Members[Item](),
+        curves: Members[Item] = Members[Item](),
     ) -> Mapping[str, object]:
         if type(fragment_shader) is not str:
             raise TypeError("fragment_shader must be a string")
@@ -583,10 +583,10 @@ class NativeGlslShader(GlslShader):
         size_mode: Record,
         images: Members[Item],
         fragment_shader: str = DEFAULT_FRAGMENT_SHADER.replace("precision highp sampler2D;\n", ""),
-        floats: Members[Item] = Members(),
-        ints: Members[Item] = Members(),
-        bools: Members[Item] = Members(),
-        curves: Members[Item] = Members(),
+        floats: Members[Item] = Members[Item](),
+        ints: Members[Item] = Members[Item](),
+        bools: Members[Item] = Members[Item](),
+        curves: Members[Item] = Members[Item](),
     ) -> Mapping[str, object]:
         normalized: dict[str, Members[Item]] = {}
         for family, members, prefix, default in (

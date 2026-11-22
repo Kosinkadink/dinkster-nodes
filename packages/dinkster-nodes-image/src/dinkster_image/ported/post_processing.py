@@ -5,7 +5,7 @@ from __future__ import annotations
 import importlib
 import math
 from collections.abc import Callable, Mapping
-from typing import Any
+from typing import Any, cast
 
 from dinkster_api.v1 import (
     CORE_COMBO,
@@ -77,18 +77,6 @@ def _combo(
         tooltip=doc,
         widget=ComboWidget(tuple(ComboOption(option) for option in options)),
     )
-
-
-def _combo_values(
-    combo_id: str, selected: str | Mapping[str, Any], values: Mapping[str, Any]
-) -> Mapping[str, Any]:
-    if isinstance(selected, Mapping):
-        return selected
-    prefix = f"{combo_id}."
-    return {
-        combo_id: selected,
-        **{input_id.removeprefix(prefix): value for input_id, value in values.items()},
-    }
 
 
 def _image_or_mask(value: Any) -> Any:
@@ -276,31 +264,40 @@ class ResizeImageMaskNode(Node):
         value = _image_or_mask(input)
         selected = resize_type.key
         if selected == "scale by multiplier":
-            result = _scale_by(value, resize_type["multiplier"], scale_method)
+            result = _scale_by(value, cast("float", resize_type["multiplier"]), scale_method)
         elif selected == "scale dimensions":
             result = _scale_dimensions(
                 value,
-                resize_type["width"],
-                resize_type["height"],
+                cast("int", resize_type["width"]),
+                cast("int", resize_type["height"]),
                 scale_method,
-                resize_type["crop"],
+                cast("str", resize_type["crop"]),
             )
         elif selected == "scale longer dimension":
-            result = _scale_edge(value, resize_type["longer_size"], scale_method, longer=True)
+            result = _scale_edge(
+                value, cast("int", resize_type["longer_size"]), scale_method, longer=True
+            )
         elif selected == "scale shorter dimension":
-            result = _scale_edge(value, resize_type["shorter_size"], scale_method, longer=False)
+            result = _scale_edge(
+                value, cast("int", resize_type["shorter_size"]), scale_method, longer=False
+            )
         elif selected == "scale width":
-            result = _scale_dimensions(value, resize_type["width"], 0, scale_method)
+            result = _scale_dimensions(value, cast("int", resize_type["width"]), 0, scale_method)
         elif selected == "scale height":
-            result = _scale_dimensions(value, 0, resize_type["height"], scale_method)
+            result = _scale_dimensions(value, 0, cast("int", resize_type["height"]), scale_method)
         elif selected == "scale total pixels":
-            result = _scale_total_pixels(value, resize_type["megapixels"], scale_method)
+            result = _scale_total_pixels(
+                value, cast("float", resize_type["megapixels"]), scale_method
+            )
         elif selected == "match size":
             result = _scale_match_size(
-                value, _image_or_mask(resize_type["match"]), scale_method, resize_type["crop"]
+                value,
+                _image_or_mask(resize_type["match"]),
+                scale_method,
+                cast("str", resize_type["crop"]),
             )
         elif selected == "scale to multiple":
-            result = _scale_to_multiple(value, resize_type["multiple"], scale_method)
+            result = _scale_to_multiple(value, cast("int", resize_type["multiple"]), scale_method)
         else:
             raise ValueError(f"Unsupported resize type: {selected}")
         return cls.outputs(resized=result)
@@ -620,7 +617,7 @@ class ColorTransfer(Node):
         output = torch.empty(
             frames, height, width, channels, device=output_device, dtype=output_dtype
         )
-        stats, target_index = source_stats.key, source_stats.get("target_index", 0)
+        stats, target_index = source_stats.key, cast("int", source_stats.get("target_index", 0))
         if method == "histogram":
             uniform = cls._histogram_transform(target, reference, device, stats, target_index)
             for index in range(frames):

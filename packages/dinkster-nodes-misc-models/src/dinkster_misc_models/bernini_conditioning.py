@@ -116,7 +116,7 @@ class BerniniConditioning(Node):
         batch_size: int,
         source_video: object | None = None,
         reference_video: object | None = None,
-        reference_images: Members[Item] = Members(),
+        reference_images: Members[Item] = Members[Item](),
         ref_max_size: int = 848,
     ) -> Mapping[str, object]:
         initialize_inference_process()

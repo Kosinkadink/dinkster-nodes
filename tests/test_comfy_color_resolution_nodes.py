@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import cast
 
 import pytest
-from dinkster_api.v1 import ComboWidget, Formula, Input, Note
+from dinkster_api.v1 import ComboOption, ComboWidget, Formula, Input, Note
 from dinkster_schema.formula import UNKNOWN, FormulaScope, FormulaValues, parse_formula
 from dinkster_utilities.color_resolution import ColorToRGBInt, ResolutionSelector
 
@@ -66,7 +66,10 @@ def test_resolution_note_shows_the_size_execute_gives() -> None:
         ),
     )
     ratio_input = next(row for row in rows if isinstance(row, Input) and row.id == "aspect_ratio")
-    ratios = [option.value for option in cast(ComboWidget, ratio_input.widget).options]
+    ratios = [
+        cast(str, option.value)
+        for option in cast(tuple[ComboOption, ...], cast(ComboWidget, ratio_input.widget).options)
+    ]
     assert len(ratios) == 8
     cases = [
         (ratio, step / 10, multiple)

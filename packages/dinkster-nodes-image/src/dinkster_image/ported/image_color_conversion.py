@@ -5,7 +5,7 @@ from __future__ import annotations
 import importlib
 import math
 from collections.abc import Mapping
-from typing import Any
+from typing import Any, cast
 
 from dinkster_api.v1 import (
     CORE_COMBO,
@@ -232,7 +232,7 @@ class ImageSDRToHDR(Node):
     ) -> Mapping[str, object]:
         if algorithm.key != "lottes":
             raise ValueError(f"Unsupported HDR algorithm: {algorithm.key}")
-        target_luminance = algorithm["target_luminance"] or None
+        target_luminance = cast("float", algorithm["target_luminance"]) or None
         initialize_inference_process()
         torch = importlib.import_module("torch")
         management = importlib.import_module("dinkster_inference.model_management")

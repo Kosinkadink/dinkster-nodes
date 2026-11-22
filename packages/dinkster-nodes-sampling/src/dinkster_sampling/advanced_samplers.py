@@ -151,7 +151,7 @@ def sample_euler_cfg_pp_alternative(
 
 def _sampler_schema(
     node_type: str,
-    inputs: tuple[Input, ...],
+    inputs: tuple[Input | Section, ...],
     *,
     category: str = _SAMPLER_CATEGORY,
     display_name: str = "",

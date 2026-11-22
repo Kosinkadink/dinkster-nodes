@@ -72,6 +72,7 @@ def test_core_class_pure_rename_preserves_graph_state(
     schemas = {target: schema}
     migrated = migrate_node_replacements(graph, schemas)
     ported = migrated.nodes["ported"]
+    assert isinstance(ported, GraphNode)
     assert (ported.node_type, ported.inputs) == (target, old.inputs)
     assert migrated.nodes["consumer"] == consumer
     assert graph.nodes["ported"] is old

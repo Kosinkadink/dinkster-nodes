@@ -133,6 +133,7 @@ def test_model_file_loader_defaults_match_comfyui() -> None:
     assert schemas["CLIPLoader"].inputs[1].default == "stable_diffusion"
     clip_type_widget = schemas["CLIPLoader"].inputs[1].widget
     assert isinstance(clip_type_widget, ComboWidget)
+    assert isinstance(clip_type_widget.options, tuple)
     assert len(clip_type_widget.options) == 32
     assert schemas["CLIPLoader"].inputs[2].default == "default"
     assert schemas["DualCLIPLoader"].inputs[2].default == "sdxl"

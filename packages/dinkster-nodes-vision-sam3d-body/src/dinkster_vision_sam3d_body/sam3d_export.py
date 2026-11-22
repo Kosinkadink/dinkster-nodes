@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import importlib
 from collections.abc import Mapping
-from typing import Any
+from typing import Any, cast
 
 from dinkster_api.v1 import (
     CORE_BOOLEAN,
@@ -16,6 +16,7 @@ from dinkster_api.v1 import (
     MHR_POSE_DATA_TYPE,
     SAM3D_BODY_MODEL_TYPE,
     AssetRef,
+    BodyRow,
     Choice,
     ComboWidget,
     Input,
@@ -157,17 +158,20 @@ class BuildPoseFile(Node):
                                                     "advanced",
                                                     label="Advanced",
                                                     collapsed=True,
-                                                    rows=(
-                                                        Use("marker_radius_m"),
-                                                        Use("stick_radius_m"),
-                                                        Use("hand_marker_radius_m"),
-                                                        Use("hand_stick_radius_m"),
-                                                        Input(
-                                                            "face_marker_radius_m",
-                                                            floating,
-                                                            default=0.0,
-                                                            widget=NumberWidget(
-                                                                min=0.0, max=0.05, step=0.0005
+                                                    rows=cast(
+                                                        "tuple[BodyRow, ...]",
+                                                        (
+                                                            Use("marker_radius_m"),
+                                                            Use("stick_radius_m"),
+                                                            Use("hand_marker_radius_m"),
+                                                            Use("hand_stick_radius_m"),
+                                                            Input(
+                                                                "face_marker_radius_m",
+                                                                floating,
+                                                                default=0.0,
+                                                                widget=NumberWidget(
+                                                                    min=0.0, max=0.05, step=0.0005
+                                                                ),
                                                             ),
                                                         ),
                                                     ),
@@ -183,36 +187,39 @@ class BuildPoseFile(Node):
                                                     "advanced",
                                                     label="Advanced",
                                                     collapsed=True,
-                                                    rows=(
-                                                        Use(
-                                                            "stick_radius_m",
-                                                            default=0.022,
-                                                            widget=NumberWidget(
-                                                                min=0.002, max=0.1, step=0.001
+                                                    rows=cast(
+                                                        "tuple[BodyRow, ...]",
+                                                        (
+                                                            Use(
+                                                                "stick_radius_m",
+                                                                default=0.022,
+                                                                widget=NumberWidget(
+                                                                    min=0.002, max=0.1, step=0.001
+                                                                ),
                                                             ),
-                                                        ),
-                                                        Use(
-                                                            "marker_radius_m",
-                                                            default=0.0,
-                                                            widget=NumberWidget(
-                                                                min=0.0, max=0.1, step=0.001
+                                                            Use(
+                                                                "marker_radius_m",
+                                                                default=0.0,
+                                                                widget=NumberWidget(
+                                                                    min=0.0, max=0.1, step=0.001
+                                                                ),
                                                             ),
-                                                        ),
-                                                        Input(
-                                                            "material_roughness",
-                                                            floating,
-                                                            default=0.3,
-                                                            widget=NumberWidget(
-                                                                min=0.0, max=1.0, step=0.05
+                                                            Input(
+                                                                "material_roughness",
+                                                                floating,
+                                                                default=0.3,
+                                                                widget=NumberWidget(
+                                                                    min=0.0, max=1.0, step=0.05
+                                                                ),
                                                             ),
-                                                        ),
-                                                        Use(
-                                                            "hand_marker_radius_m",
-                                                            widget=NumberWidget(
-                                                                min=0.001, max=0.05, step=0.001
+                                                            Use(
+                                                                "hand_marker_radius_m",
+                                                                widget=NumberWidget(
+                                                                    min=0.001, max=0.05, step=0.001
+                                                                ),
                                                             ),
+                                                            Use("hand_stick_radius_m"),
                                                         ),
-                                                        Use("hand_stick_radius_m"),
                                                     ),
                                                 ),
                                             ),
@@ -300,7 +307,7 @@ class BuildPoseFile(Node):
     ) -> Mapping[str, object]:
         pose = materialize_vision_packet(pose_data)
         file_format = format.key
-        style: Record | None = format.get("mesh_style")
+        style = cast("Record | None", format.get("mesh_style"))
         mode = style.key if style is not None else ""
         external = "_skeleton_override" in pose
         if file_format == "bvh" or mode in ("body_mesh", "bones_only"):
@@ -330,32 +337,38 @@ class BuildPoseFile(Node):
                 pose, sam3d_body_model, units=str(format["units"]), **common
             )
         elif file_format == "glb" and style is not None:
-            smooth = int(format["bone_smooth_window"])
+            smooth = int(cast("int", format["bone_smooth_window"]))
             if mode in ("body_mesh", "bones_only"):
                 serializer = importlib.import_module(".sam3d_skeletal", __package__)
-                bone_vis: Record = style["bone_vis"]
-                shader: Record | None = style.get("shader")
+                bone_vis = cast("Record", style["bone_vis"])
+                shader = cast("Record | None", style.get("shader"))
                 data = serializer.build_glb_skeletal(
                     pose,
                     sam3d_body_model,
                     **common,
                     bone_smooth_window=smooth,
                     bone_vis=bone_vis.key,
-                    bone_vis_radius_m=float(bone_vis.get("bone_vis_radius_m", 0.04)),
+                    bone_vis_radius_m=float(cast("float", bone_vis.get("bone_vis_radius_m", 0.04))),
                     bone_vis_color=str(bone_vis.get("bone_vis_color", "white")),
                     include_body_mesh=mode == "body_mesh",
                     shader=shader.key if shader is not None else "default",
-                    rainbow_tilt_x_deg=float(shader.get("rainbow_tilt_x", 0.0) if shader else 0.0),
-                    rainbow_tilt_z_deg=float(shader.get("rainbow_tilt_z", 0.0) if shader else 0.0),
+                    rainbow_tilt_x_deg=float(
+                        cast("float", shader.get("rainbow_tilt_x", 0.0) if shader else 0.0)
+                    ),
+                    rainbow_tilt_z_deg=float(
+                        cast("float", shader.get("rainbow_tilt_z", 0.0) if shader else 0.0)
+                    ),
                     person_palette_falloff=float(
-                        shader.get("person_palette_falloff", 0.6) if shader else 0.6
+                        cast("float", shader.get("person_palette_falloff", 0.6) if shader else 0.6)
                     ),
                 )
             elif mode in ("openpose", "scail"):
                 serializer = importlib.import_module(".sam3d_openpose_glb", __package__)
                 scail = mode == "scail"
-                radius = float(style.get("stick_radius_m", 0.022 if scail else 0.008))
-                marker = float(style.get("marker_radius_m", 0.0 if scail else 0.025))
+                radius = float(
+                    cast("float", style.get("stick_radius_m", 0.022 if scail else 0.008))
+                )
+                marker = float(cast("float", style.get("marker_radius_m", 0.0 if scail else 0.025)))
                 if scail and marker <= 0.0:
                     marker = radius
                 data = serializer.build_glb_openpose(
@@ -365,16 +378,20 @@ class BuildPoseFile(Node):
                     marker_radius_m=marker,
                     stick_radius_m=radius,
                     include_hands=bool(style.get("include_hands", False)),
-                    hand_marker_radius_m=float(style.get("hand_marker_radius_m", 0.005)),
-                    hand_stick_radius_m=float(style.get("hand_stick_radius_m", 0.003)),
+                    hand_marker_radius_m=float(
+                        cast("float", style.get("hand_marker_radius_m", 0.005))
+                    ),
+                    hand_stick_radius_m=float(
+                        cast("float", style.get("hand_stick_radius_m", 0.003))
+                    ),
                     face_style=str(style.get("face_style", "disabled")),
                     face_marker_radius_m=0.0
                     if scail
-                    else float(style.get("face_marker_radius_m", 0.0)),
+                    else float(cast("float", style.get("face_marker_radius_m", 0.0))),
                     palette="scail" if scail else "openpose",
                     shape="capsule" if scail else "ellipsoid",
                     smooth_shade=scail,
-                    material_roughness=float(style.get("material_roughness", 0.3))
+                    material_roughness=float(cast("float", style.get("material_roughness", 0.3)))
                     if scail
                     else 0.85,
                     material_double_sided=scail,

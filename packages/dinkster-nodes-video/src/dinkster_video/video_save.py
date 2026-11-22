@@ -199,7 +199,7 @@ class SaveVideo(Node):
                 value,
                 cast(BinaryIO, encoded),
                 container=cast(str, kind),
-                codec=cast(str, name),
+                codec=name,
                 crf=cast(float | None, crf),
                 metadata=metadata,
                 source_components="components" in value and not value["edits"],

@@ -81,7 +81,7 @@ def _combo(
 def _sampling_schema(
     node_type: str,
     category: str,
-    inputs: tuple[Input, ...],
+    inputs: tuple[Input | Section, ...],
     *,
     search_terms: tuple[str, ...] = (),
 ) -> NodeSchema:

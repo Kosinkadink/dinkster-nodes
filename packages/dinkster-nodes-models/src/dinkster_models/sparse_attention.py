@@ -703,8 +703,10 @@ class BlockSparseAttention(Node):
         return cls.outputs(
             MODEL=apply_block_sparse_attention(
                 model,
-                tau=float(selected.get("tau", 1.3)),
-                topk_ratio=0.0 if mode == "sol-attn" else float(selected["keep_percent"]) / 100.0,
+                tau=float(cast("float", selected.get("tau", 1.3))),
+                topk_ratio=0.0
+                if mode == "sol-attn"
+                else float(cast("float", selected["keep_percent"])) / 100.0,
                 vsa=mode == "vsa",
                 start_percent=start_percent,
                 end_percent=end_percent,

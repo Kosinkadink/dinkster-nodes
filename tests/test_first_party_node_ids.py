@@ -87,11 +87,13 @@ def test_first_party_rules_preserve_flat_and_group_values() -> None:
         graph, {schema.node_type: schema, family.node_type: family}
     )
     flat = migrated.nodes["flat"]
+    assert isinstance(flat, GraphNode)
     assert (flat.node_type, dict(flat.inputs)) == (
         "dinkster.text.string_concatenate",
         {"string_a": "left", "string_b": "RIGHT", "delimiter": "/"},
     )
     dynamic = migrated.nodes["dynamic"]
+    assert isinstance(dynamic, GraphNode)
     assert (dynamic.node_type, dict(dynamic.inputs)) == (
         "dinkster.text.string_format",
         {"values.z": "last", "f_string": "{z}"},

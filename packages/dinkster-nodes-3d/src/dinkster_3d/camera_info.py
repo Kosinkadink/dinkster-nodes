@@ -5,7 +5,7 @@ from __future__ import annotations
 import importlib
 import math
 from collections.abc import Mapping
-from typing import Any
+from typing import Any, cast
 
 from dinkster_api.v1 import (
     CAMERA_INFO_STATE_TYPE,
@@ -84,9 +84,12 @@ def _camera_info(
 ) -> dict[str, object]:
     kind = mode.key
     if kind == "orbit":
-        yaw, pitch = math.radians(mode["yaw"]), math.radians(mode["pitch"])
+        yaw, pitch = (
+            math.radians(cast("float", mode["yaw"])),
+            math.radians(cast("float", mode["pitch"])),
+        )
         cy, sy, cp, sp = math.cos(yaw), math.sin(yaw), math.cos(pitch), math.sin(pitch)
-        distance = mode["distance"]
+        distance = cast("float", mode["distance"])
         position = [
             target[0] + distance * cp * sy,
             target[1] + distance * sp,
@@ -96,7 +99,7 @@ def _camera_info(
         position = [mode["position_x"], mode["position_y"], mode["position_z"]]
     pos = torch.as_tensor(position, dtype=torch.float32, device=device)
     if kind == "quaternion":
-        qx, qy, qz, qw = (float(mode[f"quat_{axis}"]) for axis in "xyzw")
+        qx, qy, qz, qw = (float(cast("float", mode[f"quat_{axis}"])) for axis in "xyzw")
         quaternion = torch.tensor([qw, qx, qy, qz], dtype=torch.float32, device=device)
         quaternion = quaternion / quaternion.norm().clamp_min(1e-8)
         q = quaternion / quaternion.norm(dim=-1, keepdim=True).clamp_min(1e-12)

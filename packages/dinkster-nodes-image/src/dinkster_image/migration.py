@@ -353,7 +353,7 @@ def _case(
     mappings = {
         spec.id: MappingSource.copy(spec.id)
         for spec in schema.inputs
-        if isinstance(spec, Input) and spec.id not in current_only_inputs
+        if spec.id not in current_only_inputs
     }
     mappings.update(
         {

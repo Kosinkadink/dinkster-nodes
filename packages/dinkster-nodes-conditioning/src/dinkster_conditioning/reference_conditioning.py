@@ -5,7 +5,7 @@ from __future__ import annotations
 import importlib
 import math
 from collections.abc import Mapping, Sequence
-from typing import Any
+from typing import Any, cast
 
 from dinkster_api.v1 import (
     CONDITIONING_TYPE,
@@ -148,7 +148,7 @@ class ReferenceMultiLatent(Node):
         resolution: Record,
         negative: Sequence[Sequence[Any]] | None = None,
         vae: Any = None,
-        images: Members[Item] = Members(),
+        images: Members[Item] = Members[Item](),
     ) -> Mapping[str, object]:
         references: list[Any] = []
         if vae is not None:
@@ -160,7 +160,9 @@ class ReferenceMultiLatent(Node):
                 image = materialize_image(pixels)
                 if resolution.key == "resize":
                     height, width = image.shape[1:3]
-                    scale = math.sqrt(resolution["megapixels"] * 1024.0 * 1024.0 / (width * height))
+                    scale = math.sqrt(
+                        cast("float", resolution["megapixels"]) * 1024.0 * 1024.0 / (width * height)
+                    )
                     image = (
                         importlib.import_module("dinkster_inference.utils")
                         .common_upscale(
@@ -181,7 +183,7 @@ class ReferenceMultiLatent(Node):
 
             size = 1024
             if resolution.key == "resize":
-                size = round(math.sqrt(resolution["megapixels"] * 1024.0 * 1024.0))
+                size = round(math.sqrt(cast("float", resolution["megapixels"]) * 1024.0 * 1024.0))
             empty_latent = materialize_latent(
                 EmptyLatentImage.execute(width=size, height=size, batch_size=1)["LATENT"]
             )

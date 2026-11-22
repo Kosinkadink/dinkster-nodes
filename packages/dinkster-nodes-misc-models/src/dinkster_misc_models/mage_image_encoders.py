@@ -93,7 +93,7 @@ class TextEncodeMageFlowEdit(Node):
         prompt: str,
         negative_prompt: str = "",
         vae: Any = None,
-        images: Members[Item] = Members(),
+        images: Members[Item] = Members[Item](),
         width: int = 0,
         height: int = 0,
         batch_size: int = 1,
