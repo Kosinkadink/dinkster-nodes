@@ -1308,17 +1308,17 @@
     "schemaWire": 2
   },
   "poll": {
-    "createdAt": "2026-11-22T07:25:52.084717Z",
+    "createdAt": "2026-11-22T07:30:35.466252Z",
     "error": null,
-    "finishedAt": "2026-11-22T07:25:52.159652Z",
-    "jobId": "a38ba457-6bfc-47da-8b56-160edb589e9a",
+    "finishedAt": "2026-11-22T07:30:35.566332Z",
+    "jobId": "7143f656-9e12-4184-83e5-9486b6071f6f",
     "nodeType": "dinkster.remote.nanobanana.image",
     "outputs": {
       "images": [
         {
           "digest": "blake3:494515ba1ed3d25cdab88152943ed17851e64b3689b26bd47aa9b3d1c2cc45e1",
-          "downloadUrl": "{base_url}/v1/downloads/a38ba457-6bfc-47da-8b56-160edb589e9a/images.0?expires=1795333252&signature=2eaebb7017272043e0848b6c26533125d4a97de57a5c88ea91e02de0672e75f1",
-          "expiresAt": "2026-11-22T07:40:52Z",
+          "downloadUrl": "{base_url}/v1/downloads/7143f656-9e12-4184-83e5-9486b6071f6f/images.0?expires=1795333535&signature=24203c3059d23a09966ebc7e481924940228e0532d4096b0a966de8eac15e278",
+          "expiresAt": "2026-11-22T07:45:35Z",
           "mediaType": "image/png",
           "name": null,
           "size": 68
@@ -1335,7 +1335,7 @@
     "projectId": "52efb2c2-2452-423e-8415-eb00d00d4917",
     "queuePosition": null,
     "schemaVersion": 2,
-    "startedAt": "2026-11-22T07:25:52.116841Z",
+    "startedAt": "2026-11-22T07:30:35.493369Z",
     "state": "succeeded",
     "usage": {
       "quantity": 1,
@@ -1345,17 +1345,17 @@
   },
   "polls": [
     {
-      "createdAt": "2026-11-22T07:25:52.084717Z",
+      "createdAt": "2026-11-22T07:30:35.466252Z",
       "error": null,
-      "finishedAt": "2026-11-22T07:25:52.159652Z",
-      "jobId": "a38ba457-6bfc-47da-8b56-160edb589e9a",
+      "finishedAt": "2026-11-22T07:30:35.566332Z",
+      "jobId": "7143f656-9e12-4184-83e5-9486b6071f6f",
       "nodeType": "dinkster.remote.nanobanana.image",
       "outputs": {
         "images": [
           {
             "digest": "blake3:494515ba1ed3d25cdab88152943ed17851e64b3689b26bd47aa9b3d1c2cc45e1",
-            "downloadUrl": "{base_url}/v1/downloads/a38ba457-6bfc-47da-8b56-160edb589e9a/images.0?expires=1795333252&signature=2eaebb7017272043e0848b6c26533125d4a97de57a5c88ea91e02de0672e75f1",
-            "expiresAt": "2026-11-22T07:40:52Z",
+            "downloadUrl": "{base_url}/v1/downloads/7143f656-9e12-4184-83e5-9486b6071f6f/images.0?expires=1795333535&signature=24203c3059d23a09966ebc7e481924940228e0532d4096b0a966de8eac15e278",
+            "expiresAt": "2026-11-22T07:45:35Z",
             "mediaType": "image/png",
             "name": null,
             "size": 68
@@ -1372,7 +1372,7 @@
       "projectId": "52efb2c2-2452-423e-8415-eb00d00d4917",
       "queuePosition": null,
       "schemaVersion": 2,
-      "startedAt": "2026-11-22T07:25:52.116841Z",
+      "startedAt": "2026-11-22T07:30:35.493369Z",
       "state": "succeeded",
       "usage": {
         "quantity": 1,
@@ -1381,19 +1381,19 @@
       }
     }
   ],
-  "sourceCommit": "b9b51d7345860a5475205b0379e92217be19a17a",
+  "sourceCommit": "5ff575cacf14baba3858a2371b19cda730167a7c",
   "submit": {
-    "createdAt": "2026-11-22T07:25:52.084717Z",
+    "createdAt": "2026-11-22T07:30:35.466252Z",
     "error": null,
-    "finishedAt": "2026-11-22T07:25:52.159652Z",
-    "jobId": "a38ba457-6bfc-47da-8b56-160edb589e9a",
+    "finishedAt": "2026-11-22T07:30:35.566332Z",
+    "jobId": "7143f656-9e12-4184-83e5-9486b6071f6f",
     "nodeType": "dinkster.remote.nanobanana.image",
     "outputs": {
       "images": [
         {
           "digest": "blake3:494515ba1ed3d25cdab88152943ed17851e64b3689b26bd47aa9b3d1c2cc45e1",
-          "downloadUrl": "http://127.0.0.1:46445/v1/downloads/a38ba457-6bfc-47da-8b56-160edb589e9a/images.0?expires=1795333252&signature=2eaebb7017272043e0848b6c26533125d4a97de57a5c88ea91e02de0672e75f1",
-          "expiresAt": "2026-11-22T07:40:52Z",
+          "downloadUrl": "{base_url}/v1/downloads/7143f656-9e12-4184-83e5-9486b6071f6f/images.0?expires=1795333535&signature=24203c3059d23a09966ebc7e481924940228e0532d4096b0a966de8eac15e278",
+          "expiresAt": "2026-11-22T07:45:35Z",
           "mediaType": "image/png",
           "name": null,
           "size": 68
@@ -1410,7 +1410,7 @@
     "projectId": "52efb2c2-2452-423e-8415-eb00d00d4917",
     "queuePosition": null,
     "schemaVersion": 2,
-    "startedAt": "2026-11-22T07:25:52.116841Z",
+    "startedAt": "2026-11-22T07:30:35.493369Z",
     "state": "succeeded",
     "usage": {
       "quantity": 1,
