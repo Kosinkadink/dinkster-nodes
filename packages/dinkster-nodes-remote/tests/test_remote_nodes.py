@@ -16,9 +16,12 @@ from dinkster_api.v1 import (
     AssetError,
     AssetRef,
     AssetVault,
+    Choice,
     Input,
     NodeSchema,
+    Option,
     Output,
+    Record,
     TypeExpr,
     digest_bytes,
     schema_signature,
@@ -731,6 +734,48 @@ def test_recorded_gateway_catalog_submit_progress_and_digest_round_trip(
             assert output.digest == digest_bytes(output.read_bytes())
             assert len(output.read_bytes()) == recorded_image["size"] == 68
             assert AssetVault(vault).has(output.digest)
+
+    asyncio.run(scenario())
+
+
+def test_a_video_output_inside_a_choice_polls_at_the_video_interval(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    video = TypeExpr.asset_of(TypeExpr.concrete("VIDEO"))
+    schema = replace(
+        remote_schema("dinkster.remote.clip"),
+        body=(
+            Input("prompt", STRING),
+            Choice(
+                "result",
+                options=(
+                    Option("still", rows=(Output("image", IMAGE),)),
+                    Option("clip", rows=(Output("video", video),)),
+                ),
+            ),
+        ),
+    )
+
+    async def scenario() -> None:
+        async with FakeGateway(schema) as gateway:
+            # An image poll interval far beyond the wait below: only the video
+            # interval lets the job finish in time.
+            configured = replace(
+                config(gateway.base_url, tmp_path / "catalog.json"),
+                image_poll_interval=60,
+                video_poll_interval=0.01,
+            )
+            runtime = await asyncio.to_thread(RemoteRuntime, configured)
+            monkeypatch.setenv("DINKSTER_ASSET_VAULT", str(tmp_path / "output-vault"))
+            result = await asyncio.wait_for(
+                runtime.invoke(
+                    runtime.snapshot.schemas[0],
+                    {"prompt": "hello", "result": Record("clip", {})},
+                ),
+                timeout=10,
+            )
+            assert gateway.polled.is_set()
+            assert isinstance(result["image"], AssetRef)
 
     asyncio.run(scenario())
 
