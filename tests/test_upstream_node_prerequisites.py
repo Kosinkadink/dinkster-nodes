@@ -14,6 +14,28 @@ import pytest
 from tools import upstream_node_prerequisites as prerequisites
 
 
+def test_stable_tag_provenance_is_accepted_without_relaxing_its_schema() -> None:
+    identity = {
+        "version": "0.1.3",
+        "sourceCommit": "a" * 40,
+        "upstreamCommit": "b" * 40,
+        "upstreamTag": "v0.45.1",
+        "upstreamTagCommit": "b" * 40,
+        "upstreamMergeBase": "c" * 40,
+        "mainSourceCommit": "d" * 40,
+        "releaseSource": "upstream-tag-branch",
+        "adaptedTestSources": {"tests/example.py": "tests/example.py"},
+        "excludedAdaptedTests": {},
+    }
+
+    assert prerequisites.tag_identity(json.dumps(identity), "0.1.3") == identity
+
+    with pytest.raises(ValueError, match="invalid provenance"):
+        prerequisites.tag_identity(json.dumps({**identity, "unexpected": True}), "0.1.3")
+    with pytest.raises(ValueError, match="invalid provenance"):
+        prerequisites.tag_identity(json.dumps({**identity, "version": "0.1.2"}), "0.1.3")
+
+
 @pytest.mark.parametrize("fault", [None, "yanked", "digest", "tag", "source", "minimum"])
 def test_pack_prerequisite_is_verified_before_publication(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, fault: str | None
