@@ -104,6 +104,8 @@ def plain(value: Any) -> Any:
             f.name: plain(getattr(value, f.name))
             for f in dataclasses.fields(value)
             if getattr(value, f.name) != f.default
+            # A widget's writes and reads are sent only when they name a row.
+            and not (f.name in ("writes", "reads") and not getattr(value, f.name))
         }
         return {"class": type(value).__name__, **fields}
     if isinstance(value, Mapping):
