@@ -27,6 +27,7 @@ from dinkster_api.v1 import (
     Named,
     Node,
     NodeSchema,
+    Numbered,
     NumberWidget,
     Option,
     Output,
@@ -501,21 +502,24 @@ class NativeGlslShader(Node):
     @classmethod
     def define_schema(cls) -> NodeSchema:
         schema = _glsl_schema()
-        families: list[Group] = []
-        for family in schema.input_families:
-            member = cast(Input, family.template[0])
-            families.append(
-                replace(
-                    family,
-                    member_names=None,
-                    member_prefix="image" if family.id == "images" else f"u_{family.id[:-1]}",
-                    max_members=family.max_members,
-                    optional_after_minimum=family.id == "images",
-                    template=(
-                        replace(
+        fragment, size_mode = None, None
+        groups: list[Group] = []
+        outputs: list[Output] = []
+        for row in schema.body:
+            if isinstance(row, Group):
+                member = cast(Input, row.value)
+                groups.append(
+                    replace(
+                        row,
+                        keys=Numbered(
+                            "image" if row.id == "images" else f"u_{row.id[:-1]}", start=0
+                        ),
+                        max_members=len(cast(Named, row.keys).names),
+                        optional_after_minimum=row.id == "images",
+                        value=replace(
                             member,
-                            id=family.id[:-1],
-                            force_input=family.id != "images",
+                            id=row.id[:-1],
+                            pin_first=row.id != "images",
                             widget=(
                                 None if isinstance(member.widget, NumberWidget) else member.widget
                             ),
@@ -524,58 +528,44 @@ class NativeGlslShader(Node):
                                     "points": [[0.0, 0.0], [1.0, 1.0]],
                                     "interpolation": "monotone_cubic",
                                 }
-                                if family.id == "curves"
+                                if row.id == "curves"
                                 else member.default
                             ),
                         ),
-                    ),
+                    )
                 )
-            )
-        schema = replace(
-            schema,
-            inputs=tuple(
-                replace(
-                    spec,
-                    required=True,
-                    default=DEFAULT_FRAGMENT_SHADER.replace("precision highp sampler2D;\n", ""),
-                )
-                for spec in schema.inputs
-            ),
-            combos=tuple(
-                replace(
-                    combo,
+            elif isinstance(row, Choice):
+                size_mode = replace(
+                    row,
                     default=None,
                     options=tuple(
                         replace(
                             option,
-                            inputs=tuple(
+                            rows=tuple(
                                 replace(
                                     cast(Input, spec),
                                     required=True,
                                     widget=NumberWidget(min=1, max=MAX_DIMENSION),
                                 )
-                                for spec in option.inputs
+                                for spec in option.rows
                             ),
                         )
-                        for option in combo.options
+                        for option in row.options
                     ),
                 )
-                for combo in schema.combos
-            ),
-            input_families=tuple(families),
-            input_order=(
-                "fragment_shader",
-                "size_mode",
-                "images",
-                "floats",
-                "ints",
-                "bools",
-                "curves",
-            ),
-            outputs=tuple(
-                replace(spec, id=f"IMAGE{index}", display_name=f"IMAGE{index}")
-                for index, spec in enumerate(schema.outputs)
-            ),
+            elif isinstance(row, Input):
+                fragment = replace(
+                    row,
+                    required=True,
+                    default=DEFAULT_FRAGMENT_SHADER.replace("precision highp sampler2D;\n", ""),
+                )
+            elif isinstance(row, Output):
+                index = len(outputs)
+                outputs.append(replace(row, id=f"IMAGE{index}", label=f"IMAGE{index}"))
+        assert fragment is not None and size_mode is not None
+        schema = replace(
+            schema,
+            body=(fragment, size_mode, *groups, *outputs),
             output_node=False,
         )
         return with_identity_replacement(schema, "GLSLShader")
