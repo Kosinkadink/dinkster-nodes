@@ -14,7 +14,12 @@ node type:
   beside. Choices and groups list their own rows the same way.
 - ``outputs``: each output's id, type and layout fields.
 - ``node``: the remaining node-level fields (title, category, search terms,
-  replacement rules and the rest).
+  replacement rules and the rest). A replacement case's input mappings are
+  listed by input id, because their order means nothing.
+
+The order of the flattened inputs is not compared: the body tree flattens
+each scope in one order by id, so the order a person sees is the order of
+``rows``.
 
     python tools/node_interface.py dump OUT_JSON
     python tools/node_interface.py compare BEFORE_JSON AFTER_JSON DIFFERENCES_JSON
@@ -221,8 +226,20 @@ def _members(schema: Any) -> list[str]:
     return stored
 
 
+def sort_cases(node: dict[str, Any]) -> None:
+    for rule in node.get("replacements", ()):
+        for case in rule.get("cases", ()):
+            if "inputs" in case:
+                case["inputs"] = sorted(case["inputs"], key=json.dumps)
+
+
 def snapshot_node(schema: Any) -> dict[str, Any]:
     from dinkster_schema import elaborate
+
+    if getattr(schema, "body", ()):
+        from tools.node_interface_body import snapshot_body
+
+        return snapshot_body(schema)
 
     stored: dict[str, object] = {i.id: i.default for i in schema.inputs if i.default is not None}
     stored.update({key: None for key in _members(schema)})
@@ -246,6 +263,7 @@ def snapshot_node(schema: Any) -> dict[str, Any]:
         for f in dataclasses.fields(schema)
         if f.name not in _LISTED and getattr(schema, f.name) != f.default
     }
+    sort_cases(node)
     outputs = []
     for output in schema.outputs:
         fields = plain(output)
@@ -309,16 +327,6 @@ def differences(before: Mapping[str, Any], after: Mapping[str, Any]) -> Iterator
                             "before": lrows.get(ident),
                             "after": rrows.get(ident),
                         }
-                if [r[0] for r in left[side] if r[0] in rrows] != [
-                    r[0] for r in right[side] if r[0] in lrows
-                ]:
-                    yield {
-                        "node_type": node_type,
-                        "part": f"{side} order",
-                        "path": key,
-                        "before": [r[0] for r in left[side]],
-                        "after": [r[0] for r in right[side]],
-                    }
         for part in ("rows", "outputs", "output_families", "node"):
             yield from _walk(node_type, part, "", a[part], b[part])
 

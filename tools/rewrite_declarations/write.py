@@ -381,6 +381,8 @@ def _imports(module: cst.Module, used: set[str]) -> cst.Module:
                 return updated
             have = {a.name.value for a in updated.names if isinstance(a.name, cst.Name)}
             missing = sorted(n for n in used if n in NEW_NAMES and n not in have)
+            if not missing and len(have) == len(updated.names):
+                return updated
             self.done = True
             names = list(updated.names) + [cst.ImportAlias(cst.Name(n)) for n in missing]
             names = [n.with_changes(comma=cst.Comma()) for n in names]
@@ -393,8 +395,8 @@ def _imports(module: cst.Module, used: set[str]) -> cst.Module:
                     unique.append(alias)
             return updated.with_changes(
                 names=unique,
-                lpar=cst.LeftParen(),
-                rpar=cst.RightParen(),
+                lpar=updated.lpar if isinstance(updated.lpar, cst.LeftParen) else cst.LeftParen(),
+                rpar=updated.rpar if isinstance(updated.rpar, cst.RightParen) else cst.RightParen(),
             )
 
     adder = Add()
