@@ -4,8 +4,11 @@ import hashlib
 
 import numpy as np
 import pytest
+from dinkster_api.v1 import Record
 from dinkster_image.drawing import DRAWING_NODES, DrawMask, DrawRegion, DrawText, MakeImage
 from dinkster_image.types import Region
+
+from tests.body_rows import choices, option_ids
 
 
 def _run(node: type, **kwargs: object) -> dict[str, object]:
@@ -21,10 +24,7 @@ def test_make_image_and_draw_region_dynamic_combo_schemas_and_materialized_execu
     draw = DrawRegion.define_schema()
     assert make.version == draw.version == 2
     assert tuple(item.id for item in make.inputs) == ("width", "height", "batch_size", "channels")
-    assert {
-        combo.id: {option.key: tuple(item.id for item in option.inputs) for option in combo.options}
-        for combo in make.combos
-    } == {
+    assert {choice.id: option_ids(choice) for choice in choices(make)} == {
         "color_source": {"hex": ("color_a",), "integer": ("color_value",)},
         "operation": {
             "solid": (),
@@ -42,23 +42,14 @@ def test_make_image_and_draw_region_dynamic_combo_schemas_and_materialized_execu
         "coordinate_format",
         "batch_policy",
     )
-    draw_options = [
-        (option.key, tuple(item.id for item in option.inputs)) for option in draw.combos[0].options
-    ]
-    assert draw_options == [
-        ("fill", ()),
-        ("outline", ("line_width",)),
-    ]
+    assert option_ids(choices(draw)[0]) == {"fill": (), "outline": ("line_width",)}
 
     expected = MakeImage.execute(operation="solid", width=2, height=2, color_a="#123456")
     materialized = MakeImage.execute(
-        **{
-            "operation": "solid",
-            "width": 2,
-            "height": 2,
-            "color_source": "hex",
-            "color_source.color_a": "#123456",
-        }
+        operation=Record("solid", {}),
+        width=2,
+        height=2,
+        color_source=Record("hex", {"color_a": "#123456"}),
     )
     np.testing.assert_array_equal(materialized["image"], expected["image"])
 

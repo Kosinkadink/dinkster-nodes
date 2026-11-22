@@ -22,6 +22,8 @@ from dinkster_image.mask import (
 from dinkster_image.types import Region
 from dinkster_schema import build_schemas, schema_from_wire, schema_to_wire
 
+from tests.body_rows import choices, option_ids, option_rows
+
 GOLDEN_PATH = Path(__file__).parent / "goldens" / "image_mask_e20d433a.json"
 GOLDEN = cast("dict[str, object]", json.loads(GOLDEN_PATH.read_text(encoding="utf-8")))
 GOLDEN_CASES = cast("dict[str, object]", GOLDEN["cases"])
@@ -569,18 +571,18 @@ def test_remove_small_components_rejects_invalid_controls(
 def test_mask_cleanup_support_schema_round_trips_through_schema_wire() -> None:
     assert MaskMorphology in MASK_NODES
     schema = build_schemas(MASK_NODES)["dinkster.mask.morphology"]
-    operation = schema.combos[0]
+    operation = choices(schema)[0]
     cleanup = operation.option("remove_small_components")
     assert cleanup is not None
-    assert tuple(item.id for item in cleanup.inputs) == (
+    assert option_ids(operation)["remove_small_components"] == (
         "minimum_area",
         "threshold",
         "connectivity",
     )
-    minimum_area = cleanup.inputs[0]
+    minimum_area = option_rows(operation, cleanup)[0]
     assert isinstance(minimum_area, Input)
     assert minimum_area.default == 64
-    connectivity = cleanup.inputs[2]
+    connectivity = option_rows(operation, cleanup)[2]
     assert isinstance(connectivity, Input)
     assert connectivity.default == "8"
     assert connectivity.widget == ComboWidget(options=("4", "8"))
@@ -589,9 +591,7 @@ def test_mask_cleanup_support_schema_round_trips_through_schema_wire() -> None:
     wire = schema_to_wire(schema)
     restored = schema_from_wire(json.loads(json.dumps(wire)))
     assert schema_to_wire(restored) == wire
-    restored_cleanup = restored.combos[0].option("remove_small_components")
-    assert restored_cleanup is not None
-    assert tuple(item.id for item in restored_cleanup.inputs) == (
+    assert option_ids(choices(restored)[0])["remove_small_components"] == (
         "minimum_area",
         "threshold",
         "connectivity",

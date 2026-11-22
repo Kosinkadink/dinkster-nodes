@@ -24,12 +24,16 @@ from dinkster_api.v1 import (
     CurveWidget,
     Group,
     Input,
+    Item,
+    Members,
     Named,
     Node,
     NodeSchema,
+    Numbered,
     NumberWidget,
     Option,
     Output,
+    Record,
     StringWidget,
     TypeExpr,
     render_image_png,
@@ -88,12 +92,12 @@ def _number(value: object, *, subject: str, integer: bool = False) -> int | floa
 
 
 def _ordered_family(
-    values: Mapping[str, object], names: tuple[str, ...], *, subject: str
+    members: Members[Item], names: tuple[str, ...], *, subject: str
 ) -> list[tuple[str, object]]:
-    unknown = set(values).difference(names)
+    unknown = {member.key for member in members}.difference(names)
     if unknown:
         raise ValueError(f"{subject} has unknown members: {', '.join(sorted(unknown))}")
-    return [(name, values[name]) for name in names if name in values]
+    return [(member.key, member.value) for member in members]
 
 
 def _curve_samples(value: object, *, subject: str) -> np.ndarray:
@@ -386,15 +390,13 @@ class GlslShader(Node):
     def execute(
         cls,
         *,
+        size_mode: Record,
+        images: Members[Item],
         fragment_shader: str = DEFAULT_FRAGMENT_SHADER,
-        size_mode: str = "from_input",
-        width: int = 512,
-        height: int = 512,
-        images: Mapping[str, object],
-        floats: Mapping[str, object] | None = None,
-        ints: Mapping[str, object] | None = None,
-        bools: Mapping[str, object] | None = None,
-        curves: Mapping[str, object] | None = None,
+        floats: Members[Item] = Members(),
+        ints: Members[Item] = Members(),
+        bools: Members[Item] = Members(),
+        curves: Members[Item] = Members(),
     ) -> Mapping[str, object]:
         if type(fragment_shader) is not str:
             raise TypeError("fragment_shader must be a string")
@@ -413,20 +415,21 @@ class GlslShader(Node):
         batch_size = int(image_values[0][1].shape[0])
         if any(int(image.shape[0]) != batch_size for _, image in image_values):
             raise ValueError("GLSL image inputs must have matching batch sizes")
-        if size_mode == "from_input":
+        width, height = size_mode.get("width", 512), size_mode.get("height", 512)
+        if size_mode.key == "from_input":
             output_height, output_width = (int(value) for value in image_values[0][1].shape[1:3])
-        elif size_mode == "custom":
+        elif size_mode.key == "custom":
             if type(width) is not int or type(height) is not int:
                 raise TypeError("custom GLSL width and height must be integers")
             output_width, output_height = width, height
         else:
-            raise ValueError(f"unknown GLSL size mode: {size_mode}")
+            raise ValueError(f"unknown GLSL size mode: {size_mode.key}")
         check_output_size((batch_size, output_height, output_width, 16))
 
         float_values = [
             (name, cast("float", _number(value, subject=name)))
             for name, value in _ordered_family(
-                floats or {},
+                floats,
                 tuple(f"u_float{index}" for index in range(MAX_GLSL_FLOATS)),
                 subject="GLSL float uniforms",
             )
@@ -434,14 +437,14 @@ class GlslShader(Node):
         int_values = [
             (name, cast("int", _number(value, subject=name, integer=True)))
             for name, value in _ordered_family(
-                ints or {},
+                ints,
                 tuple(f"u_int{index}" for index in range(MAX_GLSL_INTS)),
                 subject="GLSL integer uniforms",
             )
         ]
         bool_values: list[tuple[str, bool]] = []
         for name, value in _ordered_family(
-            bools or {},
+            bools,
             tuple(f"u_bool{index}" for index in range(MAX_GLSL_BOOLS)),
             subject="GLSL boolean uniforms",
         ):
@@ -451,7 +454,7 @@ class GlslShader(Node):
         curve_values = [
             (name, _curve_samples(value, subject=name))
             for name, value in _ordered_family(
-                curves or {},
+                curves,
                 tuple(f"u_curve{index}" for index in range(MAX_GLSL_CURVES)),
                 subject="GLSL curve uniforms",
             )
@@ -505,21 +508,24 @@ class NativeGlslShader(GlslShader):
     @classmethod
     def define_schema(cls) -> NodeSchema:
         schema = GlslShader.schema()
-        families: list[Group] = []
-        for family in schema.input_families:
-            member = cast(Input, family.template[0])
-            families.append(
-                replace(
-                    family,
-                    member_names=None,
-                    member_prefix="image" if family.id == "images" else f"u_{family.id[:-1]}",
-                    max_members=family.max_members,
-                    optional_after_minimum=family.id == "images",
-                    template=(
-                        replace(
+        fragment, size_mode = None, None
+        groups: list[Group] = []
+        outputs: list[Output] = []
+        for row in schema.body:
+            if isinstance(row, Group):
+                member = cast(Input, row.value)
+                groups.append(
+                    replace(
+                        row,
+                        keys=Numbered(
+                            "image" if row.id == "images" else f"u_{row.id[:-1]}", start=0
+                        ),
+                        max_members=len(cast(Named, row.keys).names),
+                        optional_after_minimum=row.id == "images",
+                        value=replace(
                             member,
-                            id=family.id[:-1],
-                            force_input=family.id != "images",
+                            id=row.id[:-1],
+                            pin_first=row.id != "images",
                             widget=(
                                 None if isinstance(member.widget, NumberWidget) else member.widget
                             ),
@@ -528,59 +534,45 @@ class NativeGlslShader(GlslShader):
                                     "points": [[0.0, 0.0], [1.0, 1.0]],
                                     "interpolation": "monotone_cubic",
                                 }
-                                if family.id == "curves"
+                                if row.id == "curves"
                                 else member.default
                             ),
                         ),
-                    ),
+                    )
                 )
-            )
-        return replace(
-            schema,
-            node_type="GLSLShader",
-            inputs=tuple(
-                replace(
-                    spec,
-                    required=True,
-                    default=DEFAULT_FRAGMENT_SHADER.replace("precision highp sampler2D;\n", ""),
-                )
-                for spec in schema.inputs
-            ),
-            combos=tuple(
-                replace(
-                    combo,
+            elif isinstance(row, Choice):
+                size_mode = replace(
+                    row,
                     default=None,
                     options=tuple(
                         replace(
                             option,
-                            inputs=tuple(
+                            rows=tuple(
                                 replace(
                                     cast(Input, spec),
                                     required=True,
                                     widget=NumberWidget(min=1, max=MAX_DIMENSION),
                                 )
-                                for spec in option.inputs
+                                for spec in option.rows
                             ),
                         )
-                        for option in combo.options
+                        for option in row.options
                     ),
                 )
-                for combo in schema.combos
-            ),
-            input_families=tuple(families),
-            input_order=(
-                "fragment_shader",
-                "size_mode",
-                "images",
-                "floats",
-                "ints",
-                "bools",
-                "curves",
-            ),
-            outputs=tuple(
-                replace(spec, id=f"IMAGE{index}", display_name=f"IMAGE{index}")
-                for index, spec in enumerate(schema.outputs)
-            ),
+            elif isinstance(row, Input):
+                fragment = replace(
+                    row,
+                    required=True,
+                    default=DEFAULT_FRAGMENT_SHADER.replace("precision highp sampler2D;\n", ""),
+                )
+            elif isinstance(row, Output):
+                index = len(outputs)
+                outputs.append(replace(row, id=f"IMAGE{index}", label=f"IMAGE{index}"))
+        assert fragment is not None and size_mode is not None
+        return replace(
+            schema,
+            node_type="GLSLShader",
+            body=(fragment, size_mode, *groups, *outputs),
             output_node=False,
         )
 
@@ -588,41 +580,33 @@ class NativeGlslShader(GlslShader):
     def execute(
         cls,
         *,
+        size_mode: Record,
+        images: Members[Item],
         fragment_shader: str = DEFAULT_FRAGMENT_SHADER.replace("precision highp sampler2D;\n", ""),
-        size_mode: str = "from_input",
-        width: int = 512,
-        height: int = 512,
-        images: Mapping[str, object],
-        floats: Mapping[str, object] | None = None,
-        ints: Mapping[str, object] | None = None,
-        bools: Mapping[str, object] | None = None,
-        curves: Mapping[str, object] | None = None,
+        floats: Members[Item] = Members(),
+        ints: Members[Item] = Members(),
+        bools: Members[Item] = Members(),
+        curves: Members[Item] = Members(),
     ) -> Mapping[str, object]:
-        normalized: dict[str, dict[str, object]] = {}
-        for family, values, prefix, maximum, default in (
-            ("images", images, "image", MAX_GLSL_IMAGES, None),
-            ("floats", floats or {}, "u_float", MAX_GLSL_FLOATS, 0.0),
-            ("ints", ints or {}, "u_int", MAX_GLSL_INTS, 0),
-            ("bools", bools or {}, "u_bool", MAX_GLSL_BOOLS, False),
-            ("curves", curves or {}, "u_curve", MAX_GLSL_CURVES, None),
+        normalized: dict[str, Members[Item]] = {}
+        for family, members, prefix, default in (
+            ("images", images, "u_image", None),
+            ("floats", floats, "u_float", 0.0),
+            ("ints", ints, "u_int", 0),
+            ("bools", bools, "u_bool", False),
+            ("curves", curves, "u_curve", None),
         ):
-            _ordered_family(
-                values, tuple(f"{prefix}{index}" for index in range(maximum)), subject=family
-            )
-            members = [
-                default if value is None else value
-                for value in values.values()
-                if value is not None or default is not None
+            values = [
+                default if member.value is None else member.value
+                for member in members
+                if member.value is not None or default is not None
             ]
-            target_prefix = "u_image" if family == "images" else prefix
-            normalized[family] = {
-                f"{target_prefix}{index}": value for index, value in enumerate(members)
-            }
+            normalized[family] = Members(
+                Item(f"{prefix}{index}", value) for index, value in enumerate(values)
+            )
         outputs = GlslShader.execute(
             fragment_shader=fragment_shader,
             size_mode=size_mode,
-            width=width,
-            height=height,
             images=normalized["images"],
             floats=normalized["floats"],
             ints=normalized["ints"],

@@ -18,6 +18,7 @@ from dinkster_image.filters import (
     ImageFilter,
 )
 
+from tests.body_rows import choices, option_ids
 from tools.generate_image_adjust_mirror_vector import build_frames, build_vector
 from tools.generate_image_filter_mirror_vector import (
     EXPECTED_REGENERATION_ATOL,
@@ -95,11 +96,11 @@ def test_adjust_mirror_declaration_matches_shader_contract() -> None:
         "standard_deviation": "float",
     }
     assert tuple(spec.id for spec in schema.inputs) == ("image",)
-    assert len(schema.combos) == 1
-    operation = schema.combos[0]
+    assert len(choices(schema)) == 1
+    operation = choices(schema)[0]
     assert operation.id == "operation"
     assert tuple(option.key for option in operation.options) == ADJUST_OPERATIONS
-    assert {spec.id for option in operation.options for spec in option.inputs} == {
+    assert {row for rows in option_ids(operation).values() for row in rows} == {
         "factor",
         "mean",
         "standard_deviation",

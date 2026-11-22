@@ -6,6 +6,7 @@ from typing import Any, cast
 
 import numpy as np
 import pytest
+from dinkster_api.v1 import Record
 from dinkster_image.batch import (
     BATCH_NODES,
     ImageBatchCombine,
@@ -16,6 +17,8 @@ from dinkster_image.batch import (
     MaskBatchCombine,
     MaskBatchEdit,
 )
+
+from tests.body_rows import choices, groups
 
 GOLDEN = cast(
     "dict[str, object]",
@@ -286,10 +289,10 @@ def test_image_list_conversions_and_rebatch_preserve_frame_order() -> None:
 def test_image_batch_schema_ids_are_unique_and_dynamic_inputs_are_bounded() -> None:
     schemas = {node.define_schema().node_type: node.define_schema() for node in BATCH_NODES}
     assert len(schemas) == len(BATCH_NODES) == 7
-    image_families = schemas["dinkster.image.batch.combine"].input_families
+    image_families = groups(schemas["dinkster.image.batch.combine"])
     assert (image_families[0].min_members, image_families[0].max_members) == (1, 1000)
     assert (image_families[1].min_members, image_families[1].max_members) == (0, 2)
-    assert schemas["dinkster.mask.batch.combine"].input_families[0].min_members == 2
+    assert groups(schemas["dinkster.mask.batch.combine"])[0].min_members == 2
 
 
 def test_core_batch_operations_match_pinned_comfy_goldens() -> None:
@@ -330,18 +333,18 @@ def test_dynamic_batch_constructs_and_materialized_execution() -> None:
     for node, combo_ids in expected.items():
         schema = node.define_schema()
         assert schema.version == 2
-        assert tuple(combo.id for combo in schema.combos) == combo_ids
+        assert tuple(choice.id for choice in choices(schema)) == combo_ids
 
     image = _image([1, 2])
     mask = _mask([1, 2])
     np.testing.assert_array_equal(
-        cast("Any", ImageBatchEdit.execute)(
-            image=image, operation="range", **{"operation.start": 1}
-        )["image"],
+        cast("Any", ImageBatchEdit.execute)(image=image, operation=Record("range", {"start": 1}))[
+            "image"
+        ],
         ImageBatchEdit.execute(image=image, operation="range", start=1)["image"],
     )
     np.testing.assert_array_equal(
-        cast("Any", MaskBatchEdit.execute)(mask=mask, operation="range", **{"operation.start": 1})[
+        cast("Any", MaskBatchEdit.execute)(mask=mask, operation=Record("range", {"start": 1}))[
             "mask"
         ],
         MaskBatchEdit.execute(mask=mask, operation="range", start=1)["mask"],
@@ -349,22 +352,21 @@ def test_dynamic_batch_constructs_and_materialized_execution() -> None:
     images = {"a": image[:1], "b": image[1:]}
     np.testing.assert_array_equal(
         cast("Any", ImageBatchCombine.execute)(
-            images=images, operation="replace_range", **{"operation.index": 0}
+            images=images, operation=Record("replace_range", {"index": 0})
         )["image"],
         ImageBatchCombine.execute(images=images, operation="replace_range", index=0)["image"],
     )
     masks = {"a": mask[:1], "b": mask[1:]}
     np.testing.assert_array_equal(
         cast("Any", MaskBatchCombine.execute)(
-            masks=masks, operation="replace_range", **{"operation.index": 0}
+            masks=masks, operation=Record("replace_range", {"index": 0})
         )["mask"],
         MaskBatchCombine.execute(masks=masks, operation="replace_range", index=0)["mask"],
     )
     np.testing.assert_array_equal(
         cast("Any", ImageListToBatch.execute)(
             images=[image],
-            shape_policy="resize_to_first",
-            **{"shape_policy.interpolation": "nearest-exact"},
+            shape_policy=Record("resize_to_first", {"interpolation": "nearest-exact"}),
         )["image"],
         ImageListToBatch.execute(
             images=[image], shape_policy="resize_to_first", interpolation="nearest-exact"

@@ -242,12 +242,23 @@ def _native_scalar_type_expressions(value: Any) -> Any:
     return converted
 
 
+def _body_wire(wire: dict[str, Any]) -> dict[str, Any]:
+    """A frozen version-1 flat interface's inputs and outputs as the body wire read today."""
+    body = [
+        {"kind": entry["role"], **{key: value for key, value in entry.items() if key != "role"}}
+        for entry in cast("list[dict[str, Any]]", wire["interface"])
+        if entry["role"] in ("input", "output")
+    ]
+    rest = {key: value for key, value in wire.items() if key != "interface"}
+    return {**rest, "schemaVersion": 2, "interface": [], "body": body}
+
+
 @cache
 def _v1_schemas() -> dict[str, NodeSchema]:
     wires = cast(
         "list[dict[str, Any]]", _native_scalar_type_expressions(json.loads(_fixture_bytes()))
     )
-    return {schema.node_type: schema for schema in map(schema_from_wire, wires)}
+    return {schema.node_type: schema for schema in map(schema_from_wire, map(_body_wire, wires))}
 
 
 @cache

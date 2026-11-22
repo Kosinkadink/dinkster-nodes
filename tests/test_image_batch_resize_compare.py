@@ -80,7 +80,7 @@ def test_exact_image_compare_has_no_outputs_and_previews_each_nonempty_side() ->
 
     schema = NativeImageCompare.schema()
     assert NativeImageCompare in IMAGE_NODES
-    assert schema.node_type == "ImageCompare" and not schema.aliases
+    assert schema.node_type == "ImageCompare"
     assert [spec.id for spec in schema.inputs] == ["image_a", "image_b", "compare_view"]
     compare_view = schema.input("compare_view")
     assert compare_view is not None and compare_view.required

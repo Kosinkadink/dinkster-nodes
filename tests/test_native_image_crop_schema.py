@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Any, cast
-
 from dinkster_api.v1 import (
     BOUNDING_BOX_TYPE,
     COLOR_TYPE,
@@ -16,12 +14,9 @@ from dinkster_api.v1 import (
 from dinkster_image.ported.image_crop import ImageCropToMask, ImageCropV2
 from dinkster_utilities.image_crop import PrimitiveBoundingBox
 
+from tests.body_rows import wire_entry
 
-def _entry(wire: dict[str, object], entry_id: str) -> dict[str, Any]:
-    for entry in cast("list[dict[str, Any]]", wire["interface"]):
-        if entry["id"] == entry_id:
-            return entry
-    raise AssertionError(f"missing {entry_id}")
+_entry = wire_entry
 
 
 def test_mask_crop_schema_uses_portable_media_and_color() -> None:

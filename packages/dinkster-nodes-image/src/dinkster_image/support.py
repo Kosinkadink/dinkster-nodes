@@ -16,6 +16,7 @@ from dinkster_api.v1 import (
     ComboWidget,
     Input,
     NumberWidget,
+    Record,
     SlotValue,
     TypeExpr,
     Use,
@@ -71,7 +72,11 @@ def combo_input(
 
 
 def materialized_inputs(function: Callable[P, R]) -> Callable[P, R]:
-    """Let an explicit execute signature consume materialized dynamic paths."""
+    """Let an explicit execute signature take each chosen option's rows by their own ids.
+
+    A choice becomes its chosen key under the choice's id, and the option's rows
+    (and the choices inside it) follow under their own ids; a type choice becomes
+    its value and its rows."""
 
     @wraps(function)
     def wrapped(*args: object, **inputs: object) -> R:
@@ -80,16 +85,19 @@ def materialized_inputs(function: Callable[P, R]) -> Callable[P, R]:
         def add(input_id: str, value: object) -> None:
             if input_id in projected:
                 raise ValueError(f"dynamic inputs project duplicate id {input_id!r}")
-            projected[input_id] = value
-
-        for path, value in inputs.items():
-            input_id = path.rsplit(".", 1)[-1]
-            if isinstance(value, SlotValue):
-                add(input_id, value.value)
+            if isinstance(value, Record):
+                projected[input_id] = value.key
+                for row, row_value in value.items():
+                    add(row, row_value)
+            elif isinstance(value, SlotValue):
+                projected[input_id] = value.value
                 for option, option_value in value.options.items():
                     add(option, option_value)
             else:
-                add(input_id, value)
+                projected[input_id] = value
+
+        for input_id, value in inputs.items():
+            add(input_id, value)
         return cast("Callable[..., R]", function)(*args, **projected)
 
     return cast("Callable[P, R]", wrapped)
