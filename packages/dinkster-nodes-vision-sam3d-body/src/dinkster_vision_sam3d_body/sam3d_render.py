@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import importlib
 from collections.abc import Mapping
-from typing import Any
+from typing import Any, cast
 
 from dinkster_api.v1 import (
     CORE_BOOLEAN,
@@ -23,6 +23,7 @@ from dinkster_api.v1 import (
     NumberWidget,
     Option,
     Output,
+    Record,
     TypeExpr,
     Use,
     initialize_inference_process,
@@ -193,8 +194,7 @@ class SAM3DBody_Render(Node):
         width: int = 0,
         height: int = 0,
         camera_info: Any = None,
-        render_style: str = "mesh",
-        **inputs: Any,
+        render_style: Record,
     ) -> Mapping[str, object]:
         initialize_inference_process()
         torch = importlib.import_module("torch")
@@ -226,12 +226,13 @@ class SAM3DBody_Render(Node):
                 ).movedim(1, -1)
         composite = (
             "silhouette"
-            if render_style == "silhouette"
+            if render_style.key == "silhouette"
             else ("over" if bg is not None else "mesh_only")
         )
-        options = {key.removeprefix("render_style."): value for key, value in inputs.items()}
+        options = render_style
+        shader = cast(Record | None, options.get("shader"))
         falloff = float(options.get("person_palette_falloff", 0.6))
-        if render_style == "mesh" and options.get("region", "full_body") == "hands_only":
+        if render_style.key == "mesh" and options.get("region", "full_body") == "hands_only":
             hand_mask = pose.get("hand_vert_mask")
             if hand_mask is not None:
                 faces = np.asarray(pose["faces"])
@@ -247,7 +248,7 @@ class SAM3DBody_Render(Node):
                 composite=composite,
                 person_brightness_falloff=falloff,
             )
-            if render_style == "openpose_2d":
+            if render_style.key == "openpose_2d":
                 image = openpose.render_pose_data_openpose(
                     pose,
                     **common,
@@ -260,8 +261,8 @@ class SAM3DBody_Render(Node):
                     include_hands=options.get("hand_style", "disabled") != "disabled",
                     hand_color_style=str(options.get("hand_style", "dwpose")),
                 )
-            elif render_style in {"openpose_3d", "scail"}:
-                is_openpose = render_style == "openpose_3d"
+            elif render_style.key in {"openpose_3d", "scail"}:
+                is_openpose = render_style.key == "openpose_3d"
                 image = capsules.render_capsules(
                     pose,
                     **common,
@@ -293,17 +294,21 @@ class SAM3DBody_Render(Node):
                         hand_color_style=str(options.get("hand_style", "dwpose")),
                         person_brightness_falloff=falloff,
                     )
-            elif render_style in {"mesh", "silhouette"}:
+            elif render_style.key in {"mesh", "silhouette"}:
                 image = mesh.render_mesh(
                     pose,
                     **common,
                     cache=cache,
                     opacity=float(options.get("opacity", 1.0)),
-                    shader_preset=str(options.get("shader", "default")),
-                    rainbow_tilt_x_deg=float(options.get("shader.rainbow_tilt_x", 0.0)),
-                    rainbow_tilt_z_deg=float(options.get("shader.rainbow_tilt_z", -35.0)),
+                    shader_preset=shader.key if shader is not None else "default",
+                    rainbow_tilt_x_deg=float(
+                        shader.get("rainbow_tilt_x", 0.0) if shader is not None else 0.0
+                    ),
+                    rainbow_tilt_z_deg=float(
+                        shader.get("rainbow_tilt_z", -35.0) if shader is not None else -35.0
+                    ),
                 )
             else:
-                raise ValueError(f"Unknown SAM3D render style: {render_style!r}")
+                raise ValueError(f"Unknown SAM3D render style: {render_style.key!r}")
             images.append(image.to(device=device, dtype=dtype))
         return cls.outputs(image=torch.stack(images, dim=0))
