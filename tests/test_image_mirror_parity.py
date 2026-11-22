@@ -182,8 +182,8 @@ def test_filter_mirror_declaration_matches_shader_contract() -> None:
         "strength": "float",
     }
     assert tuple(spec.id for spec in schema.inputs) == ("image",)
-    assert len(schema.combos) == 1
-    operation = schema.combos[0]
+    assert len(choices(schema)) == 1
+    operation = choices(schema)[0]
     assert operation.id == "operation"
     # applies keys name declared combos and applies values name declared
     # options, in declared order (the shader's operation branches index that
@@ -194,10 +194,7 @@ def test_filter_mirror_declaration_matches_shader_contract() -> None:
     # The shader's non-image uniforms cover exactly the selector plus the
     # union of inputs materialized by the applicable options.
     applicable_inputs = {
-        spec.id
-        for option in operation.options
-        if option.key in applicable
-        for spec in option.inputs
+        row_id for key, ids in option_ids(operation).items() if key in applicable for row_id in ids
     }
     assert set(declared) == {"u_image", "operation", *applicable_inputs}
     assert "texelFetch(u_image, center, 0)" in FILTER_MIRROR_SOURCE
