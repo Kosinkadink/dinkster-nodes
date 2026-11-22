@@ -498,10 +498,7 @@ def test_migration_case_inventory_and_identity_mappings() -> None:
         for case in rule.cases:
             assert case.to == node_type
             assert dict(case.outputs) == expected_outputs
-            assert {
-                target: (mapping.kind, mapping.source_family)
-                for target, mapping in case.output_families
-            } == {family.id: ("copy", family.id) for family in schema.output_families}
+            assert not case.output_families
         total_cases += len(rule.cases)
     assert total_cases == 242
     assert validate_replacement_references(_current_schemas()) == ()

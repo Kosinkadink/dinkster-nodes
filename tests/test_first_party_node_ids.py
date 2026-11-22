@@ -164,7 +164,7 @@ def test_renamed_prefixed_families_validate_without_serving_the_source(source: s
     original = replace(schema, replacements=())
     assert with_identity_replacement(original, source) == schema
     assert validate_replacement_references({schema.node_type: schema}) == ()
-    assert schema.input_families == original.input_families
+    assert schema.body == original.body
     assert len(schema.replacements) == 1
     assert schema.replacements[0].from_type == source
     assert schema.replacements[0].migration is None
