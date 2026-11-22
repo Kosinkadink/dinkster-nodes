@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import base64
 import json
+import re
 import uuid
 from collections.abc import Mapping
 from dataclasses import replace
@@ -119,6 +120,7 @@ class FakeGateway:
         self.catalog_scopes: dict[str, tuple[NodeSchema, ...]] | None = None
         self.epoch_headers: list[str | None] = []
         self.download_authorizations: list[str | None] = []
+        self.downloads: list[str] = []
         self.cancelled = asyncio.Event()
         self.submitted = asyncio.Event()
         self.polled = asyncio.Event()
@@ -147,6 +149,7 @@ class FakeGateway:
         app.router.add_get("/v1/jobs/{job_id}", self._poll)
         app.router.add_delete("/v1/jobs/{job_id}", self._cancel)
         app.router.add_get("/download/{kind}", self._download)
+        app.router.add_get("/v1/downloads/{job_id}/{name}", self._download_recorded)
         self._runner = web.AppRunner(app)
         await self._runner.setup()
         site = web.TCPSite(self._runner, "127.0.0.1", 0)
@@ -255,9 +258,11 @@ class FakeGateway:
             )
         )
         if self.recording is not None:
-            return web.json_response(
-                cast("dict[str, object]", self.recording["submit"]), status=202
+            # The recorded submit names the recording gateway's loopback origin.
+            encoded = re.sub(
+                r"http://127\.0\.0\.1:\d+", self.base_url, json.dumps(self.recording["submit"])
             )
+            return web.json_response(cast("dict[str, object]", json.loads(encoded)), status=202)
         if self.submit_failures:
             self.submit_failures -= 1
             return web.json_response(
@@ -335,6 +340,16 @@ class FakeGateway:
             assets = cast("Mapping[str, object]", self.recording["assets"])
             data = base64.b64decode(cast("str", assets[kind]))
         return web.Response(body=data, content_type="image/png")
+
+    async def _download_recorded(self, request: web.Request) -> web.Response:
+        self.download_authorizations.append(request.headers.get("Authorization"))
+        self.downloads.append(request.path_qs)
+        assets = cast(
+            "Mapping[str, object]", cast("Mapping[str, object]", self.recording)["assets"]
+        )
+        return web.Response(
+            body=base64.b64decode(cast("str", assets["output"])), content_type="image/png"
+        )
 
 
 def input_asset(root: Path, data: bytes = b"input image") -> AssetRef:
@@ -674,7 +689,12 @@ def test_recorded_gateway_catalog_submit_progress_and_digest_round_trip(
     recording = cast(
         "dict[str, object]", json.loads(RECORDED_GATEWAY_FIXTURE.read_text(encoding="utf-8"))
     )
-    assert recording["sourceCommit"] == "3bbf143bcd193ab508d7bb409b3dc61522d3f412"
+    assert recording["sourceCommit"] == "b9b51d7345860a5475205b0379e92217be19a17a"
+    submitted = cast("Mapping[str, object]", recording["submit"])
+    recorded_image = cast(
+        "Mapping[str, object]",
+        cast("list[object]", cast("Mapping[str, object]", submitted["outputs"])["images"])[0],
+    )
 
     async def scenario() -> None:
         async with FakeGateway(recording=recording) as gateway:
@@ -683,7 +703,10 @@ def test_recorded_gateway_catalog_submit_progress_and_digest_round_trip(
             )
             assert [entry.schema.node_type for entry in runtime.snapshot.schemas] == [
                 "dinkster.remote.nanobanana.image",
+                "dinkster.remote.seedance.asset_group",
+                "dinkster.remote.seedance.image_asset",
                 "dinkster.remote.seedance.video",
+                "dinkster.remote.seedance.video_asset",
             ]
             vault = tmp_path / "output-vault"
             monkeypatch.setenv("DINKSTER_ASSET_VAULT", str(vault))
@@ -694,13 +717,27 @@ def test_recorded_gateway_catalog_submit_progress_and_digest_round_trip(
             assert len(gateway.submissions) == 1
             assert gateway.submissions[0]["nodeType"] == "dinkster.remote.nanobanana.image"
             assert gateway.submissions[0]["inputs"] == {"prompt": "hello"}
-            assert [entry[0] for entry in reports] == ["progress", "progress"]
-            assert [entry[1]["step"] for entry in reports] == [1, 2]
-            output = result["image"]
+            # The recorded submit already succeeded, so the runtime takes its progress and
+            # outputs from that answer; the recorded poll repeats the same job document.
+            assert [(entry[0], entry[1]["step"], entry[1]["total"]) for entry in reports] == [
+                ("progress", 100, 100)
+            ]
+            assert not gateway.polled.is_set()
+            assert json.dumps(recording["poll"]).replace("{base_url}", gateway.base_url) == (
+                re.sub(r"http://127\.0\.0\.1:\d+", gateway.base_url, json.dumps(submitted))
+            )
+            assert gateway.downloads == [
+                "/v1/downloads/a38ba457-6bfc-47da-8b56-160edb589e9a/images.0"
+                "?expires=1795333252&signature="
+                "2eaebb7017272043e0848b6c26533125d4a97de57a5c88ea91e02de0672e75f1"
+            ]
+            output = cast("list[object]", result["images"])[0]
             assert isinstance(output, AssetRef)
             assets = cast("Mapping[str, object]", recording["assets"])
             assert output.read_bytes() == base64.b64decode(cast("str", assets["output"]))
+            assert output.digest == recorded_image["digest"]
             assert output.digest == digest_bytes(output.read_bytes())
+            assert len(output.read_bytes()) == recorded_image["size"] == 68
             assert AssetVault(vault).has(output.digest)
 
     asyncio.run(scenario())
