@@ -10,6 +10,8 @@ from dinkster_api.v1 import (
     LATENT_TYPE,
     Group,
     Input,
+    Item,
+    Members,
     Node,
     NodeSchema,
     Numbered,
@@ -77,5 +79,7 @@ class BatchLatentsNode(Node):
         )
 
     @classmethod
-    def execute(cls, *, latents: Mapping[str, dict[str, Any]]) -> Mapping[str, object]:
-        return cls.outputs(LATENT=_batch_latents(list(latents.values())))
+    def execute(cls, *, latents: Members[Item]) -> Mapping[str, object]:
+        return cls.outputs(
+            LATENT=_batch_latents([cast(dict[str, Any], member.value) for member in latents])
+        )

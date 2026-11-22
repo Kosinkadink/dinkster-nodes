@@ -12,6 +12,8 @@ from dinkster_api.v1 import (
     ComboWidget,
     Group,
     Input,
+    Item,
+    Members,
     Node,
     NodeSchema,
     Numbered,
@@ -70,8 +72,8 @@ class ComfyAndNode(Node):
         return with_identity_replacement(schema, "ComfyAndNode")
 
     @classmethod
-    def execute(cls, *, values: Mapping[str, object]) -> Mapping[str, object]:
-        return cls.outputs(BOOLEAN=all(values.values()))
+    def execute(cls, *, values: Members[Item]) -> Mapping[str, object]:
+        return cls.outputs(BOOLEAN=all(member.value for member in values))
 
 
 class ComfyOrNode(Node):
@@ -100,8 +102,8 @@ class ComfyOrNode(Node):
         return with_identity_replacement(schema, "ComfyOrNode")
 
     @classmethod
-    def execute(cls, *, values: Mapping[str, object]) -> Mapping[str, object]:
-        return cls.outputs(BOOLEAN=any(values.values()))
+    def execute(cls, *, values: Members[Item]) -> Mapping[str, object]:
+        return cls.outputs(BOOLEAN=any(member.value for member in values))
 
 
 class CustomCombo(Node):

@@ -15,6 +15,8 @@ from dinkster_api.v1 import (
     VAE_TYPE,
     Group,
     Input,
+    Item,
+    Members,
     Named,
     Node,
     NodeSchema,
@@ -81,14 +83,10 @@ class TextEncodeBooguEdit(Node):
         prompt: str,
         negative_prompt: str,
         vae: Any = None,
-        images: Mapping[str, object] | None = None,
+        images: Members[Item] = Members(),
     ) -> Mapping[str, object]:
         references = [
-            materialize_image(image)
-            for _, image in sorted(
-                (images or {}).items(), key=lambda item: int(item[0].rsplit("_", 1)[-1])
-            )
-            if image is not None
+            materialize_image(member.value) for member in images if member.value is not None
         ]
         vision: list[Any] = []
         latents: list[Any] = []

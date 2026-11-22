@@ -16,12 +16,15 @@ from dinkster_api.v1 import (
     Choice,
     Group,
     Input,
+    Item,
+    Members,
     Node,
     NodeSchema,
     Numbered,
     NumberWidget,
     Option,
     Output,
+    Record,
     TypeExpr,
     initialize_inference_process,
     materialize_image,
@@ -39,18 +42,6 @@ _IMAGE = TypeExpr.concrete(IMAGE_TYPE)
 
 
 _LATENT = TypeExpr.concrete(LATENT_TYPE)
-
-
-def _combo_values(
-    combo_id: str, selected: str | Mapping[str, Any], values: Mapping[str, Any]
-) -> Mapping[str, Any]:
-    if isinstance(selected, Mapping):
-        return selected
-    prefix = f"{combo_id}."
-    return {
-        combo_id: selected,
-        **{input_id.removeprefix(prefix): value for input_id, value in values.items()},
-    }
 
 
 class ReferenceLatent(Node):
@@ -154,23 +145,20 @@ class ReferenceMultiLatent(Node):
         cls,
         *,
         positive: Sequence[Sequence[Any]],
-        resolution: str | Mapping[str, Any],
+        resolution: Record,
         negative: Sequence[Sequence[Any]] | None = None,
         vae: Any = None,
-        images: Mapping[str, object] | None = None,
-        **values: Any,
+        images: Members[Item] = Members(),
     ) -> Mapping[str, object]:
-        resolution = _combo_values("resolution", resolution, values)
         references: list[Any] = []
         if vae is not None:
             initialize_inference_process()
-            for _, pixels in sorted(
-                (images or {}).items(), key=lambda item: int(item[0].removeprefix("image"))
-            ):
+            for member in images:
+                pixels = member.value
                 if pixels is None:
                     continue
                 image = materialize_image(pixels)
-                if resolution["resolution"] == "resize":
+                if resolution.key == "resize":
                     height, width = image.shape[1:3]
                     scale = math.sqrt(resolution["megapixels"] * 1024.0 * 1024.0 / (width * height))
                     image = (
@@ -192,7 +180,7 @@ class ReferenceMultiLatent(Node):
             from dinkster_latent.latent import EmptyLatentImage
 
             size = 1024
-            if resolution["resolution"] == "resize":
+            if resolution.key == "resize":
                 size = round(math.sqrt(resolution["megapixels"] * 1024.0 * 1024.0))
             empty_latent = materialize_latent(
                 EmptyLatentImage.execute(width=size, height=size, batch_size=1)["LATENT"]

@@ -15,6 +15,8 @@ from dinkster_api.v1 import (
     ComboWidget,
     Group,
     Input,
+    Item,
+    Members,
     Named,
     Node,
     NodeSchema,
@@ -55,13 +57,9 @@ class HiDreamO1ReferenceImages(Node):
 
     @classmethod
     def execute(
-        cls, *, positive: Any, negative: Any, images: Mapping[str, object] | None = None
+        cls, *, positive: Any, negative: Any, images: Members[Item] = Members()
     ) -> Mapping[str, object]:
-        images = images or {}
-        ordered_names = [f"image_{index}" for index in range(1, 101) if f"image_{index}" in images]
-        known_names = set(ordered_names)
-        references = [images[name] for name in ordered_names]
-        references.extend(image for name, image in images.items() if name not in known_names)
+        references = [member.value for member in images]
         if not references:
             return cls.outputs(positive=positive, negative=negative)
         refs = [materialize_image(image) if image is not None else None for image in references]

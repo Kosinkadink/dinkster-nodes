@@ -14,6 +14,8 @@ from dinkster_api.v1 import (
     VAE_TYPE,
     Group,
     Input,
+    Item,
+    Members,
     Node,
     NodeSchema,
     Numbered,
@@ -114,7 +116,7 @@ class BerniniConditioning(Node):
         batch_size: int,
         source_video: object | None = None,
         reference_video: object | None = None,
-        reference_images: Mapping[str, object] | None = None,
+        reference_images: Members[Item] = Members(),
         ref_max_size: int = 848,
     ) -> Mapping[str, object]:
         initialize_inference_process()
@@ -138,8 +140,8 @@ class BerniniConditioning(Node):
                     _resize_long_edge(materialize_image(reference_video)[:length], ref_max_size)
                 )
             )
-        for name in sorted(reference_images or {}):
-            images = (reference_images or {})[name]
+        for member in reference_images:
+            images = member.value
             if images is None:
                 continue
             pixels = materialize_image(images)

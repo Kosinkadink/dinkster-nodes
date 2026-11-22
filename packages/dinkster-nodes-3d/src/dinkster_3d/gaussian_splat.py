@@ -13,6 +13,8 @@ from dinkster_api.v1 import (
     SPLAT_TYPE,
     Group,
     Input,
+    Item,
+    Members,
     Node,
     NodeSchema,
     Numbered,
@@ -219,8 +221,8 @@ class MergeSplat(Node):
         return with_identity_replacement(schema, "MergeSplat")
 
     @classmethod
-    def execute(cls, *, splats: Mapping[str, object]) -> Mapping[str, object]:
-        values = [materialize_splat(value) for value in splats.values() if value is not None]
+    def execute(cls, *, splats: Members[Item]) -> Mapping[str, object]:
+        values = [materialize_splat(member.value) for member in splats if member.value is not None]
         if not values:
             raise ValueError("MergeSplat: connect at least one splat.")
         torch = importlib.import_module("torch")

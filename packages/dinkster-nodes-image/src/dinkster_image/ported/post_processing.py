@@ -19,12 +19,15 @@ from dinkster_api.v1 import (
     ComboWidget,
     Group,
     Input,
+    Item,
+    Members,
     Node,
     NodeSchema,
     Numbered,
     NumberWidget,
     Option,
     Output,
+    Record,
     TypeExpr,
     Use,
     materialize_image,
@@ -264,11 +267,14 @@ class ResizeImageMaskNode(Node):
 
     @classmethod
     def execute(
-        cls, *, input: Any, scale_method: str, resize_type: str | Mapping[str, Any], **values: Any
+        cls,
+        *,
+        input: Any,
+        scale_method: str,
+        resize_type: Record,
     ) -> Mapping[str, object]:
         value = _image_or_mask(input)
-        resize_type = _combo_values("resize_type", resize_type, values)
-        selected = resize_type["resize_type"]
+        selected = resize_type.key
         if selected == "scale by multiplier":
             result = _scale_by(value, resize_type["multiplier"], scale_method)
         elif selected == "scale dimensions":
@@ -363,8 +369,8 @@ class BatchImagesNode(Node):
         return with_identity_replacement(schema, "BatchImagesNode")
 
     @classmethod
-    def execute(cls, *, images: Mapping[str, Any]) -> Mapping[str, object]:
-        return cls.outputs(IMAGE=_batch_images(list(images.values())))
+    def execute(cls, *, images: Members[Item]) -> Mapping[str, object]:
+        return cls.outputs(IMAGE=_batch_images([member.value for member in images]))
 
 
 class BatchMasksNode(Node):
@@ -389,8 +395,8 @@ class BatchMasksNode(Node):
         return with_identity_replacement(schema, "BatchMasksNode")
 
     @classmethod
-    def execute(cls, *, masks: Mapping[str, Any]) -> Mapping[str, object]:
-        return cls.outputs(MASK=_batch_masks(list(masks.values())))
+    def execute(cls, *, masks: Members[Item]) -> Mapping[str, object]:
+        return cls.outputs(MASK=_batch_masks([member.value for member in masks]))
 
 
 class ColorTransfer(Node):
@@ -595,9 +601,8 @@ class ColorTransfer(Node):
         image_target: Any,
         image_ref: Any,
         method: str,
-        source_stats: str | Mapping[str, Any],
+        source_stats: Record,
         strength: float = 1.0,
-        **values: Any,
     ) -> Mapping[str, object]:
         target = materialize_image(image_target)
         if strength == 0 or image_ref is None:
@@ -615,8 +620,7 @@ class ColorTransfer(Node):
         output = torch.empty(
             frames, height, width, channels, device=output_device, dtype=output_dtype
         )
-        source_stats = _combo_values("source_stats", source_stats, values)
-        stats, target_index = source_stats["source_stats"], source_stats.get("target_index", 0)
+        stats, target_index = source_stats.key, source_stats.get("target_index", 0)
         if method == "histogram":
             uniform = cls._histogram_transform(target, reference, device, stats, target_index)
             for index in range(frames):

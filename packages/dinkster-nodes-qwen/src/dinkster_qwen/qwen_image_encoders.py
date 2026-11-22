@@ -21,6 +21,8 @@ from dinkster_api.v1 import (
     ComboWidget,
     Group,
     Input,
+    Item,
+    Members,
     Named,
     Node,
     NodeSchema,
@@ -208,14 +210,13 @@ class TextEncodeQwenImage21(Node):
         negative_prompt: str,
         vae: Any = None,
         resolution: int = 1024,
-        images: Mapping[str, object] | None = None,
+        images: Members[Item] = Members(),
     ) -> Mapping[str, object]:
         vision: list[Any] = []
         references: list[Any] = []
         latent_width = latent_height = resolution or 1024
-        for _, raw_image in sorted(
-            (images or {}).items(), key=lambda item: int(item[0].rsplit("_", 1)[-1])
-        ):
+        for member in images:
+            raw_image = member.value
             if raw_image is None:
                 continue
             image = materialize_image(raw_image)[:1]

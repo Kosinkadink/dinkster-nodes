@@ -22,6 +22,8 @@ from dinkster_api.v1 import (
     ComboWidget,
     Group,
     Input,
+    Item,
+    Members,
     Node,
     NodeSchema,
     Numbered,
@@ -272,12 +274,10 @@ class TextEncodeMOSSImageEdit(Node):
         prompt: str,
         vae: Any,
         edit_format: str,
-        images: Mapping[str, object],
+        images: Members[Item],
     ) -> Mapping[str, object]:
         method, vision = _EDIT_FORMATS[edit_format]
-        pixels = [
-            materialize_image(images[name]) for name in sorted(images) if images[name] is not None
-        ]
+        pixels = [materialize_image(member.value) for member in images if member.value is not None]
         vl: list[Any] = []
         if vision:
             initialize_inference_process()

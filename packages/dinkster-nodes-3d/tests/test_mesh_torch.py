@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+from collections.abc import Mapping
 from typing import Any
 
 import pytest
@@ -12,11 +13,17 @@ from dinkster_3d.voxel_mesh import VoxelToMesh, VoxelToMeshBasic
 from dinkster_api.v1 import (
     MESH_TYPE,
     VOXEL_TYPE,
+    Item,
+    Members,
     TriangleMeshBatch,
     TypeRegistry,
     materialize_mesh,
     register_inference_types,
 )
+
+
+def _members(values: Mapping[str, object]) -> Members[Item]:
+    return Members(Item(key, value) for key, value in values.items())
 
 
 def mesh() -> TriangleMeshBatch[Any]:
@@ -133,9 +140,9 @@ def test_merge_first_items_excludes_padding_offsets_faces_and_fills_attributes(
     spec = registry.spec(MESH_TYPE)
     values = [spec.decode(spec.encode(value)) if portable else value for value in sources]
     result = materialize_mesh(
-        MergeMeshes.execute(meshes=dict(zip(("mesh10", "mesh2", "mesh7"), values, strict=True)))[
-            "mesh"
-        ]
+        MergeMeshes.execute(
+            meshes=_members(dict(zip(("mesh10", "mesh2", "mesh7"), values, strict=True)))
+        )["mesh"]
     )
     torch.testing.assert_close(
         result.vertices,
@@ -170,7 +177,7 @@ def test_merge_first_items_excludes_padding_offsets_faces_and_fills_attributes(
         torch.testing.assert_close(value.vertices, vertices, rtol=0, atol=0)
         torch.testing.assert_close(value.faces, faces, rtol=0, atol=0)
     with pytest.raises(ValueError, match="MergeMeshes: need at least one mesh"):
-        MergeMeshes.execute(meshes={})
+        MergeMeshes.execute(meshes=_members({}))
 
 
 @pytest.mark.parametrize("portable", [False, True])

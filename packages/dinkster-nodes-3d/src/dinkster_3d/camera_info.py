@@ -20,6 +20,7 @@ from dinkster_api.v1 import (
     NumberWidget,
     Option,
     Output,
+    Record,
     Section,
     TypeExpr,
     Use,
@@ -73,7 +74,7 @@ def matrix_quaternion(torch: Any, matrix: Any) -> Any:
 
 def _camera_info(
     torch: Any,
-    mode: Mapping[str, Any],
+    mode: Record,
     target: list[float],
     roll: float,
     fov: float,
@@ -81,7 +82,7 @@ def _camera_info(
     camera_type: str,
     device: Any,
 ) -> dict[str, object]:
-    kind = mode["mode"]
+    kind = mode.key
     if kind == "orbit":
         yaw, pitch = math.radians(mode["yaw"]), math.radians(mode["pitch"])
         cy, sy, cp, sp = math.cos(yaw), math.sin(yaw), math.cos(pitch), math.sin(pitch)
@@ -301,7 +302,7 @@ class CreateCameraInfo(Node):
     def execute(
         cls,
         *,
-        mode: str | Mapping[str, Any],
+        mode: Record,
         target_x: float,
         target_y: float,
         target_z: float,
@@ -310,16 +311,10 @@ class CreateCameraInfo(Node):
         zoom: float = 1.0,
         camera_type: str = "perspective",
         camera_info_state: object = None,
-        **values: Any,
     ) -> Mapping[str, object]:
         initialize_inference_process()
         torch = importlib.import_module("torch")
         management = importlib.import_module("dinkster_inference.model_management")
-        if isinstance(mode, str):
-            mode = {
-                "mode": mode,
-                **{key.removeprefix("mode."): value for key, value in values.items()},
-            }
         return cls.outputs(
             camera_info=_camera_info(
                 torch,

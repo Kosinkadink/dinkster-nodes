@@ -14,6 +14,8 @@ from dinkster_api.v1 import (
     VAE_TYPE,
     Group,
     Input,
+    Item,
+    Members,
     Node,
     NodeSchema,
     Numbered,
@@ -131,12 +133,12 @@ class TextEncodeJoyImageEdit(Node):
 
     @classmethod
     def execute(
-        cls, *, clip: Any, prompt: str, vae: Any = None, images: Mapping[str, object] | None = None
+        cls, *, clip: Any, prompt: str, vae: Any = None, images: Members[Item] = Members()
     ) -> Mapping[str, object]:
         resized = [
-            _resize(materialize_image(image))
-            for image in (images or {}).values()
-            if image is not None
+            _resize(materialize_image(member.value))
+            for member in images
+            if member.value is not None
         ]
         conditioning: Any = clip.encode_from_tokens_scheduled(clip.tokenize(prompt, images=resized))
         if vae is not None and resized:

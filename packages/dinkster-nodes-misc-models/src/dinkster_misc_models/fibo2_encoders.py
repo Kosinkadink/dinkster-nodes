@@ -17,6 +17,8 @@ from dinkster_api.v1 import (
     VAE_TYPE,
     Group,
     Input,
+    Item,
+    Members,
     Named,
     Node,
     NodeSchema,
@@ -118,17 +120,13 @@ class TextEncodeFibo2(Node):
         prompt: str,
         negative_prompt: str = "",
         vae: Any = None,
-        images: Mapping[str, object] | None = None,
+        images: Members[Item] = Members(),
         width: int = 0,
         height: int = 0,
         batch_size: int = 1,
     ) -> Mapping[str, object]:
         references = [
-            materialize_image(image)
-            for _, image in sorted(
-                (images or {}).items(), key=lambda item: int(item[0].rsplit("_", 1)[-1])
-            )
-            if image is not None
+            materialize_image(member.value) for member in images if member.value is not None
         ]
         references = [
             image[index : index + 1] for image in references for index in range(image.shape[0])

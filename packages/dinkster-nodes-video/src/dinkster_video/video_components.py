@@ -19,6 +19,8 @@ from dinkster_api.v1 import (
     ComboWidget,
     Group,
     Input,
+    Item,
+    Members,
     Node,
     NodeSchema,
     Numbered,
@@ -229,12 +231,16 @@ class ConcatenateVideo(Node):
     def execute(
         cls,
         *,
-        videos: Mapping[str, list[object]],
+        videos: Members[Item],
         codec: str = "auto",
         complete_audio: object | None = None,
     ) -> Mapping[str, object]:
         resolver = resolver_from_env()
-        bound = [bind_video_value(video, resolver) for group in videos.values() for video in group]
+        bound = [
+            bind_video_value(video, resolver)
+            for member in videos
+            for video in cast(list[object], member.value)
+        ]
         return cls.outputs(
             video=concatenate_video(bound, codec=codec, complete_audio=complete_audio)
         )

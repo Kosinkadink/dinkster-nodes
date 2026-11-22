@@ -8,6 +8,7 @@ from typing import Any
 
 import pytest
 from dinkster_3d.camera_info import CreateCameraInfo
+from dinkster_api.v1 import Record
 
 
 def _execute(mode: dict[str, Any], **overrides: Any) -> dict[str, Any]:
@@ -21,7 +22,8 @@ def _execute(mode: dict[str, Any], **overrides: Any) -> dict[str, Any]:
         camera_type="orthographic",
     )
     values.update(overrides)
-    return CreateCameraInfo.execute(mode=mode, **values)["camera_info"]
+    rows = {key: value for key, value in mode.items() if key != "mode"}
+    return CreateCameraInfo.execute(mode=Record(mode["mode"], rows), **values)["camera_info"]
 
 
 def test_orbit_translation_and_roll_preserve_source_inputs() -> None:

@@ -16,6 +16,8 @@ from dinkster_api.v1 import (
     Choice,
     Group,
     Input,
+    Item,
+    Members,
     Node,
     NodeSchema,
     Numbered,
@@ -230,8 +232,8 @@ class MergeMeshes(Node):
         return with_identity_replacement(schema, "MergeMeshes")
 
     @classmethod
-    def execute(cls, *, meshes: Mapping[str, object]) -> Mapping[str, object]:
-        values = [materialize_mesh(value) for value in meshes.values()]
+    def execute(cls, *, meshes: Members[Item]) -> Mapping[str, object]:
+        values = [materialize_mesh(member.value) for member in meshes]
         if not values:
             raise ValueError("MergeMeshes: need at least one mesh")
         torch = importlib.import_module("torch")

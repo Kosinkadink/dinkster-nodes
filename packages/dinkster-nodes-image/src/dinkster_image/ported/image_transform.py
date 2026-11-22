@@ -25,6 +25,7 @@ from dinkster_api.v1 import (
     NumberWidget,
     Option,
     Output,
+    Record,
     ReplacementCase,
     ReplacementRule,
     Section,
@@ -617,32 +618,13 @@ class PadImageNode(Node):
         cls,
         *,
         image: Any,
-        padding_type: str | Mapping[str, Any],
-        padding_style: str | Mapping[str, Any],
-        **values: Any,
+        padding_type: Record,
+        padding_style: Record,
     ) -> Mapping[str, object]:
         torch = importlib.import_module("torch")
         image = materialize_image(image)
-        if isinstance(padding_type, str):
-            padding_type = {
-                "padding_type": padding_type,
-                **{
-                    key.removeprefix("padding_type."): value
-                    for key, value in values.items()
-                    if key.startswith("padding_type.")
-                },
-            }
-        if isinstance(padding_style, str):
-            padding_style = {
-                "padding_style": padding_style,
-                **{
-                    key.removeprefix("padding_style."): value
-                    for key, value in values.items()
-                    if key.startswith("padding_style.")
-                },
-            }
         batch, height, width, channels = image.shape
-        selected = padding_type["padding_type"]
+        selected = padding_type.key
         if selected == "pad dimensions":
             left, top, right, bottom = (
                 padding_type[side] for side in ("left", "top", "right", "bottom")
@@ -661,7 +643,7 @@ class PadImageNode(Node):
             raise ValueError(f"Unsupported padding type: {selected}")
         if left == top == right == bottom == 0:
             return cls.outputs(image=image)
-        style = padding_style["padding_style"]
+        style = padding_style.key
         if style == "mirror image":
 
             def indices(size: int, before: int, after: int) -> Any:

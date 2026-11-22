@@ -5,7 +5,10 @@ from __future__ import annotations
 from typing import Any, cast
 
 import pytest
-from dinkster_api.v1 import schema_to_wire
+from dinkster_api.v1 import (
+    Record,
+    schema_to_wire,
+)
 from dinkster_image import NODES as IMAGE_NODES
 from dinkster_image.ported.post_processing import (
     BatchImagesNode,
@@ -35,18 +38,18 @@ def test_post_processing_schemas_use_exact_core_ids_and_dynamic_interfaces() -> 
         "dinkster.image.color_transfer",
     )
     resize = schemas["dinkster.image.resize_image_mask_node"]
-    assert [item["id"] for item in resize["interface"]] == [
+    assert [item["id"] for item in resize["body"]] == [
         "input",
         "resize_type",
         "scale_method",
         "resized",
     ]
-    assert resize["interface"][0]["type"] == {
+    assert resize["body"][0]["type"] == {
         "kind": "variable",
         "templateId": "input_type",
         "allowed": ["IMAGE", "MASK"],
     }
-    assert [option["key"] for option in resize["interface"][1]["options"]] == [
+    assert [option["key"] for option in resize["body"][1]["options"]] == [
         "scale dimensions",
         "scale by multiplier",
         "scale longer dimension",
@@ -62,15 +65,15 @@ def test_post_processing_schemas_use_exact_core_ids_and_dynamic_interfaces() -> 
         ("dinkster.image.batch_masks_node", "masks", "mask", "mask", "MASK"),
         ("dinkster.latent.batch_latents_node", "latents", "latent", "latent", "LATENT"),
     ):
-        interface = schemas[node_type]["interface"]
-        assert interface[0]["id"] == family
-        assert interface[0]["memberPrefix"] == prefix
-        assert interface[0]["minMembers"] == 1 and interface[0]["maxMembers"] == 50
-        assert interface[0]["template"][0]["id"] == template_name
-        assert interface[0]["template"][0]["type"]["types"] == [value_type]
-        assert interface[1]["type"]["types"] == [value_type]
+        body = schemas[node_type]["body"]
+        assert body[0]["kind"] == "group" and body[0]["id"] == family
+        assert body[0]["keys"] == {"numbered": {"prefix": prefix, "start": 0, "pad": 0}}
+        assert body[0]["minMembers"] == 1 and body[0]["maxMembers"] == 50
+        assert body[0]["value"]["id"] == template_name
+        assert body[0]["value"]["type"]["types"] == [value_type]
+        assert body[1]["type"]["types"] == [value_type]
     color = schemas["dinkster.image.color_transfer"]
-    assert [item["id"] for item in color["interface"]] == [
+    assert [item["id"] for item in color["body"]] == [
         "image_target",
         "image_ref",
         "method",
@@ -78,7 +81,7 @@ def test_post_processing_schemas_use_exact_core_ids_and_dynamic_interfaces() -> 
         "strength",
         "image",
     ]
-    assert [option["key"] for option in color["interface"][3]["options"]] == [
+    assert [option["key"] for option in color["body"][3]["options"]] == [
         "per_frame",
         "uniform",
         "target_frame",
@@ -97,7 +100,7 @@ def test_color_transfer_identity_strength_does_not_materialize_the_reference(
             image_target=target,
             image_ref=None,
             method="histogram",
-            source_stats={"source_stats": "per_frame"},
+            source_stats=Record("per_frame", {}),
             strength=0.0,
         )["image"]
         is target
