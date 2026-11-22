@@ -24,6 +24,7 @@ from dinkster_api.v1 import (
     Option,
     Output,
     TypeExpr,
+    Use,
     initialize_inference_process,
     materialize_image,
     materialize_vision_packet,
@@ -65,7 +66,12 @@ class SAM3DBody_Render(Node):
         shader = Choice(
             "shader",
             options=tuple(
-                Option(name, rows=tilts if name.startswith("rainbow") else ())
+                Option(
+                    name,
+                    rows=(Use("rainbow_tilt_z"), Use("rainbow_tilt_x"))
+                    if name.startswith("rainbow")
+                    else (),
+                )
                 for name in (
                     "default",
                     "normals",
@@ -75,6 +81,7 @@ class SAM3DBody_Render(Node):
                     "depth",
                 )
             ),
+            shared=tilts,
         )
         schema = NodeSchema(
             "dinkster.vision.sam3d.body.sam3_d_body_render",
@@ -100,7 +107,7 @@ class SAM3DBody_Render(Node):
                                     default=1.0,
                                     widget=NumberWidget(min=0.0, max=1.0, step=0.01),
                                 ),
-                                palette,
+                                Use("person_palette_falloff"),
                                 Input(
                                     "region",
                                     TypeExpr.concrete(CORE_COMBO),
@@ -131,44 +138,44 @@ class SAM3DBody_Render(Node):
                                     default=0.6,
                                     widget=NumberWidget(min=0.0, max=1.0, step=0.05),
                                 ),
-                                face,
-                                hands,
-                                palette,
+                                Use("face_style"),
+                                Use("hand_style"),
+                                Use("person_palette_falloff"),
                             ),
                         ),
                         Option(
                             "openpose_3d",
                             rows=(
-                                Input(
-                                    "radius_m",
-                                    floating,
-                                    default=0.015,
-                                    widget=NumberWidget(min=0.004, max=0.1, step=0.001),
-                                ),
+                                Use("radius_m"),
                                 Input(
                                     "include_hands", TypeExpr.concrete(CORE_BOOLEAN), default=True
                                 ),
-                                palette,
+                                Use("person_palette_falloff"),
                             ),
                         ),
                         Option(
                             "scail",
                             rows=(
-                                Input(
+                                Use(
                                     "radius_m",
-                                    floating,
                                     default=0.022,
                                     widget=NumberWidget(min=0.005, max=0.2, step=0.001),
                                 ),
-                                Input(
-                                    "hand_style",
-                                    TypeExpr.concrete(CORE_COMBO),
-                                    default="dwpose",
-                                    widget=ComboWidget(("disabled", "dwpose", "openpose")),
-                                ),
-                                face,
-                                palette,
+                                Use("hand_style", default="dwpose"),
+                                Use("face_style"),
+                                Use("person_palette_falloff"),
                             ),
+                        ),
+                    ),
+                    shared=(
+                        palette,
+                        face,
+                        hands,
+                        Input(
+                            "radius_m",
+                            floating,
+                            default=0.015,
+                            widget=NumberWidget(min=0.004, max=0.1, step=0.001),
                         ),
                     ),
                 ),

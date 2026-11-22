@@ -22,6 +22,7 @@ from dinkster_api.v1 import (
     Output,
     Section,
     TypeExpr,
+    Use,
     initialize_inference_process,
     with_identity_replacement,
 )
@@ -195,11 +196,16 @@ class CreateCameraInfo(Node):
                                 ),
                             ),
                         ),
-                        Option("look_at", rows=position_inputs),
+                        Option(
+                            "look_at",
+                            rows=(Use("position_x"), Use("position_y"), Use("position_z")),
+                        ),
                         Option(
                             "quaternion",
                             rows=(
-                                *position_inputs,
+                                Use("position_x"),
+                                Use("position_y"),
+                                Use("position_z"),
                                 _number("quat_x", 0.0, -1.0, 1.0, 0.001),
                                 _number("quat_y", 0.0, -1.0, 1.0, 0.001),
                                 _number("quat_z", 0.0, -1.0, 1.0, 0.001),
@@ -217,6 +223,7 @@ class CreateCameraInfo(Node):
                             ),
                         ),
                     ),
+                    shared=position_inputs,
                     tooltip=(
                         "How to define the camera: orbit angles, an explicit position, "
                         "or a position + quaternion."

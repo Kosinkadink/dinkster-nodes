@@ -28,6 +28,7 @@ from dinkster_api.v1 import (
     Section,
     StringWidget,
     TypeExpr,
+    Use,
     initialize_inference_process,
     with_identity_replacement,
 )
@@ -611,25 +612,20 @@ class BlockSparseAttention(Node):
                                     ),
                                 ),
                             ),
-                            Option(
-                                "sla",
-                                rows=(
-                                    _method_input(
-                                        "keep_percent",
-                                        10.0,
-                                        "Percent of key blocks to keep exactly.",
-                                    ),
-                                ),
-                            ),
+                            Option("sla", rows=(Use("keep_percent"),)),
                             Option(
                                 "vsa",
                                 rows=(
-                                    _method_input(
+                                    Use(
                                         "keep_percent",
-                                        10.0,
-                                        "Percent of video cubes to keep exactly.",
+                                        tooltip="Percent of video cubes to keep exactly.",
                                     ),
                                 ),
+                            ),
+                        ),
+                        shared=(
+                            _method_input(
+                                "keep_percent", 10.0, "Percent of key blocks to keep exactly."
                             ),
                         ),
                     ),

@@ -26,6 +26,7 @@ from dinkster_api.v1 import (
     Option,
     Output,
     TypeExpr,
+    Use,
     materialize_image,
     report_progress,
     with_identity_replacement,
@@ -216,7 +217,7 @@ class ResizeImageMaskNode(Node):
                 Choice(
                     "resize_type",
                     options=(
-                        Option("scale dimensions", rows=dimensions),
+                        Option("scale dimensions", rows=(Use("width"), Use("height"), Use("crop"))),
                         Option(
                             "scale by multiplier",
                             rows=(_number("multiplier", _FLOAT, 1.0, 0.01, 8.0, 0.01),),
@@ -229,24 +230,19 @@ class ResizeImageMaskNode(Node):
                             "scale shorter dimension",
                             rows=(_number("shorter_size", _INT, 512, 0, _MAX_RESOLUTION, 1),),
                         ),
-                        Option(
-                            "scale width",
-                            rows=(_number("width", _INT, 512, 0, _MAX_RESOLUTION, 1),),
-                        ),
-                        Option(
-                            "scale height",
-                            rows=(_number("height", _INT, 512, 0, _MAX_RESOLUTION, 1),),
-                        ),
+                        Option("scale width", rows=(Use("width"),)),
+                        Option("scale height", rows=(Use("height"),)),
                         Option(
                             "scale total pixels",
                             rows=(_number("megapixels", _FLOAT, 1.0, 0.01, 16.0, 0.01),),
                         ),
-                        Option("match size", rows=(Input("match", _IMAGE_OR_MASK), crop)),
+                        Option("match size", rows=(Input("match", _IMAGE_OR_MASK), Use("crop"))),
                         Option(
                             "scale to multiple",
                             rows=(_number("multiple", _INT, 8, 1, _MAX_RESOLUTION, 1),),
                         ),
                     ),
+                    shared=dimensions,
                     tooltip=(
                         "Select how to resize: by exact dimensions, scale factor, matching another "
                         "image, etc."

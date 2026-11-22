@@ -28,6 +28,7 @@ from dinkster_api.v1 import (
     Row,
     StringWidget,
     TypeExpr,
+    Use,
     attach_saved_artifact,
     initialize_inference_process,
     materialize_audio,
@@ -335,27 +336,24 @@ class SaveAudioAdvanced(Node):
                     "format",
                     options=(
                         Option("flac"),
-                        Option(
-                            "mp3",
-                            rows=(
-                                Input(
-                                    "quality",
-                                    _COMBO,
-                                    default="V0",
-                                    widget=ComboWidget(options=_MP3_QUALITIES),
-                                ),
-                            ),
-                        ),
+                        Option("mp3", rows=(Use("quality"),)),
                         Option(
                             "opus",
                             rows=(
-                                Input(
+                                Use(
                                     "quality",
-                                    _COMBO,
                                     default="128k",
                                     widget=ComboWidget(options=_OPUS_QUALITIES),
                                 ),
                             ),
+                        ),
+                    ),
+                    shared=(
+                        Input(
+                            "quality",
+                            _COMBO,
+                            default="V0",
+                            widget=ComboWidget(options=_MP3_QUALITIES),
                         ),
                     ),
                     tooltip="The file format in which to save the audio.",
