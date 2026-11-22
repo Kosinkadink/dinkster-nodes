@@ -9,7 +9,6 @@ from typing import cast
 import numpy as np
 from dinkster_api.v1 import (
     Choice,
-    DynamicSlotSpec,
     Input,
     Node,
     NodeSchema,
@@ -17,7 +16,9 @@ from dinkster_api.v1 import (
     Option,
     Output,
     Section,
-    SlotVariant,
+    TypeChoice,
+    Use,
+    Variant,
     annotate_mask,
     copy_media_semantics,
 )
@@ -229,10 +230,16 @@ class ImageComposite(Node):
                             "source_resize",
                             options=(
                                 Option("none"),
-                                Option("stretch", rows=(interpolation,)),
-                                Option("fill", rows=(interpolation,)),
+                                Option("stretch", rows=(Use("interpolation"),)),
+                                Option("fill", rows=(Use("interpolation"),)),
                             ),
+                            shared=(interpolation,),
                             default="none",
+                        ),
+                        TypeChoice(
+                            "mask",
+                            variants=(Variant("mask", MASK, rows=(mask_polarity,)),),
+                            required=False,
                         ),
                         Section(
                             "advanced",
@@ -253,13 +260,6 @@ class ImageComposite(Node):
                             ),
                         ),
                         Output("image", IMAGE, preview=True),
-                    ),
-                    slots=(
-                        DynamicSlotSpec(
-                            "mask",
-                            variants=(SlotVariant("mask", MASK, inputs=(mask_polarity,)),),
-                            required=False,
-                        ),
                     ),
                     search_terms=(
                         "blend images",

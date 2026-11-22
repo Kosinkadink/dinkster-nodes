@@ -27,6 +27,7 @@ from dinkster_api.v1 import (
     Section,
     StringWidget,
     TypeExpr,
+    Use,
     annotate_mask,
     copy_media_semantics,
     media_semantics,
@@ -39,6 +40,7 @@ from .support import (
     MAX_IMAGE_BYTES,
     materialized_inputs,
     normalize_mask_polarity,
+    with_shared,
 )
 from .support import (
     color_from_int as _color_from_int,
@@ -224,7 +226,7 @@ class MakeMask(Node):
         by_id = {item.id: item for item in inputs}
 
         def option(key: str, *ids: str) -> Option:
-            return Option(key, rows=tuple(by_id[id_] for id_ in ids))
+            return Option(key, rows=tuple(Use(id_) for id_ in ids))
 
         foreground_background = ("foreground", "background")
         return with_v1_migration(
@@ -235,62 +237,70 @@ class MakeMask(Node):
                 category="mask/create",
                 body=(
                     *tuple(by_id[id_] for id_ in ("width", "height", "batch_size", "invert")),
-                    Choice(
-                        "operation",
-                        options=(
-                            option("solid", "foreground"),
-                            *(
+                    with_shared(
+                        Choice(
+                            "operation",
+                            options=(
+                                option("solid", "foreground"),
+                                *(
+                                    option(
+                                        key,
+                                        "foreground",
+                                        "background",
+                                        "x",
+                                        "y",
+                                        "shape_origin",
+                                        "shape_width",
+                                        "shape_height",
+                                        "grow",
+                                    )
+                                    for key in ("rectangle", "ellipse", "triangle")
+                                ),
                                 option(
-                                    key,
-                                    "foreground",
-                                    "background",
-                                    "x",
-                                    "y",
-                                    "shape_origin",
-                                    "shape_width",
-                                    "shape_height",
-                                    "grow",
-                                )
-                                for key in ("rectangle", "ellipse", "triangle")
-                            ),
-                            option("polygon", "foreground", "background", "points_x", "points_y"),
-                            option("region", "foreground", "background", "region"),
-                            option("linear_gradient", *foreground_background, "angle"),
-                            option(
-                                "radial_gradient",
-                                *foreground_background,
-                                "center_x",
-                                "center_y",
-                                "radius",
-                            ),
-                            option("frame_gradient"),
-                            option(
-                                "transition",
-                                *foreground_background,
-                                "start_frame",
-                                "end_frame",
-                                "transition_type",
-                                "timing_function",
-                            ),
-                            option("checkerboard", *foreground_background, "tile_size"),
-                            Option(
-                                "noise",
-                                rows=(
-                                    by_id["foreground"],
-                                    by_id["background"],
-                                    by_id["seed"],
-                                    Choice(
-                                        "noise_mode",
-                                        options=(
-                                            option("uniform"),
-                                            option("binary", "noise_density"),
+                                    "polygon", "foreground", "background", "points_x", "points_y"
+                                ),
+                                option("region", "foreground", "background", "region"),
+                                option("linear_gradient", *foreground_background, "angle"),
+                                option(
+                                    "radial_gradient",
+                                    *foreground_background,
+                                    "center_x",
+                                    "center_y",
+                                    "radius",
+                                ),
+                                option("frame_gradient"),
+                                option(
+                                    "transition",
+                                    *foreground_background,
+                                    "start_frame",
+                                    "end_frame",
+                                    "transition_type",
+                                    "timing_function",
+                                ),
+                                option("checkerboard", *foreground_background, "tile_size"),
+                                Option(
+                                    "noise",
+                                    rows=(
+                                        Use("foreground"),
+                                        Use("background"),
+                                        Use("seed"),
+                                        with_shared(
+                                            Choice(
+                                                "noise_mode",
+                                                options=(
+                                                    option("uniform"),
+                                                    option("binary", "noise_density"),
+                                                ),
+                                                default="uniform",
+                                            ),
+                                            by_id,
                                         ),
-                                        default="uniform",
                                     ),
                                 ),
                             ),
+                            default="solid",
                         ),
-                        default="solid",
+                        by_id,
                     ),
                     Output("mask", MASK, preview=True),
                     Output("inverse_mask", MASK, preview=True),
@@ -948,8 +958,9 @@ class MaskMorphology(Node):
         )
         by_id = {item.id: item for item in dynamic_inputs}
 
-        def edge_policy() -> Choice:
-            return Choice(
+        pool: dict[str, Input | Choice] = {
+            **by_id,
+            "edge_policy": Choice(
                 "edge_policy",
                 options=(
                     Option("constant", rows=(by_id["edge_value"],)),
@@ -958,17 +969,20 @@ class MaskMorphology(Node):
                     Option("wrap"),
                 ),
                 default="constant",
-            )
+            ),
+        }
 
         def option(
             key: str,
             *ids: str,
             edge: bool = False,
         ) -> Option:
-            inputs: tuple[Input | Choice, ...] = tuple(by_id[input_id] for input_id in ids)
-            if edge:
-                inputs = (*inputs, edge_policy())
-            return Option(key, rows=inputs)
+            return Option(
+                key,
+                rows=tuple(
+                    Use(input_id) for input_id in (*ids, *(("edge_policy",) if edge else ()))
+                ),
+            )
 
         return with_v1_migration(
             NodeSchema(
@@ -978,65 +992,73 @@ class MaskMorphology(Node):
                 category="mask/operations",
                 body=(
                     Input("mask", MASK),
-                    Choice(
-                        "operation",
-                        options=(
-                            option("threshold", "threshold"),
-                            option(
-                                "remove_small_components",
-                                "minimum_area",
-                                "threshold",
-                                "connectivity",
-                            ),
-                            option("fill_holes"),
-                            option(
-                                "grow_erode", "radius", "iterations", "tapered_corners", edge=True
-                            ),
-                            option(
-                                "grow_blur",
-                                "radius",
-                                "blur_radius",
-                                "blur_amount",
-                                "incremental_expandrate",
-                                "flip_input",
-                                "lerp_alpha",
-                                "decay_factor",
-                                "fill_holes",
-                                "iterations",
-                                "tapered_corners",
-                                "sigma",
-                                edge=True,
-                            ),
-                            option(
-                                "open", "kernel_size", "iterations", "tapered_corners", edge=True
-                            ),
-                            option(
-                                "close", "kernel_size", "iterations", "tapered_corners", edge=True
-                            ),
-                            option("feather_edges", "left", "top", "right", "bottom"),
-                            Option(
-                                "blur",
-                                rows=(
-                                    by_id["radius"],
-                                    by_id["sigma"],
-                                    edge_policy(),
+                    with_shared(
+                        Choice(
+                            "operation",
+                            options=(
+                                option("threshold", "threshold"),
+                                option(
+                                    "remove_small_components",
+                                    "minimum_area",
+                                    "threshold",
+                                    "connectivity",
                                 ),
+                                option("fill_holes"),
+                                option(
+                                    "grow_erode",
+                                    "radius",
+                                    "iterations",
+                                    "tapered_corners",
+                                    edge=True,
+                                ),
+                                option(
+                                    "grow_blur",
+                                    "radius",
+                                    "blur_radius",
+                                    "blur_amount",
+                                    "incremental_expandrate",
+                                    "flip_input",
+                                    "lerp_alpha",
+                                    "decay_factor",
+                                    "fill_holes",
+                                    "iterations",
+                                    "tapered_corners",
+                                    "sigma",
+                                    edge=True,
+                                ),
+                                option(
+                                    "open",
+                                    "kernel_size",
+                                    "iterations",
+                                    "tapered_corners",
+                                    edge=True,
+                                ),
+                                option(
+                                    "close",
+                                    "kernel_size",
+                                    "iterations",
+                                    "tapered_corners",
+                                    edge=True,
+                                ),
+                                option("feather_edges", "left", "top", "right", "bottom"),
+                                option("blur", "radius", "sigma", edge=True),
+                                option("offset", "x", "y", edge=True),
+                                option(
+                                    "remap",
+                                    "input_low",
+                                    "input_high",
+                                    "output_low",
+                                    "output_high",
+                                    "clamp",
+                                ),
+                                option("round", "radius", "iterations", edge=True),
+                                option("block", "kernel_size", "block_mode"),
+                                option("invert"),
+                                option("crop", "x", "y", "width", "height"),
                             ),
-                            option("offset", "x", "y", edge=True),
-                            option(
-                                "remap",
-                                "input_low",
-                                "input_high",
-                                "output_low",
-                                "output_high",
-                                "clamp",
-                            ),
-                            option("round", "radius", "iterations", edge=True),
-                            option("block", "kernel_size", "block_mode"),
-                            option("invert"),
-                            option("crop", "x", "y", "width", "height"),
+                            default="threshold",
                         ),
-                        default="threshold",
+                        pool,
                     ),
                     Output("mask", MASK, preview=True),
                     Output("inverse_mask", MASK, preview=True),
@@ -1446,16 +1468,15 @@ class ImageToMask(Node):
             "max_channel",
         )
 
-        def color_source() -> Choice:
-            return Choice(
-                "color_source",
-                options=(
-                    Option("hex", rows=(color,)),
-                    Option("integer", rows=(color_value,)),
-                    Option("channels", rows=(red, green, blue)),
-                ),
-                default="hex",
-            )
+        color_source = Choice(
+            "color_source",
+            options=(
+                Option("hex", rows=(color,)),
+                Option("integer", rows=(color_value,)),
+                Option("channels", rows=(red, green, blue)),
+            ),
+            default="hex",
+        )
 
         return with_v1_migration(
             NodeSchema(
@@ -1470,9 +1491,12 @@ class ImageToMask(Node):
                         "policy",
                         options=(
                             Option("channel", rows=(channel,)),
-                            Option("exact_color", rows=(color_source(),)),
-                            Option("tolerance_color", rows=(color_source(), tolerance, metric)),
+                            Option("exact_color", rows=(Use("color_source"),)),
+                            Option(
+                                "tolerance_color", rows=(Use("color_source"), tolerance, metric)
+                            ),
                         ),
+                        shared=(color_source,),
                         default="channel",
                     ),
                     Output("mask", MASK, preview=True),

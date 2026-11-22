@@ -20,6 +20,7 @@ from dinkster_api.v1 import (
     Output,
     Section,
     TypeExpr,
+    Use,
 )
 
 from .geometry import BOOLEAN, IMAGE, INT, MASK
@@ -217,7 +218,7 @@ class ImageBatchEdit(Node):
                     Choice(
                         "operation",
                         options=tuple(
-                            Option(key, rows=tuple(specs[name] for name in names))
+                            Option(key, rows=tuple(Use(name) for name in names))
                             for key, names in (
                                 ("range", ("start", "count", "range_end")),
                                 ("repeat_all", ("amount",)),
@@ -226,6 +227,19 @@ class ImageBatchEdit(Node):
                                 ("reverse", ()),
                                 ("shuffle", ("seed",)),
                                 ("pingpong", ()),
+                            )
+                        ),
+                        shared=tuple(
+                            specs[name]
+                            for name in (
+                                "start",
+                                "count",
+                                "range_end",
+                                "amount",
+                                "generate_repeat_marker",
+                                "size",
+                                "expansion",
+                                "seed",
                             )
                         ),
                         default="range",
@@ -327,7 +341,7 @@ class MaskBatchEdit(Node):
                     Choice(
                         "operation",
                         options=tuple(
-                            Option(key, rows=tuple(specs[name] for name in names))
+                            Option(key, rows=tuple(Use(name) for name in names))
                             for key, names in (
                                 ("range", ("start", "count", "range_end")),
                                 ("repeat_all", ("amount",)),
@@ -336,6 +350,18 @@ class MaskBatchEdit(Node):
                                 ("reverse", ()),
                                 ("shuffle", ("seed",)),
                                 ("pingpong", ()),
+                            )
+                        ),
+                        shared=tuple(
+                            specs[name]
+                            for name in (
+                                "start",
+                                "count",
+                                "range_end",
+                                "amount",
+                                "size",
+                                "expansion",
+                                "seed",
                             )
                         ),
                         default="range",

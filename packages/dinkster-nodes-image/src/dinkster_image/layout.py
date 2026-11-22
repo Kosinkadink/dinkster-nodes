@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
+from dataclasses import replace
 from typing import cast
 
 import numpy as np
 from dinkster_api.v1 import (
-    ConditionalWidgetGroup,
+    Formula,
     Group,
     Input,
     Node,
@@ -258,20 +259,16 @@ class ImageStitch(Node):
                 combo_input("direction", ("right", "down", "left", "up"), "right"),
                 Input("match_image_size", BOOLEAN, required=False, default=True),
                 number_input("spacing_width", INT, 0, minimum=0, maximum=1024, step=2),
-                combo_input(
-                    "spacing_color",
-                    ("white", "black", "red", "green", "blue"),
-                    "white",
+                replace(
+                    combo_input(
+                        "spacing_color",
+                        ("white", "black", "red", "green", "blue"),
+                        "white",
+                    ),
+                    visible=Formula("spacing_width >= 1"),
                 ),
                 Input("second", IMAGE, required=False, default=None),
                 Output("image", IMAGE, preview=True),
-            ),
-            widget_groups=(
-                ConditionalWidgetGroup(
-                    "spacing_width",
-                    tuple(range(1, 1025)),
-                    ("spacing_color",),
-                ),
             ),
             search_terms=("ImageStitch", "join images", "concatenate images", "side by side"),
         )

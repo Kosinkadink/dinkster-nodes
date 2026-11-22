@@ -16,6 +16,7 @@ from dinkster_api.v1 import (
     NumberWidget,
     Option,
     Output,
+    Use,
 )
 
 from .geometry import FLOAT, IMAGE
@@ -97,10 +98,11 @@ class ImageAdjust(Node):
                             for name, inputs in (
                                 ("invert", ()),
                                 ("normalize", (mean, standard_deviation)),
-                                ("brightness", (factor,)),
-                                ("contrast", (factor,)),
+                                ("brightness", (Use("factor"),)),
+                                ("contrast", (Use("factor"),)),
                             )
                         ),
+                        shared=(factor,),
                         default="brightness",
                     ),
                     Output("image", IMAGE, preview=True),

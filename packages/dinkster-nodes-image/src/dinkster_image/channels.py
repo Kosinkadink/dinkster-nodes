@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
+from dataclasses import replace
 
 import numpy as np
 from dinkster_api.v1 import (
-    ConditionalWidgetGroup,
+    Formula,
     Input,
     Node,
     NodeSchema,
@@ -87,23 +88,19 @@ class ImageChannelSplit(Node):
                         ALPHA_MASK_POLARITIES,
                         "transparency",
                     ),
-                    _combo(
-                        "single_channel_image",
-                        ("rgb", "preserve"),
-                        "rgb",
+                    replace(
+                        _combo(
+                            "single_channel_image",
+                            ("rgb", "preserve"),
+                            "rgb",
+                        ),
+                        visible=Formula('channel_layout == "single"'),
                     ),
                     Output("image", IMAGE, preview=True, alpha_policy="drop"),
                     Output("channel_1", IMAGE, preview=True, alpha_policy="drop"),
                     Output("channel_2", IMAGE, preview=True, alpha_policy="drop"),
                     Output("channel_3", IMAGE, preview=True, alpha_policy="drop"),
                     Output("alpha_mask", MASK, preview=True, mask_semantic="alpha"),
-                ),
-                widget_groups=(
-                    ConditionalWidgetGroup(
-                        "channel_layout",
-                        ("single",),
-                        ("single_channel_image",),
-                    ),
                 ),
                 search_terms=(
                     "split RGB",

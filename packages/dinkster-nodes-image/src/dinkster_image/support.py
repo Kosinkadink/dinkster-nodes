@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import math
 from collections.abc import Callable, Mapping
+from dataclasses import replace
 from functools import wraps
 from typing import Literal, ParamSpec, TypeVar, cast
 
@@ -11,11 +12,13 @@ import numpy as np
 from dinkster_api.v1 import (
     CORE_COMBO,
     IMAGE_WORKING_SET_LIMIT_BYTES,
+    Choice,
     ComboWidget,
     Input,
     NumberWidget,
     SlotValue,
     TypeExpr,
+    Use,
     parse_color,
 )
 from PIL import Image
@@ -379,7 +382,14 @@ def color_from_int(value: int) -> np.ndarray:
     )
 
 
+def with_shared(choice: Choice, pool: Mapping[str, Input | Choice]) -> Choice:
+    """``choice`` with the pool rows its options name with ``Use`` as its shared rows."""
+    named = {row.id for option in choice.options for row in option.rows if isinstance(row, Use)}
+    return replace(choice, shared=tuple(row for key, row in pool.items() if key in named))
+
+
 __all__ = [
+    "with_shared",
     "INTERPOLATION_OPTIONS",
     "MAX_DIMENSION",
     "Interpolation",

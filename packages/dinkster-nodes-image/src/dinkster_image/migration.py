@@ -4,18 +4,19 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from dataclasses import replace
-from typing import cast
+from typing import Any
 
 from dinkster_api.v1 import (
     Choice,
     ComboWidget,
-    DynamicSlotSpec,
     Group,
     Input,
     InputFamilyMapping,
     InputFamilyMember,
     MappingSource,
     NodeSchema,
+    Option,
+    Output,
     OutputFamilyMapping,
     ReplacementCase,
     ReplacementLink,
@@ -23,8 +24,42 @@ from dinkster_api.v1 import (
     ReplacementNode,
     ReplacementPredicate,
     ReplacementRule,
+    Row,
+    Section,
+    TypeChoice,
+    Use,
     ValueTransform,
 )
+
+
+def _scope(rows: Sequence[object], shared: Mapping[str, object] | None = None) -> list[object]:
+    """One scope's rows through the layout boxes, with each Use resolved to its shared row."""
+    found: list[object] = []
+    for row in rows:
+        if isinstance(row, (Section, Row)):
+            found.extend(_scope(row.rows, shared))
+        elif isinstance(row, Use):
+            assert shared is not None
+            named = shared[row.id]
+            if row.only is not None and isinstance(named, Choice):
+                named = replace(named, options=tuple(o for o in named.options if o.key in row.only))
+            found.append(named)
+        else:
+            found.append(row)
+    return found
+
+
+def _option_rows(choice: Choice, option: Option) -> list[object]:
+    shared = {getattr(row, "id", ""): row for row in _scope(choice.shared)}
+    return _scope(option.rows, shared)
+
+
+def _choices(schema: NodeSchema) -> tuple[Choice | TypeChoice, ...]:
+    return tuple(row for row in _scope(schema.body) if isinstance(row, (Choice, TypeChoice)))
+
+
+def _groups(schema: NodeSchema) -> tuple[Group, ...]:
+    return tuple(row for row in _scope(schema.body) if isinstance(row, Group))
 
 
 def with_mask_polarity(schema: NodeSchema) -> NodeSchema:
@@ -43,42 +78,38 @@ def with_mask_polarity(schema: NodeSchema) -> NodeSchema:
         prefix, _, local = value.rpartition(".")
         return _path(prefix, "mask_polarity") if local in names else value
 
-    def entry[T: Input | Group | Choice | DynamicSlotSpec](value: T) -> T:
+    def entry(value: object) -> object:
         if isinstance(value, Input) and value.id in names:
             assert isinstance(value.widget, ComboWidget)
-            return cast(
-                T,
-                replace(
-                    value,
-                    id="mask_polarity",
-                    default=values[str(value.default)],
-                    widget=replace(value.widget, options=("coverage", "transparency")),
-                ),
+            return replace(
+                value,
+                id="mask_polarity",
+                default=values[str(value.default)],
+                widget=replace(value.widget, options=("coverage", "transparency")),
             )
+        if isinstance(value, Use) and value.id in names:
+            return replace(value, id="mask_polarity")
+        if isinstance(value, (Section, Row)):
+            return replace(value, rows=rows(value.rows))
         if isinstance(value, Choice):
-            return cast(
-                T,
-                replace(
-                    value,
-                    options=tuple(
-                        replace(option, inputs=tuple(entry(child) for child in option.inputs))
-                        for option in value.options
-                    ),
-                ),
+            return replace(
+                value,
+                options=tuple(replace(option, rows=rows(option.rows)) for option in value.options),
+                shared=rows(value.shared),
             )
-        if isinstance(value, DynamicSlotSpec):
-            return cast(
-                T,
-                replace(
-                    value,
-                    inputs=tuple(entry(child) for child in value.inputs),
-                    variants=tuple(
-                        replace(variant, inputs=tuple(entry(child) for child in variant.inputs))
-                        for variant in value.variants or ()
-                    ),
-                ),
+        if isinstance(value, TypeChoice):
+            return replace(
+                value,
+                rows=rows(value.rows),
+                variants=tuple(
+                    replace(variant, rows=rows(variant.rows)) for variant in value.variants or ()
+                )
+                or None,
             )
         return value
+
+    def rows(values: Sequence[object]) -> tuple[Any, ...]:
+        return tuple(entry(value) for value in values)
 
     def migrate_cases(case: ReplacementCase, *, dotted: bool) -> tuple[ReplacementCase, ...]:
         mappings: list[tuple[str, MappingSource]] = []
@@ -110,8 +141,9 @@ def with_mask_polarity(schema: NodeSchema) -> NodeSchema:
         )
         return linked, migrated
 
-    defaults = _default_choices((*schema.combos, *schema.slots))
-    states = _states((*schema.combos, *schema.slots))
+    entries = _choices(schema)
+    defaults = _default_choices(entries)
+    states = _states(entries)
     states = [state for state in states if state != defaults] + [defaults]
     cases = tuple(
         case
@@ -135,7 +167,7 @@ def with_mask_polarity(schema: NodeSchema) -> NodeSchema:
                 dict.fromkeys(
                     (
                         *historical,
-                        *(combo.id for combo in schema.combos),
+                        *(entry.id for entry in entries if isinstance(entry, Choice)),
                     )
                 )
             )
@@ -144,9 +176,7 @@ def with_mask_polarity(schema: NodeSchema) -> NodeSchema:
     return replace(
         schema,
         version=schema.version + 1,
-        inputs=tuple(entry(spec) for spec in schema.inputs),
-        combos=tuple(entry(combo) for combo in schema.combos),
-        slots=tuple(entry(slot) for slot in schema.slots),
+        body=rows(schema.body),
         replacements=(
             rule,
             *(
@@ -183,17 +213,17 @@ def _entry_states(
         for option in entry.options:
             if option.key in current_only_choices.get(construct, frozenset()):
                 continue
-            children = _states(option.inputs, construct, current_only_choices)
+            children = _states(_option_rows(entry, option), construct, current_only_choices)
             states.extend(dict(((construct, option.key), *child.items())) for child in children)
         return states
-    if isinstance(entry, DynamicSlotSpec):
+    if isinstance(entry, TypeChoice):
         if entry.variants is None:
             raise ValueError("version-1 image migrations require closed dynamic slots")
         construct = _path(prefix, entry.id)
         states = [{}] if not entry.required else []
         for variant in entry.variants:
             children = _states(
-                (*entry.inputs, *variant.inputs),
+                (*_scope(entry.rows), *_scope(variant.rows)),
                 construct,
                 current_only_choices,
             )
@@ -228,7 +258,7 @@ def _default_choices(entries: Sequence[object], prefix: str = "") -> dict[str, s
         choices[construct] = entry.default
         option = entry.option(entry.default)
         assert option is not None
-        choices.update(_default_choices(option.inputs, construct))
+        choices.update(_default_choices(_option_rows(entry, option), construct))
     return choices
 
 
@@ -237,16 +267,16 @@ def _dynamic_ids(entries: Sequence[object]) -> tuple[str, ...]:
 
     def collect(children: Sequence[object]) -> None:
         for entry in children:
-            if isinstance(entry, (Input, Group, Choice, DynamicSlotSpec)):
+            if isinstance(entry, (Input, Group, Choice, TypeChoice)):
                 if entry.id not in ids:
                     ids.append(entry.id)
             if isinstance(entry, Choice):
                 for option in entry.options:
-                    collect(option.inputs)
-            elif isinstance(entry, DynamicSlotSpec):
-                collect(entry.inputs)
+                    collect(_option_rows(entry, option))
+            elif isinstance(entry, TypeChoice):
+                collect(_scope(entry.rows))
                 for variant in entry.variants or ():
-                    collect(variant.inputs)
+                    collect(_scope(variant.rows))
 
     collect(entries)
     return tuple(ids)
@@ -259,9 +289,7 @@ def _active_interface(
     constructs: list[tuple[str, str, str, bool]] = []
     for entry in entries:
         path = (
-            _path(prefix, entry.id)
-            if isinstance(entry, (Input, Group, Choice, DynamicSlotSpec))
-            else ""
+            _path(prefix, entry.id) if isinstance(entry, (Input, Group, Choice, TypeChoice)) else ""
         )
         if isinstance(entry, Input):
             inputs.append((path, entry.id))
@@ -270,17 +298,19 @@ def _active_interface(
             constructs.append((path, entry.id, choice, False))
             option = entry.option(choice)
             assert option is not None
-            child_inputs, child_constructs = _active_interface(option.inputs, choices, path)
+            child_inputs, child_constructs = _active_interface(
+                _option_rows(entry, option), choices, path
+            )
             inputs.extend(child_inputs)
             constructs.extend(child_constructs)
-        elif isinstance(entry, DynamicSlotSpec) and path in choices:
+        elif isinstance(entry, TypeChoice) and path in choices:
             choice = choices[path]
             constructs.append((path, entry.id, choice, True))
             inputs.append((path, entry.id))
             variant = entry.variant(choice)
             assert variant is not None
             child_inputs, child_constructs = _active_interface(
-                (*entry.inputs, *variant.inputs), choices, path
+                (*_scope(entry.rows), *_scope(variant.rows)), choices, path
             )
             inputs.extend(child_inputs)
             constructs.extend(child_constructs)
@@ -299,15 +329,16 @@ def _active_source(input_id: str) -> ReplacementPredicate:
 
 def _input_family_mappings(schema: NodeSchema) -> dict[str, InputFamilyMapping]:
     mappings: dict[str, InputFamilyMapping] = {}
-    for family in schema.input_families:
-        template = {
-            entry.id: MappingSource.copy(entry.id)
-            for entry in family.template
-            if isinstance(entry, Input)
-        }
-        if len(template) != len(family.template):
+    for group in _groups(schema):
+        if isinstance(group.value, Output):
+            continue
+        template = (group.value,) if group.value is not None else tuple(_scope(group.member or ()))
+        if not all(isinstance(entry, Input) for entry in template):
             raise ValueError("version-1 image migrations require static input-family templates")
-        mappings[family.id] = InputFamilyMapping.copy(family.id, inputs=template)
+        mappings[group.id] = InputFamilyMapping.copy(
+            group.id,
+            inputs={entry.id: MappingSource.copy(entry.id) for entry in template},  # type: ignore[union-attr]
+        )
     return mappings
 
 
@@ -318,11 +349,11 @@ def _case(
     fallback: bool,
     current_only_inputs: frozenset[str],
 ) -> ReplacementCase:
-    active_inputs, constructs = _active_interface((*schema.combos, *schema.slots), choices)
+    active_inputs, constructs = _active_interface(_choices(schema), choices)
     mappings = {
         spec.id: MappingSource.copy(spec.id)
         for spec in schema.inputs
-        if spec.id not in current_only_inputs
+        if isinstance(spec, Input) and spec.id not in current_only_inputs
     }
     mappings.update(
         {
@@ -360,7 +391,9 @@ def _case(
         inputs=mappings,
         input_families=_input_family_mappings(schema),
         output_families={
-            family.id: OutputFamilyMapping.copy(family.id) for family in schema.output_families
+            group.id: OutputFamilyMapping.copy(group.id)
+            for group in _groups(schema)
+            if isinstance(group.value, Output)
         },
         outputs={output.id: output.id for output in schema.outputs},
     )
@@ -374,7 +407,7 @@ def with_v1_migration(
 ) -> NodeSchema:
     """Attach a flat-version-1 migration rule to a dynamic image schema."""
     current_only_choices = current_only_choices or {}
-    entries = (*schema.combos, *schema.slots)
+    entries = _choices(schema)
     historical = [
         input_id for input_id in _dynamic_ids(entries) if input_id not in current_only_inputs
     ]
@@ -382,10 +415,11 @@ def with_v1_migration(
         historical.remove("source")
     defaults = _default_choices(entries)
     states = _states(entries, current_only_choices=current_only_choices)
+    slot_ids = {entry.id for entry in entries if isinstance(entry, TypeChoice)}
     states.sort(
         key=lambda choices: (
             0 if choices.get("source") == "region" else 1 if choices.get("source") == "mask" else 2,
-            -sum(path in {slot.id for slot in schema.slots} for path in choices),
+            -sum(path in slot_ids for path in choices),
         )
     )
     cases = [

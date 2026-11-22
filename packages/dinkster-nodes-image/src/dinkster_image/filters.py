@@ -16,6 +16,7 @@ from dinkster_api.v1 import (
     NumberWidget,
     Option,
     Output,
+    Use,
 )
 from PIL import Image
 
@@ -325,7 +326,6 @@ class ImageFilter(Node):
                 widget=NumberWidget(min=1, max=MAX_MORPHOLOGY_KERNEL, step=1),
             ),
         )
-        by_id = {item.id: item for item in original}
         return with_v1_migration(
             NodeSchema(
                 node_type="dinkster.image.filter",
@@ -337,7 +337,7 @@ class ImageFilter(Node):
                     Choice(
                         "operation",
                         options=tuple(
-                            Option(name, rows=tuple(by_id[input_id] for input_id in input_ids))
+                            Option(name, rows=tuple(Use(input_id) for input_id in input_ids))
                             for name, input_ids in (
                                 ("gaussian_blur", ("radius", "sigma")),
                                 ("sharpen", ("radius", "sigma", "strength")),
@@ -346,6 +346,7 @@ class ImageFilter(Node):
                                 *((name, ("kernel_size",)) for name in FILTER_OPERATIONS[4:]),
                             )
                         ),
+                        shared=original,
                         default="gaussian_blur",
                     ),
                     Output("image", IMAGE, preview=True),

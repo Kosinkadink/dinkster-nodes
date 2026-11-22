@@ -24,6 +24,7 @@ from dinkster_api.v1 import (
     Section,
     StringWidget,
     TypeExpr,
+    Use,
     image_math,
 )
 
@@ -169,18 +170,19 @@ class MakeImage(Node):
                         "operation",
                         options=(
                             Option("solid"),
-                            Option("linear_gradient", rows=(by_id["color_b"], by_id["angle"])),
+                            Option("linear_gradient", rows=(Use("color_b"), by_id["angle"])),
                             Option(
                                 "radial_gradient",
                                 rows=(
-                                    by_id["color_b"],
+                                    Use("color_b"),
                                     by_id["center_x"],
                                     by_id["center_y"],
                                     by_id["radius"],
                                 ),
                             ),
-                            Option("checkerboard", rows=(by_id["color_b"], by_id["tile_size"])),
+                            Option("checkerboard", rows=(Use("color_b"), by_id["tile_size"])),
                         ),
+                        shared=(by_id["color_b"],),
                         default="solid",
                     ),
                     Output("image", IMAGE, preview=True),

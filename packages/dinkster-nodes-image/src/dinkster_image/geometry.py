@@ -26,6 +26,7 @@ from dinkster_api.v1 import (
     Section,
     StringWidget,
     TypeExpr,
+    Use,
 )
 from PIL import Image, ImageColor
 
@@ -37,6 +38,7 @@ from .support import (
     MAX_DIMENSION,
     Interpolation,
     materialized_inputs,
+    with_shared,
 )
 from .support import (
     RESAMPLING as _RESAMPLING,
@@ -728,67 +730,82 @@ class ImageResize(Node):
         by_id = {item.id: item for item in dynamic_inputs}
 
         def option(key: str, *ids: str) -> Option:
-            return Option(key, rows=tuple(by_id[input_id] for input_id in ids))
+            return Option(key, rows=tuple(Use(input_id) for input_id in ids))
 
-        target = Choice(
-            "target",
-            options=(
-                option("dimensions", "width", "height"),
-                option("width", "width"),
-                option("height", "height"),
-                option("longest", "size"),
-                option("shortest", "size"),
-                option("factor", "factor"),
-                option("total_pixels", "megapixels", "resolution_steps"),
-                option("match", "reference"),
-                option("multiple_cover", "multiple_of"),
+        target = with_shared(
+            Choice(
+                "target",
+                options=(
+                    option("dimensions", "width", "height"),
+                    option("width", "width"),
+                    option("height", "height"),
+                    option("longest", "size"),
+                    option("shortest", "size"),
+                    option("factor", "factor"),
+                    option("total_pixels", "megapixels", "resolution_steps"),
+                    option("match", "reference"),
+                    option("multiple_cover", "multiple_of"),
+                ),
+                default="dimensions",
+                label="Target",
             ),
-            default="dimensions",
-            label="Target",
+            by_id,
         )
-        mode_padding = Choice(
-            "mode_padding",
-            options=(
-                option("constant", "pad_value", "pad_color"),
-                option("edge_average"),
-                option("edge_pixel"),
-                option("blurred_background"),
+        mode_padding = with_shared(
+            Choice(
+                "mode_padding",
+                options=(
+                    option("constant", "pad_value", "pad_color"),
+                    option("edge_average"),
+                    option("edge_pixel"),
+                    option("blurred_background"),
+                ),
+                default="constant",
+                label="Padding style",
             ),
-            default="constant",
-            label="Padding style",
+            by_id,
         )
-        mode = Choice(
-            "mode",
-            options=(
-                option("stretch"),
-                option("fit"),
-                option("fill", "mode_anchor"),
-                Option("pad", rows=(by_id["mode_anchor"], mode_padding)),
+        mode = with_shared(
+            Choice(
+                "mode",
+                options=(
+                    option("stretch"),
+                    option("fit"),
+                    option("fill", "mode_anchor"),
+                    Option("pad", rows=(Use("mode_anchor"), mode_padding)),
+                ),
+                default="stretch",
+                label="Mode",
             ),
-            default="stretch",
-            label="Mode",
+            by_id,
         )
-        final_padding = Choice(
-            "final_padding",
-            options=(
-                option("constant", "final_pad_value", "final_pad_color"),
-                option("edge_average"),
-                option("edge_pixel"),
-                option("blurred_background"),
+        final_padding = with_shared(
+            Choice(
+                "final_padding",
+                options=(
+                    option("constant", "final_pad_value", "final_pad_color"),
+                    option("edge_average"),
+                    option("edge_pixel"),
+                    option("blurred_background"),
+                ),
+                default="constant",
+                label="Final pad",
             ),
-            default="constant",
-            label="Final pad",
+            by_id,
         )
-        divisibility = Choice(
-            "divisibility",
-            options=(
-                option("none"),
-                option("nearest", "multiple_of"),
-                option("crop", "multiple_of", "final_anchor"),
-                Option("pad", rows=(by_id["multiple_of"], by_id["final_anchor"], final_padding)),
+        divisibility = with_shared(
+            Choice(
+                "divisibility",
+                options=(
+                    option("none"),
+                    option("nearest", "multiple_of"),
+                    option("crop", "multiple_of", "final_anchor"),
+                    Option("pad", rows=(Use("multiple_of"), Use("final_anchor"), final_padding)),
+                ),
+                default="none",
+                label="Divisibility finalization",
             ),
-            default="none",
-            label="Divisibility finalization",
+            by_id,
         )
 
         return with_resize_migrations(
@@ -1157,7 +1174,7 @@ class ImageTransform(Node):
         by_id = {item.id: item for item in dynamic_inputs}
 
         def option(key: str, *ids: str) -> Option:
-            return Option(key, rows=tuple(by_id[input_id] for input_id in ids))
+            return Option(key, rows=tuple(Use(input_id) for input_id in ids))
 
         return with_v1_migration(
             NodeSchema(
@@ -1167,18 +1184,21 @@ class ImageTransform(Node):
                 category="image/geometry",
                 body=(
                     Input("image", IMAGE),
-                    Choice(
-                        "operation",
-                        options=(
-                            option("rotate_90", "steps"),
-                            option("rotate", "angle", "expand", "interpolation", "fill"),
-                            option("flip_horizontal"),
-                            option("flip_vertical"),
-                            option("translate", "x", "y", "units", "interpolation", "fill"),
-                            option("shear", "x", "y", "units", "interpolation", "fill"),
-                            option("pad", "left", "top", "right", "bottom", "feathering"),
+                    with_shared(
+                        Choice(
+                            "operation",
+                            options=(
+                                option("rotate_90", "steps"),
+                                option("rotate", "angle", "expand", "interpolation", "fill"),
+                                option("flip_horizontal"),
+                                option("flip_vertical"),
+                                option("translate", "x", "y", "units", "interpolation", "fill"),
+                                option("shear", "x", "y", "units", "interpolation", "fill"),
+                                option("pad", "left", "top", "right", "bottom", "feathering"),
+                            ),
+                            default="rotate_90",
                         ),
-                        default="rotate_90",
+                        by_id,
                     ),
                     Output("image", IMAGE, preview=True),
                     Output("mask", MASK, optional=True, preview=True),
@@ -1463,7 +1483,7 @@ class ImageCrop(Node):
         by_id = {item.id: item for item in dynamic_inputs}
 
         def option(key: str, *ids: str) -> Option:
-            return Option(key, rows=tuple(by_id[input_id] for input_id in ids))
+            return Option(key, rows=tuple(Use(input_id) for input_id in ids))
 
         return with_v1_migration(
             NodeSchema(
@@ -1480,37 +1500,39 @@ class ImageCrop(Node):
                         default=0,
                         widget=NumberWidget(min=0, max=MAX_DIMENSION, step=1),
                     ),
-                    Choice(
-                        "source",
-                        options=(
-                            option("coordinates", "placement", "x", "y", "width", "height"),
-                            Option(
-                                "region",
-                                rows=(
-                                    Input("region", REGION),
-                                    Input("mask", MASK, required=False, default=None),
-                                    by_id["mask_blur"],
+                    with_shared(
+                        Choice(
+                            "source",
+                            options=(
+                                option("coordinates", "placement", "x", "y", "width", "height"),
+                                Option(
+                                    "region",
+                                    rows=(Input("region", REGION), Use("mask"), Use("mask_blur")),
+                                ),
+                                Option(
+                                    "mask",
+                                    rows=(
+                                        Use("mask", required=True),
+                                        Use("mask_threshold"),
+                                        Use("mask_blur"),
+                                    ),
                                 ),
                             ),
-                            Option(
-                                "mask",
-                                rows=(
-                                    Input("mask", MASK),
-                                    by_id["mask_threshold"],
-                                    by_id["mask_blur"],
-                                ),
-                            ),
+                            default="coordinates",
                         ),
-                        default="coordinates",
+                        {**by_id, "mask": Input("mask", MASK, required=False, default=None)},
                     ),
-                    Choice(
-                        "outside",
-                        options=(
-                            option("clip"),
-                            option("pad", "fill"),
-                            option("comfy"),
+                    with_shared(
+                        Choice(
+                            "outside",
+                            options=(
+                                option("clip"),
+                                option("pad", "fill"),
+                                option("comfy"),
+                            ),
+                            default="clip",
                         ),
-                        default="clip",
+                        by_id,
                     ),
                     Section(
                         "advanced",
