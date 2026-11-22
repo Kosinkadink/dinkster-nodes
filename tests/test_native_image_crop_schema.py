@@ -48,7 +48,11 @@ def test_image_crop_v2_schema_uses_canonical_image_and_bounding_box_contracts() 
     assert crop_region["type"] == {"kind": "concrete", "types": [BOUNDING_BOX_TYPE]}
     assert crop_region["required"] is True
     assert crop_region["default"] == {"x": 0, "y": 0, "width": 512, "height": 512}
-    assert crop_region["widget"] == {"type": "BOUNDING_BOX", "component": "ImageCrop"}
+    assert crop_region["widget"] == {
+        "type": "BOUNDING_BOX",
+        "component": "ImageCrop",
+        "reads": {"image": "image"},
+    }
 
 
 def test_bounding_box_schema_uses_canonical_type_and_reference_defaults() -> None:

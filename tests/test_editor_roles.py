@@ -31,11 +31,16 @@ def test_editor_capabilities_are_declared_by_schema(node: type[Node], role: str)
 
 
 @pytest.mark.parametrize(
-    ("node", "features"),
-    [(VideoTrim, ["trim"]), (VideoCrop, ["crop"])],
+    ("node", "features", "writes"),
+    [
+        (VideoTrim, ["trim"], {"strict_duration": "strict_duration"}),
+        (VideoCrop, ["crop"], {}),
+    ],
 )
-def test_video_edit_features_are_declared_by_widget(node: type[Node], features: list[str]) -> None:
+def test_video_edit_features_are_declared_by_widget(
+    node: type[Node], features: list[str], writes: dict[str, str]
+) -> None:
     video_edit = next(item for item in node.schema().inputs if item.id == features[0])
     assert video_edit.widget == CustomWidgetDescriptor(
-        "VIDEO_EDIT", cast("dict[str, Any]", {"features": features})
+        "VIDEO_EDIT", cast("dict[str, Any]", {"features": features}), writes=writes
     )

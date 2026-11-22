@@ -138,7 +138,9 @@ class ImageCropV2(Node):
                     "crop_region",
                     _BOUNDING_BOX,
                     default={"x": 0, "y": 0, "width": 512, "height": 512},
-                    widget=CustomWidgetDescriptor("BOUNDING_BOX", {"component": "ImageCrop"}),
+                    widget=CustomWidgetDescriptor(
+                        "BOUNDING_BOX", {"component": "ImageCrop"}, reads={"image": "image"}
+                    ),
                 ),
                 Output("IMAGE", _IMAGE, preview=True),
             ),

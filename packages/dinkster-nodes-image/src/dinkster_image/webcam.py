@@ -44,7 +44,11 @@ class WebcamCapture(Node):
             ),
             body=(
                 Input(
-                    "image", TypeExpr.concrete(WEBCAM_TYPE), widget=CustomWidgetDescriptor("WEBCAM")
+                    "image",
+                    TypeExpr.concrete(WEBCAM_TYPE),
+                    widget=CustomWidgetDescriptor(
+                        "WEBCAM", reads={"width": "width", "height": "height"}
+                    ),
                 ),
                 *(
                     Input(

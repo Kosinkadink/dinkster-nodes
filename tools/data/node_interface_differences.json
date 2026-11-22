@@ -26125,6 +26125,34 @@
    "part": "rows",
    "path": "",
    "reason": "Becomes a State: no pin, no field and no required mark, kept with the workflow and passed to execute (node master plan section 13, State row; comfy-vibe-station#1101 comment 7058717316). Its editor is an Editor row written where the input stood, and the widget names the rows it writes and reads by today's fixed names, read from the app's editor (node master plan section 2, Editor; comfy-vibe-station#1101 comment 7075165594)."
+  },
+  {
+   "after": {
+    "image": "image"
+   },
+   "node_type": "dinkster.image.image_crop_v2",
+   "part": "rows",
+   "path": "/crop_region/widget/reads",
+   "reason": "The editor's widget on this input names the sibling rows it touches by the fixed names the app's editor uses today; it does not list its own input (node master plan section 13, editor fixed-names row; section 2, Editor)."
+  },
+  {
+   "after": {
+    "height": "height",
+    "width": "width"
+   },
+   "node_type": "dinkster.image.webcam_capture",
+   "part": "rows",
+   "path": "/image/widget/reads",
+   "reason": "The editor's widget on this input names the sibling rows it touches by the fixed names the app's editor uses today; it does not list its own input (node master plan section 13, editor fixed-names row; section 2, Editor)."
+  },
+  {
+   "after": {
+    "strict_duration": "strict_duration"
+   },
+   "node_type": "dinkster.video.video_trim",
+   "part": "rows",
+   "path": "/trim/widget/writes",
+   "reason": "The editor's widget on this input names the sibling rows it touches by the fixed names the app's editor uses today; it does not list its own input (node master plan section 13, editor fixed-names row; section 2, Editor)."
   }
  ],
  "notes": [

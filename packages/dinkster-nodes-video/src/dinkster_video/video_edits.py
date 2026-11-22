@@ -130,7 +130,11 @@ class VideoTrim(Node):
                     "trim",
                     TypeExpr.concrete(VIDEO_EDIT_TYPE),
                     default={"trim": {"start_time": 0.0, "duration": 0.0}},
-                    widget=CustomWidgetDescriptor("VIDEO_EDIT", {"features": ["trim"]}),
+                    widget=CustomWidgetDescriptor(
+                        "VIDEO_EDIT",
+                        {"features": ["trim"]},
+                        writes={"strict_duration": "strict_duration"},
+                    ),
                     tooltip="Trim window using start/end frames.",
                 ),
                 Section(
