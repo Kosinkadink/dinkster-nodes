@@ -244,9 +244,14 @@ def _native_scalar_type_expressions(value: Any) -> Any:
 
 
 def _body_wire(wire: dict[str, Any]) -> dict[str, Any]:
-    """A frozen version-1 flat interface's inputs and outputs as the body wire read today."""
+    """A frozen version-1 flat interface's inputs and outputs as the body wire read today.
+
+    The wire no longer carries an input's ``advanced`` mark; it is layout and is dropped."""
     body = [
-        {"kind": entry["role"], **{key: value for key, value in entry.items() if key != "role"}}
+        {
+            "kind": entry["role"],
+            **{key: value for key, value in entry.items() if key not in ("role", "advanced")},
+        }
         for entry in cast("list[dict[str, Any]]", wire["interface"])
         if entry["role"] in ("input", "output")
     ]

@@ -20,7 +20,7 @@ from typing import Any
 from tools.node_interface import plain, sort_cases, type_text
 
 INPUT_BACK = {"tooltip": "doc", "label": "display_name", "pin_first": "force_input"}
-_SKIP_INPUT = {"pin", "after_run", "on_edit", "advanced", "adjacent_to"}
+_SKIP_INPUT = {"pin", "after_run", "on_edit"}
 
 
 def _fields(obj: Any, skip: set[str]) -> dict[str, Any]:
