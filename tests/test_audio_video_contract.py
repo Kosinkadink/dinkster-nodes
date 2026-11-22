@@ -31,6 +31,7 @@ from dinkster_assets import (
 from dinkster_assets.audio import bind_audio_value, register_audio_value_type
 from dinkster_assets.value import bind_video_value
 from dinkster_protocol import Invocation
+from dinkster_schema import elaborate
 from dinkster_values import (
     TypeRegistry,
     decode_video,
@@ -694,7 +695,7 @@ def test_remote_audio_stages_once_and_decodes_exact_edited_window(tmp_path, monk
                                 "start": registry.wrap("FLOAT", 0.113),
                                 "duration": registry.wrap("FLOAT", 0.751),
                             },
-                            effective_schema=worker.schemas["audio-contract.trim"],
+                            effective_schema=elaborate(worker.schemas["audio-contract.trim"], ()),
                         )
                     )
                     assert trimmed.error is None and trimmed.outputs is not None
@@ -707,7 +708,7 @@ def test_remote_audio_stages_once_and_decodes_exact_edited_window(tmp_path, monk
                             node_id="decode",
                             node_type="audio-contract.decode",
                             inputs={"audio": trimmed.outputs["audio"]},
-                            effective_schema=worker.schemas["audio-contract.decode"],
+                            effective_schema=elaborate(worker.schemas["audio-contract.decode"], ()),
                         )
                     )
                     assert decoded.error is None and decoded.outputs is not None
