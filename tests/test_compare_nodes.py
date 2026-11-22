@@ -836,6 +836,26 @@ def test_painter_empty_file_uses_an_optional_asset_without_losing_other_contract
     reference = {"nodes": [row]}
     schema: dict[str, Any] = schema_to_wire(Painter.define_schema())
     schema["pack"] = "dinkster-image"
+    # The mask keeps the upload-enabled asset widget and the binding that stages an
+    # imported ComfyUI mask filename; the painter is an Editor row right after it.
+    ids = [item["id"] for item in schema["body"]]
+    mask = schema["body"][ids.index("mask")]
+    assert mask["widget"]["type"] == "ASSET" and mask["widget"]["allowUpload"] is True
+    assert mask["sourceFilename"] == {"kind": "media/image", "category": "input"}
+    assert schema["body"][ids.index("mask") + 1] == {
+        "kind": "editor",
+        "id": "painter",
+        "widget": {
+            "type": "PAINTER",
+            "writes": {"mask": "mask"},
+            "reads": {
+                "width": "width",
+                "height": "height",
+                "image": "image",
+                "bg_color": "bg_color",
+            },
+        },
+    }
     registry = {"nodes": {"dinkster.image.painter": schema}}
     assert compare_registry(reference, registry)["passed"]
 

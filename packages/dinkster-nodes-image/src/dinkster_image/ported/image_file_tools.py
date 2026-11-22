@@ -28,6 +28,8 @@ from dinkster_api.v1 import (
     AssetWriter,
     ColorWidget,
     ComboWidget,
+    CustomWidgetDescriptor,
+    Editor,
     Input,
     LocalAssetRef,
     MountSnapshotWriter,
@@ -554,6 +556,19 @@ class Painter(Node):
                     pin=False,
                     widget=AssetWidget(_IMAGE_MEDIA_TYPES, kind="media/image", allow_upload=True),
                     source_filename=SourceFilenameSpec("media/image", "input"),
+                ),
+                Editor(
+                    "painter",
+                    CustomWidgetDescriptor(
+                        "PAINTER",
+                        writes={"mask": "mask"},
+                        reads={
+                            "width": "width",
+                            "height": "height",
+                            "image": "image",
+                            "bg_color": "bg_color",
+                        },
+                    ),
                 ),
                 *(
                     Input(

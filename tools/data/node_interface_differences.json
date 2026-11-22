@@ -26775,6 +26775,99 @@
    "part": "node",
    "path": "/replacements/0/cases/0/inputs",
    "reason": "Removed: no widget writes it and execute does not read it, so with its editor on an Editor row it has no job left, and nothing is kept for backwards compatibility; the ComfyUI importer skips its saved value (comfy-vibe-station#1101 comment 7077499482)."
+  },
+  {
+   "after": [
+    {
+     "id": "image",
+     "required": false,
+     "row": "input",
+     "type": "IMAGE"
+    },
+    {
+     "id": "mask",
+     "required": false,
+     "row": "input",
+     "socketless": true,
+     "source_filename": {
+      "category": "input",
+      "class": "SourceFilenameSpec",
+      "kind": "media/image"
+     },
+     "type": "ASSET",
+     "widget": {
+      "accept": [
+       "image/png",
+       "image/jpeg",
+       "image/webp",
+       "image/gif",
+       "image/tiff"
+      ],
+      "allow_upload": true,
+      "class": "AssetWidget",
+      "kind": "media/image"
+     }
+    },
+    {
+     "id": "painter",
+     "row": "editor",
+     "widget": {
+      "class": "CustomWidgetDescriptor",
+      "params": {},
+      "reads": {
+       "bg_color": "bg_color",
+       "height": "height",
+       "image": "image",
+       "width": "width"
+      },
+      "widget_type": "PAINTER",
+      "writes": {
+       "mask": "mask"
+      }
+     }
+    },
+    {
+     "default": 512,
+     "hidden": true,
+     "id": "width",
+     "row": "input",
+     "socketless": true,
+     "type": "INT",
+     "widget": {
+      "class": "NumberWidget",
+      "max": 4096,
+      "min": 64,
+      "step": 64
+     }
+    },
+    {
+     "default": 512,
+     "hidden": true,
+     "id": "height",
+     "row": "input",
+     "socketless": true,
+     "type": "INT",
+     "widget": {
+      "class": "NumberWidget",
+      "max": 4096,
+      "min": 64,
+      "step": 64
+     }
+    },
+    {
+     "default": "#000000",
+     "id": "bg_color",
+     "row": "input",
+     "type": "COLOR",
+     "widget": {
+      "class": "ColorWidget"
+     }
+    }
+   ],
+   "node_type": "dinkster.image.painter",
+   "part": "rows",
+   "path": "",
+   "reason": "Painter's editor gets an Editor row right after mask: it writes mask and reads width, height, image and bg_color by the names the app's painter uses today. The mask row keeps its upload-enabled asset widget and its ComfyUI source filename binding (node master plan section 13, editor fixed-names row; comfy-vibe-station#1101 comment 7077845200)."
   }
  ],
  "notes": [
