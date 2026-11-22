@@ -6,6 +6,7 @@ import pytest
 import torch
 from dinkster_3d.mesh_decimate import DecimateMesh
 from dinkster_api.v1 import (
+    Record,
     TriangleMeshBatch,
     materialize_mesh,
 )
@@ -39,9 +40,9 @@ def source() -> Any:
 def test_disabled_and_satisfied_target_preserve_geometry(target: int) -> None:
     original = source()
     result = materialize_mesh(
-        DecimateMesh.execute(mesh=original, target_face_count=target, placement_mode="midpoint")[
-            "mesh"
-        ]
+        DecimateMesh.execute(
+            mesh=original, target_face_count=target, placement_mode=Record("midpoint", {})
+        )["mesh"]
     )
     torch.testing.assert_close(result.vertices, original.vertices, rtol=0, atol=0)
     torch.testing.assert_close(result.faces, original.faces, rtol=0, atol=0)
@@ -58,7 +59,9 @@ def test_reduction_preserves_colors_materials_and_input(mode: str) -> None:
     saved_faces = original.faces.clone()
     outputs = [
         materialize_mesh(
-            DecimateMesh.execute(mesh=original, target_face_count=60, placement_mode=mode)["mesh"]
+            DecimateMesh.execute(
+                mesh=original, target_face_count=60, placement_mode=Record(mode, {})
+            )["mesh"]
         )
         for _ in range(2)
     ]
@@ -93,7 +96,9 @@ def test_padded_counts_and_nonconstant_colors() -> None:
     original.vertex_counts = torch.tensor([64, 3])
     original.face_counts = torch.tensor([98, 1])
     result = materialize_mesh(
-        DecimateMesh.execute(mesh=original, target_face_count=60, placement_mode="midpoint")["mesh"]
+        DecimateMesh.execute(
+            mesh=original, target_face_count=60, placement_mode=Record("midpoint", {})
+        )["mesh"]
     )
     assert result.face_counts.tolist() == [60, 1]
     assert result.vertex_counts[1] == 3

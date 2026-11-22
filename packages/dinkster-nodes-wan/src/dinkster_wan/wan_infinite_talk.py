@@ -23,6 +23,7 @@ from dinkster_api.v1 import (
     NumberWidget,
     Option,
     Output,
+    Record,
     Section,
     TypeExpr,
     initialize_inference_process,
@@ -126,7 +127,7 @@ class WanInfiniteTalkToVideo(Node):
     def execute(
         cls,
         *,
-        mode: str | Mapping[str, Any],
+        mode: Record,
         model: Any,
         model_patch: Any,
         positive: Sequence[Sequence[Any]],
@@ -144,7 +145,6 @@ class WanInfiniteTalkToVideo(Node):
         audio_encoder_output_2: object = None,
         mask_1: object = None,
         mask_2: object = None,
-        **values: Any,
     ) -> Mapping[str, object]:
         initialize_inference_process()
         torch = importlib.import_module("torch")
@@ -155,17 +155,9 @@ class WanInfiniteTalkToVideo(Node):
         previous = materialize_image(previous_frames) if previous_frames is not None else None
         if previous is not None and previous.shape[0] < motion_frame_count:
             raise ValueError("Not enough previous frames provided.")
-        selected = (
-            mode
-            if isinstance(mode, Mapping)
-            else {
-                "mode": mode,
-                **{key.removeprefix("mode."): value for key, value in values.items()},
-            }
-        )
-        if selected["mode"] == "two_speakers":
-            audio_encoder_output_2 = selected["audio_encoder_output_2"]
-            mask_1, mask_2 = selected["mask_1"], selected["mask_2"]
+        if mode.key == "two_speakers":
+            audio_encoder_output_2 = mode["audio_encoder_output_2"]
+            mask_1, mask_2 = mode["mask_1"], mode["mask_2"]
         if audio_encoder_output_2 is not None and (mask_1 is None or mask_2 is None):
             raise ValueError("Masks must be provided if two audio encoder outputs are used.")
         ref_masks = None

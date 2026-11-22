@@ -24,6 +24,7 @@ from dinkster_api.v1 import (
     NumberWidget,
     Option,
     Output,
+    Record,
     TriangleMeshBatch,
     TypeExpr,
     materialize_mesh,
@@ -84,10 +85,15 @@ class RotateMesh(Node):
         return with_identity_replacement(schema, "RotateMesh")
 
     @classmethod
-    def execute(cls, *, mesh: Any, mode: str, **inputs: Any) -> Mapping[str, object]:
+    def execute(
+        cls,
+        *,
+        mesh: Any,
+        mode: Record,
+    ) -> Mapping[str, object]:
         mesh = materialize_mesh(mesh)
-        if mode == "euler_xyz":
-            ax, ay, az = (math.radians(inputs[f"mode.angle_{axis}"]) for axis in "xyz")
+        if mode.key == "euler_xyz":
+            ax, ay, az = (math.radians(mode[f"angle_{axis}"]) for axis in "xyz")
             if ax == 0.0 and ay == 0.0 and az == 0.0:
                 return cls.outputs(mesh=mesh)
             cx, sx = math.cos(ax), math.sin(ax)
@@ -98,8 +104,8 @@ class RotateMesh(Node):
                 [cy * sz, sx * sy * sz + cx * cz, cx * sy * sz - sx * cz],
                 [-sy, sx * cy, cx * cy],
             ]
-        elif mode == "quaternion":
-            qw, qx, qy, qz = (inputs[f"mode.q{axis}"] for axis in "wxyz")
+        elif mode.key == "quaternion":
+            qw, qx, qy, qz = (mode[f"q{axis}"] for axis in "wxyz")
             norm = math.sqrt(qw * qw + qx * qx + qy * qy + qz * qz)
             if norm < 1e-8:
                 raise ValueError("RotateMesh: quaternion has zero magnitude")
@@ -112,7 +118,7 @@ class RotateMesh(Node):
                 [2 * (qx * qz - qy * qw), 2 * (qy * qz + qx * qw), 1 - 2 * (qx * qx + qy * qy)],
             ]
         else:
-            raise ValueError(f"RotateMesh: unknown mode {mode!r}")
+            raise ValueError(f"RotateMesh: unknown mode {mode.key!r}")
         torch = importlib.import_module("torch")
 
         def rotate(value: Any) -> Any:

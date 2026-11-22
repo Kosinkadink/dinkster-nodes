@@ -18,6 +18,7 @@ from dinkster_api.v1 import (
     NumberWidget,
     Option,
     Output,
+    Record,
     Section,
     TypeExpr,
     initialize_inference_process,
@@ -151,14 +152,13 @@ class RemeshMesh(Node):
         *,
         mesh: object,
         resolution: int,
-        sign_mode: str,
+        sign_mode: Record,
         band: float,
         project_back: float,
         fix_poles: bool,
         smooth_iters: int,
         drop_small_components: float,
         precluster_max_verts: int,
-        **inputs: Any,
     ) -> Mapping[str, object]:
         initialize_inference_process()
         torch = importlib.import_module("torch")
@@ -195,19 +195,15 @@ class RemeshMesh(Node):
                 resolution=resolution,
                 band=band,
                 project_back=project_back,
-                qef=bool(inputs.get("sign_mode.qef", sign_mode == "sdf")),
-                sign_mode=sign_mode,
-                manifold=bool(inputs.get("sign_mode.manifold", False)),
-                fill=float(inputs.get("sign_mode.fill", 20.0)),
+                qef=bool(sign_mode.get("qef", sign_mode.key == "sdf")),
+                sign_mode=sign_mode.key,
+                manifold=bool(sign_mode.get("manifold", False)),
+                fill=float(sign_mode.get("fill", 20.0)),
                 fix_poles=fix_poles,
                 smooth_iters=smooth_iters,
                 drop_small_components=drop_small_components,
-                drop_inverted_components=bool(
-                    inputs.get("sign_mode.drop_inverted_components", False)
-                ),
-                drop_enclosed_components=bool(
-                    inputs.get("sign_mode.drop_enclosed_components", False)
-                ),
+                drop_inverted_components=bool(sign_mode.get("drop_inverted_components", False)),
+                drop_enclosed_components=bool(sign_mode.get("drop_enclosed_components", False)),
                 scale=(resolution + 3.0 * band) / resolution,
                 center=torch.zeros(3, dtype=vv.dtype, device=device),
                 colors=cc,

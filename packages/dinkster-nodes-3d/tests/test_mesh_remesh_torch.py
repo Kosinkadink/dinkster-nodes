@@ -6,6 +6,7 @@ import pytest
 import torch
 from dinkster_3d.mesh_remesh import RemeshMesh
 from dinkster_api.v1 import (
+    Record,
     TriangleMeshBatch,
     materialize_mesh,
 )
@@ -63,8 +64,8 @@ def options() -> dict[str, Any]:
     [
         ("udf", {}),
         ("sdf", {}),
-        ("sdf", {"sign_mode.manifold": True}),
-        ("solid", {"sign_mode.fill": 0.0}),
+        ("sdf", {"manifold": True}),
+        ("solid", {"fill": 0.0}),
     ],
 )
 def test_fields_retain_colors_and_leave_input_unchanged(
@@ -73,7 +74,7 @@ def test_fields_retain_colors_and_leave_input_unchanged(
     mesh = source()
     saved = mesh.vertices.clone()
     result = materialize_mesh(
-        RemeshMesh.execute(mesh=mesh, sign_mode=mode, **options(), **controls)["mesh"]
+        RemeshMesh.execute(mesh=mesh, sign_mode=Record(mode, controls), **options())["mesh"]
     )
     assert result.vertices.dtype == torch.float32 and result.faces.dtype == torch.int32
     assert result.vertices.device.type == "cpu"
@@ -91,7 +92,9 @@ def test_fields_retain_colors_and_leave_input_unchanged(
 def test_projected_vertices_retain_interpolated_colors() -> None:
     args = options()
     args["project_back"] = 1.0
-    result = materialize_mesh(RemeshMesh.execute(mesh=source(), sign_mode="udf", **args)["mesh"])
+    result = materialize_mesh(
+        RemeshMesh.execute(mesh=source(), sign_mode=Record("udf", {}), **args)["mesh"]
+    )
     torch.testing.assert_close(result.vertex_colors, result.vertices + 0.5, rtol=0, atol=1e-6)
     distance_to_planes = (result.vertices.abs() - torch.tensor([0.31, 0.22, 0.38])).abs()
     assert float(distance_to_planes.amin(-1).amax()) < 1e-6
@@ -99,7 +102,9 @@ def test_projected_vertices_retain_interpolated_colors() -> None:
 
 def test_preclustering_averages_colors_and_removes_duplicate_and_degenerate_faces() -> None:
     mesh = source()
-    expected = materialize_mesh(RemeshMesh.execute(mesh=mesh, sign_mode="sdf", **options())["mesh"])
+    expected = materialize_mesh(
+        RemeshMesh.execute(mesh=mesh, sign_mode=Record("sdf", {}), **options())["mesh"]
+    )
     duplicated = source()
     duplicated.vertices = mesh.vertices.repeat_interleave(2, dim=1)
     duplicated.vertex_colors = mesh.vertex_colors.repeat_interleave(2, dim=1)
@@ -112,7 +117,9 @@ def test_preclustering_averages_colors_and_removes_duplicate_and_degenerate_face
     duplicated.uvs = duplicated.normals = None
     args = options()
     args["precluster_max_verts"] = 4
-    result = materialize_mesh(RemeshMesh.execute(mesh=duplicated, sign_mode="sdf", **args)["mesh"])
+    result = materialize_mesh(
+        RemeshMesh.execute(mesh=duplicated, sign_mode=Record("sdf", {}), **args)["mesh"]
+    )
     torch.testing.assert_close(result.vertices, expected.vertices, rtol=0, atol=0)
     torch.testing.assert_close(result.faces, expected.faces, rtol=0, atol=0)
     torch.testing.assert_close(result.vertex_colors, expected.vertex_colors, rtol=0, atol=1e-6)
@@ -121,14 +128,18 @@ def test_preclustering_averages_colors_and_removes_duplicate_and_degenerate_face
 def test_solid_fill_changes_openings_and_ragged_batches() -> None:
     mesh = source(open_top=True)
     filled = materialize_mesh(
-        RemeshMesh.execute(mesh=mesh, sign_mode="solid", **options(), **{"sign_mode.fill": 0.0})[
-            "mesh"
-        ]
+        RemeshMesh.execute(
+            mesh=mesh,
+            sign_mode=Record("solid", {"fill": 0.0}),
+            **options(),
+        )["mesh"]
     )
     open_mesh = materialize_mesh(
-        RemeshMesh.execute(mesh=mesh, sign_mode="solid", **options(), **{"sign_mode.fill": 1000.0})[
-            "mesh"
-        ]
+        RemeshMesh.execute(
+            mesh=mesh,
+            sign_mode=Record("solid", {"fill": 1000.0}),
+            **options(),
+        )["mesh"]
     )
     assert filled.face_counts.tolist() != open_mesh.face_counts.tolist()
     full = source()
@@ -139,9 +150,11 @@ def test_solid_fill_changes_openings_and_ragged_batches() -> None:
     full.face_counts = torch.tensor([12, 10])
     full.texture = full.uvs = full.normals = None
     batched = materialize_mesh(
-        RemeshMesh.execute(mesh=full, sign_mode="solid", **options(), **{"sign_mode.fill": 0.0})[
-            "mesh"
-        ]
+        RemeshMesh.execute(
+            mesh=full,
+            sign_mode=Record("solid", {"fill": 0.0}),
+            **options(),
+        )["mesh"]
     )
     nv, nf = int(batched.vertex_counts[1]), int(batched.face_counts[1])
     torch.testing.assert_close(batched.vertices[1, :nv], filled.vertices[0], rtol=0, atol=0)

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import importlib
-from collections.abc import Mapping
 from typing import Any
 
 from dinkster_api.v1 import (
@@ -21,6 +20,7 @@ from dinkster_api.v1 import (
     NumberWidget,
     Option,
     Output,
+    Record,
     TypeExpr,
     initialize_inference_process,
     materialize_image,
@@ -145,22 +145,16 @@ class MediaPipeFaceMeshVisualize(Node):
         cls,
         *,
         face_landmarks: Any,
-        connections: str | Mapping[str, Any],
+        connections: Record,
         color: str,
         thickness: int,
         point_size: int,
         image: Any = None,
-        **inputs: Any,
     ) -> Any:
         torch, np, image_module, image_draw, image_color, management = _runtime()
-        if isinstance(connections, str):
-            connections = {
-                "connections": connections,
-                **{key.removeprefix("connections."): value for key, value in inputs.items()},
-            }
         packet = materialize_vision_packet(face_landmarks)
         sets = packet["connection_sets"]
-        selected = connections["connections"]
+        selected = connections.key
         rings = None
         edges: frozenset[tuple[int, int]]
         if selected == "fill":
@@ -288,20 +282,13 @@ class MediaPipeFaceMask(Node):
         return with_identity_replacement(schema, "MediaPipeFaceMask")
 
     @classmethod
-    def execute(
-        cls, *, face_landmarks: Any, regions: str | Mapping[str, Any], **inputs: Any
-    ) -> Any:
+    def execute(cls, *, face_landmarks: Any, regions: Record) -> Any:
         torch, np, image_module, image_draw, _, management = _runtime()
-        if isinstance(regions, str):
-            regions = {
-                "regions": regions,
-                **{key.removeprefix("regions."): value for key, value in inputs.items()},
-            }
         packet = materialize_vision_packet(face_landmarks)
         sets = packet["connection_sets"]
         picked = (
             [region for region in _MASK_REGIONS if regions.get(region, False)]
-            if regions["regions"] == "custom"
+            if regions.key == "custom"
             else _MASK_REGIONS
         )
         rings = [ring for region in picked for ring in _ordered_rings(sets[region])]

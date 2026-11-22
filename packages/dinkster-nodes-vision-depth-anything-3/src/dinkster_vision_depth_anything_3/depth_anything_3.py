@@ -28,6 +28,7 @@ from dinkster_api.v1 import (
     NumberWidget,
     Option,
     Output,
+    Record,
     TriangleMeshBatch,
     TypeExpr,
     Use,
@@ -158,16 +159,15 @@ class DA3Inference(Node):
         image: Any,
         resolution: int = 504,
         resize_method: str = "upper_bound_resize",
-        mode: str = "mono",
-        **inputs: Any,
+        mode: Record,
     ) -> Mapping[str, object]:
         image = materialize_image(image)
         assert image.ndim == 4 and image.shape[-1] == 3, (
             f"expected (B,H,W,3) IMAGE; got {tuple(image.shape)}"
         )
         diffusion = da3_model.model.diffusion_model
-        if mode != "mono":
-            pose_method = inputs["mode.pose_method"]
+        if mode.key != "mono":
+            pose_method = mode["pose_method"]
             has_camera = diffusion.cam_dec is not None
             has_dualdpt = diffusion.head_type == "dualdpt"
             if not has_camera and not has_dualdpt:
@@ -196,21 +196,21 @@ class DA3Inference(Node):
         device = mm.get_torch_device()
         dtype = diffusion.dtype if diffusion.dtype is not None else torch.float32
         batch, height, width, _ = image.shape
-        geometry: dict[str, Any] = {"image": image.cpu(), "mode": mode}
+        geometry: dict[str, Any] = {"image": image.cpu(), "mode": mode.key}
         collected: dict[str, list[Any]] = {key: [] for key in ("depth", "confidence", "sky")}
-        for start in range(batch if mode == "mono" else 1):
-            pixels = image[start : start + 1] if mode == "mono" else image
+        for start in range(batch if mode.key == "mono" else 1):
+            pixels = image[start : start + 1] if mode.key == "mono" else image
             x = preprocess.preprocess_image(
                 pixels.to(device), process_res=resolution, method=resize_method
             ).to(dtype=dtype)
             with torch.no_grad():
                 output = (
                     diffusion(x)
-                    if mode == "mono"
+                    if mode.key == "mono"
                     else diffusion(
                         x.unsqueeze(0),
-                        use_ray_pose=inputs["mode.pose_method"] == "ray_pose",
-                        ref_view_strategy=inputs["mode.ref_view_strategy"],
+                        use_ray_pose=mode["pose_method"] == "ray_pose",
+                        ref_view_strategy=mode["ref_view_strategy"],
                     )
                 )
             for source, target in (
@@ -230,7 +230,7 @@ class DA3Inference(Node):
                         .cpu()
                     )
                     collected[target].append(values)
-            if mode != "mono":
+            if mode.key != "mono":
                 if "extrinsics" in output and "intrinsics" in output:
                     geometry["extrinsics"] = output["extrinsics"].float().cpu().contiguous()
                     geometry["intrinsics"] = output["intrinsics"].float().cpu().contiguous()
@@ -290,15 +290,18 @@ class DA3Render(Node):
 
     @classmethod
     def execute(
-        cls, *, da3_geometry: Any, output: str = "depth", **inputs: Any
+        cls,
+        *,
+        da3_geometry: Any,
+        output: Record,
     ) -> Mapping[str, object]:
         geometry = materialize_vision_packet(da3_geometry)
         initialize_inference_process()
         torch = importlib.import_module("torch")
         preprocess = importlib.import_module("dinkster_inference.ldm.depth_anything_3.preprocess")
-        if output in ("depth", "depth_colored"):
+        if output.key in ("depth", "depth_colored"):
             depth, sky = geometry["depth"], geometry.get("sky")
-            if inputs["output.apply_sky_clip"]:
+            if output["apply_sky_clip"]:
                 if sky is None:
                     raise ValueError(
                         "apply_sky_clip=True requires a sky tensor in the da3_geometry input, "
@@ -308,7 +311,7 @@ class DA3Render(Node):
                 depth = torch.stack(
                     [preprocess.apply_sky_aware_clip(depth[i], sky[i]) for i in range(len(depth))]
                 )
-            normalization = inputs["output.normalization"]
+            normalization = output["normalization"]
             if normalization == "v2_style":
                 result = torch.stack(
                     [
@@ -324,20 +327,20 @@ class DA3Render(Node):
                 result = depth
             if normalization != "raw":
                 result = result.clamp(0.0, 1.0)
-            colored = output == "depth_colored"
-        elif output == "sky_mask":
+            colored = output.key == "depth_colored"
+        elif output.key == "sky_mask":
             if "sky" not in geometry:
                 raise ValueError("geometry has no sky output; run with Mono/Metric models.")
-            result, colored = geometry["sky"], inputs["output.colored"]
-        elif output == "confidence":
+            result, colored = geometry["sky"], output["colored"]
+        elif output.key == "confidence":
             if "confidence" not in geometry:
                 raise ValueError(
                     "da3_geometry has no confidence output; run with Small/Base models."
                 )
             result = _normalize_confidence(geometry["confidence"], torch)
-            colored = inputs["output.colored"]
+            colored = output["colored"]
         else:
-            raise ValueError(f"Unknown output mode: {output}")
+            raise ValueError(f"Unknown output mode: {output.key}")
         if colored:
             result = importlib.import_module("dinkster_inference.ldm.colormap").turbo(result)
         else:

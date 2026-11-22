@@ -10,13 +10,15 @@ from typing import BinaryIO, cast
 
 import numpy as np
 import pytest
-from dinkster_api.v1 import Curve
+from dinkster_api.v1 import Curve, Item, Members, Record
 from dinkster_image import glsl as glsl_module
 from dinkster_image.glsl import (
     DEFAULT_FRAGMENT_SHADER,
     GLSL_NODES,
     GlslShader,
 )
+from dinkster_image.ported import glsl as native_glsl_module
+from dinkster_image.ported.glsl import NativeGlslShader
 from dinkster_schema import use_reporter
 from numpy.lib.format import write_array_header_1_0
 
@@ -120,6 +122,37 @@ def test_execute_projects_exact_uniforms_previews_and_child_request(
         "bools": {"u_bool0": True},
         "curves": {"u_curve0": pytest.approx(np.linspace(0, 1, 256).tolist())},
     }
+
+
+@pytest.mark.parametrize(
+    ("size_mode", "width", "height"),
+    ((Record("from_input", {}), 512, 512), (Record("custom", {"width": 5, "height": 4}), 5, 4)),
+)
+def test_native_execute_takes_the_size_choice_and_members_in_position_order(
+    monkeypatch: pytest.MonkeyPatch, size_mode: Record, width: int, height: int
+) -> None:
+    captured: dict[str, object] = {}
+
+    def execute_glsl(**kwargs: object) -> dict[str, np.ndarray]:
+        captured.update(kwargs)
+        return {f"image{index}": output for index, output in enumerate(_outputs(1, 4, 5))}
+
+    monkeypatch.setattr(native_glsl_module, "_execute_glsl", execute_glsl)
+    first, second = _image(), _image(height=3)
+    result = NativeGlslShader.execute(
+        size_mode=size_mode,
+        images=Members((Item("image1", first), Item("image0", second))),
+        floats=Members((Item("u_float3", None), Item("u_float0", 2.5))),
+    )
+
+    assert captured["size_mode"] == size_mode.key
+    assert (captured["width"], captured["height"]) == (width, height)
+    images = cast(dict[str, object], captured["images"])
+    assert list(images) == ["u_image0", "u_image1"]
+    assert images["u_image0"] is first and images["u_image1"] is second
+    assert captured["floats"] == {"u_float0": 0.0, "u_float1": 2.5}
+    assert captured["ints"] == {} and captured["curves"] == {}
+    assert list(result) == ["IMAGE0", "IMAGE1", "IMAGE2", "IMAGE3"]
 
 
 @pytest.mark.parametrize(

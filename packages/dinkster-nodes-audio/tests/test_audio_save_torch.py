@@ -14,7 +14,11 @@ import dinkster_audio.audio_io as audio_io
 import numpy as np
 import pytest
 import torch
-from dinkster_api.v1 import decode_audio, materialize_audio
+from dinkster_api.v1 import (
+    Record,
+    decode_audio,
+    materialize_audio,
+)
 from dinkster_assets import MountDef, MountTable
 from dinkster_audio.audio_save import (
     SaveAudio,
@@ -66,14 +70,16 @@ def _snapshot(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
         (SaveAudioMP3, {"quality": "320k"}, ".mp3", 22_050),
         (SaveAudioOpus, {}, ".opus", 48_000),
         (SaveAudioOpus, {"quality": "96k"}, ".opus", 48_000),
-        (SaveAudioAdvanced, {"format": "opus", "quality": "192k"}, ".opus", 48_000),
+        (SaveAudioAdvanced, {"format": Record("flac", {})}, ".flac", 22_050),
+        (SaveAudioAdvanced, {"format": Record("mp3", {"quality": "V0"})}, ".mp3", 22_050),
+        (SaveAudioAdvanced, {"format": Record("opus", {"quality": "192k"})}, ".opus", 48_000),
     ),
 )
 def test_save_audio_writes_each_asymmetric_stereo_batch_and_passes_through_audio(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
     node: type[SaveAudio],
-    kwargs: dict[str, str],
+    kwargs: dict[str, object],
     suffix: str,
     rate: int,
 ) -> None:
@@ -104,12 +110,15 @@ def test_save_audio_writes_each_asymmetric_stereo_batch_and_passes_through_audio
     (
         (SaveAudioMP3, {"quality": "bad"}),
         (SaveAudioOpus, {"quality": "bad"}),
-        (SaveAudioAdvanced, {"format": "wav"}),
-        (SaveAudioAdvanced, {"format": "mp3", "quality": "bad"}),
+        (SaveAudioAdvanced, {"format": Record("wav", {})}),
+        (SaveAudioAdvanced, {"format": Record("mp3", {"quality": "bad"})}),
     ),
 )
 def test_save_audio_rejects_untrusted_format_and_quality(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, node: type[SaveAudio], kwargs: dict[str, str]
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    node: type[SaveAudio],
+    kwargs: dict[str, object],
 ) -> None:
     root = _snapshot(tmp_path, monkeypatch)
     with pytest.raises(ValueError):

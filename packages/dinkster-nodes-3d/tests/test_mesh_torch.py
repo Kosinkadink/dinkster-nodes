@@ -15,6 +15,7 @@ from dinkster_api.v1 import (
     VOXEL_TYPE,
     Item,
     Members,
+    Record,
     TriangleMeshBatch,
     TypeRegistry,
     materialize_mesh,
@@ -48,8 +49,7 @@ def test_rotation_preserves_materials_normals_tangent_handedness_and_source(port
     value = spec.decode(spec.encode(source)) if portable else source
     result = RotateMesh.execute(
         mesh=value,
-        mode="euler_xyz",
-        **{"mode.angle_x": 0.0, "mode.angle_y": 0.0, "mode.angle_z": 90.0},
+        mode=Record("euler_xyz", {"angle_x": 0.0, "angle_y": 0.0, "angle_z": 90.0}),
     )["mesh"]
     assert isinstance(result, TriangleMeshBatch)
     expected = torch.tensor([[[-2.0, 1.0, 3.0], [-5.0, -2.0, 7.0]]], dtype=torch.float64)
@@ -67,8 +67,7 @@ def test_rotation_preserves_materials_normals_tangent_handedness_and_source(port
     torch.testing.assert_close(result.texture, source.texture, rtol=0, atol=0)
     quaternion = RotateMesh.execute(
         mesh=value,
-        mode="quaternion",
-        **{"mode.qw": 3.0, "mode.qx": 0.0, "mode.qy": 0.0, "mode.qz": 3.0},
+        mode=Record("quaternion", {"qw": 3.0, "qx": 0.0, "qy": 0.0, "qz": 3.0}),
     )["mesh"]
     assert isinstance(quaternion, TriangleMeshBatch)
     torch.testing.assert_close(quaternion.vertices, expected, rtol=0, atol=4e-15)
@@ -76,16 +75,14 @@ def test_rotation_preserves_materials_normals_tangent_handedness_and_source(port
     assert (
         RotateMesh.execute(
             mesh=source,
-            mode="euler_xyz",
-            **dict.fromkeys(("mode.angle_x", "mode.angle_y", "mode.angle_z"), 0.0),
+            mode=Record("euler_xyz", dict.fromkeys(("angle_x", "angle_y", "angle_z"), 0.0)),
         )["mesh"]
         is source
     )
     with pytest.raises(ValueError, match="zero magnitude"):
         RotateMesh.execute(
             mesh=source,
-            mode="quaternion",
-            **dict.fromkeys(("mode.qw", "mode.qx", "mode.qy", "mode.qz"), 0.0),
+            mode=Record("quaternion", dict.fromkeys(("qw", "qx", "qy", "qz"), 0.0)),
         )
 
 

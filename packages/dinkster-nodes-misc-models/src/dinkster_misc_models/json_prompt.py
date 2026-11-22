@@ -16,6 +16,7 @@ from dinkster_api.v1 import (
     NodeSchema,
     Option,
     Output,
+    Record,
     StringWidget,
     TypeExpr,
     with_identity_replacement,
@@ -83,14 +84,13 @@ class BuildJsonPromptIdeogram(Node):
         cls,
         *,
         element: Any,
-        style: str,
+        style: Record,
         high_level_description: str = "",
         background: str = "",
         aesthetics: str = "",
         lighting: str = "",
         medium: str = "",
         color_palette: Any = None,
-        **inputs: Any,
     ) -> Mapping[str, object]:
         colors: Any = color_palette or []
         if isinstance(colors, dict):
@@ -103,14 +103,14 @@ class BuildJsonPromptIdeogram(Node):
         caption: dict[str, Any] = {}
         if high_level_description.strip():
             caption["high_level_description"] = high_level_description
-        if style != "none":
+        if style.key != "none":
             description: dict[str, Any] = {"aesthetics": aesthetics, "lighting": lighting}
-            if style == "photo":
-                description["photo"] = inputs.get("style.photo", "")
+            if style.key == "photo":
+                description["photo"] = style.get("photo", "")
                 description["medium"] = medium
             else:
                 description["medium"] = medium
-                description["art_style"] = inputs.get("style.art_style", "")
+                description["art_style"] = style.get("art_style", "")
             if palette:
                 description["color_palette"] = palette
             caption["style_description"] = description

@@ -25,6 +25,7 @@ from dinkster_api.v1 import (
     NodeSchema,
     Option,
     Output,
+    Record,
     Row,
     StringWidget,
     TypeExpr,
@@ -371,17 +372,18 @@ class SaveAudioAdvanced(Node):
         *,
         audio: object,
         filename_prefix: str,
-        format: str,
+        format: Record,
         mount: str | None = None,
-        quality: str | None = None,
     ) -> Mapping[str, object]:
-        if format not in _FORMATS:
-            raise ValueError(f"Unsupported audio format: {format!r}")
-        if format == "mp3" and quality not in _MP3_QUALITIES:
+        kind = format.key
+        quality = cast(str | None, format.get("quality"))
+        if kind not in _FORMATS:
+            raise ValueError(f"Unsupported audio format: {kind!r}")
+        if kind == "mp3" and quality not in _MP3_QUALITIES:
             raise ValueError(f"Unsupported MP3 quality: {quality!r}")
-        if format == "opus" and quality not in _OPUS_QUALITIES:
+        if kind == "opus" and quality not in _OPUS_QUALITIES:
             raise ValueError(f"Unsupported Opus quality: {quality!r}")
-        _save_audio(audio, filename_prefix, mount, format, quality)
+        _save_audio(audio, filename_prefix, mount, kind, quality)
         return cls.outputs(audio=audio)
 
 

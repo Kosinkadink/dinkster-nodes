@@ -18,6 +18,7 @@ from dinkster_api.v1 import (
     NumberWidget,
     Option,
     Output,
+    Record,
     TypeExpr,
     initialize_inference_process,
     report_progress,
@@ -103,24 +104,23 @@ class DecimateMesh(Node):
         *,
         mesh: object,
         target_face_count: int,
-        placement_mode: str,
-        **inputs: Any,
+        placement_mode: Record,
     ) -> Mapping[str, object]:
         initialize_inference_process()
         management = importlib.import_module("dinkster_inference.model_management")
         from .mesh_qem import QEMConfig, qem_simplify
 
-        if placement_mode == "qem":
+        if placement_mode.key == "qem":
             config = QEMConfig(
                 placement_mode="qem",
-                line_quadric_weight=float(inputs.get("placement_mode.line_quadric_weight", 0.0)),
+                line_quadric_weight=float(placement_mode.get("line_quadric_weight", 0.0)),
                 feature_edge_quadric_weight=float(
-                    inputs.get("placement_mode.feature_edge_quadric_weight", 0.0)
+                    placement_mode.get("feature_edge_quadric_weight", 0.0)
                 ),
                 feature_edge_min_dihedral_deg=float(
-                    inputs.get("placement_mode.feature_edge_min_dihedral_deg", 30.0)
+                    placement_mode.get("feature_edge_min_dihedral_deg", 30.0)
                 ),
-                clamp_v_to_edge=bool(inputs.get("placement_mode.clamp_v_to_edge", True)),
+                clamp_v_to_edge=bool(placement_mode.get("clamp_v_to_edge", True)),
             )
         else:
             config = QEMConfig()

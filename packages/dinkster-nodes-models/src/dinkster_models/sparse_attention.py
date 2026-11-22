@@ -25,6 +25,7 @@ from dinkster_api.v1 import (
     NumberWidget,
     Option,
     Output,
+    Record,
     Section,
     StringWidget,
     TypeExpr,
@@ -688,7 +689,7 @@ class BlockSparseAttention(Node):
         cls,
         *,
         model: Any,
-        selection: str | Mapping[str, Any],
+        selection: Record,
         start_percent: float = 0.2,
         end_percent: float = 1.0,
         dense_blocks: str = "",
@@ -696,18 +697,9 @@ class BlockSparseAttention(Node):
         extra_tokens: int = 0,
         sink_conditioning: str = "exact_kv_and_rows",
         verbose: bool = False,
-        **values: Any,
     ) -> Mapping[str, object]:
-        if isinstance(selection, Mapping):
-            selected = selection
-        else:
-            selected = {
-                "selection": selection,
-                **{
-                    input_id.removeprefix("selection."): value for input_id, value in values.items()
-                },
-            }
-        mode = selected["selection"]
+        selected = selection
+        mode = selection.key
         return cls.outputs(
             MODEL=apply_block_sparse_attention(
                 model,

@@ -20,6 +20,7 @@ from dinkster_api.v1 import (
     NumberWidget,
     Option,
     Output,
+    Record,
     TypeExpr,
     initialize_inference_process,
     materialize_image,
@@ -223,10 +224,15 @@ class ImageSDRToHDR(Node):
         return with_identity_replacement(schema, "ImageSDRToHDR")
 
     @classmethod
-    def execute(cls, *, image: Any, algorithm: str, **inputs: Any) -> Mapping[str, object]:
-        if algorithm != "lottes":
-            raise ValueError(f"Unsupported HDR algorithm: {algorithm}")
-        target_luminance = inputs["algorithm.target_luminance"] or None
+    def execute(
+        cls,
+        *,
+        image: Any,
+        algorithm: Record,
+    ) -> Mapping[str, object]:
+        if algorithm.key != "lottes":
+            raise ValueError(f"Unsupported HDR algorithm: {algorithm.key}")
+        target_luminance = algorithm["target_luminance"] or None
         initialize_inference_process()
         torch = importlib.import_module("torch")
         management = importlib.import_module("dinkster_inference.model_management")

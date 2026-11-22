@@ -15,6 +15,7 @@ from dinkster_api.v1 import (
     NumberWidget,
     Option,
     Output,
+    Record,
     TypeExpr,
     initialize_inference_process,
     materialize_latent,
@@ -49,18 +50,6 @@ def _integer(name: str, default: int, minimum: int, maximum: int, step: int | No
         default=default,
         widget=NumberWidget(min=minimum, max=maximum, step=step),
     )
-
-
-def _combo_values(
-    combo_id: str, selected: str | Mapping[str, Any], values: Mapping[str, Any]
-) -> Mapping[str, Any]:
-    if isinstance(selected, Mapping):
-        return selected
-    prefix = f"{combo_id}."
-    return {
-        combo_id: selected,
-        **{key.removeprefix(prefix): value for key, value in values.items()},
-    }
 
 
 def _samples(latent: object, node_name: str) -> tuple[Mapping[str, object], Any]:
@@ -115,8 +104,7 @@ class SeedVR2TemporalChunk(Node):
         *,
         latent: object,
         temporal_overlap: int,
-        chunking_mode: str | Mapping[str, Any],
-        **values: Any,
+        chunking_mode: Record,
     ) -> Mapping[str, object]:
         initialize_inference_process()
         source, samples = _samples(latent, "SeedVR2TemporalChunk")
@@ -134,8 +122,7 @@ class SeedVR2TemporalChunk(Node):
             raise ValueError(
                 f"SeedVR2TemporalChunk: temporal_overlap must be >= 0; got {temporal_overlap}."
             )
-        mode_values = _combo_values("chunking_mode", chunking_mode, values)
-        mode = mode_values["chunking_mode"]
+        mode = chunking_mode.key
         if mode not in ("auto", "manual"):
             raise ValueError(f"SeedVR2TemporalChunk: unknown chunking_mode {mode!r}.")
         latent_frames = samples.shape[2]
@@ -154,7 +141,7 @@ class SeedVR2TemporalChunk(Node):
             maximum_latent = max(1, int(budget_gib / (_CHUNK_GIB_PER_MPX_FRAME * mpx_per_frame)))
             frames_per_chunk = min(4 * (maximum_latent - 1) + 1, pixel_frames)
         else:
-            frames_per_chunk = mode_values["frames_per_chunk"]
+            frames_per_chunk = cast(int, chunking_mode["frames_per_chunk"])
             if frames_per_chunk < 1 or (frames_per_chunk - 1) % 4:
                 raise ValueError(
                     "SeedVR2TemporalChunk: frames_per_chunk must be a 4n+1 pixel-frame count; "

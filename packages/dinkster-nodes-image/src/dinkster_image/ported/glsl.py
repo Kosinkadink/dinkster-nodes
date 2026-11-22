@@ -24,6 +24,8 @@ from dinkster_api.v1 import (
     CurveWidget,
     Group,
     Input,
+    Item,
+    Members,
     Named,
     Node,
     NodeSchema,
@@ -31,6 +33,7 @@ from dinkster_api.v1 import (
     NumberWidget,
     Option,
     Output,
+    Record,
     StringWidget,
     TypeExpr,
     render_image_png,
@@ -574,41 +577,33 @@ class NativeGlslShader(Node):
     def execute(
         cls,
         *,
+        size_mode: Record,
+        images: Members[Item],
         fragment_shader: str = DEFAULT_FRAGMENT_SHADER.replace("precision highp sampler2D;\n", ""),
-        size_mode: str = "from_input",
-        width: int = 512,
-        height: int = 512,
-        images: Mapping[str, object],
-        floats: Mapping[str, object] | None = None,
-        ints: Mapping[str, object] | None = None,
-        bools: Mapping[str, object] | None = None,
-        curves: Mapping[str, object] | None = None,
+        floats: Members[Item] = Members(),
+        ints: Members[Item] = Members(),
+        bools: Members[Item] = Members(),
+        curves: Members[Item] = Members(),
     ) -> Mapping[str, object]:
         normalized: dict[str, dict[str, object]] = {}
-        for family, values, prefix, maximum, default in (
-            ("images", images, "image", MAX_GLSL_IMAGES, None),
-            ("floats", floats or {}, "u_float", MAX_GLSL_FLOATS, 0.0),
-            ("ints", ints or {}, "u_int", MAX_GLSL_INTS, 0),
-            ("bools", bools or {}, "u_bool", MAX_GLSL_BOOLS, False),
-            ("curves", curves or {}, "u_curve", MAX_GLSL_CURVES, None),
+        for family, members, prefix, default in (
+            ("images", images, "u_image", None),
+            ("floats", floats, "u_float", 0.0),
+            ("ints", ints, "u_int", 0),
+            ("bools", bools, "u_bool", False),
+            ("curves", curves, "u_curve", None),
         ):
-            _ordered_family(
-                values, tuple(f"{prefix}{index}" for index in range(maximum)), subject=family
-            )
-            members = [
-                default if value is None else value
-                for value in values.values()
-                if value is not None or default is not None
+            values = [
+                default if member.value is None else member.value
+                for member in members
+                if member.value is not None or default is not None
             ]
-            target_prefix = "u_image" if family == "images" else prefix
-            normalized[family] = {
-                f"{target_prefix}{index}": value for index, value in enumerate(members)
-            }
+            normalized[family] = {f"{prefix}{index}": value for index, value in enumerate(values)}
         outputs = _execute_glsl(
             fragment_shader=fragment_shader,
-            size_mode=size_mode,
-            width=width,
-            height=height,
+            size_mode=size_mode.key,
+            width=cast(int, size_mode.get("width", 512)),
+            height=cast(int, size_mode.get("height", 512)),
             images=normalized["images"],
             floats=normalized["floats"],
             ints=normalized["ints"],

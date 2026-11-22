@@ -22,6 +22,7 @@ from dinkster_api.v1 import (
     NumberWidget,
     Option,
     Output,
+    Record,
     Section,
     StringWidget,
     TypeExpr,
@@ -193,7 +194,7 @@ class TextGenerate(Node):
         clip: Any,
         prompt: str,
         max_length: int,
-        sampling_mode: str | Mapping[str, Any],
+        sampling_mode: Record,
         image: object = None,
         thinking: bool = False,
         use_default_template: bool = True,
@@ -201,16 +202,8 @@ class TextGenerate(Node):
         audio: object = None,
         mtp: str = "auto",
         system_prompt: str = "",
-        **inputs: Any,
     ) -> Mapping[str, object]:
-        sampling = (
-            dict(sampling_mode)
-            if isinstance(sampling_mode, Mapping)
-            else {"sampling_mode": sampling_mode}
-        )
-        sampling.update(
-            {key.removeprefix("sampling_mode."): value for key, value in inputs.items()}
-        )
+        sampling = sampling_mode
         tokens = clip.tokenize(
             prompt,
             image=materialize_image(image) if image is not None else None,
@@ -223,7 +216,7 @@ class TextGenerate(Node):
         )
         generated_ids = clip.generate(
             tokens,
-            do_sample=sampling.get("sampling_mode") == "on",
+            do_sample=sampling.key == "on",
             max_length=max_length,
             temperature=sampling.get("temperature", 1.0),
             top_k=sampling.get("top_k", 50),
