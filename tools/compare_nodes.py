@@ -170,7 +170,8 @@ _USE_OVERRIDES = ("label", "tooltip", "widget", "default", "required")
 def _used(entry: dict[str, Any], use: dict[str, Any]) -> dict[str, Any]:
     """A shared row as one place names it: the Use's overrides, options and inner places."""
     placed = {**entry, **{key: use[key] for key in _USE_OVERRIDES if key in use}}
-    if placed.get("required") is True:
+    if use.get("required") is True and "default" not in use:
+        # A place that makes the row required ignores the shared row's default.
         placed.pop("default", None)
     if entry.get("kind") == "choice":
         options = [
@@ -196,7 +197,12 @@ def _scope_entries(
     found: list[dict[str, Any]] = []
     for entry in entries:
         kind = entry.get("kind")
-        if kind in _LAYOUT_KINDS:
+        if kind == "section" and entry.get("id") == "advanced":
+            # Marked so the comparison may put advanced rows back where the reference has them.
+            found.extend(
+                {**row, "_advanced": True} for row in _scope_entries(entry["rows"], shared)
+            )
+        elif kind in _LAYOUT_KINDS:
             found.extend(_scope_entries(entry["rows"], shared))
         elif kind == "use":
             found.append(_used((shared or {})[entry["id"]], entry))
@@ -288,6 +294,8 @@ def _native_inputs(
         }
         if item.get("hidden"):
             entry["hidden"] = True
+        if item.get("_advanced"):
+            entry["_advanced"] = True
         if "socketless" in public:
             entry["socketless"] = item.get("socketless", False)
         if role == "input":
@@ -378,6 +386,36 @@ def _native_inputs(
             continue
         result.append(entry)
     return result
+
+
+def _reference_order(
+    expected: list[dict[str, Any]], actual: list[dict[str, Any]]
+) -> list[dict[str, Any]]:
+    """The native inputs with each advanced row moved to the reference's position.
+
+    A body keeps advanced rows in a closing Advanced section; every other row
+    keeps its order. When the other rows are not in the reference's order, the
+    native order stands, so the comparison reports it."""
+    options = {
+        item["name"]: {option["key"]: option["inputs"] for option in item.get("options", [])}
+        for item in expected
+        if item.get("type") == "dynamicCombo"
+    }
+    for entry in actual:
+        if entry.get("type") == "dynamicCombo":
+            reference = options.get(entry["name"], {})
+            for option in entry["options"]:
+                option["inputs"] = _reference_order(
+                    reference.get(option["key"], []), option["inputs"]
+                )
+    names = [item["name"] for item in expected]
+    known = [entry for entry in actual if entry["name"] in names]
+    placed = sorted(known, key=lambda entry: names.index(entry["name"]))
+    plain = [entry["name"] for entry in known if not entry.get("_advanced")]
+    ordered = placed + [entry for entry in actual if entry["name"] not in names]
+    if [entry["name"] for entry in placed if not entry.get("_advanced")] != plain:
+        ordered = actual
+    return [{key: value for key, value in entry.items() if key != "_advanced"} for entry in ordered]
 
 
 def _differences(expected: Any, actual: Any, path: str) -> list[str]:
@@ -617,7 +655,7 @@ def compare(
     for item in expected:
         if item["name"] in row.get("file_inputs", []):
             item["file_input"] = True
-    differences.extend(_differences(expected, actual, "inputs"))
+    differences.extend(_differences(expected, _reference_order(expected, actual), "inputs"))
     expected_outputs = []
     names = row.get("return_names")
     output_metadata = row.get("v3_outputs") or []

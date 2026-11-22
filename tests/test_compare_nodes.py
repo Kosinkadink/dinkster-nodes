@@ -937,6 +937,36 @@ def test_v3_input_order_preserves_interleaved_optional_inputs() -> None:
     assert compare(reference, native)
 
 
+def test_advanced_section_rows_match_the_reference_position_only() -> None:
+    from tools.compare_nodes import compare
+
+    reference = {
+        "class_name": "Example",
+        "is_v3": True,
+        "v3_inputs": [{"id": name} for name in ("first", "tuned", "last")],
+        "input_types": {"required": {"first": ["INT"], "tuned": ["FLOAT"], "last": ["STRING"]}},
+    }
+
+    def field(name: str, kind: str) -> dict[str, Any]:
+        return {"kind": "input", "id": name, "type": {"kind": "concrete", "types": [kind]}}
+
+    native = {
+        "nodeType": "Example",
+        "body": [
+            field("first", "INT"),
+            field("last", "STRING"),
+            {"kind": "section", "id": "advanced", "rows": [field("tuned", "FLOAT")]},
+        ],
+    }
+    assert compare(reference, native) == []
+    # Only an advanced row moves back; other rows out of order are still a difference.
+    native["body"][:2] = reversed(native["body"][:2])
+    assert compare(reference, native)
+    native["body"][:2] = reversed(native["body"][:2])
+    native["body"][2]["id"] = "more"
+    assert compare(reference, native)
+
+
 @pytest.mark.parametrize("order", [None, [], [{"id": "other"}], [{"id": "value"}] * 2])
 def test_v3_input_order_requires_exact_membership(
     example_contract: tuple[dict, dict], order: list[dict] | None
