@@ -163,6 +163,115 @@ def _reference_inputs(groups: dict[str, Any], list_inputs: bool = False) -> list
     return result
 
 
+_LAYOUT_KINDS = ("row", "section")
+_USE_OVERRIDES = ("label", "tooltip", "widget", "default", "required")
+
+
+def _used(entry: dict[str, Any], use: dict[str, Any]) -> dict[str, Any]:
+    """A shared row as one place names it: the Use's overrides, options and inner places."""
+    placed = {**entry, **{key: use[key] for key in _USE_OVERRIDES if key in use}}
+    if placed.get("required") is True:
+        placed.pop("default", None)
+    if entry.get("kind") == "choice":
+        options = [
+            option
+            for option in entry["options"]
+            if "only" not in use or option["key"] in use["only"]
+        ]
+        inner = {item["id"]: item for item in use.get("inside", [])}
+        if inner:
+            shared = [
+                _used(item, inner[item["id"]]) if item.get("id") in inner else item
+                for item in entry.get("shared", [])
+            ]
+            placed["shared"] = shared
+        placed["options"] = options
+    return placed
+
+
+def _scope_entries(
+    entries: list[dict[str, Any]], shared: dict[str, dict[str, Any]] | None = None
+) -> list[dict[str, Any]]:
+    """One body scope's rows through rows and sections, each Use resolved to its shared row."""
+    found: list[dict[str, Any]] = []
+    for entry in entries:
+        kind = entry.get("kind")
+        if kind in _LAYOUT_KINDS:
+            found.extend(_scope_entries(entry["rows"], shared))
+        elif kind == "use":
+            found.append(_used((shared or {})[entry["id"]], entry))
+        else:
+            found.append(entry)
+    return found
+
+
+def _body_interface(entries: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """The flat interface entries (input, dynamicCombo, inputFamily, ...) a body declares."""
+    items: list[dict[str, Any]] = []
+    for entry in _scope_entries(entries):
+        kind = entry["kind"]
+        rest = {key: value for key, value in entry.items() if key != "kind"}
+        if kind == "input":
+            if rest.pop("pin", True) is False:
+                rest["socketless"] = True
+            if "label" in rest:
+                rest["displayName"] = rest.pop("label")
+            items.append({"role": "input", **rest})
+        elif kind == "output":
+            if "label" in rest:
+                rest["displayName"] = rest.pop("label")
+            items.append({"role": "output", **rest})
+        elif kind == "choice":
+            shared = {item["id"]: item for item in _scope_entries(entry.get("shared", []))}
+            items.append(
+                {
+                    "role": "dynamicCombo",
+                    "id": entry["id"],
+                    **({"default": entry["default"]} if "default" in entry else {}),
+                    **({"required": entry["required"]} if "required" in entry else {}),
+                    "options": [
+                        {
+                            "key": option["key"],
+                            "inputs": _body_interface(_scope_entries(option["rows"], shared)),
+                        }
+                        for option in entry["options"]
+                    ],
+                }
+            )
+        elif kind == "group":
+            if isinstance(entry.get("value"), dict) and entry["value"]["kind"] == "output":
+                items.append({"role": "outputFamily", "id": entry["id"]})
+                continue
+            template = [entry["value"]] if isinstance(entry.get("value"), dict) else entry["member"]
+            family: dict[str, Any] = {
+                "role": "inputFamily",
+                "id": entry["id"],
+                "template": _body_interface(template),
+                "minMembers": entry.get("minMembers", 0),
+            }
+            if entry.get("optionalAfterMinimum"):
+                family["optionalAfterMinimum"] = True
+            keys = entry.get("keys") or {}
+            if "named" in keys:
+                family["memberNames"] = keys["named"]
+            else:
+                prefix = keys.get("numbered", {}).get("prefix", "")
+                if prefix:
+                    family["memberPrefix"] = prefix
+                if "maxMembers" in entry:
+                    family["maxMembers"] = entry["maxMembers"]
+            items.append(family)
+        elif kind == "typeChoice":
+            items.append({"role": "dynamicSlot", **rest})
+    return items
+
+
+def _interface(schema: dict[str, Any]) -> list[dict[str, Any]]:
+    if "body" in schema and schema["body"]:
+        return _body_interface(schema["body"])
+    return cast("list[dict[str, Any]]", schema.get("interface", []))
+
+
 def _native_inputs(
     items: list[dict[str, Any]], public_inputs: list[dict[str, Any]]
 ) -> list[dict[str, Any]]:
@@ -187,7 +296,10 @@ def _native_inputs(
             if widget.get("type") == "ASSET" and widget.get("selection") is True:
                 entry["selection_picker"] = widget.get("kind")
             for key in VALUE_OPTIONS:
-                wire_key = "controlAfterGenerate" if key == "control_after_generate" else key
+                wire_key = {
+                    "control_after_generate": "afterRun",
+                    "forceInput": "pinFirst",
+                }.get(key, key)
                 if wire_key in widget:
                     value = widget[wire_key]
                     # Schema wire encodes integers outside JS's safe range as decimal strings.
@@ -386,9 +498,9 @@ def compare(
 ) -> list[str]:
     if row.get("input_types_error") or not isinstance(row.get("input_types"), dict):
         return [f"reference input schema unavailable: {row.get('input_types_error')}"]
-    if "interface" not in schema:
+    if "interface" not in schema and "body" not in schema:
         return ["native interface missing"]
-    if any(item.get("role") not in INPUT_ROLES | {"output"} for item in schema["interface"]):
+    if any(item.get("role") not in INPUT_ROLES | {"output"} for item in _interface(schema)):
         return ["native interface contains an unsupported role or a variable output family"]
     expected = _reference_inputs(row["input_types"], bool(row.get("input_is_list")))
     for item in expected:
@@ -446,7 +558,7 @@ def compare(
         ):
             return ["reference V3 input sequence does not match public input groups"]
         expected = [by_name[name] for name in names]
-    actual = _native_inputs(schema.get("interface", []), expected)
+    actual = _native_inputs(_interface(schema), expected)
     differences = []
     for item in expected:
         conditional = item.pop("possible_options", [])
@@ -530,9 +642,7 @@ def compare(
             "type": _type(item["type"]),
         }
         for index, item in enumerate(
-            item
-            for item in schema.get("interface", [])
-            if item["role"] in ("output", "outputFamily")
+            item for item in _interface(schema) if item["role"] in ("output", "outputFamily")
         )
     ]
     differences.extend(_differences(expected_outputs, actual_outputs, "outputs"))
@@ -633,7 +743,7 @@ def compare_registry(
             errors.append(f"retired class id remains registered: {key}")
         if key.startswith(FORBIDDEN_PREFIXES) and key not in moved_ids:
             errors.append(f"prefixed node id: {key}")
-        for item in schema.get("interface", []):
+        for item in _interface(schema):
             for value in _type_names(item):
                 if value.startswith(FORBIDDEN_PREFIXES):
                     errors.append(f"{key}: prefixed type name: {value}")

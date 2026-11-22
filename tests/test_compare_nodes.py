@@ -184,9 +184,9 @@ def test_environment_remote_choices_still_require_same_default() -> None:
     registry = _pack_registry("SelectModelDevice", schema)
     result = compare_registry(reference, registry)
     assert result["passed"] and result["counts"] == {"conditional": 1}
-    interface = schema["interface"]
-    assert isinstance(interface, list)
-    interface[0]["default"] = "cpu"
+    body = schema["body"]
+    assert isinstance(body, list)
+    body[0]["default"] = "cpu"
     assert not compare_registry(reference, registry)["passed"]
 
 
@@ -507,8 +507,10 @@ def test_comparison_cli(tmp_path: Path) -> None:
             ),
         )
     )
-    mount = json.loads(json.dumps(wire))["interface"][0]
-    assert "default" not in mount
+    entry = json.loads(json.dumps(wire))["body"][0]
+    assert "default" not in entry
+    # The hand-written native entry uses the flat interface form.
+    mount = {"role": "input", **{key: value for key, value in entry.items() if key != "kind"}}
     reference = {
         "nodes": [
             {
@@ -771,10 +773,11 @@ def test_exact_ids_and_file_widget_exemption(
                 ),
             )
         )
-        interface = wire["interface"]
-        assert isinstance(interface, list)
-        file_input = interface[0]
-        assert isinstance(file_input, dict)
+        body = wire["body"]
+        assert isinstance(body, list)
+        assert isinstance(body[0], dict)
+        # The hand-written registry entry uses the flat interface form.
+        file_input = {"role": "input", **{k: v for k, v in body[0].items() if k != "kind"}}
         schema["interface"][0] = file_input
         assert compare_registry(reference, registry)["passed"]
         widget = file_input.pop("widget")
@@ -840,7 +843,7 @@ def test_painter_empty_file_uses_an_optional_asset_without_losing_other_contract
     changed["nodes"][0]["input_types"]["required"]["mask"][1]["default"] = "paint.png"
     assert not compare_registry(changed, registry)["passed"]
     required = deepcopy(schema)
-    next(item for item in required["interface"] if item["id"] == "mask")["required"] = True
+    next(item for item in required["body"] if item["id"] == "mask")["required"] = True
     assert not compare_registry(changed, {"nodes": {"dinkster.image.painter": required}})["passed"]
     changed = deepcopy(reference)
     changed["nodes"][0]["file_inputs"] = []
@@ -851,20 +854,20 @@ def test_painter_empty_file_uses_an_optional_asset_without_losing_other_contract
         ("required", True),
         ("default", "paint.png"),
         ("id", "paint"),
-        ("socketless", False),
+        ("pin", True),
         ("hidden", True),
         ("type", {"kind": "list", "element": {"kind": "concrete", "types": ["ASSET"]}}),
     ):
         changed = deepcopy(schema)
-        mask = next(item for item in changed["interface"] if item["id"] == "mask")
+        mask = next(item for item in changed["body"] if item["id"] == "mask")
         mask[field] = value
         assert not compare_registry(reference, {"nodes": {"dinkster.image.painter": changed}})[
             "passed"
         ]
     changed = deepcopy(schema)
-    changed["interface"][0], changed["interface"][1] = (
-        changed["interface"][1],
-        changed["interface"][0],
+    changed["body"][0], changed["body"][1] = (
+        changed["body"][1],
+        changed["body"][0],
     )
     assert not compare_registry(reference, {"nodes": {"dinkster.image.painter": changed}})["passed"]
 
@@ -1721,9 +1724,9 @@ def test_source_marked_selections_require_exact_picker_kind_and_socket(kind: str
         )
     )
     assert compare(row, schema) == []
-    interface = schema["interface"]
-    assert isinstance(interface, list)
-    item = interface[0]
+    body = schema["body"]
+    assert isinstance(body, list)
+    item = body[0]
     assert isinstance(item, dict)
     widget = item["widget"]
     widget["kind"] = "directory/input" if kind != "directory/input" else "directory/dataset"
