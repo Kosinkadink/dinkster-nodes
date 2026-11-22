@@ -17,7 +17,6 @@ from dinkster_api.v1 import (
     CORE_STRING,
     ENCODED_MEDIA_LIMIT_BYTES,
     IMAGE_TYPE,
-    BodyRow,
     Choice,
     ComboWidget,
     Input,
@@ -93,10 +92,7 @@ class SaveImageAdvanced(Node):
                                     "advanced",
                                     label="Advanced",
                                     collapsed=True,
-                                    rows=cast(
-                                        "tuple[BodyRow, ...]",
-                                        (Use("bit_depth"), Use("input_color_space")),
-                                    ),
+                                    rows=(Use("bit_depth"), Use("input_color_space")),
                                 ),
                             ),
                         ),
@@ -107,43 +103,40 @@ class SaveImageAdvanced(Node):
                                     "advanced",
                                     label="Advanced",
                                     collapsed=True,
-                                    rows=cast(
-                                        "tuple[BodyRow, ...]",
-                                        (
-                                            Use(
-                                                "bit_depth",
-                                                default="16-bit float",
-                                                widget=ComboWidget(
-                                                    options=("32-bit float", "16-bit float")
-                                                ),
+                                    rows=(
+                                        Use(
+                                            "bit_depth",
+                                            default="16-bit float",
+                                            widget=ComboWidget(
+                                                options=("32-bit float", "16-bit float")
                                             ),
-                                            Use(
-                                                "input_color_space",
-                                                widget=ComboWidget(
-                                                    options=(
-                                                        "sRGB",
-                                                        "HDR",
-                                                        "linear",
-                                                        "linear ACEScg",
-                                                    )
-                                                ),
-                                                tooltip=(
-                                                    "Colorspace of the input tensor. The EXR is "
-                                                    "always written as scene-linear in the "
-                                                    "matching gamut.\n"
-                                                    "sRGB - input is sRGB-encoded Rec.709; the "
-                                                    "inverse sRGB EOTF is applied.\n"
-                                                    "HDR - input is HLG-encoded Rec.2020 "
-                                                    "(BT.2100); the inverse HLG OETF is applied to "
-                                                    "get scene-linear light.\n"
-                                                    "linear - input is already scene-linear "
-                                                    "(Rec.709 primaries); written through "
-                                                    "unchanged. Use this for renderer/compositor "
-                                                    "output.\n"
-                                                    "linear ACEScg - input is already scene-linear "
-                                                    "ACEScg (AP1 / D60); written through unchanged "
-                                                    "with ACEScg chromaticities."
-                                                ),
+                                        ),
+                                        Use(
+                                            "input_color_space",
+                                            widget=ComboWidget(
+                                                options=(
+                                                    "sRGB",
+                                                    "HDR",
+                                                    "linear",
+                                                    "linear ACEScg",
+                                                )
+                                            ),
+                                            tooltip=(
+                                                "Colorspace of the input tensor. The EXR is "
+                                                "always written as scene-linear in the "
+                                                "matching gamut.\n"
+                                                "sRGB - input is sRGB-encoded Rec.709; the "
+                                                "inverse sRGB EOTF is applied.\n"
+                                                "HDR - input is HLG-encoded Rec.2020 "
+                                                "(BT.2100); the inverse HLG OETF is applied to "
+                                                "get scene-linear light.\n"
+                                                "linear - input is already scene-linear "
+                                                "(Rec.709 primaries); written through "
+                                                "unchanged. Use this for renderer/compositor "
+                                                "output.\n"
+                                                "linear ACEScg - input is already scene-linear "
+                                                "ACEScg (AP1 / D60); written through unchanged "
+                                                "with ACEScg chromaticities."
                                             ),
                                         ),
                                     ),
@@ -194,43 +187,38 @@ class SaveImageAdvanced(Node):
                                     "advanced",
                                     label="Advanced",
                                     collapsed=True,
-                                    rows=cast(
-                                        "tuple[BodyRow, ...]",
-                                        (
-                                            Use(
-                                                "bit_depth",
-                                                default="auto",
-                                                widget=ComboWidget(
-                                                    options=(
-                                                        "auto",
-                                                        "8-bit YUV420",
-                                                        "10-bit YUV420",
-                                                    )
-                                                ),
-                                                tooltip=(
-                                                    "Auto uses 8-bit YUV420 for sRGB and 10-bit "
-                                                    "YUV420 for HDR."
-                                                ),
+                                    rows=(
+                                        Use(
+                                            "bit_depth",
+                                            default="auto",
+                                            widget=ComboWidget(
+                                                options=(
+                                                    "auto",
+                                                    "8-bit YUV420",
+                                                    "10-bit YUV420",
+                                                )
                                             ),
-                                            Use(
-                                                "input_color_space",
-                                                widget=ComboWidget(
-                                                    options=("sRGB", "HDR", "HDR PQ")
-                                                ),
-                                                tooltip=(
-                                                    "Colorspace of the input images. HDR selects "
-                                                    "BT.2020/HLG and HDR PQ selects BT.2020/PQ."
-                                                ),
+                                            tooltip=(
+                                                "Auto uses 8-bit YUV420 for sRGB and 10-bit "
+                                                "YUV420 for HDR."
                                             ),
-                                            Input(
-                                                "crf",
-                                                _INT,
-                                                default=18,
-                                                widget=NumberWidget(min=1, max=63),
-                                                tooltip=(
-                                                    "Lower values produce higher quality and "
-                                                    "larger files."
-                                                ),
+                                        ),
+                                        Use(
+                                            "input_color_space",
+                                            widget=ComboWidget(options=("sRGB", "HDR", "HDR PQ")),
+                                            tooltip=(
+                                                "Colorspace of the input images. HDR selects "
+                                                "BT.2020/HLG and HDR PQ selects BT.2020/PQ."
+                                            ),
+                                        ),
+                                        Input(
+                                            "crf",
+                                            _INT,
+                                            default=18,
+                                            widget=NumberWidget(min=1, max=63),
+                                            tooltip=(
+                                                "Lower values produce higher quality and "
+                                                "larger files."
                                             ),
                                         ),
                                     ),

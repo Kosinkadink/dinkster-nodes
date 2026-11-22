@@ -11,7 +11,6 @@ from dinkster_api.v1 import (
     CORE_FLOAT,
     CORE_INT,
     MESH_TYPE,
-    BodyRow,
     Choice,
     Input,
     Node,
@@ -63,20 +62,17 @@ class RemeshMesh(Node):
                                     "advanced",
                                     label="Advanced",
                                     collapsed=True,
-                                    rows=cast(
-                                        "tuple[BodyRow, ...]",
-                                        (
-                                            Use("qef"),
-                                            Input(
-                                                "drop_inverted_components",
-                                                TypeExpr.concrete(CORE_BOOLEAN),
-                                                default=False,
-                                            ),
-                                            Input(
-                                                "drop_enclosed_components",
-                                                TypeExpr.concrete(CORE_BOOLEAN),
-                                                default=False,
-                                            ),
+                                    rows=(
+                                        Use("qef"),
+                                        Input(
+                                            "drop_inverted_components",
+                                            TypeExpr.concrete(CORE_BOOLEAN),
+                                            default=False,
+                                        ),
+                                        Input(
+                                            "drop_enclosed_components",
+                                            TypeExpr.concrete(CORE_BOOLEAN),
+                                            default=False,
                                         ),
                                     ),
                                 ),
@@ -102,7 +98,7 @@ class RemeshMesh(Node):
                                     "advanced",
                                     label="Advanced",
                                     collapsed=True,
-                                    rows=cast("tuple[BodyRow, ...]", (Use("qef"),)),
+                                    rows=(Use("qef"),),
                                 ),
                             ),
                         ),

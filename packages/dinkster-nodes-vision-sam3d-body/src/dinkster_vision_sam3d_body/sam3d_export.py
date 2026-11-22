@@ -16,7 +16,6 @@ from dinkster_api.v1 import (
     MHR_POSE_DATA_TYPE,
     SAM3D_BODY_MODEL_TYPE,
     AssetRef,
-    BodyRow,
     Choice,
     ComboWidget,
     Input,
@@ -158,20 +157,17 @@ class BuildPoseFile(Node):
                                                     "advanced",
                                                     label="Advanced",
                                                     collapsed=True,
-                                                    rows=cast(
-                                                        "tuple[BodyRow, ...]",
-                                                        (
-                                                            Use("marker_radius_m"),
-                                                            Use("stick_radius_m"),
-                                                            Use("hand_marker_radius_m"),
-                                                            Use("hand_stick_radius_m"),
-                                                            Input(
-                                                                "face_marker_radius_m",
-                                                                floating,
-                                                                default=0.0,
-                                                                widget=NumberWidget(
-                                                                    min=0.0, max=0.05, step=0.0005
-                                                                ),
+                                                    rows=(
+                                                        Use("marker_radius_m"),
+                                                        Use("stick_radius_m"),
+                                                        Use("hand_marker_radius_m"),
+                                                        Use("hand_stick_radius_m"),
+                                                        Input(
+                                                            "face_marker_radius_m",
+                                                            floating,
+                                                            default=0.0,
+                                                            widget=NumberWidget(
+                                                                min=0.0, max=0.05, step=0.0005
                                                             ),
                                                         ),
                                                     ),
@@ -187,39 +183,36 @@ class BuildPoseFile(Node):
                                                     "advanced",
                                                     label="Advanced",
                                                     collapsed=True,
-                                                    rows=cast(
-                                                        "tuple[BodyRow, ...]",
-                                                        (
-                                                            Use(
-                                                                "stick_radius_m",
-                                                                default=0.022,
-                                                                widget=NumberWidget(
-                                                                    min=0.002, max=0.1, step=0.001
-                                                                ),
+                                                    rows=(
+                                                        Use(
+                                                            "stick_radius_m",
+                                                            default=0.022,
+                                                            widget=NumberWidget(
+                                                                min=0.002, max=0.1, step=0.001
                                                             ),
-                                                            Use(
-                                                                "marker_radius_m",
-                                                                default=0.0,
-                                                                widget=NumberWidget(
-                                                                    min=0.0, max=0.1, step=0.001
-                                                                ),
-                                                            ),
-                                                            Input(
-                                                                "material_roughness",
-                                                                floating,
-                                                                default=0.3,
-                                                                widget=NumberWidget(
-                                                                    min=0.0, max=1.0, step=0.05
-                                                                ),
-                                                            ),
-                                                            Use(
-                                                                "hand_marker_radius_m",
-                                                                widget=NumberWidget(
-                                                                    min=0.001, max=0.05, step=0.001
-                                                                ),
-                                                            ),
-                                                            Use("hand_stick_radius_m"),
                                                         ),
+                                                        Use(
+                                                            "marker_radius_m",
+                                                            default=0.0,
+                                                            widget=NumberWidget(
+                                                                min=0.0, max=0.1, step=0.001
+                                                            ),
+                                                        ),
+                                                        Input(
+                                                            "material_roughness",
+                                                            floating,
+                                                            default=0.3,
+                                                            widget=NumberWidget(
+                                                                min=0.0, max=1.0, step=0.05
+                                                            ),
+                                                        ),
+                                                        Use(
+                                                            "hand_marker_radius_m",
+                                                            widget=NumberWidget(
+                                                                min=0.001, max=0.05, step=0.001
+                                                            ),
+                                                        ),
+                                                        Use("hand_stick_radius_m"),
                                                     ),
                                                 ),
                                             ),
