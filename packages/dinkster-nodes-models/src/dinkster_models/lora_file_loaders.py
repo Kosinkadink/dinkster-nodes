@@ -18,11 +18,13 @@ from dinkster_api.v1 import (
     Group,
     Input,
     LocalAssetRef,
+    Members,
     Node,
     NodeSchema,
     Numbered,
     NumberWidget,
     Output,
+    Record,
     TypeExpr,
     initialize_inference_process,
     obtain_resident,
@@ -310,18 +312,8 @@ def _stack_family(doc: str) -> Group:
     )
 
 
-def _rows(loras: Mapping[str, object]) -> tuple[dict[str, object], ...]:
-    rows: dict[str, dict[str, object]] = {}
-    for input_id, value in loras.items():
-        row, separator, field = input_id.partition(".")
-        if not separator:
-            continue
-        rows.setdefault(row, {})[field] = value
-    return tuple(rows.values())
-
-
-def _row_strength(row: Mapping[str, object]) -> float:
-    strength = row.get("strength", 1.0)
+def _row_strength(row: Record) -> float:
+    strength = row["strength"]
     if isinstance(strength, bool) or not isinstance(strength, (int, float)):
         raise TypeError("LoRA strength must be a number")
     return float(strength)
@@ -353,11 +345,11 @@ class LoadLoraModel(Node):
         )
 
     @classmethod
-    def execute(cls, *, model: Any, loras: Mapping[str, object]) -> Mapping[str, object]:
-        for row in _rows(loras):
+    def execute(cls, *, model: Any, loras: Members[Record]) -> Mapping[str, object]:
+        for row in loras:
             lora_name = row.get("lora_name")
             strength = _row_strength(row)
-            if not lora_name or not row.get("enabled", True) or strength == 0:
+            if not lora_name or not row["enabled"] or strength == 0:
                 continue
             model, _ = _apply_lora(model, None, lora_name, strength, 0.0, bypass=False)
         return cls.outputs(MODEL=model)
@@ -389,11 +381,11 @@ class LoadLoraTextEncoder(Node):
         )
 
     @classmethod
-    def execute(cls, *, clip: Any, loras: Mapping[str, object]) -> Mapping[str, object]:
-        for row in _rows(loras):
+    def execute(cls, *, clip: Any, loras: Members[Record]) -> Mapping[str, object]:
+        for row in loras:
             lora_name = row.get("lora_name")
             strength = _row_strength(row)
-            if not lora_name or not row.get("enabled", True) or strength == 0:
+            if not lora_name or not row["enabled"] or strength == 0:
                 continue
             _, clip = _apply_lora(None, clip, lora_name, 0.0, strength, bypass=False)
         return cls.outputs(CLIP=clip)
