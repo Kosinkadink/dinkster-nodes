@@ -24330,6 +24330,93 @@
        },
        {
         "class": "ReplacementPredicate",
+        "input": "format.codec.encoding",
+        "kind": "valueEquals",
+        "value": "auto"
+       },
+       {
+        "class": "ReplacementPredicate",
+        "kind": "any",
+        "of": [
+         {
+          "class": "ReplacementPredicate",
+          "input": "format",
+          "kind": "valueEquals",
+          "value": "auto"
+         },
+         {
+          "class": "ReplacementPredicate",
+          "kind": "not",
+          "of": [
+           {
+            "class": "ReplacementPredicate",
+            "input": "format",
+            "kind": "valuePresent"
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     }
+    },
+    {
+     "class": "ReplacementCase",
+     "inputs": [
+      [
+       "filename_prefix",
+       {
+        "class": "MappingSource",
+        "input": "filename_prefix",
+        "kind": "copy"
+       }
+      ],
+      [
+       "mount",
+       {
+        "class": "MappingSource",
+        "input": "mount",
+        "kind": "copy"
+       }
+      ],
+      [
+       "video",
+       {
+        "class": "MappingSource",
+        "input": "video",
+        "kind": "copy"
+       }
+      ]
+     ],
+     "outputs": [
+      [
+       "video",
+       "video"
+      ]
+     ],
+     "slot_variants": [
+      [
+       "format",
+       "auto"
+      ],
+      [
+       "format.codec",
+       "av1"
+      ]
+     ],
+     "to": "dinkster.video.save_video",
+     "when": {
+      "class": "ReplacementPredicate",
+      "kind": "all",
+      "of": [
+       {
+        "class": "ReplacementPredicate",
+        "input": "format.codec",
+        "kind": "valueEquals",
+        "value": "av1"
+       },
+       {
+        "class": "ReplacementPredicate",
         "kind": "any",
         "of": [
          {
@@ -24353,24 +24440,12 @@
        },
        {
         "class": "ReplacementPredicate",
-        "kind": "any",
+        "kind": "not",
         "of": [
          {
           "class": "ReplacementPredicate",
           "input": "format.codec.encoding",
-          "kind": "valueEquals",
-          "value": "auto"
-         },
-         {
-          "class": "ReplacementPredicate",
-          "kind": "not",
-          "of": [
-           {
-            "class": "ReplacementPredicate",
-            "input": "format.codec.encoding",
-            "kind": "valuePresent"
-           }
-          ]
+          "kind": "valuePresent"
          }
         ]
        }
@@ -24438,6 +24513,93 @@
        },
        {
         "class": "ReplacementPredicate",
+        "input": "format.codec.encoding",
+        "kind": "valueEquals",
+        "value": "auto"
+       },
+       {
+        "class": "ReplacementPredicate",
+        "kind": "any",
+        "of": [
+         {
+          "class": "ReplacementPredicate",
+          "input": "format",
+          "kind": "valueEquals",
+          "value": "auto"
+         },
+         {
+          "class": "ReplacementPredicate",
+          "kind": "not",
+          "of": [
+           {
+            "class": "ReplacementPredicate",
+            "input": "format",
+            "kind": "valuePresent"
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     }
+    },
+    {
+     "class": "ReplacementCase",
+     "inputs": [
+      [
+       "filename_prefix",
+       {
+        "class": "MappingSource",
+        "input": "filename_prefix",
+        "kind": "copy"
+       }
+      ],
+      [
+       "mount",
+       {
+        "class": "MappingSource",
+        "input": "mount",
+        "kind": "copy"
+       }
+      ],
+      [
+       "video",
+       {
+        "class": "MappingSource",
+        "input": "video",
+        "kind": "copy"
+       }
+      ]
+     ],
+     "outputs": [
+      [
+       "video",
+       "video"
+      ]
+     ],
+     "slot_variants": [
+      [
+       "format",
+       "auto"
+      ],
+      [
+       "format.codec",
+       "h264"
+      ]
+     ],
+     "to": "dinkster.video.save_video",
+     "when": {
+      "class": "ReplacementPredicate",
+      "kind": "all",
+      "of": [
+       {
+        "class": "ReplacementPredicate",
+        "input": "format.codec",
+        "kind": "valueEquals",
+        "value": "h264"
+       },
+       {
+        "class": "ReplacementPredicate",
         "kind": "any",
         "of": [
          {
@@ -24461,24 +24623,12 @@
        },
        {
         "class": "ReplacementPredicate",
-        "kind": "any",
+        "kind": "not",
         "of": [
          {
           "class": "ReplacementPredicate",
           "input": "format.codec.encoding",
-          "kind": "valueEquals",
-          "value": "auto"
-         },
-         {
-          "class": "ReplacementPredicate",
-          "kind": "not",
-          "of": [
-           {
-            "class": "ReplacementPredicate",
-            "input": "format.codec.encoding",
-            "kind": "valuePresent"
-           }
-          ]
+          "kind": "valuePresent"
          }
         ]
        }
@@ -24633,24 +24783,82 @@
        },
        {
         "class": "ReplacementPredicate",
-        "kind": "any",
+        "input": "format.codec.encoding",
+        "kind": "valueEquals",
+        "value": "auto"
+       }
+      ]
+     }
+    },
+    {
+     "class": "ReplacementCase",
+     "inputs": [
+      [
+       "filename_prefix",
+       {
+        "class": "MappingSource",
+        "input": "filename_prefix",
+        "kind": "copy"
+       }
+      ],
+      [
+       "mount",
+       {
+        "class": "MappingSource",
+        "input": "mount",
+        "kind": "copy"
+       }
+      ],
+      [
+       "video",
+       {
+        "class": "MappingSource",
+        "input": "video",
+        "kind": "copy"
+       }
+      ]
+     ],
+     "outputs": [
+      [
+       "video",
+       "video"
+      ]
+     ],
+     "slot_variants": [
+      [
+       "format",
+       "mkv"
+      ],
+      [
+       "format.codec",
+       "av1"
+      ]
+     ],
+     "to": "dinkster.video.save_video",
+     "when": {
+      "class": "ReplacementPredicate",
+      "kind": "all",
+      "of": [
+       {
+        "class": "ReplacementPredicate",
+        "input": "format",
+        "kind": "valueEquals",
+        "value": "mkv"
+       },
+       {
+        "class": "ReplacementPredicate",
+        "input": "format.codec",
+        "kind": "valueEquals",
+        "value": "av1"
+       },
+       {
+        "class": "ReplacementPredicate",
+        "kind": "not",
         "of": [
          {
           "class": "ReplacementPredicate",
           "input": "format.codec.encoding",
-          "kind": "valueEquals",
-          "value": "auto"
-         },
-         {
-          "class": "ReplacementPredicate",
-          "kind": "not",
-          "of": [
-           {
-            "class": "ReplacementPredicate",
-            "input": "format.codec.encoding",
-            "kind": "valuePresent"
-           }
-          ]
+          "kind": "valuePresent"
          }
         ]
        }
@@ -24724,24 +24932,82 @@
        },
        {
         "class": "ReplacementPredicate",
-        "kind": "any",
+        "input": "format.codec.encoding",
+        "kind": "valueEquals",
+        "value": "auto"
+       }
+      ]
+     }
+    },
+    {
+     "class": "ReplacementCase",
+     "inputs": [
+      [
+       "filename_prefix",
+       {
+        "class": "MappingSource",
+        "input": "filename_prefix",
+        "kind": "copy"
+       }
+      ],
+      [
+       "mount",
+       {
+        "class": "MappingSource",
+        "input": "mount",
+        "kind": "copy"
+       }
+      ],
+      [
+       "video",
+       {
+        "class": "MappingSource",
+        "input": "video",
+        "kind": "copy"
+       }
+      ]
+     ],
+     "outputs": [
+      [
+       "video",
+       "video"
+      ]
+     ],
+     "slot_variants": [
+      [
+       "format",
+       "mkv"
+      ],
+      [
+       "format.codec",
+       "h264"
+      ]
+     ],
+     "to": "dinkster.video.save_video",
+     "when": {
+      "class": "ReplacementPredicate",
+      "kind": "all",
+      "of": [
+       {
+        "class": "ReplacementPredicate",
+        "input": "format",
+        "kind": "valueEquals",
+        "value": "mkv"
+       },
+       {
+        "class": "ReplacementPredicate",
+        "input": "format.codec",
+        "kind": "valueEquals",
+        "value": "h264"
+       },
+       {
+        "class": "ReplacementPredicate",
+        "kind": "not",
         "of": [
          {
           "class": "ReplacementPredicate",
           "input": "format.codec.encoding",
-          "kind": "valueEquals",
-          "value": "auto"
-         },
-         {
-          "class": "ReplacementPredicate",
-          "kind": "not",
-          "of": [
-           {
-            "class": "ReplacementPredicate",
-            "input": "format.codec.encoding",
-            "kind": "valuePresent"
-           }
-          ]
+          "kind": "valuePresent"
          }
         ]
        }
@@ -24896,24 +25162,82 @@
        },
        {
         "class": "ReplacementPredicate",
-        "kind": "any",
+        "input": "format.codec.encoding",
+        "kind": "valueEquals",
+        "value": "auto"
+       }
+      ]
+     }
+    },
+    {
+     "class": "ReplacementCase",
+     "inputs": [
+      [
+       "filename_prefix",
+       {
+        "class": "MappingSource",
+        "input": "filename_prefix",
+        "kind": "copy"
+       }
+      ],
+      [
+       "mount",
+       {
+        "class": "MappingSource",
+        "input": "mount",
+        "kind": "copy"
+       }
+      ],
+      [
+       "video",
+       {
+        "class": "MappingSource",
+        "input": "video",
+        "kind": "copy"
+       }
+      ]
+     ],
+     "outputs": [
+      [
+       "video",
+       "video"
+      ]
+     ],
+     "slot_variants": [
+      [
+       "format",
+       "mp4"
+      ],
+      [
+       "format.codec",
+       "av1"
+      ]
+     ],
+     "to": "dinkster.video.save_video",
+     "when": {
+      "class": "ReplacementPredicate",
+      "kind": "all",
+      "of": [
+       {
+        "class": "ReplacementPredicate",
+        "input": "format",
+        "kind": "valueEquals",
+        "value": "mp4"
+       },
+       {
+        "class": "ReplacementPredicate",
+        "input": "format.codec",
+        "kind": "valueEquals",
+        "value": "av1"
+       },
+       {
+        "class": "ReplacementPredicate",
+        "kind": "not",
         "of": [
          {
           "class": "ReplacementPredicate",
           "input": "format.codec.encoding",
-          "kind": "valueEquals",
-          "value": "auto"
-         },
-         {
-          "class": "ReplacementPredicate",
-          "kind": "not",
-          "of": [
-           {
-            "class": "ReplacementPredicate",
-            "input": "format.codec.encoding",
-            "kind": "valuePresent"
-           }
-          ]
+          "kind": "valuePresent"
          }
         ]
        }
@@ -24987,24 +25311,82 @@
        },
        {
         "class": "ReplacementPredicate",
-        "kind": "any",
+        "input": "format.codec.encoding",
+        "kind": "valueEquals",
+        "value": "auto"
+       }
+      ]
+     }
+    },
+    {
+     "class": "ReplacementCase",
+     "inputs": [
+      [
+       "filename_prefix",
+       {
+        "class": "MappingSource",
+        "input": "filename_prefix",
+        "kind": "copy"
+       }
+      ],
+      [
+       "mount",
+       {
+        "class": "MappingSource",
+        "input": "mount",
+        "kind": "copy"
+       }
+      ],
+      [
+       "video",
+       {
+        "class": "MappingSource",
+        "input": "video",
+        "kind": "copy"
+       }
+      ]
+     ],
+     "outputs": [
+      [
+       "video",
+       "video"
+      ]
+     ],
+     "slot_variants": [
+      [
+       "format",
+       "mp4"
+      ],
+      [
+       "format.codec",
+       "h264"
+      ]
+     ],
+     "to": "dinkster.video.save_video",
+     "when": {
+      "class": "ReplacementPredicate",
+      "kind": "all",
+      "of": [
+       {
+        "class": "ReplacementPredicate",
+        "input": "format",
+        "kind": "valueEquals",
+        "value": "mp4"
+       },
+       {
+        "class": "ReplacementPredicate",
+        "input": "format.codec",
+        "kind": "valueEquals",
+        "value": "h264"
+       },
+       {
+        "class": "ReplacementPredicate",
+        "kind": "not",
         "of": [
          {
           "class": "ReplacementPredicate",
           "input": "format.codec.encoding",
-          "kind": "valueEquals",
-          "value": "auto"
-         },
-         {
-          "class": "ReplacementPredicate",
-          "kind": "not",
-          "of": [
-           {
-            "class": "ReplacementPredicate",
-            "input": "format.codec.encoding",
-            "kind": "valuePresent"
-           }
-          ]
+          "kind": "valuePresent"
          }
         ]
        }
@@ -25159,24 +25541,82 @@
        },
        {
         "class": "ReplacementPredicate",
-        "kind": "any",
+        "input": "format.codec.encoding",
+        "kind": "valueEquals",
+        "value": "auto"
+       }
+      ]
+     }
+    },
+    {
+     "class": "ReplacementCase",
+     "inputs": [
+      [
+       "filename_prefix",
+       {
+        "class": "MappingSource",
+        "input": "filename_prefix",
+        "kind": "copy"
+       }
+      ],
+      [
+       "mount",
+       {
+        "class": "MappingSource",
+        "input": "mount",
+        "kind": "copy"
+       }
+      ],
+      [
+       "video",
+       {
+        "class": "MappingSource",
+        "input": "video",
+        "kind": "copy"
+       }
+      ]
+     ],
+     "outputs": [
+      [
+       "video",
+       "video"
+      ]
+     ],
+     "slot_variants": [
+      [
+       "format",
+       "webm"
+      ],
+      [
+       "format.codec",
+       "av1"
+      ]
+     ],
+     "to": "dinkster.video.save_video",
+     "when": {
+      "class": "ReplacementPredicate",
+      "kind": "all",
+      "of": [
+       {
+        "class": "ReplacementPredicate",
+        "input": "format",
+        "kind": "valueEquals",
+        "value": "webm"
+       },
+       {
+        "class": "ReplacementPredicate",
+        "input": "format.codec",
+        "kind": "valueEquals",
+        "value": "av1"
+       },
+       {
+        "class": "ReplacementPredicate",
+        "kind": "not",
         "of": [
          {
           "class": "ReplacementPredicate",
           "input": "format.codec.encoding",
-          "kind": "valueEquals",
-          "value": "auto"
-         },
-         {
-          "class": "ReplacementPredicate",
-          "kind": "not",
-          "of": [
-           {
-            "class": "ReplacementPredicate",
-            "input": "format.codec.encoding",
-            "kind": "valuePresent"
-           }
-          ]
+          "kind": "valuePresent"
          }
         ]
        }
@@ -25233,7 +25673,7 @@
    "node_type": "dinkster.video.save_video",
    "part": "node",
    "path": "/replacements/0/cases",
-   "reason": "Save Video's hidden codec input and its rows are deleted (node master plan section 13, acceptance: the four extra differences; comfy-vibe-station#1101 comment 7058717316)."
+   "reason": "Save Video's hidden codec input and its rows are deleted (node master plan section 13, acceptance: the four extra differences; comfy-vibe-station#1101 comment 7058717316). With nothing stored, each case starts a choice on its default, else its first option, and the optional encoding on none (Dinkster node-tree-1097 ee0cd809)."
   },
   {
    "after": {
