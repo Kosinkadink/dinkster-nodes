@@ -545,13 +545,13 @@ class ImageBatchCombine(Node):
                 body=(
                     combo_input("channel_policy", ("strict", "pad_with_one"), "strict"),
                     number_input(
-                        "input_count", INT, 0, minimum=0, maximum=1000, step=1, hidden=True
+                        "input_count", INT, 0, minimum=0, maximum=512, step=1, hidden=True
                     ),
                     Group(
                         "images",
                         value=Input("value", IMAGE),
                         min_members=1,
-                        max_members=1000,
+                        max_members=512,
                         keys=Numbered("image_", start=0),
                     ),
                     Group(
@@ -578,15 +578,10 @@ class ImageBatchCombine(Node):
                                     ),
                                 ),
                             ),
-                            Option(
-                                "insert_indexed",
-                                rows=(Input("indexes", STRING, required=False, default="0"),),
-                            ),
-                            Option(
-                                "replace_indexed",
-                                rows=(Input("indexes", STRING, required=False, default="0"),),
-                            ),
+                            Option("insert_indexed", rows=(Use("indexes"),)),
+                            Option("replace_indexed", rows=(Use("indexes"),)),
                         ),
+                        shared=(Input("indexes", STRING, required=False, default="0"),),
                         default="concat",
                     ),
                     Choice(

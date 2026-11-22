@@ -290,7 +290,7 @@ def test_image_batch_schema_ids_are_unique_and_dynamic_inputs_are_bounded() -> N
     schemas = {node.define_schema().node_type: node.define_schema() for node in BATCH_NODES}
     assert len(schemas) == len(BATCH_NODES) == 7
     image_families = groups(schemas["dinkster.image.batch.combine"])
-    assert (image_families[0].min_members, image_families[0].max_members) == (1, 1000)
+    assert (image_families[0].min_members, image_families[0].max_members) == (1, 512)
     assert (image_families[1].min_members, image_families[1].max_members) == (0, 2)
     assert groups(schemas["dinkster.mask.batch.combine"])[0].min_members == 2
 

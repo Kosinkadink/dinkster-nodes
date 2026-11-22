@@ -357,13 +357,13 @@ class ImageTransition(Node):
                     number_input("blur_radius", FLOAT, 0.0, minimum=0.0, maximum=100.0, step=0.1),
                     Input("reverse", BOOLEAN, required=False, default=False),
                     number_input(
-                        "input_count", INT, 0, minimum=0, maximum=1000, step=1, hidden=True
+                        "input_count", INT, 0, minimum=0, maximum=512, step=1, hidden=True
                     ),
                     Group(
                         "images",
                         value=Input("value", IMAGE),
                         min_members=1,
-                        max_members=1000,
+                        max_members=512,
                         keys=Numbered("image_", start=0),
                     ),
                     Choice(
