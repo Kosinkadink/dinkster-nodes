@@ -688,7 +688,7 @@ def test_recorded_gateway_catalog_submit_progress_and_digest_round_trip(
     recording = cast(
         "dict[str, object]", json.loads(RECORDED_GATEWAY_FIXTURE.read_text(encoding="utf-8"))
     )
-    assert recording["sourceCommit"] == "24669a312573d6586f30348bfbe3cbc7dd336aba"
+    assert recording["sourceCommit"] == "3e2606cdaca131964a433f729bc1f65d6efd7179"
     submitted = cast("Mapping[str, object]", recording["submit"])
     recorded_image = cast(
         "Mapping[str, object]",
