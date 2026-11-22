@@ -376,10 +376,10 @@ def test_catalog_enforces_remote_schema_invariants_and_isolates_bad_entries(
     wrong_entry = cast("dict[str, object]", wrong_nodes[valid.node_type])
     wrong_versions = cast("dict[str, object]", wrong_entry["schemaVersions"])
     wrong_version = cast("dict[str, object]", wrong_versions["1"])
-    wrong_version["schema"] = {**schema_to_wire(valid), "schemaVersion": 2}
+    wrong_version["schema"] = {**schema_to_wire(valid), "schemaVersion": SCHEMA_WIRE_VERSION + 1}
     assert parse_catalog(wrong_entry_wire).schemas == ()
     with pytest.raises(CatalogError, match="unsupported schema wire"):
-        parse_catalog({**catalog_payload(valid), "schemaWire": 2})
+        parse_catalog({**catalog_payload(valid), "schemaWire": SCHEMA_WIRE_VERSION + 1})
 
 
 @pytest.mark.parametrize("input_values", [False, True])
