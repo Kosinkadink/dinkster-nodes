@@ -16,9 +16,9 @@ from dinkster_api.v1 import (
     CORE_INT,
     MODEL_TYPE,
     VAE_TYPE,
-    ComboOption,
     ComboWidget,
     Input,
+    NamedList,
     Node,
     NodeSchema,
     NumberWidget,
@@ -53,15 +53,9 @@ def _multigpu() -> Any:
     return importlib.import_module("dinkster_inference.multigpu")
 
 
-def _device_input(options: tuple[str, ...], choice_id: str) -> Input:
+def _device_input(choice_id: str) -> Input:
     return Input(
-        "device",
-        _COMBO,
-        default="default",
-        widget=ComboWidget(
-            tuple(ComboOption(option) for option in options),
-            remote_route=f"/api/choices/{choice_id}",
-        ),
+        "device", _COMBO, default="default", widget=ComboWidget(options=NamedList(choice_id))
     )
 
 
@@ -199,7 +193,7 @@ class SelectModelDevice(Node):
                 category="advanced/multigpu",
                 body=(
                     Input("model", _MODEL),
-                    _device_input(("default", "cpu"), "devices.gpu"),
+                    _device_input("devices.gpu"),
                     Output("MODEL", _MODEL),
                 ),
                 occupies=("gpu",),
@@ -241,7 +235,7 @@ class SelectCLIPDevice(Node):
                 category="advanced/multigpu",
                 body=(
                     Input("clip", _CLIP),
-                    _device_input(("default", "cpu"), "devices.gpu"),
+                    _device_input("devices.gpu"),
                     Output("CLIP", _CLIP),
                 ),
                 occupies=("gpu",),
@@ -279,7 +273,7 @@ class SelectVAEDevice(Node):
                 category="advanced/multigpu",
                 body=(
                     Input("vae", _VAE),
-                    _device_input(("default",), "devices.vae"),
+                    _device_input("devices.vae"),
                     Output("VAE", _VAE),
                 ),
                 occupies=("gpu",),
