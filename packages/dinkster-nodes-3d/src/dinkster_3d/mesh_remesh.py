@@ -21,6 +21,7 @@ from dinkster_api.v1 import (
     Record,
     Section,
     TypeExpr,
+    Use,
     initialize_inference_process,
     materialize_mesh,
     report_progress,
@@ -57,27 +58,30 @@ class RemeshMesh(Node):
                         Option(
                             "udf",
                             rows=(
-                                Input(
-                                    "qef",
-                                    TypeExpr.concrete(CORE_BOOLEAN),
-                                    default=False,
-                                ),
-                                Input(
-                                    "drop_inverted_components",
-                                    TypeExpr.concrete(CORE_BOOLEAN),
-                                    default=False,
-                                ),
-                                Input(
-                                    "drop_enclosed_components",
-                                    TypeExpr.concrete(CORE_BOOLEAN),
-                                    default=False,
+                                Section(
+                                    "advanced",
+                                    label="Advanced",
+                                    collapsed=True,
+                                    rows=(
+                                        Use("qef"),
+                                        Input(
+                                            "drop_inverted_components",
+                                            TypeExpr.concrete(CORE_BOOLEAN),
+                                            default=False,
+                                        ),
+                                        Input(
+                                            "drop_enclosed_components",
+                                            TypeExpr.concrete(CORE_BOOLEAN),
+                                            default=False,
+                                        ),
+                                    ),
                                 ),
                             ),
                         ),
                         Option(
                             "sdf",
                             rows=(
-                                Input("qef", TypeExpr.concrete(CORE_BOOLEAN), default=True),
+                                Use("qef", default=True),
                                 Input("manifold", TypeExpr.concrete(CORE_BOOLEAN), default=False),
                             ),
                         ),
@@ -90,14 +94,16 @@ class RemeshMesh(Node):
                                     default=20.0,
                                     widget=NumberWidget(min=0.0, max=1000.0, step=1.0),
                                 ),
-                                Input(
-                                    "qef",
-                                    TypeExpr.concrete(CORE_BOOLEAN),
-                                    default=False,
+                                Section(
+                                    "advanced",
+                                    label="Advanced",
+                                    collapsed=True,
+                                    rows=(Use("qef"),),
                                 ),
                             ),
                         ),
                     ),
+                    shared=(Input("qef", TypeExpr.concrete(CORE_BOOLEAN), default=False),),
                 ),
                 Input(
                     "smooth_iters",
