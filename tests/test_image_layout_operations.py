@@ -6,8 +6,11 @@ from typing import cast
 
 import numpy as np
 import pytest
+from dinkster_api.v1 import Formula, Input, NumberWidget
 from dinkster_image.layout import ImageGridCompose, ImageGridDecompose, ImageStitch
 from dinkster_schema import schema_to_wire
+
+from tests.body_rows import scope, wire_entry
 
 GOLDEN = cast(
     "dict[str, object]",
@@ -31,13 +34,14 @@ def _image(values: list[float], *, height: int = 1, width: int = 1) -> np.ndarra
 
 def test_stitch_spacing_color_is_conditional_on_nonzero_width() -> None:
     schema = ImageStitch.schema()
-    assert schema.inputs[3].id == "spacing_width"
-    group = schema.widget_groups[0]
-    assert group.input == "spacing_width"
-    assert group.values == tuple(range(1, 1025))
-    assert group.members == ("spacing_color",)
-    wire_groups = cast("list[dict[str, object]]", schema_to_wire(schema)["widgetGroups"])
-    assert len(cast("list[object]", wire_groups[0]["values"])) == 1024
+    rows = {row.id: row for row in scope(schema.body) if isinstance(row, Input)}
+    assert [row.id for row in schema.inputs][3:5] == ["spacing_width", "spacing_color"]
+    # spacing_width runs 0 to 1024, so the color shows for every width but 0.
+    assert cast("NumberWidget", rows["spacing_width"].widget).max == 1024
+    assert rows["spacing_color"].visible == Formula("spacing_width >= 1")
+    assert rows["spacing_width"].visible is True
+    wire = schema_to_wire(schema)
+    assert wire_entry(wire, "spacing_color")["visible"] == {"formula": "spacing_width >= 1"}
 
 
 def test_grid_compose_uses_row_major_dynamic_inputs() -> None:
