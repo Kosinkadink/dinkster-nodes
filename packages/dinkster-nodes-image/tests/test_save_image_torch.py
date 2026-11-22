@@ -27,6 +27,7 @@ from dinkster_api.v1 import (
     Node,
     NodeSchema,
     Output,
+    Record,
     TypeExpr,
     materialize_image,
 )
@@ -658,7 +659,7 @@ def test_advanced_image_png_keeps_depth_alpha_counters_and_mount(
             images=images,
             filename_prefix="sample",
             mount="alternate",
-            format={"format": "png", "bit_depth": depth, "input_color_space": "sRGB"},
+            format=Record("png", {"bit_depth": depth, "input_color_space": "sRGB"}),
         )
     assert result["images"] is images
     assert torch.equal(images, before)
@@ -691,7 +692,7 @@ def test_advanced_image_exr_preserves_range_scene_light_and_alpha(
         SaveImageAdvanced.execute(
             images=images,
             filename_prefix="scene",
-            format={"format": "exr", "bit_depth": depth, "input_color_space": colorspace},
+            format=Record("exr", {"bit_depth": depth, "input_color_space": colorspace}),
         )
     # Derive the scene-light RGB independently, leaving straight alpha untouched.
     rgb = images[0, 0, 0, :3].numpy()
@@ -739,11 +740,9 @@ def test_advanced_image_exr_metadata_flag_controls_chromaticities(
         SaveImageAdvanced.execute(
             images=torch.full((1, 17, 19, 3), 0.23),
             filename_prefix="aces",
-            format={
-                "format": "exr",
-                "bit_depth": "32-bit float",
-                "input_color_space": "linear ACEScg",
-            },
+            format=Record(
+                "exr", {"bit_depth": "32-bit float", "input_color_space": "linear ACEScg"}
+            ),
         )
     encoded = (default / "aces_00001.exr").read_bytes()
     attribute = (
@@ -768,13 +767,17 @@ def test_advanced_image_avif_retains_mode_frame_order_and_hdr_auto(
         result = SaveImageAdvanced.execute(
             images=images,
             filename_prefix="movie-%batch_num%",
-            format={
-                "format": "avif",
-                "bit_depth": "auto",
-                "input_color_space": "HDR PQ",
-                "crf": 18,
-                "save_mode": {"save_mode": mode, "fps": 7.0, "loop_count": 2},
-            },
+            format=Record(
+                "avif",
+                {
+                    "bit_depth": "auto",
+                    "input_color_space": "HDR PQ",
+                    "crf": 18,
+                    "save_mode": Record(
+                        mode, {"fps": 7.0, "loop_count": 2} if mode == "animated" else {}
+                    ),
+                },
+            ),
         )
     assert result["images"] is images
     files = sorted(default.glob("movie-*.avif"))
@@ -819,7 +822,7 @@ def test_advanced_image_grayscale_width_four_converts_every_column(
         result = SaveImageAdvanced.execute(
             images=images,
             filename_prefix="gray",
-            format={"format": "exr", "bit_depth": "32-bit float", "input_color_space": colorspace},
+            format=Record("exr", {"bit_depth": "32-bit float", "input_color_space": colorspace}),
         )
     assert result["images"] is images
     assert torch.equal(images, before)
@@ -1268,11 +1271,7 @@ def test_exr_previews_apply_input_transfer_before_srgb_quantization(
             images=images,
             filename_prefix="transfer",
             mount="alternate",
-            format={
-                "format": "exr",
-                "bit_depth": "32-bit float",
-                "input_color_space": colorspace,
-            },
+            format=Record("exr", {"bit_depth": "32-bit float", "input_color_space": colorspace}),
         )
     assert result["images"] is images and torch.equal(images, before)
     assert len(saved) == len(previews) == 1

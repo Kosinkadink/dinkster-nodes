@@ -26,9 +26,12 @@ from dinkster_api.v1 import (
     NumberWidget,
     Option,
     Output,
+    Record,
     Row,
+    Section,
     StringWidget,
     TypeExpr,
+    Use,
     attach_saved_artifact,
     current_export_snapshot,
     initialize_inference_process,
@@ -85,49 +88,50 @@ class SaveImageAdvanced(Node):
                         Option(
                             "png",
                             rows=(
-                                Input(
-                                    "bit_depth",
-                                    _COMBO,
-                                    default="8-bit",
-                                    widget=ComboWidget(options=("8-bit", "16-bit")),
-                                ),
-                                Input(
-                                    "input_color_space",
-                                    _COMBO,
-                                    default="sRGB",
-                                    widget=ComboWidget(options=("sRGB",)),
+                                Section(
+                                    "advanced",
+                                    label="Advanced",
+                                    collapsed=True,
+                                    rows=(Use("bit_depth"), Use("input_color_space")),
                                 ),
                             ),
                         ),
                         Option(
                             "exr",
                             rows=(
-                                Input(
-                                    "bit_depth",
-                                    _COMBO,
-                                    default="16-bit float",
-                                    widget=ComboWidget(options=("32-bit float", "16-bit float")),
-                                ),
-                                Input(
-                                    "input_color_space",
-                                    _COMBO,
-                                    default="sRGB",
-                                    widget=ComboWidget(
-                                        options=("sRGB", "HDR", "linear", "linear ACEScg")
-                                    ),
-                                    tooltip=(
-                                        "Colorspace of the input tensor. The EXR is always written "
-                                        "as scene-linear in the matching gamut.\n"
-                                        "sRGB - input is sRGB-encoded Rec.709; the inverse sRGB "
-                                        "EOTF is applied.\n"
-                                        "HDR - input is HLG-encoded Rec.2020 (BT.2100); the "
-                                        "inverse HLG OETF is applied to get scene-linear light.\n"
-                                        "linear - input is already scene-linear (Rec.709 "
-                                        "primaries); written through unchanged. Use this for "
-                                        "renderer/compositor output.\n"
-                                        "linear ACEScg - input is already scene-linear ACEScg "
-                                        "(AP1 / D60); written through unchanged with ACEScg "
-                                        "chromaticities."
+                                Section(
+                                    "advanced",
+                                    label="Advanced",
+                                    collapsed=True,
+                                    rows=(
+                                        Use(
+                                            "bit_depth",
+                                            default="16-bit float",
+                                            widget=ComboWidget(
+                                                options=("32-bit float", "16-bit float")
+                                            ),
+                                        ),
+                                        Use(
+                                            "input_color_space",
+                                            widget=ComboWidget(
+                                                options=("sRGB", "HDR", "linear", "linear ACEScg")
+                                            ),
+                                            tooltip=(
+                                                "Colorspace of the input tensor. The EXR is always "
+                                                "written as scene-linear in the matching gamut.\n"
+                                                "sRGB - input is sRGB-encoded Rec.709; the inverse "
+                                                "sRGB EOTF is applied.\n"
+                                                "HDR - input is HLG-encoded Rec.2020 (BT.2100); the "
+                                                "inverse HLG OETF is applied to get scene-linear "
+                                                "light.\n"
+                                                "linear - input is already scene-linear (Rec.709 "
+                                                "primaries); written through unchanged. Use this "
+                                                "for renderer/compositor output.\n"
+                                                "linear ACEScg - input is already scene-linear "
+                                                "ACEScg (AP1 / D60); written through unchanged with "
+                                                "ACEScg chromaticities."
+                                            ),
+                                        ),
                                     ),
                                 ),
                             ),
@@ -135,34 +139,6 @@ class SaveImageAdvanced(Node):
                         Option(
                             "avif",
                             rows=(
-                                Input(
-                                    "bit_depth",
-                                    _COMBO,
-                                    default="auto",
-                                    widget=ComboWidget(
-                                        options=("auto", "8-bit YUV420", "10-bit YUV420")
-                                    ),
-                                    tooltip=(
-                                        "Auto uses 8-bit YUV420 for sRGB and 10-bit YUV420 for HDR."
-                                    ),
-                                ),
-                                Input(
-                                    "input_color_space",
-                                    _COMBO,
-                                    default="sRGB",
-                                    widget=ComboWidget(options=("sRGB", "HDR", "HDR PQ")),
-                                    tooltip=(
-                                        "Colorspace of the input images. HDR selects BT.2020/HLG "
-                                        "and HDR PQ selects BT.2020/PQ."
-                                    ),
-                                ),
-                                Input(
-                                    "crf",
-                                    _INT,
-                                    default=18,
-                                    widget=NumberWidget(min=1, max=63),
-                                    tooltip="Lower values produce higher quality and larger files.",
-                                ),
                                 Choice(
                                     "save_mode",
                                     options=(
@@ -178,14 +154,21 @@ class SaveImageAdvanced(Node):
                                                         min=0.01, max=1000.0, step=0.01
                                                     ),
                                                 ),
-                                                Input(
-                                                    "loop_count",
-                                                    _INT,
-                                                    default=0,
-                                                    widget=NumberWidget(min=0, max=1000),
-                                                    tooltip=(
-                                                        "Number of times to loop the animation. "
-                                                        "0 loops forever."
+                                                Section(
+                                                    "advanced",
+                                                    label="Advanced",
+                                                    collapsed=True,
+                                                    rows=(
+                                                        Input(
+                                                            "loop_count",
+                                                            _INT,
+                                                            default=0,
+                                                            widget=NumberWidget(min=0, max=1000),
+                                                            tooltip=(
+                                                                "Number of times to loop the "
+                                                                "animation. 0 loops forever."
+                                                            ),
+                                                        ),
                                                     ),
                                                 ),
                                             ),
@@ -193,7 +176,57 @@ class SaveImageAdvanced(Node):
                                     ),
                                     label="save mode",
                                 ),
+                                Section(
+                                    "advanced",
+                                    label="Advanced",
+                                    collapsed=True,
+                                    rows=(
+                                        Use(
+                                            "bit_depth",
+                                            default="auto",
+                                            widget=ComboWidget(
+                                                options=("auto", "8-bit YUV420", "10-bit YUV420")
+                                            ),
+                                            tooltip=(
+                                                "Auto uses 8-bit YUV420 for sRGB and 10-bit "
+                                                "YUV420 for HDR."
+                                            ),
+                                        ),
+                                        Use(
+                                            "input_color_space",
+                                            widget=ComboWidget(options=("sRGB", "HDR", "HDR PQ")),
+                                            tooltip=(
+                                                "Colorspace of the input images. HDR selects "
+                                                "BT.2020/HLG and HDR PQ selects BT.2020/PQ."
+                                            ),
+                                        ),
+                                        Input(
+                                            "crf",
+                                            _INT,
+                                            default=18,
+                                            widget=NumberWidget(min=1, max=63),
+                                            tooltip=(
+                                                "Lower values produce higher quality and larger "
+                                                "files."
+                                            ),
+                                        ),
+                                    ),
+                                ),
                             ),
+                        ),
+                    ),
+                    shared=(
+                        Input(
+                            "bit_depth",
+                            _COMBO,
+                            default="8-bit",
+                            widget=ComboWidget(options=("8-bit", "16-bit")),
+                        ),
+                        Input(
+                            "input_color_space",
+                            _COMBO,
+                            default="sRGB",
+                            widget=ComboWidget(options=("sRGB",)),
                         ),
                     ),
                     tooltip="The file format in which to save the image.",
@@ -211,16 +244,10 @@ class SaveImageAdvanced(Node):
         *,
         images: Any,
         filename_prefix: str = "ComfyUI",
-        format: str | Mapping[str, Any] = "png",
+        format: Record,
         mount: str | None = None,
-        **values: Any,
     ) -> Mapping[str, object]:
-        if isinstance(format, str):
-            format = {
-                "format": format,
-                **{key.removeprefix("format."): value for key, value in values.items()},
-            }
-        file_format = format["format"]
+        file_format = format.key
         defaults = {"png": "8-bit", "exr": "16-bit float", "avif": "auto"}
         if file_format not in defaults:
             raise ValueError(f"Unsupported image format: {file_format!r}")
@@ -256,19 +283,8 @@ class SaveImageAdvanced(Node):
 
         def sources() -> Generator[BinaryIO]:
             if file_format == "avif":
-                selected_mode = format.get("save_mode", {"save_mode": "still images"})
-                if isinstance(selected_mode, str):
-                    save_mode: Mapping[str, Any] = {
-                        "save_mode": selected_mode,
-                        **{
-                            key.removeprefix("save_mode."): value
-                            for key, value in format.items()
-                            if key.startswith("save_mode.")
-                        },
-                    }
-                else:
-                    save_mode = selected_mode
-                animated = save_mode["save_mode"] == "animated"
+                save_mode: Record = format["save_mode"]
+                animated = save_mode.key == "animated"
                 batches = (batch,) if animated else batch.unsqueeze(1)
                 metadata: dict[str, Any] | None = None
                 if write_metadata:
