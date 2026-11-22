@@ -3,7 +3,6 @@ from __future__ import annotations
 import asyncio
 import base64
 import json
-import re
 import uuid
 from collections.abc import Mapping
 from dataclasses import replace
@@ -258,10 +257,7 @@ class FakeGateway:
             )
         )
         if self.recording is not None:
-            # The recorded submit names the recording gateway's loopback origin.
-            encoded = re.sub(
-                r"http://127\.0\.0\.1:\d+", self.base_url, json.dumps(self.recording["submit"])
-            )
+            encoded = json.dumps(self.recording["submit"]).replace("{base_url}", self.base_url)
             return web.json_response(cast("dict[str, object]", json.loads(encoded)), status=202)
         if self.submit_failures:
             self.submit_failures -= 1
@@ -689,7 +685,7 @@ def test_recorded_gateway_catalog_submit_progress_and_digest_round_trip(
     recording = cast(
         "dict[str, object]", json.loads(RECORDED_GATEWAY_FIXTURE.read_text(encoding="utf-8"))
     )
-    assert recording["sourceCommit"] == "b9b51d7345860a5475205b0379e92217be19a17a"
+    assert recording["sourceCommit"] == "5ff575cacf14baba3858a2371b19cda730167a7c"
     submitted = cast("Mapping[str, object]", recording["submit"])
     recorded_image = cast(
         "Mapping[str, object]",
@@ -723,13 +719,9 @@ def test_recorded_gateway_catalog_submit_progress_and_digest_round_trip(
                 ("progress", 100, 100)
             ]
             assert not gateway.polled.is_set()
-            assert json.dumps(recording["poll"]).replace("{base_url}", gateway.base_url) == (
-                re.sub(r"http://127\.0\.0\.1:\d+", gateway.base_url, json.dumps(submitted))
-            )
+            assert recording["poll"] == submitted
             assert gateway.downloads == [
-                "/v1/downloads/a38ba457-6bfc-47da-8b56-160edb589e9a/images.0"
-                "?expires=1795333252&signature="
-                "2eaebb7017272043e0848b6c26533125d4a97de57a5c88ea91e02de0672e75f1"
+                cast("str", recorded_image["downloadUrl"]).removeprefix("{base_url}")
             ]
             output = cast("list[object]", result["images"])[0]
             assert isinstance(output, AssetRef)
