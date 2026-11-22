@@ -15,6 +15,7 @@ from dinkster_api.v1 import (
     NodeSchema,
     NumberWidget,
     Output,
+    Section,
     TypeExpr,
     materialize_image,
     materialize_latent,
@@ -23,7 +24,7 @@ from dinkster_api.v1 import (
 
 
 def _schema(node_type: str, display_name: str, *, encode: bool, tiled: bool) -> NodeSchema:
-    inputs: tuple[Input, ...] = (
+    body: tuple[Input | Section | Output, ...] = (
         Input(
             "pixels" if encode else "samples",
             TypeExpr.concrete(IMAGE_TYPE if encode else LATENT_TYPE),
@@ -31,7 +32,7 @@ def _schema(node_type: str, display_name: str, *, encode: bool, tiled: bool) -> 
         Input("vae", TypeExpr.concrete(VAE_TYPE)),
     )
     if tiled:
-        inputs += tuple(
+        advanced = tuple(
             Input(
                 name,
                 TypeExpr.concrete(CORE_INT),
@@ -45,6 +46,13 @@ def _schema(node_type: str, display_name: str, *, encode: bool, tiled: bool) -> 
                 ("temporal_overlap", 8, 4, 4),
             )
         )
+        body += (Section("advanced", label="Advanced", collapsed=True, rows=advanced),)
+    body += (
+        Output(
+            "LATENT" if encode else "IMAGE",
+            TypeExpr.concrete(LATENT_TYPE if encode else IMAGE_TYPE),
+        ),
+    )
     return NodeSchema(
         node_type=node_type,
         display_name=display_name,
@@ -56,13 +64,7 @@ def _schema(node_type: str, display_name: str, *, encode: bool, tiled: bool) -> 
             if encode
             else ("decode", "decode latent", "latent to image", "render latent")
         ),
-        inputs=inputs,
-        outputs=(
-            Output(
-                "LATENT" if encode else "IMAGE",
-                TypeExpr.concrete(LATENT_TYPE if encode else IMAGE_TYPE),
-            ),
-        ),
+        body=body,
     )
 
 
