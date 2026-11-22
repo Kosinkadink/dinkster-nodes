@@ -190,8 +190,8 @@ def test_composed_server_end_to_end(tmp_path: Path) -> None:
             assert data["nodes"]["dinkster.text.string_concatenate"]["pack"] == "dinkster-text"
             blob_size = next(
                 item
-                for item in data["nodes"]["iso.blob_out"]["interface"]
-                if item["role"] == "input" and item["id"] == "size"
+                for item in data["nodes"]["iso.blob_out"]["body"]
+                if item["kind"] == "input" and item["id"] == "size"
             )
             assert blob_size["widget"] == {
                 "type": "isopack.size",
