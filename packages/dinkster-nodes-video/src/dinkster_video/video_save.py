@@ -22,9 +22,11 @@ from dinkster_api.v1 import (
     NumberWidget,
     Option,
     Output,
+    Record,
     Row,
     StringWidget,
     TypeExpr,
+    Use,
     attach_saved_artifact,
     bind_video_value,
     current_export_snapshot,
@@ -40,55 +42,66 @@ _VIDEO = TypeExpr.concrete(VIDEO_TYPE)
 _STRING = TypeExpr.concrete(CORE_STRING)
 
 
-def _codec_input(codecs: tuple[str, ...], *, required: bool = True, hidden: bool = False) -> Choice:
-    options: list[Option] = []
-    for codec in codecs:
-        if codec == "auto":
-            options.append(Option(codec))
-            continue
-        options.append(
-            Option(
-                codec,
-                rows=(
-                    Choice(
-                        "encoding",
-                        options=(
-                            Option("auto"),
-                            Option(
-                                "re-encode",
-                                rows=(
-                                    Input(
-                                        "crf",
-                                        TypeExpr.concrete(CORE_FLOAT),
-                                        default=18.0 if codec == "h264" else 24.0,
-                                        widget=NumberWidget(
-                                            min=0.0, max=51.0 if codec == "h264" else 63.0, step=1.0
-                                        ),
-                                        tooltip="Lower values produce higher quality and larger files.",
-                                    ),
-                                ),
-                            ),
-                        ),
-                        required=False,
-                        label="encoding mode",
-                        tooltip=(
-                            f"Automatic preserves compatible {codec.upper()} streams. "
-                            "Re-encode applies custom encoding options."
+def _encoding_tooltip(codec: str) -> str:
+    return (
+        f"Automatic preserves compatible {codec.upper()} streams. "
+        "Re-encode applies custom encoding options."
+    )
+
+
+# The codec choice is declared once, in the format choice's shared rows, and
+# its encoding choice once, in the codec choice's shared rows; AV1 overrides
+# the encoding tooltip and the crf default and limit where it uses them.
+_CODEC = Choice(
+    "codec",
+    options=(
+        Option("auto"),
+        Option("h264", rows=(Use("encoding"),)),
+        Option(
+            "av1",
+            rows=(
+                Use(
+                    "encoding",
+                    tooltip=_encoding_tooltip("av1"),
+                    inside=(
+                        Use(
+                            "crf",
+                            default=24.0,
+                            widget=NumberWidget(min=0.0, max=63.0, step=1.0),
                         ),
                     ),
                 ),
-            )
-        )
-    return Choice(
-        "codec",
-        options=tuple(options),
-        required=required,
-        hidden=hidden,
-        tooltip=(
-            "The output video codec. Auto preserves a compatible source stream. "
-            "H.264 and AV1 re-encoding support SDR, HDR (HLG), and HDR PQ."
+            ),
         ),
-    )
+    ),
+    shared=(
+        Choice(
+            "encoding",
+            options=(
+                Option("auto"),
+                Option(
+                    "re-encode",
+                    rows=(
+                        Input(
+                            "crf",
+                            TypeExpr.concrete(CORE_FLOAT),
+                            default=18.0,
+                            widget=NumberWidget(min=0.0, max=51.0, step=1.0),
+                            tooltip="Lower values produce higher quality and larger files.",
+                        ),
+                    ),
+                ),
+            ),
+            required=False,
+            label="encoding mode",
+            tooltip=_encoding_tooltip("h264"),
+        ),
+    ),
+    tooltip=(
+        "The output video codec. Auto preserves a compatible source stream. "
+        "H.264 and AV1 re-encoding support SDR, HDR (HLG), and HDR PQ."
+    ),
+)
 
 
 class SaveVideo(Node):
@@ -126,23 +139,18 @@ class SaveVideo(Node):
                 ),
                 Choice(
                     "format",
-                    options=tuple(
-                        Option(
-                            kind,
-                            rows=(
-                                _codec_input(
-                                    ("auto", "av1") if kind == "webm" else ("auto", "h264", "av1")
-                                ),
-                            ),
-                        )
-                        for kind in ("auto", "mp4", "mkv", "webm")
+                    options=(
+                        Option("auto", rows=(Use("codec"),)),
+                        Option("mp4", rows=(Use("codec"),)),
+                        Option("mkv", rows=(Use("codec"),)),
+                        Option("webm", rows=(Use("codec", only=("auto", "av1")),)),
                     ),
+                    shared=(_CODEC,),
                     tooltip=(
                         "The output container. Auto uses MP4 for Auto/H.264 and WebM for AV1. "
                         "MP4, MKV, and WebM select a specific container."
                     ),
                 ),
-                _codec_input(("auto", "h264", "av1"), required=False, hidden=True),
                 Output("video", _VIDEO, preview=True, tooltip="The input video, unchanged."),
             ),
             output_node=True,
@@ -155,29 +163,15 @@ class SaveVideo(Node):
         cls,
         *,
         video: object,
+        format: Record,
         filename_prefix: str = "video/ComfyUI",
-        format: str | Mapping[str, object] = "auto",
-        codec: str | Mapping[str, object] | None = None,
         mount: str | None = None,
-        **values: object,
     ) -> Mapping[str, object]:
-        if isinstance(format, Mapping):
-            kind = format["format"]
-            selected = format.get("codec") or codec
-            encoding_prefix = "codec.encoding."
-        else:
-            kind = format
-            nested = values.get("format.codec")
-            selected = nested or codec
-            encoding_prefix = "format.codec.encoding." if nested else "codec.encoding."
-        if isinstance(selected, Mapping):
-            fields = cast(Mapping[str, object], selected)
-            name = fields["codec"]
-            encoding = cast(Mapping[str, object], fields.get("encoding") or {})
-            crf = encoding.get("crf")
-        else:
-            name = selected or "auto"
-            crf = values.get(encoding_prefix + "crf")
+        kind = format.key
+        codec = cast(Record, format["codec"])
+        name = codec.key
+        encoding = cast(Record | None, codec.get("encoding"))
+        crf = encoding.get("crf") if encoding is not None else None
         if kind not in ("auto", "mp4", "mkv", "webm"):
             raise ValueError(f"Unsupported video container: {kind!r}")
         if name not in (("auto", "av1") if kind == "webm" else ("auto", "h264", "av1")):

@@ -20,6 +20,7 @@ from dinkster_caches import MemoryLRUCache
 from dinkster_engine import Engine, EventListener, ExecutionRuntime
 from dinkster_protocol import AssetFolderContext, SavedArtifact
 from dinkster_schema import Node, NodeSchema, Output, TypeExpr, build_node_types, build_schemas
+from dinkster_schema.nest import Record
 from dinkster_server import ServerLibrary, create_app
 from dinkster_values import TypeRegistry, register_core_types
 from dinkster_workers import InProcessWorker
@@ -82,8 +83,7 @@ def test_native_media_saves_complete_into_kind_filtered_project_catalog(
                     video=video,
                     filename_prefix="saved/result",
                     mount="renders",
-                    format="mp4",
-                    codec="h264",
+                    format=Record("mp4", {"codec": Record("h264", {"encoding": None})}),
                 )
             else:
                 SaveText.execute(
