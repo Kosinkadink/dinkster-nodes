@@ -17,10 +17,10 @@ from dinkster_api.v1 import (
     LATENT_TYPE,
     AssetRef,
     ExportSnapshot,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
-    OutputSpec,
+    Output,
     TypeExpr,
     materialize_latent,
 )
@@ -158,8 +158,10 @@ class LatentInspect(Node):
     def define_schema(cls) -> NodeSchema:
         return NodeSchema(
             node_type="file-export-fixture.inspect",
-            inputs=(InputSpec("latent", TypeExpr.concrete(LATENT_TYPE)),),
-            outputs=(OutputSpec("summary", TypeExpr.concrete(CORE_STRING)),),
+            body=(
+                Input("latent", TypeExpr.concrete(LATENT_TYPE)),
+                Output("summary", TypeExpr.concrete(CORE_STRING)),
+            ),
         )
 
     @classmethod
@@ -185,7 +187,9 @@ def test_latent_export_consumes_submission_metadata(
     disabled: bool,
     prompt: dict | None,
 ) -> None:
-    from dinkster_api.v1 import initialize_inference_process
+    from dinkster_api.v1 import (
+        initialize_inference_process,
+    )
 
     initialize_inference_process()
     from dinkster_inference.cli_args import args

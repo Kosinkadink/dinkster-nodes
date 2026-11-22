@@ -7,11 +7,11 @@ from dinkster_api.v1 import (
     CORE_FLOAT,
     CORE_INT,
     LATENT_TYPE,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
     TypeExpr,
     initialize_inference_process,
     with_identity_replacement,
@@ -26,21 +26,21 @@ class EmptyMiniMaxMusic3LatentAudio(Node):
             display_name="Empty MiniMax Music3 Latent Audio",
             category="model/latent/minimax music",
             description="Creates an empty MiniMax Music3 audio latent for the requested duration.",
-            inputs=(
-                InputSpec(
+            body=(
+                Input(
                     "seconds",
                     TypeExpr.concrete(CORE_FLOAT),
                     default=120.0,
                     widget=NumberWidget(min=0.04, max=360.0, step=0.04),
                 ),
-                InputSpec(
+                Input(
                     "batch_size",
                     TypeExpr.concrete(CORE_INT),
                     default=1,
                     widget=NumberWidget(min=1, max=4096),
                 ),
+                Output("LATENT", TypeExpr.concrete(LATENT_TYPE)),
             ),
-            outputs=(OutputSpec("LATENT", TypeExpr.concrete(LATENT_TYPE)),),
         )
         return with_identity_replacement(schema, "EmptyMiniMaxMusic3LatentAudio")
 

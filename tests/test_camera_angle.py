@@ -12,10 +12,10 @@ from dinkster_3d.camera_angle import CameraAngle
 from dinkster_api.v1 import (
     CORE_STRING,
     LOAD3D_CAMERA_TYPE,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
-    OutputSpec,
+    Output,
     TypeExpr,
 )
 from dinkster_graph import Graph, GraphNode, Link
@@ -72,11 +72,11 @@ class CameraAngleInspect(Node):
     def define_schema(cls) -> NodeSchema:
         return NodeSchema(
             "camera-angle-fixture.inspect",
-            inputs=(
-                InputSpec("camera", TypeExpr.concrete(LOAD3D_CAMERA_TYPE)),
-                InputSpec("prompt", TypeExpr.concrete(CORE_STRING)),
+            body=(
+                Input("camera", TypeExpr.concrete(LOAD3D_CAMERA_TYPE)),
+                Input("prompt", TypeExpr.concrete(CORE_STRING)),
+                Output("summary", TypeExpr.concrete(CORE_STRING)),
             ),
-            outputs=(OutputSpec("summary", TypeExpr.concrete(CORE_STRING)),),
         )
 
     @classmethod

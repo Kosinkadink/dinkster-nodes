@@ -13,11 +13,11 @@ from dinkster_api.v1 import (
     CORE_INT,
     IMAGE_TYPE,
     MESH_TYPE,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
     TypeExpr,
     initialize_inference_process,
     materialize_mesh,
@@ -40,47 +40,47 @@ class BakeAmbientOcclusion(Node):
                 "Apply Texture To Mesh's occlusion input "
                 "(packed into the ORM map / occlusionTexture)."
             ),
-            inputs=(
-                InputSpec("low_poly", TypeExpr.concrete(MESH_TYPE)),
-                InputSpec("high_poly", TypeExpr.concrete(MESH_TYPE)),
-                InputSpec(
+            body=(
+                Input("low_poly", TypeExpr.concrete(MESH_TYPE)),
+                Input("high_poly", TypeExpr.concrete(MESH_TYPE)),
+                Input(
                     "resolution",
                     TypeExpr.concrete(CORE_INT),
                     default=1024,
                     widget=NumberWidget(min=64, max=8192, step=64),
                 ),
-                InputSpec(
+                Input(
                     "samples",
                     TypeExpr.concrete(CORE_INT),
                     default=64,
                     widget=NumberWidget(min=4, max=1024, step=4),
-                    doc="Rays per texel. More = smoother, slower. Raise if grainy.",
+                    tooltip="Rays per texel. More = smoother, slower. Raise if grainy.",
                 ),
-                InputSpec(
+                Input(
                     "max_distance",
                     TypeExpr.concrete(CORE_FLOAT),
                     default=0.5,
                     widget=NumberWidget(min=0.01, max=2.0, step=0.01),
-                    doc="Ray length, as a fraction of the bounding box diagonal. "
+                    tooltip="Ray length, as a fraction of the bounding box diagonal. "
                     "Smaller = tighter, more local occlusion.",
                 ),
-                InputSpec(
+                Input(
                     "strength",
                     TypeExpr.concrete(CORE_FLOAT),
                     default=1.0,
                     widget=NumberWidget(min=0.0, max=2.0, step=0.05),
-                    doc="Scales the occlusion. >1 darkens, <1 lightens.",
+                    tooltip="Scales the occlusion. >1 darkens, <1 lightens.",
                 ),
-                InputSpec(
+                Input(
                     "bias",
                     TypeExpr.concrete(CORE_FLOAT),
                     default=0.01,
                     widget=NumberWidget(min=0.0001, max=0.2, step=0.0005),
-                    doc="Ray origin lift off the surface, as a fraction of the bounding box "
+                    tooltip="Ray origin lift off the surface, as a fraction of the bounding box "
                     "diagonal. Raise if even surfaces show dark blotches/holes.",
                 ),
+                Output("IMAGE", TypeExpr.concrete(IMAGE_TYPE), label="occlusion"),
             ),
-            outputs=(OutputSpec("IMAGE", TypeExpr.concrete(IMAGE_TYPE), display_name="occlusion"),),
         )
         return with_identity_replacement(schema, "BakeAmbientOcclusion")
 
@@ -177,36 +177,34 @@ class BakeNormalMapFromMesh(Node):
                 "low_poly and the high_poly it was decimated from. Outputs an image for "
                 "Apply Texture To Mesh's normal_map input."
             ),
-            inputs=(
-                InputSpec("low_poly", TypeExpr.concrete(MESH_TYPE)),
-                InputSpec("high_poly", TypeExpr.concrete(MESH_TYPE)),
-                InputSpec(
+            body=(
+                Input("low_poly", TypeExpr.concrete(MESH_TYPE)),
+                Input("high_poly", TypeExpr.concrete(MESH_TYPE)),
+                Input(
                     "resolution",
                     TypeExpr.concrete(CORE_INT),
                     default=1024,
                     widget=NumberWidget(min=64, max=8192, step=64),
-                    display_name="resolution",
+                    label="resolution",
                 ),
-                InputSpec(
+                Input(
                     "cage_distance",
                     TypeExpr.concrete(CORE_FLOAT),
                     default=0.05,
                     widget=NumberWidget(min=0.001, max=0.5, step=0.001),
-                    doc="Surface search band, as a fraction of the bounding box diagonal. "
+                    tooltip="Surface search band, as a fraction of the bounding box diagonal. "
                     "Raise for wrong/missing patches under heavy decimation; "
                     "lower if it grabs across gaps.",
                 ),
-                InputSpec(
+                Input(
                     "ignore_backfaces",
                     TypeExpr.concrete(CORE_BOOLEAN),
                     default=True,
-                    doc="Skip high-poly surfaces facing away from the texel, so "
+                    tooltip="Skip high-poly surfaces facing away from the texel, so "
                     "crevices/enclosed spaces don't grab the opposite wall. "
                     "Disable only if the high-poly winding is inconsistent.",
                 ),
-            ),
-            outputs=(
-                OutputSpec("IMAGE", TypeExpr.concrete(IMAGE_TYPE), display_name="normal_map"),
+                Output("IMAGE", TypeExpr.concrete(IMAGE_TYPE), label="normal_map"),
             ),
         )
         return with_identity_replacement(schema, "BakeNormalMapFromMesh")

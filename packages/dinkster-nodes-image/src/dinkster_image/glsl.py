@@ -20,15 +20,16 @@ from dinkster_api.v1 import (
     CORE_STRING,
     CURVE_TYPE,
     IMAGE_TYPE,
+    Choice,
     CurveWidget,
-    DynamicComboOption,
-    DynamicComboSpec,
-    InputFamilySpec,
-    InputSpec,
+    Group,
+    Input,
+    Named,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Option,
+    Output,
     StringWidget,
     TypeExpr,
     render_image_png,
@@ -267,9 +268,9 @@ def _family_template(
     type_expr: TypeExpr,
     default: object,
     widget: CurveWidget | NumberWidget | None,
-) -> tuple[InputSpec, ...]:
+) -> tuple[Input, ...]:
     return (
-        InputSpec(
+        Input(
             "value",
             type_expr,
             required=False,
@@ -299,31 +300,60 @@ class GlslShader(Node):
             description=(
                 "Render a bounded GLSL ES 3.00 fragment shader with isolated native execution."
             ),
-            inputs=(
-                InputSpec(
+            body=(
+                Input(
                     "fragment_shader",
                     STRING,
                     required=False,
                     default=DEFAULT_FRAGMENT_SHADER,
                     widget=StringWidget(multiline=True),
                 ),
-            ),
-            combos=(
-                DynamicComboSpec(
+                Group(
+                    "images",
+                    value=Input("value", IMAGE),
+                    min_members=1,
+                    label="Images",
+                    keys=Named(tuple(f"u_image{index}" for index in range(MAX_GLSL_IMAGES))),
+                ),
+                Group(
+                    "floats",
+                    value=_family_template(FLOAT, 0.0, NumberWidget(step=0.01))[0],
+                    label="Float uniforms",
+                    keys=Named(tuple(f"u_float{index}" for index in range(MAX_GLSL_FLOATS))),
+                ),
+                Group(
+                    "ints",
+                    value=_family_template(INT, 0, NumberWidget(step=1))[0],
+                    label="Integer uniforms",
+                    keys=Named(tuple(f"u_int{index}" for index in range(MAX_GLSL_INTS))),
+                ),
+                Group(
+                    "bools",
+                    value=_family_template(BOOLEAN, False, None)[0],
+                    label="Boolean uniforms",
+                    keys=Named(tuple(f"u_bool{index}" for index in range(MAX_GLSL_BOOLS))),
+                ),
+                Group(
+                    "curves",
+                    value=_family_template(CURVE, curve_default, CurveWidget())[0],
+                    label="Curve uniforms",
+                    keys=Named(tuple(f"u_curve{index}" for index in range(MAX_GLSL_CURVES))),
+                ),
+                Choice(
                     "size_mode",
-                    (
-                        DynamicComboOption("from_input"),
-                        DynamicComboOption(
+                    options=(
+                        Option("from_input"),
+                        Option(
                             "custom",
-                            (
-                                InputSpec(
+                            rows=(
+                                Input(
                                     "width",
                                     INT,
                                     required=False,
                                     default=512,
                                     widget=NumberWidget(min=1, max=MAX_DIMENSION, step=1),
                                 ),
-                                InputSpec(
+                                Input(
                                     "height",
                                     INT,
                                     required=False,
@@ -335,49 +365,16 @@ class GlslShader(Node):
                     ),
                     default="from_input",
                 ),
-            ),
-            input_families=(
-                InputFamilySpec(
-                    "images",
-                    IMAGE,
-                    min_members=1,
-                    member_names=tuple(f"u_image{index}" for index in range(MAX_GLSL_IMAGES)),
-                    display_name="Images",
+                *tuple(
+                    Output(
+                        f"image{index}",
+                        IMAGE,
+                        tooltip=f"Shader output fragColor{index}.",
+                        preview=index == 0,
+                        alpha_policy="create_if_missing",
+                    )
+                    for index in range(4)
                 ),
-                InputFamilySpec(
-                    "floats",
-                    _family_template(FLOAT, 0.0, NumberWidget(step=0.01)),
-                    member_names=tuple(f"u_float{index}" for index in range(MAX_GLSL_FLOATS)),
-                    display_name="Float uniforms",
-                ),
-                InputFamilySpec(
-                    "ints",
-                    _family_template(INT, 0, NumberWidget(step=1)),
-                    member_names=tuple(f"u_int{index}" for index in range(MAX_GLSL_INTS)),
-                    display_name="Integer uniforms",
-                ),
-                InputFamilySpec(
-                    "bools",
-                    _family_template(BOOLEAN, False, None),
-                    member_names=tuple(f"u_bool{index}" for index in range(MAX_GLSL_BOOLS)),
-                    display_name="Boolean uniforms",
-                ),
-                InputFamilySpec(
-                    "curves",
-                    _family_template(CURVE, curve_default, CurveWidget()),
-                    member_names=tuple(f"u_curve{index}" for index in range(MAX_GLSL_CURVES)),
-                    display_name="Curve uniforms",
-                ),
-            ),
-            outputs=tuple(
-                OutputSpec(
-                    f"image{index}",
-                    IMAGE,
-                    doc=f"Shader output fragColor{index}.",
-                    preview=index == 0,
-                    alpha_policy="create_if_missing",
-                )
-                for index in range(4)
             ),
             output_node=True,
             emits_previews=True,
@@ -508,9 +505,9 @@ class NativeGlslShader(GlslShader):
     @classmethod
     def define_schema(cls) -> NodeSchema:
         schema = GlslShader.schema()
-        families: list[InputFamilySpec] = []
+        families: list[Group] = []
         for family in schema.input_families:
-            member = cast(InputSpec, family.template[0])
+            member = cast(Input, family.template[0])
             families.append(
                 replace(
                     family,
@@ -558,7 +555,7 @@ class NativeGlslShader(GlslShader):
                             option,
                             inputs=tuple(
                                 replace(
-                                    cast(InputSpec, spec),
+                                    cast(Input, spec),
                                     required=True,
                                     widget=NumberWidget(min=1, max=MAX_DIMENSION),
                                 )

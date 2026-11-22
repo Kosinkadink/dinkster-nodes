@@ -9,11 +9,12 @@ from dinkster_api.v1 import (
     CORE_FLOAT,
     CORE_INT,
     LATENT_TYPE,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
+    Section,
     TypeExpr,
     initialize_inference_process,
     materialize_latent,
@@ -33,27 +34,27 @@ class EmptyHunyuanImageLatent(Node):
             node_type="dinkster.hunyuan.empty_hunyuan_image_latent",
             display_name="Empty Hunyuan Image Latent",
             category="model/latent/hunyuan image",
-            inputs=(
-                InputSpec(
+            body=(
+                Input(
                     "width",
                     TypeExpr.concrete(CORE_INT),
                     default=2048,
                     widget=NumberWidget(min=64, max=16384, step=32),
                 ),
-                InputSpec(
+                Input(
                     "height",
                     TypeExpr.concrete(CORE_INT),
                     default=2048,
                     widget=NumberWidget(min=64, max=16384, step=32),
                 ),
-                InputSpec(
+                Input(
                     "batch_size",
                     TypeExpr.concrete(CORE_INT),
                     default=1,
                     widget=NumberWidget(min=1, max=4096),
                 ),
+                Output("LATENT", _LATENT),
             ),
-            outputs=(OutputSpec("LATENT", _LATENT),),
         )
         return with_identity_replacement(schema, "EmptyHunyuanImageLatent")
 
@@ -79,22 +80,26 @@ class HunyuanRefinerLatent(Node):
             node_type="dinkster.hunyuan.hunyuan_refiner_latent",
             display_name="Hunyuan Latent Refiner",
             category="model/conditioning/hunyuan video",
-            inputs=(
-                InputSpec("positive", _CONDITIONING),
-                InputSpec("negative", _CONDITIONING),
-                InputSpec("latent", _LATENT),
-                InputSpec(
-                    "noise_augmentation",
-                    TypeExpr.concrete(CORE_FLOAT),
-                    default=0.1,
-                    widget=NumberWidget(min=0.0, max=1.0, step=0.01),
-                    advanced=True,
+            body=(
+                Input("positive", _CONDITIONING),
+                Input("negative", _CONDITIONING),
+                Input("latent", _LATENT),
+                Section(
+                    "advanced",
+                    label="Advanced",
+                    collapsed=True,
+                    rows=(
+                        Input(
+                            "noise_augmentation",
+                            TypeExpr.concrete(CORE_FLOAT),
+                            default=0.1,
+                            widget=NumberWidget(min=0.0, max=1.0, step=0.01),
+                        ),
+                    ),
                 ),
-            ),
-            outputs=(
-                OutputSpec("positive", _CONDITIONING),
-                OutputSpec("negative", _CONDITIONING),
-                OutputSpec("latent", _LATENT),
+                Output("positive", _CONDITIONING),
+                Output("negative", _CONDITIONING),
+                Output("latent", _LATENT),
             ),
         )
         return with_identity_replacement(schema, "HunyuanRefinerLatent")

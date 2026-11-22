@@ -14,10 +14,10 @@ from dinkster_3d_models.latent_model_specific import EmptyTrellis2LatentStructur
 from dinkster_api.v1 import (
     CORE_STRING,
     LATENT_TYPE,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
-    OutputSpec,
+    Output,
     TypeExpr,
     materialize_latent,
 )
@@ -89,8 +89,10 @@ class InspectLatent(Node):
     def define_schema(cls) -> NodeSchema:
         return NodeSchema(
             node_type="latent-fixture.inspect",
-            inputs=(InputSpec("latent", TypeExpr.concrete(LATENT_TYPE)),),
-            outputs=(OutputSpec("text", TypeExpr.concrete(CORE_STRING)),),
+            body=(
+                Input("latent", TypeExpr.concrete(LATENT_TYPE)),
+                Output("text", TypeExpr.concrete(CORE_STRING)),
+            ),
         )
 
     @classmethod

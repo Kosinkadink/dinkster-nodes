@@ -7,10 +7,11 @@ from collections.abc import Mapping
 import numpy as np
 from dinkster_api.v1 import (
     ConditionalWidgetGroup,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
-    OutputSpec,
+    Output,
+    Section,
     annotate_image,
     annotate_mask,
     copy_media_semantics,
@@ -73,8 +74,8 @@ class ImageChannelSplit(Node):
                 node_type="dinkster.image.channels.split",
                 display_name="Split Image Channels",
                 category="image/channels",
-                inputs=(
-                    InputSpec("image", IMAGE),
+                body=(
+                    Input("image", IMAGE),
                     _combo("color_space", COLOR_SPACES, "rgb"),
                     _combo(
                         "channel_layout",
@@ -91,6 +92,11 @@ class ImageChannelSplit(Node):
                         ("rgb", "preserve"),
                         "rgb",
                     ),
+                    Output("image", IMAGE, preview=True, alpha_policy="drop"),
+                    Output("channel_1", IMAGE, preview=True, alpha_policy="drop"),
+                    Output("channel_2", IMAGE, preview=True, alpha_policy="drop"),
+                    Output("channel_3", IMAGE, preview=True, alpha_policy="drop"),
+                    Output("alpha_mask", MASK, preview=True, mask_semantic="alpha"),
                 ),
                 widget_groups=(
                     ConditionalWidgetGroup(
@@ -98,13 +104,6 @@ class ImageChannelSplit(Node):
                         ("single",),
                         ("single_channel_image",),
                     ),
-                ),
-                outputs=(
-                    OutputSpec("image", IMAGE, preview=True, alpha_policy="drop"),
-                    OutputSpec("channel_1", IMAGE, preview=True, alpha_policy="drop"),
-                    OutputSpec("channel_2", IMAGE, preview=True, alpha_policy="drop"),
-                    OutputSpec("channel_3", IMAGE, preview=True, alpha_policy="drop"),
-                    OutputSpec("alpha_mask", MASK, preview=True, mask_semantic="alpha"),
                 ),
                 search_terms=(
                     "split RGB",
@@ -188,25 +187,31 @@ class ImageChannelMerge(Node):
                 node_type="dinkster.image.channels.merge",
                 display_name="Merge Image Channels",
                 category="image/channels",
-                inputs=(
-                    InputSpec("channel_1", IMAGE, alpha_policy="drop"),
-                    InputSpec("channel_2", IMAGE, alpha_policy="drop"),
-                    InputSpec("channel_3", IMAGE, alpha_policy="drop"),
+                body=(
+                    Input("channel_1", IMAGE, alpha_policy="drop"),
+                    Input("channel_2", IMAGE, alpha_policy="drop"),
+                    Input("channel_3", IMAGE, alpha_policy="drop"),
                     _combo("color_space", COLOR_SPACES, "rgb"),
-                    InputSpec("alpha_mask", MASK, required=False, default=None),
+                    Input("alpha_mask", MASK, required=False, default=None),
                     _combo(
                         "alpha_mask_polarity",
                         ALPHA_MASK_POLARITIES,
                         "transparency",
                     ),
-                    _combo(
-                        "batch_policy",
-                        ("singleton_broadcast", "strict"),
-                        "singleton_broadcast",
-                        advanced=True,
+                    Section(
+                        "advanced",
+                        label="Advanced",
+                        collapsed=True,
+                        rows=(
+                            _combo(
+                                "batch_policy",
+                                ("singleton_broadcast", "strict"),
+                                "singleton_broadcast",
+                            ),
+                        ),
                     ),
+                    Output("image", IMAGE, preview=True),
                 ),
-                outputs=(OutputSpec("image", IMAGE, preview=True),),
                 search_terms=(
                     "merge RGB",
                     "merge YCbCr",
@@ -269,23 +274,27 @@ class ImageAlphaJoin(Node):
                 node_type="dinkster.image.alpha.join",
                 display_name="Join Image with Alpha",
                 category="image/channels",
-                inputs=(
-                    InputSpec("image", IMAGE),
-                    InputSpec("alpha_mask", MASK, mask_semantic="alpha"),
+                body=(
+                    Input("image", IMAGE),
+                    Input("alpha_mask", MASK, mask_semantic="alpha"),
                     _combo(
                         "alpha_mask_polarity",
                         ALPHA_MASK_POLARITIES,
                         "transparency",
                     ),
-                    _combo(
-                        "batch_policy",
-                        ("singleton_broadcast", "strict", "cyclic_repeat"),
-                        "singleton_broadcast",
-                        advanced=True,
+                    Section(
+                        "advanced",
+                        label="Advanced",
+                        collapsed=True,
+                        rows=(
+                            _combo(
+                                "batch_policy",
+                                ("singleton_broadcast", "strict", "cyclic_repeat"),
+                                "singleton_broadcast",
+                            ),
+                        ),
                     ),
-                ),
-                outputs=(
-                    OutputSpec("image", IMAGE, preview=True, alpha_policy="create_if_missing"),
+                    Output("image", IMAGE, preview=True, alpha_policy="create_if_missing"),
                 ),
                 search_terms=("add alpha", "RGBA", "JoinImageWithAlpha"),
             )
@@ -341,8 +350,10 @@ class ImageAlphaPremultiply(Node):
             node_type="dinkster.image.alpha.premultiply",
             display_name="Premultiply Image Alpha",
             category="image/channels",
-            inputs=(InputSpec("image", IMAGE, alpha_policy="require"),),
-            outputs=(OutputSpec("image", IMAGE, preview=True, alpha_policy="require"),),
+            body=(
+                Input("image", IMAGE, alpha_policy="require"),
+                Output("image", IMAGE, preview=True, alpha_policy="require"),
+            ),
         )
 
     @classmethod
@@ -364,8 +375,10 @@ class ImageAlphaUnpremultiply(Node):
             node_type="dinkster.image.alpha.unpremultiply",
             display_name="Unpremultiply Image Alpha",
             category="image/channels",
-            inputs=(InputSpec("image", IMAGE, alpha_policy="require"),),
-            outputs=(OutputSpec("image", IMAGE, preview=True, alpha_policy="require"),),
+            body=(
+                Input("image", IMAGE, alpha_policy="require"),
+                Output("image", IMAGE, preview=True, alpha_policy="require"),
+            ),
         )
 
     @classmethod

@@ -10,7 +10,7 @@ from dinkster_api.v1 import (
     IMAGE_TYPE,
     IMAGECOMPARE_TYPE,
     CustomWidgetDescriptor,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     TypeExpr,
@@ -47,16 +47,16 @@ class NativeImageCompare(Node):
             node_type="dinkster.image.image_compare",
             display_name="Compare Images",
             category="image",
-            inputs=(
+            body=(
                 *(
-                    InputSpec(name, IMAGE, required=False, default=None)
+                    Input(name, IMAGE, required=False, default=None)
                     for name in ("image_a", "image_b")
                 ),
-                InputSpec(
+                Input(
                     "compare_view",
                     TypeExpr.concrete(IMAGECOMPARE_TYPE),
                     default=None,
-                    socketless=True,
+                    pin=False,
                     widget=CustomWidgetDescriptor("IMAGECOMPARE"),
                 ),
             ),

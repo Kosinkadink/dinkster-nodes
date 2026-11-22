@@ -12,11 +12,12 @@ from dinkster_api.v1 import (
     LATENT_TYPE,
     MODEL_TYPE,
     SIGMAS_TYPE,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
+    Section,
     TypeExpr,
     initialize_inference_process,
     materialize_latent,
@@ -28,13 +29,13 @@ _LATENT = TypeExpr.concrete(LATENT_TYPE)
 _MODEL = TypeExpr.concrete(MODEL_TYPE)
 
 _SHIFT_INPUTS = (
-    InputSpec(
+    Input(
         "max_shift",
         TypeExpr.concrete(CORE_FLOAT),
         default=2.05,
         widget=NumberWidget(min=0.0, max=100.0, step=0.01),
     ),
-    InputSpec(
+    Input(
         "base_shift",
         TypeExpr.concrete(CORE_FLOAT),
         default=0.95,
@@ -55,12 +56,12 @@ class ModelSamplingLTXV(Node):
         schema = NodeSchema(
             node_type="dinkster.ltx.model_sampling_ltxv",
             category="model/patch/ltxv",
-            inputs=(
-                InputSpec("model", _MODEL),
+            body=(
+                Input("model", _MODEL),
                 *_SHIFT_INPUTS,
-                InputSpec("latent", _LATENT, required=False),
+                Input("latent", _LATENT, required=False),
+                Output("MODEL", _MODEL),
             ),
-            outputs=(OutputSpec("MODEL", _MODEL),),
         )
         return with_identity_replacement(schema, "ModelSamplingLTXV")
 
@@ -86,32 +87,37 @@ class LTXVScheduler(Node):
         schema = NodeSchema(
             node_type="dinkster.ltx.ltxv_scheduler",
             category="model/sampling/schedulers",
-            inputs=(
-                InputSpec(
+            body=(
+                Input(
                     "steps",
                     TypeExpr.concrete(CORE_INT),
                     default=20,
                     widget=NumberWidget(min=1, max=10000),
                 ),
                 *_SHIFT_INPUTS,
-                InputSpec(
-                    "stretch",
-                    TypeExpr.concrete(CORE_BOOLEAN),
-                    default=True,
-                    advanced=True,
-                    doc="Stretch the sigmas to be in the range [terminal, 1].",
+                Input("latent", _LATENT, required=False),
+                Section(
+                    "advanced",
+                    label="Advanced",
+                    collapsed=True,
+                    rows=(
+                        Input(
+                            "stretch",
+                            TypeExpr.concrete(CORE_BOOLEAN),
+                            default=True,
+                            tooltip="Stretch the sigmas to be in the range [terminal, 1].",
+                        ),
+                        Input(
+                            "terminal",
+                            TypeExpr.concrete(CORE_FLOAT),
+                            default=0.1,
+                            widget=NumberWidget(min=0.0, max=0.99, step=0.01),
+                            tooltip="The terminal value of the sigmas after stretching.",
+                        ),
+                    ),
                 ),
-                InputSpec(
-                    "terminal",
-                    TypeExpr.concrete(CORE_FLOAT),
-                    default=0.1,
-                    widget=NumberWidget(min=0.0, max=0.99, step=0.01),
-                    advanced=True,
-                    doc="The terminal value of the sigmas after stretching.",
-                ),
-                InputSpec("latent", _LATENT, required=False),
+                Output("SIGMAS", TypeExpr.concrete(SIGMAS_TYPE)),
             ),
-            outputs=(OutputSpec("SIGMAS", TypeExpr.concrete(SIGMAS_TYPE)),),
         )
         return with_identity_replacement(schema, "LTXVScheduler")
 

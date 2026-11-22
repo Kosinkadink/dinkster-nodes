@@ -15,10 +15,11 @@ from dinkster_api.v1 import (
     CORE_STRING,
     IMAGE_TYPE,
     VAE_TYPE,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
-    OutputSpec,
+    Output,
+    Section,
     StringWidget,
     TypeExpr,
     initialize_inference_process,
@@ -46,24 +47,28 @@ class TextEncodeZImageOmni(Node):
         schema = NodeSchema(
             node_type="dinkster.misc.models.text_encode_z_image_omni",
             category="model/conditioning/z-image",
-            inputs=(
-                InputSpec("clip", _CLIP),
-                InputSpec("image_encoder", _CLIP_VISION, required=False),
-                InputSpec(
-                    "prompt", _STRING, widget=StringWidget(multiline=True, dynamic_prompts=True)
+            body=(
+                Input("clip", _CLIP),
+                Input("image_encoder", _CLIP_VISION, required=False),
+                Input("prompt", _STRING, widget=StringWidget(multiline=True, dynamic_prompts=True)),
+                Input("vae", _VAE, required=False),
+                Input("image1", _IMAGE, required=False),
+                Input("image2", _IMAGE, required=False),
+                Input("image3", _IMAGE, required=False),
+                Section(
+                    "advanced",
+                    label="Advanced",
+                    collapsed=True,
+                    rows=(
+                        Input(
+                            "auto_resize_images",
+                            TypeExpr.concrete(CORE_BOOLEAN),
+                            default=True,
+                        ),
+                    ),
                 ),
-                InputSpec(
-                    "auto_resize_images",
-                    TypeExpr.concrete(CORE_BOOLEAN),
-                    default=True,
-                    advanced=True,
-                ),
-                InputSpec("vae", _VAE, required=False),
-                InputSpec("image1", _IMAGE, required=False),
-                InputSpec("image2", _IMAGE, required=False),
-                InputSpec("image3", _IMAGE, required=False),
+                Output("CONDITIONING", _CONDITIONING),
             ),
-            outputs=(OutputSpec("CONDITIONING", _CONDITIONING),),
         )
         return with_identity_replacement(schema, "TextEncodeZImageOmni")
 

@@ -7,7 +7,7 @@ from typing import cast
 
 import numpy as np
 import pytest
-from dinkster_api.v1 import ComboWidget, InputSpec
+from dinkster_api.v1 import ComboWidget, Input
 from dinkster_image.drawing import MakeImage
 from dinkster_image.mask import (
     MASK_NODES,
@@ -578,10 +578,10 @@ def test_mask_cleanup_support_schema_round_trips_through_schema_wire() -> None:
         "connectivity",
     )
     minimum_area = cleanup.inputs[0]
-    assert isinstance(minimum_area, InputSpec)
+    assert isinstance(minimum_area, Input)
     assert minimum_area.default == 64
     connectivity = cleanup.inputs[2]
-    assert isinstance(connectivity, InputSpec)
+    assert isinstance(connectivity, Input)
     assert connectivity.default == "8"
     assert connectivity.widget == ComboWidget(options=("4", "8"))
     assert operation.option("fill_holes") is not None

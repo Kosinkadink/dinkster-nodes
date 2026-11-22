@@ -13,15 +13,16 @@ from dinkster_api.v1 import (
     VIDEO_TYPE,
     AssetError,
     AssetWriter,
-    DynamicComboOption,
-    DynamicComboSpec,
-    InputSpec,
+    Choice,
+    Input,
     MountSnapshotWriter,
     MountWidget,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Option,
+    Output,
+    Row,
     StringWidget,
     TypeExpr,
     attach_saved_artifact,
@@ -39,40 +40,38 @@ _VIDEO = TypeExpr.concrete(VIDEO_TYPE)
 _STRING = TypeExpr.concrete(CORE_STRING)
 
 
-def _codec_input(
-    codecs: tuple[str, ...], *, required: bool = True, hidden: bool = False
-) -> DynamicComboSpec:
-    options: list[DynamicComboOption] = []
+def _codec_input(codecs: tuple[str, ...], *, required: bool = True, hidden: bool = False) -> Choice:
+    options: list[Option] = []
     for codec in codecs:
         if codec == "auto":
-            options.append(DynamicComboOption(codec))
+            options.append(Option(codec))
             continue
         options.append(
-            DynamicComboOption(
+            Option(
                 codec,
-                (
-                    DynamicComboSpec(
+                rows=(
+                    Choice(
                         "encoding",
-                        (
-                            DynamicComboOption("auto"),
-                            DynamicComboOption(
+                        options=(
+                            Option("auto"),
+                            Option(
                                 "re-encode",
-                                (
-                                    InputSpec(
+                                rows=(
+                                    Input(
                                         "crf",
                                         TypeExpr.concrete(CORE_FLOAT),
                                         default=18.0 if codec == "h264" else 24.0,
                                         widget=NumberWidget(
                                             min=0.0, max=51.0 if codec == "h264" else 63.0, step=1.0
                                         ),
-                                        doc="Lower values produce higher quality and larger files.",
+                                        tooltip="Lower values produce higher quality and larger files.",
                                     ),
                                 ),
                             ),
                         ),
                         required=False,
-                        display_name="encoding mode",
-                        doc=(
+                        label="encoding mode",
+                        tooltip=(
                             f"Automatic preserves compatible {codec.upper()} streams. "
                             "Re-encode applies custom encoding options."
                         ),
@@ -80,12 +79,12 @@ def _codec_input(
                 ),
             )
         )
-    return DynamicComboSpec(
+    return Choice(
         "codec",
-        tuple(options),
+        options=tuple(options),
         required=required,
         hidden=hidden,
-        doc=(
+        tooltip=(
             "The output video codec. Auto preserves a compatible source stream. "
             "H.264 and AV1 re-encoding support SDR, HDR (HLG), and HDR PQ."
         ),
@@ -101,35 +100,36 @@ class SaveVideo(Node):
             category="video",
             description="Saves the input videos to your ComfyUI output directory.",
             search_terms=("export video",),
-            inputs=(
-                InputSpec("video", _VIDEO, doc="The video to save."),
-                InputSpec(
-                    "filename_prefix",
-                    _STRING,
-                    default="video/ComfyUI",
-                    widget=StringWidget(multiline=False),
-                    doc=(
-                        "The prefix for the file to save. This may include formatting information "
-                        "such as %date:yyyy-MM-dd% or %Empty Latent Image.width% to include values "
-                        "from nodes."
-                    ),
+            body=(
+                Input("video", _VIDEO, tooltip="The video to save."),
+                Row(
+                    rows=(
+                        Input(
+                            "filename_prefix",
+                            _STRING,
+                            default="video/ComfyUI",
+                            widget=StringWidget(multiline=False),
+                            tooltip=(
+                                "The prefix for the file to save. This may include formatting information "
+                                "such as %date:yyyy-MM-dd% or %Empty Latent Image.width% to include values "
+                                "from nodes."
+                            ),
+                        ),
+                        Input(
+                            "mount",
+                            _STRING,
+                            required=False,
+                            default=None,
+                            widget=MountWidget(),
+                        ),
+                    )
                 ),
-                InputSpec(
-                    "mount",
-                    _STRING,
-                    required=False,
-                    default=None,
-                    widget=MountWidget(),
-                    adjacent_to="filename_prefix",
-                ),
-            ),
-            combos=(
-                DynamicComboSpec(
+                Choice(
                     "format",
-                    tuple(
-                        DynamicComboOption(
+                    options=tuple(
+                        Option(
                             kind,
-                            (
+                            rows=(
                                 _codec_input(
                                     ("auto", "av1") if kind == "webm" else ("auto", "h264", "av1")
                                 ),
@@ -137,15 +137,14 @@ class SaveVideo(Node):
                         )
                         for kind in ("auto", "mp4", "mkv", "webm")
                     ),
-                    doc=(
+                    tooltip=(
                         "The output container. Auto uses MP4 for Auto/H.264 and WebM for AV1. "
                         "MP4, MKV, and WebM select a specific container."
                     ),
                 ),
                 _codec_input(("auto", "h264", "av1"), required=False, hidden=True),
+                Output("video", _VIDEO, preview=True, tooltip="The input video, unchanged."),
             ),
-            input_order=("video", "filename_prefix", "format", "codec", "mount"),
-            outputs=(OutputSpec("video", _VIDEO, preview=True, doc="The input video, unchanged."),),
             output_node=True,
             idempotent=False,
         )

@@ -13,11 +13,12 @@ from dinkster_api.v1 import (
     INFERENCE_LATENT_OPERATION_TYPE,
     LATENT_TYPE,
     MODEL_TYPE,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
+    Section,
     TypeExpr,
     materialize_latent,
     with_identity_replacement,
@@ -43,14 +44,12 @@ def _float(
     step: float,
     *,
     optional: bool = False,
-    advanced: bool = False,
-) -> InputSpec:
-    return InputSpec(
+) -> Input:
+    return Input(
         name,
         TypeExpr.concrete(CORE_FLOAT),
         default=default,
         required=not optional,
-        advanced=advanced,
         widget=NumberWidget(min=minimum, max=maximum, step=step),
     )
 
@@ -62,8 +61,11 @@ class LatentApplyOperation(Node):
             NodeSchema(
                 node_type="dinkster.latent.latent_apply_operation",
                 category=_CATEGORY,
-                inputs=(InputSpec("samples", _LATENT), InputSpec("operation", _OPERATION)),
-                outputs=(OutputSpec("LATENT", _LATENT),),
+                body=(
+                    Input("samples", _LATENT),
+                    Input("operation", _OPERATION),
+                    Output("LATENT", _LATENT),
+                ),
             ),
             "LatentApplyOperation",
         )
@@ -83,13 +85,13 @@ class LatentApplyOperationCFG(Node):
             NodeSchema(
                 node_type="dinkster.latent.latent_apply_operation_cfg",
                 category=_CATEGORY,
-                inputs=(
-                    InputSpec("model", _MODEL),
-                    InputSpec("operation", _OPERATION),
+                body=(
+                    Input("model", _MODEL),
+                    Input("operation", _OPERATION),
                     _float("start_percent", 0.0, 0.0, 1.0, 0.001, optional=True),
                     _float("end_percent", 1.0, 0.0, 1.0, 0.001, optional=True),
+                    Output("MODEL", _MODEL),
                 ),
-                outputs=(OutputSpec("MODEL", _MODEL),),
             ),
             "LatentApplyOperationCFG",
         )
@@ -126,8 +128,11 @@ class LatentOperationBlend(Node):
                 node_type="dinkster.latent.latent_operation_blend",
                 display_name="Latent Operation Blend",
                 category=_CATEGORY,
-                inputs=(InputSpec("reference", _LATENT), _float("strength", 1.0, 0.0, 1.0, 0.0001)),
-                outputs=(OutputSpec("LATENT_OPERATION", _OPERATION),),
+                body=(
+                    Input("reference", _LATENT),
+                    _float("strength", 1.0, 0.0, 1.0, 0.0001),
+                    Output("LATENT_OPERATION", _OPERATION),
+                ),
             ),
             "LatentOperationBlend",
         )
@@ -159,8 +164,10 @@ class LatentOperationTonemapReinhard(Node):
             NodeSchema(
                 node_type="dinkster.latent.latent_operation_tonemap_reinhard",
                 category=_CATEGORY,
-                inputs=(_float("multiplier", 1.0, 0.0, 100.0, 0.01),),
-                outputs=(OutputSpec("LATENT_OPERATION", _OPERATION),),
+                body=(
+                    _float("multiplier", 1.0, 0.0, 100.0, 0.01),
+                    Output("LATENT_OPERATION", _OPERATION),
+                ),
             ),
             "LatentOperationTonemapReinhard",
         )
@@ -190,18 +197,36 @@ class LatentOperationSharpen(Node):
             NodeSchema(
                 node_type="dinkster.latent.latent_operation_sharpen",
                 category=_CATEGORY,
-                inputs=(
-                    InputSpec(
-                        "sharpen_radius",
-                        TypeExpr.concrete(CORE_INT),
-                        default=9,
-                        advanced=True,
-                        widget=NumberWidget(min=1, max=31, step=1),
+                body=(
+                    Section(
+                        "advanced",
+                        label="Advanced",
+                        collapsed=True,
+                        rows=(
+                            Input(
+                                "sharpen_radius",
+                                TypeExpr.concrete(CORE_INT),
+                                default=9,
+                                widget=NumberWidget(min=1, max=31, step=1),
+                            ),
+                            _float(
+                                "sigma",
+                                1.0,
+                                0.1,
+                                10.0,
+                                0.1,
+                            ),
+                            _float(
+                                "alpha",
+                                0.1,
+                                0.0,
+                                5.0,
+                                0.01,
+                            ),
+                        ),
                     ),
-                    _float("sigma", 1.0, 0.1, 10.0, 0.1, advanced=True),
-                    _float("alpha", 0.1, 0.0, 5.0, 0.01, advanced=True),
+                    Output("LATENT_OPERATION", _OPERATION),
                 ),
-                outputs=(OutputSpec("LATENT_OPERATION", _OPERATION),),
             ),
             "LatentOperationSharpen",
         )
@@ -245,17 +270,17 @@ class ReplaceVideoLatentFrames(Node):
                 node_type="dinkster.latent.replace_video_latent_frames",
                 display_name="Replace Video Latent Frames",
                 category="model/latent/batch",
-                inputs=(
-                    InputSpec("destination", _LATENT),
-                    InputSpec("source", _LATENT, required=False),
-                    InputSpec(
+                body=(
+                    Input("destination", _LATENT),
+                    Input("source", _LATENT, required=False),
+                    Input(
                         "index",
                         TypeExpr.concrete(CORE_INT),
                         default=0,
                         widget=NumberWidget(min=-16384, max=16384, step=1),
                     ),
+                    Output("LATENT", _LATENT),
                 ),
-                outputs=(OutputSpec("LATENT", _LATENT),),
             ),
             "ReplaceVideoLatentFrames",
         )

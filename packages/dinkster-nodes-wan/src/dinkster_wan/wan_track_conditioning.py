@@ -15,11 +15,12 @@ from dinkster_api.v1 import (
     IMAGE_TYPE,
     LATENT_TYPE,
     VAE_TYPE,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
+    Section,
     StringWidget,
     TypeExpr,
     initialize_inference_process,
@@ -50,10 +51,8 @@ _VAE = TypeExpr.concrete(VAE_TYPE)
 _FIXED_LENGTH = 121
 
 
-def _integer(
-    name: str, default: int, minimum: int, maximum: int, step: int | None = None
-) -> InputSpec:
-    return InputSpec(
+def _integer(name: str, default: int, minimum: int, maximum: int, step: int | None = None) -> Input:
+    return Input(
         name,
         _INT,
         default=default,
@@ -229,32 +228,34 @@ class WanTrackToVideo(Node):
                 "keypoint animation",
             ),
             category="model/conditioning/wan/move",
-            inputs=(
-                InputSpec("positive", _CONDITIONING),
-                InputSpec("negative", _CONDITIONING),
-                InputSpec("vae", _VAE),
-                InputSpec("tracks", _STRING, default="[]", widget=StringWidget(multiline=True)),
+            body=(
+                Input("positive", _CONDITIONING),
+                Input("negative", _CONDITIONING),
+                Input("vae", _VAE),
+                Input("tracks", _STRING, default="[]", widget=StringWidget(multiline=True)),
                 _integer("width", 832, 16, 16384, 16),
                 _integer("height", 480, 16, 16384, 16),
                 _integer("length", 81, 1, 16384, 4),
                 _integer("batch_size", 1, 1, 4096),
-                InputSpec(
-                    "temperature",
-                    _FLOAT,
-                    default=220.0,
-                    advanced=True,
-                    widget=NumberWidget(min=1.0, max=1000.0, step=0.1),
+                Input("start_image", _IMAGE),
+                Input("clip_vision_output", _CLIP_VISION_OUTPUT, required=False),
+                Section(
+                    "advanced",
+                    label="Advanced",
+                    collapsed=True,
+                    rows=(
+                        Input(
+                            "temperature",
+                            _FLOAT,
+                            default=220.0,
+                            widget=NumberWidget(min=1.0, max=1000.0, step=0.1),
+                        ),
+                        Input("topk", _INT, default=2, widget=NumberWidget(min=1, max=10)),
+                    ),
                 ),
-                InputSpec(
-                    "topk", _INT, default=2, advanced=True, widget=NumberWidget(min=1, max=10)
-                ),
-                InputSpec("start_image", _IMAGE),
-                InputSpec("clip_vision_output", _CLIP_VISION_OUTPUT, required=False),
-            ),
-            outputs=(
-                OutputSpec("positive", _CONDITIONING, display_name="positive"),
-                OutputSpec("negative", _CONDITIONING, display_name="negative"),
-                OutputSpec("latent", _LATENT, display_name="latent"),
+                Output("positive", _CONDITIONING, label="positive"),
+                Output("negative", _CONDITIONING, label="negative"),
+                Output("latent", _LATENT, label="latent"),
             ),
         )
         return with_identity_replacement(schema, "WanTrackToVideo")

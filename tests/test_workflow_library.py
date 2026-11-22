@@ -19,7 +19,7 @@ from dinkster_assets import (
 from dinkster_caches import MemoryLRUCache
 from dinkster_engine import Engine, EventListener, ExecutionRuntime
 from dinkster_protocol import AssetFolderContext, SavedArtifact
-from dinkster_schema import Node, NodeSchema, OutputSpec, TypeExpr, build_node_types, build_schemas
+from dinkster_schema import Node, NodeSchema, Output, TypeExpr, build_node_types, build_schemas
 from dinkster_server import ServerLibrary, create_app
 from dinkster_values import TypeRegistry, register_core_types
 from dinkster_workers import InProcessWorker
@@ -54,7 +54,7 @@ def test_native_media_saves_complete_into_kind_filtered_project_catalog(
         def define_schema(cls) -> NodeSchema:
             return NodeSchema(
                 node_type="test.native_save",
-                outputs=(OutputSpec("out", STRING),),
+                body=(Output("out", STRING),),
                 output_node=True,
                 idempotent=False,
             )

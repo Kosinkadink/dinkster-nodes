@@ -16,10 +16,11 @@ from dinkster_api.v1 import (
     ComboOption,
     ComboWidget,
     Deprecation,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
-    OutputSpec,
+    Output,
+    Section,
     TypeExpr,
     initialize_inference_process,
     with_identity_replacement,
@@ -183,20 +184,18 @@ class CheckpointLoaderSimple(Node):
                     "ckpt",
                     "model",
                 ),
-                inputs=(
+                body=(
                     _asset(
                         "ckpt_name",
                         "model/checkpoint",
                         doc="The name of the checkpoint (model) to load.",
                     ),
-                ),
-                outputs=(
-                    OutputSpec("MODEL", _MODEL, doc="The model used for denoising latents."),
-                    OutputSpec("CLIP", _CLIP, doc="The CLIP model used for encoding text prompts."),
-                    OutputSpec(
+                    Output("MODEL", _MODEL, tooltip="The model used for denoising latents."),
+                    Output("CLIP", _CLIP, tooltip="The CLIP model used for encoding text prompts."),
+                    Output(
                         "VAE",
                         _VAE,
-                        doc=(
+                        tooltip=(
                             "The VAE model used for encoding and decoding images "
                             "to and from latent space."
                         ),
@@ -227,14 +226,12 @@ class CheckpointLoader(Node):
                 category="model/loaders",
                 deprecation=Deprecation("Deprecated in ComfyUI."),
                 search_terms=("load model", "model loader"),
-                inputs=(
+                body=(
                     _asset("config_name", "model/config"),
                     _asset("ckpt_name", "model/checkpoint"),
-                ),
-                outputs=(
-                    OutputSpec("MODEL", _MODEL),
-                    OutputSpec("CLIP", _CLIP),
-                    OutputSpec("VAE", _VAE),
+                    Output("MODEL", _MODEL),
+                    Output("CLIP", _CLIP),
+                    Output("VAE", _VAE),
                 ),
             ),
             "CheckpointLoader",
@@ -264,8 +261,10 @@ class ControlNetLoader(Node):
                 node_type="dinkster.models.control_net_loader",
                 display_name="Load ControlNet Model",
                 category="model/loaders",
-                inputs=(_asset("control_net_name", "model/controlnet"),),
-                outputs=(OutputSpec("CONTROL_NET", _CONTROL_NET),),
+                body=(
+                    _asset("control_net_name", "model/controlnet"),
+                    Output("CONTROL_NET", _CONTROL_NET),
+                ),
                 search_terms=(
                     "controlnet",
                     "control net",
@@ -297,11 +296,11 @@ class DiffControlNetLoader(Node):
                 node_type="dinkster.models.diff_control_net_loader",
                 display_name="Load ControlNet Model (diff)",
                 category="model/loaders",
-                inputs=(
-                    InputSpec("model", _MODEL),
+                body=(
+                    Input("model", _MODEL),
                     _asset("control_net_name", "model/controlnet"),
+                    Output("CONTROL_NET", _CONTROL_NET),
                 ),
-                outputs=(OutputSpec("CONTROL_NET", _CONTROL_NET),),
             ),
             "DiffControlNetLoader",
         )
@@ -324,16 +323,22 @@ class UNETLoader(Node):
                 node_type="dinkster.models.unet_loader",
                 display_name="Load Diffusion Model",
                 category="model/loaders",
-                inputs=(
+                body=(
                     _asset("unet_name", "model/diffusion"),
-                    _combo(
-                        "weight_dtype",
-                        ("default", "fp8_e4m3fn", "fp8_e4m3fn_fast", "fp8_e5m2"),
-                        "default",
-                        advanced=True,
+                    Section(
+                        "advanced",
+                        label="Advanced",
+                        collapsed=True,
+                        rows=(
+                            _combo(
+                                "weight_dtype",
+                                ("default", "fp8_e4m3fn", "fp8_e4m3fn_fast", "fp8_e5m2"),
+                                "default",
+                            ),
+                        ),
                     ),
+                    Output("MODEL", _MODEL),
                 ),
-                outputs=(OutputSpec("MODEL", _MODEL),),
             ),
             "UNETLoader",
         )
@@ -363,19 +368,25 @@ class CLIPLoader(Node):
                 display_name="Load CLIP",
                 category="model/loaders",
                 description=_CLIP_DESCRIPTION,
-                inputs=(
+                body=(
                     _asset("clip_name", "model/text-encoder"),
                     _combo("type", _CLIP_TYPES, "stable_diffusion"),
-                    InputSpec(
-                        "device",
-                        _COMBO,
-                        required=False,
-                        default="default",
-                        advanced=True,
-                        widget=ComboWidget((ComboOption("default"), ComboOption("cpu"))),
+                    Section(
+                        "advanced",
+                        label="Advanced",
+                        collapsed=True,
+                        rows=(
+                            Input(
+                                "device",
+                                _COMBO,
+                                required=False,
+                                default="default",
+                                widget=ComboWidget((ComboOption("default"), ComboOption("cpu"))),
+                            ),
+                        ),
                     ),
+                    Output("CLIP", _CLIP),
                 ),
-                outputs=(OutputSpec("CLIP", _CLIP),),
             ),
             "CLIPLoader",
         )
@@ -405,20 +416,26 @@ class DualCLIPLoader(Node):
                 display_name="Load CLIP (Dual)",
                 category="model/loaders",
                 description=_DUAL_CLIP_DESCRIPTION,
-                inputs=(
+                body=(
                     _asset("clip_name1", "model/text-encoder"),
                     _asset("clip_name2", "model/text-encoder"),
                     _combo("type", _DUAL_CLIP_TYPES, "sdxl"),
-                    InputSpec(
-                        "device",
-                        _COMBO,
-                        required=False,
-                        default="default",
-                        advanced=True,
-                        widget=ComboWidget((ComboOption("default"), ComboOption("cpu"))),
+                    Section(
+                        "advanced",
+                        label="Advanced",
+                        collapsed=True,
+                        rows=(
+                            Input(
+                                "device",
+                                _COMBO,
+                                required=False,
+                                default="default",
+                                widget=ComboWidget((ComboOption("default"), ComboOption("cpu"))),
+                            ),
+                        ),
                     ),
+                    Output("CLIP", _CLIP),
                 ),
-                outputs=(OutputSpec("CLIP", _CLIP),),
             ),
             "DualCLIPLoader",
         )
@@ -447,8 +464,10 @@ class CLIPVisionLoader(Node):
                 node_type="dinkster.models.clip_vision_loader",
                 display_name="Load CLIP Vision",
                 category="model/loaders",
-                inputs=(_asset("clip_name", "model/clip-vision"),),
-                outputs=(OutputSpec("CLIP_VISION", _CLIP_VISION),),
+                body=(
+                    _asset("clip_name", "model/clip-vision"),
+                    Output("CLIP_VISION", _CLIP_VISION),
+                ),
             ),
             "CLIPVisionLoader",
         )
@@ -473,8 +492,10 @@ class StyleModelLoader(Node):
                 node_type="dinkster.models.style_model_loader",
                 display_name="Load Style Model",
                 category="model/loaders",
-                inputs=(_asset("style_model_name", "model/style"),),
-                outputs=(OutputSpec("STYLE_MODEL", _STYLE_MODEL),),
+                body=(
+                    _asset("style_model_name", "model/style"),
+                    Output("STYLE_MODEL", _STYLE_MODEL),
+                ),
             ),
             "StyleModelLoader",
         )

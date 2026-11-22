@@ -13,10 +13,10 @@ import torch
 from dinkster_api.v1 import (
     CORE_INT,
     IMAGE_TYPE,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
-    OutputSpec,
+    Output,
     TypeExpr,
     materialize_image,
 )
@@ -64,8 +64,7 @@ class ImageSource(Node):
     def define_schema(cls) -> NodeSchema:
         return NodeSchema(
             node_type="canny-fixture.image",
-            inputs=(),
-            outputs=(OutputSpec("IMAGE", TypeExpr.concrete(IMAGE_TYPE)),),
+            body=(Output("IMAGE", TypeExpr.concrete(IMAGE_TYPE)),),
         )
 
     @classmethod
@@ -78,8 +77,10 @@ class Result(Node):
     def define_schema(cls) -> NodeSchema:
         return NodeSchema(
             node_type="canny-fixture.result",
-            inputs=(InputSpec("image", TypeExpr.concrete(IMAGE_TYPE)),),
-            outputs=(OutputSpec("pixels", TypeExpr.concrete(CORE_INT)),),
+            body=(
+                Input("image", TypeExpr.concrete(IMAGE_TYPE)),
+                Output("pixels", TypeExpr.concrete(CORE_INT)),
+            ),
         )
 
     @classmethod

@@ -9,10 +9,10 @@ from typing import Any
 from dinkster_api.v1 import (
     IMAGE_TYPE,
     UPSCALE_MODEL_TYPE,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
-    OutputSpec,
+    Output,
     TypeExpr,
     initialize_inference_process,
     materialize_image,
@@ -40,8 +40,11 @@ class ImageUpscaleWithModel(Node):
                 "superres",
                 "increase resolution",
             ),
-            inputs=(InputSpec("upscale_model", _UPSCALE_MODEL), InputSpec("image", _IMAGE)),
-            outputs=(OutputSpec("IMAGE", _IMAGE),),
+            body=(
+                Input("upscale_model", _UPSCALE_MODEL),
+                Input("image", _IMAGE),
+                Output("IMAGE", _IMAGE),
+            ),
         )
         return with_identity_replacement(schema, "ImageUpscaleWithModel")
 

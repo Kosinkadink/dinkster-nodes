@@ -11,10 +11,10 @@ from dinkster_api.v1 import (
     CLIP_TYPE,
     CONDITIONING_TYPE,
     CORE_STRING,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
-    OutputSpec,
+    Output,
     TypeExpr,
 )
 from dinkster_graph import Graph, GraphNode, Link
@@ -90,7 +90,7 @@ class SDXLSource(Node):
     def define_schema(cls) -> NodeSchema:
         return NodeSchema(
             node_type="sdxl-fixture.source",
-            outputs=(OutputSpec("CLIP", TypeExpr.concrete(CLIP_TYPE)),),
+            body=(Output("CLIP", TypeExpr.concrete(CLIP_TYPE)),),
         )
 
     @classmethod
@@ -103,8 +103,10 @@ class SDXLInspect(Node):
     def define_schema(cls) -> NodeSchema:
         return NodeSchema(
             node_type="sdxl-fixture.inspect",
-            inputs=(InputSpec("conditioning", TypeExpr.concrete(CONDITIONING_TYPE)),),
-            outputs=(OutputSpec("text", TypeExpr.concrete(CORE_STRING)),),
+            body=(
+                Input("conditioning", TypeExpr.concrete(CONDITIONING_TYPE)),
+                Output("text", TypeExpr.concrete(CORE_STRING)),
+            ),
         )
 
     @classmethod

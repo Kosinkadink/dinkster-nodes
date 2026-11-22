@@ -10,11 +10,12 @@ from dinkster_api.v1 import (
     CORE_FLOAT,
     CORE_INT,
     MODEL_TYPE,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
+    Section,
     TypeExpr,
     initialize_inference_process,
     with_identity_replacement,
@@ -33,17 +34,23 @@ class EpsilonScaling(Node):
             NodeSchema(
                 node_type="dinkster.sampling.epsilon_scaling",
                 category="model/patch/unet",
-                inputs=(
-                    InputSpec("model", _MODEL),
-                    InputSpec(
-                        "scaling_factor",
-                        _FLOAT,
-                        default=1.005,
-                        advanced=True,
-                        widget=NumberWidget(min=0.5, max=1.5, step=0.001, display="number"),
+                body=(
+                    Input("model", _MODEL),
+                    Section(
+                        "advanced",
+                        label="Advanced",
+                        collapsed=True,
+                        rows=(
+                            Input(
+                                "scaling_factor",
+                                _FLOAT,
+                                default=1.005,
+                                widget=NumberWidget(min=0.5, max=1.5, step=0.001, display="number"),
+                            ),
+                        ),
                     ),
+                    Output("MODEL", _MODEL),
                 ),
-                outputs=(OutputSpec("MODEL", _MODEL),),
             ),
             "Epsilon Scaling",
         )
@@ -74,34 +81,43 @@ class TemporalScoreRescaling(Node):
                     "[Post-CFG Function]\nTSR - Temporal Score Rescaling (2510.01184)\n\n"
                     "Rescaling the model's score or noise to steer the sampling diversity.\n"
                 ),
-                inputs=(
-                    InputSpec("model", _MODEL),
-                    InputSpec(
-                        "tsr_k",
-                        _FLOAT,
-                        default=0.95,
-                        advanced=True,
-                        doc=(
-                            "Controls the rescaling strength.\n"
-                            "Lower k produces more detailed results; "
-                            "higher k produces smoother results in image generation. "
-                            "Setting k = 1 disables rescaling."
+                body=(
+                    Input("model", _MODEL),
+                    Section(
+                        "advanced",
+                        label="Advanced",
+                        collapsed=True,
+                        rows=(
+                            Input(
+                                "tsr_k",
+                                _FLOAT,
+                                default=0.95,
+                                tooltip=(
+                                    "Controls the rescaling strength.\n"
+                                    "Lower k produces more detailed results; "
+                                    "higher k produces smoother results in image generation. "
+                                    "Setting k = 1 disables rescaling."
+                                ),
+                                widget=NumberWidget(
+                                    min=0.01, max=100.0, step=0.001, display="number"
+                                ),
+                            ),
+                            Input(
+                                "tsr_sigma",
+                                _FLOAT,
+                                default=1.0,
+                                tooltip=(
+                                    "Controls how early rescaling takes effect.\n"
+                                    "Larger values take effect earlier."
+                                ),
+                                widget=NumberWidget(
+                                    min=0.01, max=100.0, step=0.001, display="number"
+                                ),
+                            ),
                         ),
-                        widget=NumberWidget(min=0.01, max=100.0, step=0.001, display="number"),
                     ),
-                    InputSpec(
-                        "tsr_sigma",
-                        _FLOAT,
-                        default=1.0,
-                        advanced=True,
-                        doc=(
-                            "Controls how early rescaling takes effect.\n"
-                            "Larger values take effect earlier."
-                        ),
-                        widget=NumberWidget(min=0.01, max=100.0, step=0.001, display="number"),
-                    ),
+                    Output("MODEL", _MODEL, label="patched_model"),
                 ),
-                outputs=(OutputSpec("MODEL", _MODEL, display_name="patched_model"),),
             ),
             "TemporalScoreRescaling",
         )
@@ -168,36 +184,40 @@ class FreSca(Node):
                 search_terms=("frequency guidance",),
                 category="experimental",
                 description="Applies frequency-dependent scaling to the guidance",
-                inputs=(
-                    InputSpec("model", _MODEL),
-                    InputSpec(
-                        "scale_low",
-                        _FLOAT,
-                        default=1.0,
-                        advanced=True,
-                        doc="Scaling factor for low-frequency components",
-                        widget=NumberWidget(min=0, max=10, step=0.01),
-                    ),
-                    InputSpec(
-                        "scale_high",
-                        _FLOAT,
-                        default=1.25,
-                        advanced=True,
-                        doc="Scaling factor for high-frequency components",
-                        widget=NumberWidget(min=0, max=10, step=0.01),
-                    ),
-                    InputSpec(
-                        "freq_cutoff",
-                        TypeExpr.concrete(CORE_INT),
-                        default=20,
-                        advanced=True,
-                        doc=(
-                            "Number of frequency indices around center to consider as low-frequency"
+                body=(
+                    Input("model", _MODEL),
+                    Section(
+                        "advanced",
+                        label="Advanced",
+                        collapsed=True,
+                        rows=(
+                            Input(
+                                "scale_low",
+                                _FLOAT,
+                                default=1.0,
+                                tooltip="Scaling factor for low-frequency components",
+                                widget=NumberWidget(min=0, max=10, step=0.01),
+                            ),
+                            Input(
+                                "scale_high",
+                                _FLOAT,
+                                default=1.25,
+                                tooltip="Scaling factor for high-frequency components",
+                                widget=NumberWidget(min=0, max=10, step=0.01),
+                            ),
+                            Input(
+                                "freq_cutoff",
+                                TypeExpr.concrete(CORE_INT),
+                                default=20,
+                                tooltip=(
+                                    "Number of frequency indices around center to consider as low-frequency"
+                                ),
+                                widget=NumberWidget(min=1, max=10000, step=1),
+                            ),
                         ),
-                        widget=NumberWidget(min=1, max=10000, step=1),
                     ),
+                    Output("MODEL", _MODEL),
                 ),
-                outputs=(OutputSpec("MODEL", _MODEL),),
             ),
             "FreSca",
         )

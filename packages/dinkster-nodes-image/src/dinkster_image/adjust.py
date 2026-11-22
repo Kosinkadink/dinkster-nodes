@@ -7,15 +7,15 @@ from collections.abc import Mapping
 
 import numpy as np
 from dinkster_api.v1 import (
-    DynamicComboOption,
-    DynamicComboSpec,
-    InputSpec,
+    Choice,
+    Input,
     MirrorSpec,
     MirrorTolerance,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Option,
+    Output,
 )
 
 from .geometry import FLOAT, IMAGE
@@ -61,21 +61,21 @@ void main() {
 class ImageAdjust(Node):
     @classmethod
     def define_schema(cls) -> NodeSchema:
-        factor = InputSpec(
+        factor = Input(
             "factor",
             FLOAT,
             required=False,
             default=1.0,
             widget=NumberWidget(min=0.0, max=10.0, step=0.01),
         )
-        mean = InputSpec(
+        mean = Input(
             "mean",
             FLOAT,
             required=False,
             default=0.5,
             widget=NumberWidget(min=-10.0, max=10.0, step=0.01),
         )
-        standard_deviation = InputSpec(
+        standard_deviation = Input(
             "standard_deviation",
             FLOAT,
             required=False,
@@ -88,12 +88,12 @@ class ImageAdjust(Node):
                 version=2,
                 display_name="Adjust Image",
                 category="image/adjust",
-                inputs=(InputSpec("image", IMAGE),),
-                combos=(
-                    DynamicComboSpec(
+                body=(
+                    Input("image", IMAGE),
+                    Choice(
                         "operation",
-                        tuple(
-                            DynamicComboOption(name, inputs)
+                        options=tuple(
+                            Option(name, rows=inputs)
                             for name, inputs in (
                                 ("invert", ()),
                                 ("normalize", (mean, standard_deviation)),
@@ -103,8 +103,8 @@ class ImageAdjust(Node):
                         ),
                         default="brightness",
                     ),
+                    Output("image", IMAGE, preview=True),
                 ),
-                outputs=(OutputSpec("image", IMAGE, preview=True),),
                 search_terms=(
                     "invert image",
                     "normalize image",

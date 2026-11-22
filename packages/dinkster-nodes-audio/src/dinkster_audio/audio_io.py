@@ -13,11 +13,11 @@ from dinkster_api.v1 import (
     AssetRef,
     AssetWidget,
     CustomWidgetDescriptor,
-    InputSpec,
+    Input,
     LocalAssetRef,
     Node,
     NodeSchema,
-    OutputSpec,
+    Output,
     SourceFilenameSpec,
     TypeExpr,
     with_identity_replacement,
@@ -35,8 +35,8 @@ class LoadAudio(Node):
             display_name="Load Audio",
             category="audio",
             search_terms=("import audio", "open audio", "audio file"),
-            inputs=(
-                InputSpec(
+            body=(
+                Input(
                     "audio",
                     _ASSET,
                     widget=AssetWidget(
@@ -44,8 +44,8 @@ class LoadAudio(Node):
                     ),
                     source_filename=SourceFilenameSpec("media/audio", "input"),
                 ),
+                Output("AUDIO", _AUDIO, preview=True),
             ),
-            outputs=(OutputSpec("AUDIO", _AUDIO, preview=True),),
         )
         return with_identity_replacement(schema, "LoadAudio")
 
@@ -87,14 +87,14 @@ class RecordAudio(LoadAudio):
             display_name="Record Audio",
             category="audio",
             search_terms=("microphone input", "audio capture", "voice input"),
-            inputs=(
-                InputSpec(
+            body=(
+                Input(
                     "audio",
                     TypeExpr.concrete(AUDIO_RECORD_TYPE),
                     widget=CustomWidgetDescriptor("AUDIO_RECORD"),
                 ),
+                Output("AUDIO", _AUDIO),
             ),
-            outputs=(OutputSpec("AUDIO", _AUDIO),),
         )
         return with_identity_replacement(schema, "RecordAudio")
 
@@ -108,8 +108,10 @@ class PreviewAudio(Node):
             category="audio",
             description="Preview the audio without saving it to the ComfyUI output directory.",
             search_terms=("preview", "preview audio", "play audio"),
-            inputs=(InputSpec("audio", _AUDIO),),
-            outputs=(OutputSpec("audio", _AUDIO, preview=True),),
+            body=(
+                Input("audio", _AUDIO),
+                Output("audio", _AUDIO, preview=True),
+            ),
             output_node=True,
         )
         return with_identity_replacement(schema, "PreviewAudio")

@@ -12,10 +12,10 @@ from dinkster_api.v1 import (
     CORE_COMBO,
     ComboOption,
     ComboWidget,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
-    OutputSpec,
+    Output,
     TypeExpr,
 )
 
@@ -299,8 +299,8 @@ class EdgePreprocessor(Node):
             node_type="dinkster.preprocess.edges",
             display_name="Preprocess Edges",
             category="image/preprocess",
-            inputs=(
-                InputSpec("image", IMAGE),
+            body=(
+                Input("image", IMAGE),
                 _combo("method", ("canny", "pyramid_canny"), "canny"),
                 _number("low_threshold", INT, 100, minimum=0, maximum=255, step=1),
                 _number("high_threshold", INT, 200, minimum=0, maximum=255, step=1),
@@ -312,8 +312,8 @@ class EdgePreprocessor(Node):
                     maximum=MAX_RESOLUTION,
                     step=64,
                 ),
+                Output("image", IMAGE, preview=True, alpha_policy="drop"),
             ),
-            outputs=(OutputSpec("image", IMAGE, preview=True, alpha_policy="drop"),),
             search_terms=("canny", "pyracanny", "edge map", "controlnet"),
         )
 
@@ -351,8 +351,8 @@ class LineartPreprocessor(Node):
             node_type="dinkster.preprocess.lineart",
             display_name="Preprocess Line Art",
             category="image/preprocess",
-            inputs=(
-                InputSpec("image", IMAGE),
+            body=(
+                Input("image", IMAGE),
                 _number("gaussian_sigma", FLOAT, 6.0, minimum=0.01, maximum=100.0, step=0.01),
                 _number("intensity_threshold", INT, 8, minimum=0, maximum=16, step=1),
                 _number(
@@ -363,8 +363,8 @@ class LineartPreprocessor(Node):
                     maximum=MAX_RESOLUTION,
                     step=64,
                 ),
+                Output("image", IMAGE, preview=True, alpha_policy="drop"),
             ),
-            outputs=(OutputSpec("image", IMAGE, preview=True, alpha_policy="drop"),),
             search_terms=("lineart", "line drawing", "controlnet"),
         )
 
@@ -402,8 +402,8 @@ class ScribblePreprocessor(Node):
             node_type="dinkster.preprocess.scribble",
             display_name="Preprocess Scribble",
             category="image/preprocess",
-            inputs=(
-                InputSpec("image", IMAGE),
+            body=(
+                Input("image", IMAGE),
                 _combo("method", ("threshold", "xdog"), "threshold"),
                 _number("threshold", INT, 32, minimum=1, maximum=64, step=1),
                 _number(
@@ -414,8 +414,8 @@ class ScribblePreprocessor(Node):
                     maximum=MAX_RESOLUTION,
                     step=64,
                 ),
+                Output("image", IMAGE, preview=True, alpha_policy="drop"),
             ),
-            outputs=(OutputSpec("image", IMAGE, preview=True, alpha_policy="drop"),),
             search_terms=("scribble", "xdog", "controlnet"),
         )
 
@@ -458,8 +458,8 @@ class BinaryPreprocessor(Node):
             node_type="dinkster.preprocess.binary",
             display_name="Preprocess Binary Image",
             category="image/preprocess",
-            inputs=(
-                InputSpec("image", IMAGE),
+            body=(
+                Input("image", IMAGE),
                 _number("threshold", INT, 100, minimum=0, maximum=255, step=1),
                 _number(
                     "resolution",
@@ -469,8 +469,8 @@ class BinaryPreprocessor(Node):
                     maximum=MAX_RESOLUTION,
                     step=64,
                 ),
+                Output("image", IMAGE, preview=True, alpha_policy="drop"),
             ),
-            outputs=(OutputSpec("image", IMAGE, preview=True, alpha_policy="drop"),),
             search_terms=("binary", "threshold", "otsu", "controlnet"),
         )
 
@@ -534,8 +534,8 @@ class ColorHintPreprocessor(Node):
             node_type="dinkster.preprocess.color_hint",
             display_name="Preprocess Color Hint",
             category="image/preprocess",
-            inputs=(
-                InputSpec("image", IMAGE),
+            body=(
+                Input("image", IMAGE),
                 _combo("method", ("palette", "luminance", "intensity"), "palette"),
                 _number("gamma", FLOAT, 1.0, minimum=0.1, maximum=2.0, step=0.01),
                 _number(
@@ -546,8 +546,8 @@ class ColorHintPreprocessor(Node):
                     maximum=MAX_RESOLUTION,
                     step=64,
                 ),
+                Output("image", IMAGE, preview=True, alpha_policy="drop"),
             ),
-            outputs=(OutputSpec("image", IMAGE, preview=True, alpha_policy="drop"),),
             search_terms=("color map", "recolor", "luminance", "intensity", "controlnet"),
         )
 
@@ -608,8 +608,8 @@ class ContentShufflePreprocessor(Node):
             node_type="dinkster.preprocess.content_shuffle",
             display_name="Preprocess Content Shuffle",
             category="image/preprocess",
-            inputs=(
-                InputSpec("image", IMAGE),
+            body=(
+                Input("image", IMAGE),
                 _number("seed", INT, 0, minimum=0, maximum=MAX_SEED, step=1),
                 _number(
                     "resolution",
@@ -619,8 +619,8 @@ class ContentShufflePreprocessor(Node):
                     maximum=MAX_RESOLUTION,
                     step=64,
                 ),
+                Output("image", IMAGE, preview=True, alpha_policy="drop"),
             ),
-            outputs=(OutputSpec("image", IMAGE, preview=True, alpha_policy="drop"),),
             search_terms=("shuffle image", "content shuffle", "controlnet"),
         )
 
@@ -722,16 +722,16 @@ class TileHintPreprocessor(Node):
             node_type="dinkster.preprocess.tile_hint",
             display_name="Preprocess Tile Hint",
             category="image/preprocess",
-            inputs=(
-                InputSpec("image", IMAGE),
+            body=(
+                Input("image", IMAGE),
                 _combo("method", ("pyramid", "guided", "simple"), "pyramid"),
                 _number("iterations", INT, 3, minimum=1, maximum=10, step=1),
                 _number("scale_factor", FLOAT, 1.0, minimum=1.0, maximum=8.0, step=0.01),
                 _number("blur_strength", FLOAT, 2.0, minimum=1.0, maximum=10.0, step=0.1),
                 _number("radius", INT, 7, minimum=1, maximum=20, step=1),
                 _number("epsilon", FLOAT, 0.01, minimum=0.001, maximum=0.1, step=0.001),
+                Output("image", IMAGE, preview=True, alpha_policy="drop"),
             ),
-            outputs=(OutputSpec("image", IMAGE, preview=True, alpha_policy="drop"),),
             search_terms=("tile preprocessor", "guided filter", "ttplanet", "controlnet"),
         )
 
@@ -811,12 +811,12 @@ class InpaintHintPreprocessor(Node):
             node_type="dinkster.preprocess.inpaint_hint",
             display_name="Preprocess Inpaint Hint",
             category="image/preprocess",
-            inputs=(
-                InputSpec("image", IMAGE),
-                InputSpec("mask", MASK),
+            body=(
+                Input("image", IMAGE),
+                Input("mask", MASK),
                 _combo("masked_value", ("negative_one", "black"), "negative_one"),
+                Output("image", IMAGE, preview=True, alpha_policy="drop"),
             ),
-            outputs=(OutputSpec("image", IMAGE, preview=True, alpha_policy="drop"),),
             search_terms=("inpaint preprocessor", "controlnet inpaint", "inpaint hint"),
         )
 
@@ -856,13 +856,13 @@ class HintImageResize(Node):
             node_type="dinkster.preprocess.hint_resize",
             display_name="Resize Control Hint",
             category="image/preprocess",
-            inputs=(
-                InputSpec("image", IMAGE),
+            body=(
+                Input("image", IMAGE),
                 _number("target_width", INT, 512, minimum=64, maximum=8192, step=8),
                 _number("target_height", INT, 512, minimum=64, maximum=8192, step=8),
                 _combo("resize_mode", ("stretch", "fill", "fit"), "stretch"),
+                Output("image", IMAGE, preview=True, alpha_policy="drop"),
             ),
-            outputs=(OutputSpec("image", IMAGE, preview=True, alpha_policy="drop"),),
             search_terms=(
                 "enhance hint image",
                 "controlnet hint resize",
@@ -902,13 +902,13 @@ class HintResolution(Node):
             node_type="dinkster.preprocess.hint_resolution",
             display_name="Calculate Hint Resolution",
             category="image/preprocess",
-            inputs=(
-                InputSpec("image", IMAGE),
+            body=(
+                Input("image", IMAGE),
                 _number("target_width", INT, 512, minimum=64, maximum=8192, step=8),
                 _number("target_height", INT, 512, minimum=64, maximum=8192, step=8),
                 _combo("resize_mode", ("stretch", "fill", "fit"), "stretch"),
+                Output("resolution", INT),
             ),
-            outputs=(OutputSpec("resolution", INT),),
             search_terms=("pixel perfect resolution", "controlnet resolution", "hint size"),
         )
 
@@ -938,8 +938,8 @@ class HintResolution(Node):
         return cls.outputs(resolution=resolution)
 
 
-def _model_edge_provider_input(choice: str) -> InputSpec:
-    return InputSpec(
+def _model_edge_provider_input(choice: str) -> Input:
+    return Input(
         "provider",
         TypeExpr.concrete(CORE_COMBO),
         required=False,
@@ -950,7 +950,7 @@ def _model_edge_provider_input(choice: str) -> InputSpec:
     )
 
 
-def _model_edge_resolution(*, default: int = 512, step: int = 64) -> InputSpec:
+def _model_edge_resolution(*, default: int = 512, step: int = 64) -> Input:
     return _number(
         "resolution",
         INT,
@@ -975,14 +975,14 @@ class ModelEdgePreprocessor(_ModelEdgeProviderNode):
             node_type="dinkster.preprocess.model_edges",
             display_name="Preprocess Model Edges",
             category="image/preprocess",
-            inputs=(
-                InputSpec("image", IMAGE),
+            body=(
+                Input("image", IMAGE),
                 _model_edge_provider_input(MODEL_EDGE_PROVIDER_CHOICE),
-                InputSpec("safe", BOOLEAN, required=False, default=True),
-                InputSpec("scribble", BOOLEAN, required=False, default=False),
+                Input("safe", BOOLEAN, required=False, default=True),
+                Input("scribble", BOOLEAN, required=False, default=False),
                 _model_edge_resolution(),
+                Output("image", IMAGE, preview=True, alpha_policy="drop"),
             ),
-            outputs=(OutputSpec("image", IMAGE, preview=True, alpha_policy="drop"),),
             search_terms=("HED", "soft edge", "fake scribble", "controlnet"),
         )
 
@@ -994,13 +994,13 @@ class RealisticLineartPreprocessor(_ModelEdgeProviderNode):
             node_type="dinkster.preprocess.lineart_realistic",
             display_name="Preprocess Realistic Line Art",
             category="image/preprocess",
-            inputs=(
-                InputSpec("image", IMAGE),
+            body=(
+                Input("image", IMAGE),
                 _model_edge_provider_input("dinkster.preprocess.lineart_realistic.providers"),
-                InputSpec("coarse", BOOLEAN, required=False, default=False),
+                Input("coarse", BOOLEAN, required=False, default=False),
                 _model_edge_resolution(),
+                Output("image", IMAGE, preview=True, alpha_policy="drop"),
             ),
-            outputs=(OutputSpec("image", IMAGE, preview=True, alpha_policy="drop"),),
             search_terms=("realistic lineart", "coarse lineart", "controlnet"),
         )
 
@@ -1012,12 +1012,12 @@ class AnimeLineartPreprocessor(_ModelEdgeProviderNode):
             node_type="dinkster.preprocess.lineart_anime",
             display_name="Preprocess Anime Line Art",
             category="image/preprocess",
-            inputs=(
-                InputSpec("image", IMAGE),
+            body=(
+                Input("image", IMAGE),
                 _model_edge_provider_input("dinkster.preprocess.lineart_anime.providers"),
                 _model_edge_resolution(),
+                Output("image", IMAGE, preview=True, alpha_policy="drop"),
             ),
-            outputs=(OutputSpec("image", IMAGE, preview=True, alpha_policy="drop"),),
             search_terms=("anime lineart", "controlnet"),
         )
 
@@ -1029,12 +1029,12 @@ class MangaLineartPreprocessor(_ModelEdgeProviderNode):
             node_type="dinkster.preprocess.lineart_manga",
             display_name="Preprocess Manga Line Art",
             category="image/preprocess",
-            inputs=(
-                InputSpec("image", IMAGE),
+            body=(
+                Input("image", IMAGE),
                 _model_edge_provider_input("dinkster.preprocess.lineart_manga.providers"),
                 _model_edge_resolution(),
+                Output("image", IMAGE, preview=True, alpha_policy="drop"),
             ),
-            outputs=(OutputSpec("image", IMAGE, preview=True, alpha_policy="drop"),),
             search_terms=("manga lineart", "anime denoise", "controlnet"),
         )
 
@@ -1046,8 +1046,8 @@ class AnyLinePreprocessor(_ModelEdgeProviderNode):
             node_type="dinkster.preprocess.anyline",
             display_name="Preprocess AnyLine",
             category="image/preprocess",
-            inputs=(
-                InputSpec("image", IMAGE),
+            body=(
+                Input("image", IMAGE),
                 _model_edge_provider_input("dinkster.preprocess.anyline.providers"),
                 _combo(
                     "merge_with_lineart",
@@ -1092,8 +1092,8 @@ class AnyLinePreprocessor(_ModelEdgeProviderNode):
                     maximum=MAX_RESOLUTION,
                     step=1,
                 ),
+                Output("image", IMAGE, preview=True, alpha_policy="drop"),
             ),
-            outputs=(OutputSpec("image", IMAGE, preview=True, alpha_policy="drop"),),
             search_terms=("AnyLine", "MTEED", "lineart", "controlnet"),
         )
 
@@ -1105,13 +1105,13 @@ class TEEDPreprocessor(_ModelEdgeProviderNode):
             node_type="dinkster.preprocess.teed",
             display_name="Preprocess TEED Edges",
             category="image/preprocess",
-            inputs=(
-                InputSpec("image", IMAGE),
+            body=(
+                Input("image", IMAGE),
                 _model_edge_provider_input("dinkster.preprocess.teed.providers"),
                 _number("safe_steps", INT, 2, minimum=0, maximum=10, step=1),
                 _model_edge_resolution(),
+                Output("image", IMAGE, preview=True, alpha_policy="drop"),
             ),
-            outputs=(OutputSpec("image", IMAGE, preview=True, alpha_policy="drop"),),
             search_terms=("TEED", "soft edge", "controlnet"),
         )
 
@@ -1123,8 +1123,8 @@ class MLSDPreprocessor(_ModelEdgeProviderNode):
             node_type="dinkster.preprocess.mlsd",
             display_name="Preprocess M-LSD Lines",
             category="image/preprocess",
-            inputs=(
-                InputSpec("image", IMAGE),
+            body=(
+                Input("image", IMAGE),
                 _model_edge_provider_input("dinkster.preprocess.mlsd.providers"),
                 _number(
                     "score_threshold",
@@ -1143,8 +1143,8 @@ class MLSDPreprocessor(_ModelEdgeProviderNode):
                     step=0.01,
                 ),
                 _model_edge_resolution(),
+                Output("image", IMAGE, preview=True, alpha_policy="drop"),
             ),
-            outputs=(OutputSpec("image", IMAGE, preview=True, alpha_policy="drop"),),
             search_terms=("M-LSD", "line segment", "controlnet"),
         )
 
@@ -1156,9 +1156,9 @@ class ModelDepthPreprocessor(Node):
             node_type="dinkster.preprocess.model_depth",
             display_name="Preprocess Model Depth",
             category="image/preprocess",
-            inputs=(
-                InputSpec("image", IMAGE),
-                InputSpec(
+            body=(
+                Input("image", IMAGE),
+                Input(
                     "model",
                     TypeExpr.concrete(CORE_COMBO),
                     required=False,
@@ -1174,7 +1174,7 @@ class ModelDepthPreprocessor(Node):
                         ),
                     ),
                 ),
-                InputSpec(
+                Input(
                     "provider",
                     TypeExpr.concrete(CORE_COMBO),
                     required=False,
@@ -1191,8 +1191,8 @@ class ModelDepthPreprocessor(Node):
                     maximum=MAX_RESOLUTION,
                     step=64,
                 ),
+                Output("image", IMAGE, preview=True, alpha_policy="drop"),
             ),
-            outputs=(OutputSpec("image", IMAGE, preview=True, alpha_policy="drop"),),
             search_terms=("depth", "relative depth", "Depth Anything V2", "controlnet"),
         )
 

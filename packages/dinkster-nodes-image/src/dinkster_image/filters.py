@@ -7,15 +7,15 @@ from collections.abc import Mapping
 
 import numpy as np
 from dinkster_api.v1 import (
-    DynamicComboOption,
-    DynamicComboSpec,
-    InputSpec,
+    Choice,
+    Input,
     MirrorSpec,
     MirrorTolerance,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Option,
+    Output,
 )
 from PIL import Image
 
@@ -277,43 +277,47 @@ class ImageFilter(Node):
     @classmethod
     def define_schema(cls) -> NodeSchema:
         original = (
-            InputSpec(
+            Input(
                 "radius",
                 INT,
                 required=False,
                 default=1,
                 widget=NumberWidget(min=0, max=MAX_FILTER_RADIUS, step=1),
             ),
-            InputSpec(
+            Input(
                 "sigma",
                 FLOAT,
                 required=False,
                 default=1.0,
                 widget=NumberWidget(min=0.1, max=10.0, step=0.1),
             ),
-            InputSpec(
+            Input(
                 "strength",
                 FLOAT,
                 required=False,
                 default=1.0,
                 widget=NumberWidget(min=0.0, max=5.0, step=0.01),
             ),
-            InputSpec(
+            Input(
                 "colors",
                 INT,
                 required=False,
                 default=256,
                 widget=NumberWidget(min=1, max=256, step=1),
             ),
-            _combo("dither", DITHER_MODES, "none", advanced=True),
-            InputSpec(
+            _combo(
+                "dither",
+                DITHER_MODES,
+                "none",
+            ),
+            Input(
                 "seed",
                 INT,
                 required=False,
                 default=0,
                 widget=NumberWidget(min=0, max=MAX_SEED, step=1),
             ),
-            InputSpec(
+            Input(
                 "kernel_size",
                 INT,
                 required=False,
@@ -328,14 +332,12 @@ class ImageFilter(Node):
                 version=2,
                 display_name="Filter Image",
                 category="image/filter",
-                inputs=(InputSpec("image", IMAGE),),
-                combos=(
-                    DynamicComboSpec(
+                body=(
+                    Input("image", IMAGE),
+                    Choice(
                         "operation",
-                        tuple(
-                            DynamicComboOption(
-                                name, tuple(by_id[input_id] for input_id in input_ids)
-                            )
+                        options=tuple(
+                            Option(name, rows=tuple(by_id[input_id] for input_id in input_ids))
                             for name, input_ids in (
                                 ("gaussian_blur", ("radius", "sigma")),
                                 ("sharpen", ("radius", "sigma", "strength")),
@@ -346,8 +348,8 @@ class ImageFilter(Node):
                         ),
                         default="gaussian_blur",
                     ),
+                    Output("image", IMAGE, preview=True),
                 ),
-                outputs=(OutputSpec("image", IMAGE, preview=True),),
                 search_terms=(
                     "blur image",
                     "sharpen image",

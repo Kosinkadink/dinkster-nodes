@@ -11,10 +11,10 @@ from dinkster_api.v1 import (
     CORE_FLOAT,
     MOGE_GEOMETRY_TYPE,
     ComboWidget,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
-    OutputSpec,
+    Output,
     TypeExpr,
     materialize_latent,
     with_identity_replacement,
@@ -29,26 +29,24 @@ class MoGeGeometryToFOV(Node):
             display_name="Get FoV from MoGe Geometry",
             description="Derive the field of view and focal length from MoGe intrinsics.",
             category="image/geometry estimation",
-            inputs=(
-                InputSpec("moge_geometry", TypeExpr.concrete(MOGE_GEOMETRY_TYPE)),
-                InputSpec(
+            body=(
+                Input("moge_geometry", TypeExpr.concrete(MOGE_GEOMETRY_TYPE)),
+                Input(
                     "axis",
                     TypeExpr.concrete(CORE_COMBO),
                     default="vertical",
                     widget=ComboWidget(("vertical", "horizontal", "diagonal")),
-                    doc="'vertical' (fov_y), 'horizontal' (fov_x), or 'diagonal'.",
+                    tooltip="'vertical' (fov_y), 'horizontal' (fov_x), or 'diagonal'.",
                 ),
-                InputSpec(
+                Input(
                     "unit",
                     TypeExpr.concrete(CORE_COMBO),
                     default="degrees",
                     widget=ComboWidget(("degrees", "radians")),
-                    doc="Output unit for the FOV.",
+                    tooltip="Output unit for the FOV.",
                 ),
-            ),
-            outputs=(
-                OutputSpec("fov", TypeExpr.concrete(CORE_FLOAT)),
-                OutputSpec("focal_pixels", TypeExpr.concrete(CORE_FLOAT)),
+                Output("fov", TypeExpr.concrete(CORE_FLOAT)),
+                Output("focal_pixels", TypeExpr.concrete(CORE_FLOAT)),
             ),
         )
         return with_identity_replacement(schema, "MoGeGeometryToFOV")

@@ -17,11 +17,12 @@ from dinkster_api.v1 import (
     HOOKS_TYPE,
     ComboOption,
     ComboWidget,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
+    Section,
     TypeExpr,
     initialize_inference_process,
     materialize_latent,
@@ -131,11 +132,11 @@ class SetHookKeyframes(Node):
                 node_type="dinkster.models.set_hook_keyframes",
                 display_name="Set Hook Keyframes",
                 category=_CATEGORY,
-                inputs=(
-                    InputSpec("hooks", _HOOKS),
-                    InputSpec("hook_kf", _HOOK_KEYFRAMES, required=False),
+                body=(
+                    Input("hooks", _HOOKS),
+                    Input("hook_kf", _HOOK_KEYFRAMES, required=False),
+                    Output("HOOKS", _HOOKS),
                 ),
-                outputs=(OutputSpec("HOOKS", _HOOKS),),
             ),
             "SetHookKeyframes",
         )
@@ -158,22 +159,22 @@ class CreateHookKeyframe(Node):
                 display_name="Create Hook Keyframe",
                 category=_CATEGORY,
                 search_terms=("hook scheduling", "strength animation", "timed hook"),
-                inputs=(
-                    InputSpec(
+                body=(
+                    Input(
                         "strength_mult",
                         _FLOAT,
                         default=1.0,
                         widget=NumberWidget(min=-20.0, max=20.0, step=0.01),
                     ),
-                    InputSpec(
+                    Input(
                         "start_percent",
                         _FLOAT,
                         default=0.0,
                         widget=NumberWidget(min=0.0, max=1.0, step=0.001),
                     ),
-                    InputSpec("prev_hook_kf", _HOOK_KEYFRAMES, required=False),
+                    Input("prev_hook_kf", _HOOK_KEYFRAMES, required=False),
+                    Output("HOOK_KF", _HOOK_KEYFRAMES),
                 ),
-                outputs=(OutputSpec("HOOK_KF", _HOOK_KEYFRAMES),),
             ),
             "CreateHookKeyframe",
         )
@@ -201,46 +202,57 @@ class CreateHookKeyframesInterpolated(Node):
                     "smooth hook transition",
                     "interpolate keyframes",
                 ),
-                inputs=(
-                    InputSpec(
+                body=(
+                    Input(
                         "strength_start",
                         _FLOAT,
                         default=1.0,
                         widget=NumberWidget(min=0.0, max=10.0, step=0.001),
                     ),
-                    InputSpec(
+                    Input(
                         "strength_end",
                         _FLOAT,
                         default=1.0,
                         widget=NumberWidget(min=0.0, max=10.0, step=0.001),
                     ),
-                    InputSpec(
+                    Input(
                         "interpolation",
                         _COMBO,
                         widget=ComboWidget(tuple(ComboOption(value) for value in interpolation)),
                     ),
-                    InputSpec(
+                    Input(
                         "start_percent",
                         _FLOAT,
                         default=0.0,
                         widget=NumberWidget(min=0.0, max=1.0, step=0.001),
                     ),
-                    InputSpec(
+                    Input(
                         "end_percent",
                         _FLOAT,
                         default=1.0,
                         widget=NumberWidget(min=0.0, max=1.0, step=0.001),
                     ),
-                    InputSpec(
+                    Input(
                         "keyframes_count",
                         _INT,
                         default=5,
                         widget=NumberWidget(min=2, max=100, step=1),
                     ),
-                    InputSpec("print_keyframes", _BOOLEAN, default=False, advanced=True),
-                    InputSpec("prev_hook_kf", _HOOK_KEYFRAMES, required=False),
+                    Input("prev_hook_kf", _HOOK_KEYFRAMES, required=False),
+                    Section(
+                        "advanced",
+                        label="Advanced",
+                        collapsed=True,
+                        rows=(
+                            Input(
+                                "print_keyframes",
+                                _BOOLEAN,
+                                default=False,
+                            ),
+                        ),
+                    ),
+                    Output("HOOK_KF", _HOOK_KEYFRAMES),
                 ),
-                outputs=(OutputSpec("HOOK_KF", _HOOK_KEYFRAMES),),
             ),
             "CreateHookKeyframesInterpolated",
         )
@@ -288,30 +300,41 @@ class CreateHookKeyframesFromFloats(Node):
                 display_name="Create Hook Keyframes From Floats",
                 category=_CATEGORY,
                 search_terms=("batch keyframes", "strength list to keyframes"),
-                inputs=(
-                    InputSpec(
+                body=(
+                    Input(
                         "floats_strength",
                         _FLOATS,
                         default=-1,
-                        force_input=True,
+                        pin_first=True,
                         widget=NumberWidget(min=-1, step=0.001),
                     ),
-                    InputSpec(
+                    Input(
                         "start_percent",
                         _FLOAT,
                         default=0.0,
                         widget=NumberWidget(min=0.0, max=1.0, step=0.001),
                     ),
-                    InputSpec(
+                    Input(
                         "end_percent",
                         _FLOAT,
                         default=1.0,
                         widget=NumberWidget(min=0.0, max=1.0, step=0.001),
                     ),
-                    InputSpec("print_keyframes", _BOOLEAN, default=False, advanced=True),
-                    InputSpec("prev_hook_kf", _HOOK_KEYFRAMES, required=False),
+                    Input("prev_hook_kf", _HOOK_KEYFRAMES, required=False),
+                    Section(
+                        "advanced",
+                        label="Advanced",
+                        collapsed=True,
+                        rows=(
+                            Input(
+                                "print_keyframes",
+                                _BOOLEAN,
+                                default=False,
+                            ),
+                        ),
+                    ),
+                    Output("HOOK_KF", _HOOK_KEYFRAMES),
                 ),
-                outputs=(OutputSpec("HOOK_KF", _HOOK_KEYFRAMES),),
             ),
             "CreateHookKeyframesFromFloats",
         )
@@ -342,10 +365,12 @@ def _combine_schema(node_type: str, count: int) -> NodeSchema:
         display_name=f"Combine Hooks [{count}]",
         category="advanced/hooks/combine",
         search_terms=("merge hooks",) if count == 2 else (),
-        inputs=tuple(
-            InputSpec(f"hooks_{letter}", _HOOKS, required=False) for letter in "ABCDEFGH"[:count]
+        body=(
+            *tuple(
+                Input(f"hooks_{letter}", _HOOKS, required=False) for letter in "ABCDEFGH"[:count]
+            ),
+            Output("HOOKS", _HOOKS),
         ),
-        outputs=(OutputSpec("HOOKS", _HOOKS),),
     )
 
 

@@ -16,13 +16,14 @@ from dinkster_api.v1 import (
     MODEL_PATCH_TYPE,
     MODEL_TYPE,
     VAE_TYPE,
-    DynamicComboOption,
-    DynamicComboSpec,
-    InputSpec,
+    Choice,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Option,
+    Output,
+    Section,
     TypeExpr,
     initialize_inference_process,
     materialize_clip_vision_output,
@@ -47,29 +48,29 @@ class WanInfiniteTalkToVideo(Node):
         schema = NodeSchema(
             node_type="dinkster.wan.wan_infinite_talk_to_video",
             category="model/conditioning/wan/infinite talk",
-            combos=(
-                DynamicComboSpec(
+            body=(
+                Choice(
                     "mode",
-                    (
-                        DynamicComboOption("single_speaker"),
-                        DynamicComboOption(
+                    options=(
+                        Option("single_speaker"),
+                        Option(
                             "two_speakers",
-                            (
-                                InputSpec("audio_encoder_output_2", _AUDIO, required=False),
-                                InputSpec(
+                            rows=(
+                                Input("audio_encoder_output_2", _AUDIO, required=False),
+                                Input(
                                     "mask_1",
                                     TypeExpr.concrete(MASK_TYPE),
                                     required=False,
-                                    doc=(
+                                    tooltip=(
                                         "Mask for the first speaker, "
                                         "required if using two audio inputs."
                                     ),
                                 ),
-                                InputSpec(
+                                Input(
                                     "mask_2",
                                     TypeExpr.concrete(MASK_TYPE),
                                     required=False,
-                                    doc=(
+                                    tooltip=(
                                         "Mask for the second speaker, "
                                         "required if using two audio inputs."
                                     ),
@@ -78,66 +79,45 @@ class WanInfiniteTalkToVideo(Node):
                         ),
                     ),
                 ),
-            ),
-            inputs=(
-                InputSpec("model", TypeExpr.concrete(MODEL_TYPE)),
-                InputSpec("model_patch", TypeExpr.concrete(MODEL_PATCH_TYPE)),
-                InputSpec("positive", _CONDITIONING),
-                InputSpec("negative", _CONDITIONING),
-                InputSpec("vae", TypeExpr.concrete(VAE_TYPE)),
-                InputSpec(
-                    "width", _INT, default=832, widget=NumberWidget(min=16, max=16384, step=16)
-                ),
-                InputSpec(
-                    "height", _INT, default=480, widget=NumberWidget(min=16, max=16384, step=16)
-                ),
-                InputSpec(
-                    "length", _INT, default=81, widget=NumberWidget(min=1, max=16384, step=4)
-                ),
-                InputSpec(
+                Input("model", TypeExpr.concrete(MODEL_TYPE)),
+                Input("model_patch", TypeExpr.concrete(MODEL_PATCH_TYPE)),
+                Input("positive", _CONDITIONING),
+                Input("negative", _CONDITIONING),
+                Input("vae", TypeExpr.concrete(VAE_TYPE)),
+                Input("width", _INT, default=832, widget=NumberWidget(min=16, max=16384, step=16)),
+                Input("height", _INT, default=480, widget=NumberWidget(min=16, max=16384, step=16)),
+                Input("length", _INT, default=81, widget=NumberWidget(min=1, max=16384, step=4)),
+                Input(
                     "clip_vision_output", TypeExpr.concrete(CLIP_VISION_OUTPUT_TYPE), required=False
                 ),
-                InputSpec("start_image", _IMAGE, required=False),
-                InputSpec("audio_encoder_output_1", _AUDIO),
-                InputSpec(
-                    "motion_frame_count",
-                    _INT,
-                    default=9,
-                    widget=NumberWidget(min=1, max=33, step=1),
-                    doc="Number of previous frames to use as motion context.",
-                    advanced=True,
-                ),
-                InputSpec(
+                Input("start_image", _IMAGE, required=False),
+                Input("audio_encoder_output_1", _AUDIO),
+                Input(
                     "audio_scale",
                     TypeExpr.concrete(CORE_FLOAT),
                     default=1.0,
                     widget=NumberWidget(min=-10.0, max=10.0, step=0.01),
                 ),
-                InputSpec("previous_frames", _IMAGE, required=False),
-            ),
-            input_order=(
-                "mode",
-                "model",
-                "model_patch",
-                "positive",
-                "negative",
-                "vae",
-                "width",
-                "height",
-                "length",
-                "clip_vision_output",
-                "start_image",
-                "audio_encoder_output_1",
-                "motion_frame_count",
-                "audio_scale",
-                "previous_frames",
-            ),
-            outputs=(
-                OutputSpec("model", TypeExpr.concrete(MODEL_TYPE)),
-                OutputSpec("positive", _CONDITIONING),
-                OutputSpec("negative", _CONDITIONING),
-                OutputSpec("latent", TypeExpr.concrete(LATENT_TYPE)),
-                OutputSpec("trim_image", _INT),
+                Input("previous_frames", _IMAGE, required=False),
+                Section(
+                    "advanced",
+                    label="Advanced",
+                    collapsed=True,
+                    rows=(
+                        Input(
+                            "motion_frame_count",
+                            _INT,
+                            default=9,
+                            widget=NumberWidget(min=1, max=33, step=1),
+                            tooltip="Number of previous frames to use as motion context.",
+                        ),
+                    ),
+                ),
+                Output("model", TypeExpr.concrete(MODEL_TYPE)),
+                Output("positive", _CONDITIONING),
+                Output("negative", _CONDITIONING),
+                Output("latent", TypeExpr.concrete(LATENT_TYPE)),
+                Output("trim_image", _INT),
             ),
         )
         return with_identity_replacement(schema, "WanInfiniteTalkToVideo")

@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import cast
 
 import pytest
-from dinkster_api.v1 import InputSpec, Node, NodeSchema, OutputSpec, TypeExpr
+from dinkster_api.v1 import Input, Node, NodeSchema, Output, TypeExpr
 from dinkster_graph import Graph, GraphNode, Link
 from dinkster_models.model_merging import (
     CLIPMergeAdd,
@@ -136,8 +136,10 @@ class ScalarModelSource(Node):
     def define_schema(cls) -> NodeSchema:
         return NodeSchema(
             node_type="merge-fixture.model",
-            inputs=(InputSpec("weights", TypeExpr.concrete("DICT")),),
-            outputs=(OutputSpec("MODEL", TypeExpr.concrete("MODEL")),),
+            body=(
+                Input("weights", TypeExpr.concrete("DICT")),
+                Output("MODEL", TypeExpr.concrete("MODEL")),
+            ),
         )
 
     @classmethod
@@ -150,8 +152,10 @@ class ScalarModelWeights(Node):
     def define_schema(cls) -> NodeSchema:
         return NodeSchema(
             node_type="merge-fixture.weights",
-            inputs=(InputSpec("model", TypeExpr.concrete("MODEL")),),
-            outputs=(OutputSpec("weights", TypeExpr.concrete("DICT")),),
+            body=(
+                Input("model", TypeExpr.concrete("MODEL")),
+                Output("weights", TypeExpr.concrete("DICT")),
+            ),
         )
 
     @classmethod

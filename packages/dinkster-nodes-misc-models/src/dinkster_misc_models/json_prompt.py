@@ -10,12 +10,12 @@ from dinkster_api.v1 import (
     COLORS_TYPE,
     CORE_STRING,
     DICT_TYPE,
-    DynamicComboOption,
-    DynamicComboSpec,
-    InputSpec,
+    Choice,
+    Input,
     Node,
     NodeSchema,
-    OutputSpec,
+    Option,
+    Output,
     StringWidget,
     TypeExpr,
     with_identity_replacement,
@@ -32,29 +32,23 @@ class BuildJsonPromptIdeogram(Node):
             display_name="Build JSON Prompt (Ideogram)",
             category="text",
             description="Build a JSON prompt for the Ideogram 4 model.",
-            inputs=(
-                InputSpec("element", TypeExpr.concrete(ARRAY_TYPE)),
-                InputSpec(
+            body=(
+                Input("element", TypeExpr.concrete(ARRAY_TYPE)),
+                Input(
                     "high_level_description",
                     _STRING,
                     default="",
                     widget=StringWidget(multiline=True),
                 ),
-                InputSpec("background", _STRING, default="", widget=StringWidget(multiline=True)),
-                InputSpec("aesthetics", _STRING, default="", widget=StringWidget(multiline=False)),
-                InputSpec("lighting", _STRING, default="", widget=StringWidget(multiline=False)),
-                InputSpec("medium", _STRING, default="", widget=StringWidget(multiline=False)),
-                InputSpec("color_palette", TypeExpr.concrete(COLORS_TYPE), default=[]),
-            ),
-            combos=(
-                DynamicComboSpec(
+                Input("background", _STRING, default="", widget=StringWidget(multiline=True)),
+                Choice(
                     "style",
-                    (
-                        DynamicComboOption("none"),
-                        DynamicComboOption(
+                    options=(
+                        Option("none"),
+                        Option(
                             "photo",
-                            (
-                                InputSpec(
+                            rows=(
+                                Input(
                                     "photo",
                                     _STRING,
                                     default="",
@@ -62,10 +56,10 @@ class BuildJsonPromptIdeogram(Node):
                                 ),
                             ),
                         ),
-                        DynamicComboOption(
+                        Option(
                             "art_style",
-                            (
-                                InputSpec(
+                            rows=(
+                                Input(
                                     "art_style",
                                     _STRING,
                                     default="",
@@ -75,18 +69,12 @@ class BuildJsonPromptIdeogram(Node):
                         ),
                     ),
                 ),
+                Input("aesthetics", _STRING, default="", widget=StringWidget(multiline=False)),
+                Input("lighting", _STRING, default="", widget=StringWidget(multiline=False)),
+                Input("medium", _STRING, default="", widget=StringWidget(multiline=False)),
+                Input("color_palette", TypeExpr.concrete(COLORS_TYPE), default=[]),
+                Output("prompt", TypeExpr.concrete(DICT_TYPE), label="prompt"),
             ),
-            input_order=(
-                "element",
-                "high_level_description",
-                "background",
-                "style",
-                "aesthetics",
-                "lighting",
-                "medium",
-                "color_palette",
-            ),
-            outputs=(OutputSpec("prompt", TypeExpr.concrete(DICT_TYPE), display_name="prompt"),),
         )
         return with_identity_replacement(schema, "BuildJsonPromptIdeogram")
 

@@ -13,11 +13,11 @@ from dinkster_api.v1 import (
     CORE_INT,
     IMAGE_TYPE,
     POSE_KEYPOINT_TYPE,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
     TypeExpr,
     initialize_inference_process,
     with_identity_replacement,
@@ -53,27 +53,25 @@ class SDPoseFaceBBoxes(Node):
             display_name="SDPose Face Bounding Boxes",
             category="image/detection",
             search_terms=("face bbox", "face bounding box", "pose", "keypoints"),
-            inputs=(
-                InputSpec("keypoints", TypeExpr.concrete(POSE_KEYPOINT_TYPE)),
-                InputSpec(
+            body=(
+                Input("keypoints", TypeExpr.concrete(POSE_KEYPOINT_TYPE)),
+                Input(
                     "scale",
                     TypeExpr.concrete(CORE_FLOAT),
                     default=1.5,
                     widget=NumberWidget(min=1.0, max=10.0, step=0.1),
-                    doc="Multiplier for the bounding box area around each detected face.",
+                    tooltip="Multiplier for the bounding box area around each detected face.",
                 ),
-                InputSpec(
+                Input(
                     "force_square",
                     TypeExpr.concrete(CORE_BOOLEAN),
                     default=True,
-                    doc="Expand the shorter bbox axis so the crop region is always square.",
+                    tooltip="Expand the shorter bbox axis so the crop region is always square.",
                 ),
-            ),
-            outputs=(
-                OutputSpec(
+                Output(
                     "bboxes",
                     TypeExpr.concrete(BOUNDING_BOX_TYPE),
-                    doc="Face bounding boxes per frame, compatible with SDPoseKeypointExtractor "
+                    tooltip="Face bounding boxes per frame, compatible with SDPoseKeypointExtractor "
                     "bboxes input.",
                 ),
             ),
@@ -122,30 +120,30 @@ class SDPoseDrawKeypoints(Node):
             display_name="SDPose Draw Keypoints",
             category="image/detection",
             search_terms=("openpose", "pose detection", "preprocessor", "keypoints", "pose"),
-            inputs=(
-                InputSpec("keypoints", TypeExpr.concrete(POSE_KEYPOINT_TYPE)),
-                InputSpec("draw_body", boolean, default=True),
-                InputSpec("draw_hands", boolean, default=True),
-                InputSpec("draw_face", boolean, default=True),
-                InputSpec("draw_feet", boolean, default=False),
-                InputSpec(
+            body=(
+                Input("keypoints", TypeExpr.concrete(POSE_KEYPOINT_TYPE)),
+                Input("draw_body", boolean, default=True),
+                Input("draw_hands", boolean, default=True),
+                Input("draw_face", boolean, default=True),
+                Input("draw_feet", boolean, default=False),
+                Input(
                     "stick_width", integer, default=4, widget=NumberWidget(min=1, max=10, step=1)
                 ),
-                InputSpec(
+                Input(
                     "face_point_size",
                     integer,
                     default=3,
                     widget=NumberWidget(min=1, max=10, step=1),
                 ),
-                InputSpec(
+                Input(
                     "score_threshold",
                     TypeExpr.concrete(CORE_FLOAT),
                     default=0.3,
                     widget=NumberWidget(min=0.0, max=1.0, step=0.01),
                 ),
-                InputSpec("draw_head", boolean, default=True),
+                Input("draw_head", boolean, default=True),
+                Output("IMAGE", TypeExpr.concrete(IMAGE_TYPE)),
             ),
-            outputs=(OutputSpec("IMAGE", TypeExpr.concrete(IMAGE_TYPE)),),
         )
         return with_identity_replacement(schema, "SDPoseDrawKeypoints")
 

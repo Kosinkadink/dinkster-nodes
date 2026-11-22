@@ -9,11 +9,11 @@ from dinkster_api.v1 import (
     IMAGE_TYPE,
     LATENT_TYPE,
     VAE_TYPE,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
     TypeExpr,
     initialize_inference_process,
     materialize_image,
@@ -35,21 +35,15 @@ class Wan22ImageToVideoLatent(Node):
         schema = NodeSchema(
             node_type="dinkster.wan.wan22_image_to_video_latent",
             category="model/conditioning/wan",
-            inputs=(
-                InputSpec("vae", _VAE),
-                InputSpec(
-                    "width", _INT, default=1280, widget=NumberWidget(min=32, max=16384, step=32)
-                ),
-                InputSpec(
-                    "height", _INT, default=704, widget=NumberWidget(min=32, max=16384, step=32)
-                ),
-                InputSpec(
-                    "length", _INT, default=49, widget=NumberWidget(min=1, max=16384, step=4)
-                ),
-                InputSpec("batch_size", _INT, default=1, widget=NumberWidget(min=1, max=4096)),
-                InputSpec("start_image", _IMAGE, required=False),
+            body=(
+                Input("vae", _VAE),
+                Input("width", _INT, default=1280, widget=NumberWidget(min=32, max=16384, step=32)),
+                Input("height", _INT, default=704, widget=NumberWidget(min=32, max=16384, step=32)),
+                Input("length", _INT, default=49, widget=NumberWidget(min=1, max=16384, step=4)),
+                Input("batch_size", _INT, default=1, widget=NumberWidget(min=1, max=4096)),
+                Input("start_image", _IMAGE, required=False),
+                Output("LATENT", _LATENT),
             ),
-            outputs=(OutputSpec("LATENT", _LATENT),),
         )
         return with_identity_replacement(schema, "Wan22ImageToVideoLatent")
 

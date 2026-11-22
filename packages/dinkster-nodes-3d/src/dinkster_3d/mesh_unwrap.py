@@ -13,11 +13,11 @@ from dinkster_api.v1 import (
     CORE_INT,
     MESH_TYPE,
     ComboWidget,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
     TriangleMeshBatch,
     TypeExpr,
     initialize_inference_process,
@@ -221,40 +221,40 @@ class UnwrapMesh(Node):
                 "per chart, same position, own UV), so the output mesh has more vertices "
                 "than the input. Run after Remesh/Decimate, before texture baking."
             ),
-            inputs=(
-                InputSpec("mesh", TypeExpr.concrete(MESH_TYPE)),
-                InputSpec(
+            body=(
+                Input("mesh", TypeExpr.concrete(MESH_TYPE)),
+                Input(
                     "segmenter",
                     TypeExpr.concrete(CORE_COMBO),
                     default="pec",
                     widget=ComboWidget(("pec", "adaptive")),
-                    doc="pec: fast parallel-edge-collapse charting on GPU. adaptive: CPU, slower.",
+                    tooltip="pec: fast parallel-edge-collapse charting on GPU. adaptive: CPU, slower.",
                 ),
-                InputSpec(
+                Input(
                     "resolution",
                     TypeExpr.concrete(CORE_INT),
                     default=1024,
                     widget=NumberWidget(min=0, max=8192, step=256),
-                    doc="Target atlas resolution for texel-density auto-scale "
+                    tooltip="Target atlas resolution for texel-density auto-scale "
                     "(0 = fit-to-content).",
                 ),
-                InputSpec(
+                Input(
                     "padding",
                     TypeExpr.concrete(CORE_INT),
                     default=1,
                     widget=NumberWidget(min=0, max=16),
-                    doc="Texel padding between charts.",
+                    tooltip="Texel padding between charts.",
                 ),
-                InputSpec(
+                Input(
                     "weld_distance",
                     TypeExpr.concrete(CORE_FLOAT),
                     default=0.0,
                     widget=NumberWidget(min=0.0, max=1.0, step=0.0001),
-                    doc="Coincident-vert merge radius as a fraction of mesh extent (0 = auto). "
+                    tooltip="Coincident-vert merge radius as a fraction of mesh extent (0 = auto). "
                     "Raise to ~0.001 if you get per-triangle charts (unwelded input).",
                 ),
+                Output("mesh", TypeExpr.concrete(MESH_TYPE)),
             ),
-            outputs=(OutputSpec("mesh", TypeExpr.concrete(MESH_TYPE)),),
         )
         return with_identity_replacement(schema, "UnwrapMesh")
 

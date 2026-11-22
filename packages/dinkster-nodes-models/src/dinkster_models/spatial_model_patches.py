@@ -15,11 +15,12 @@ from dinkster_api.v1 import (
     MODEL_TYPE,
     ComboOption,
     ComboWidget,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
+    Section,
     TypeExpr,
     initialize_inference_process,
     with_identity_replacement,
@@ -200,16 +201,16 @@ class TomePatchModel(Node):
             NodeSchema(
                 node_type="dinkster.models.tome_patch_model",
                 category=_CATEGORY,
-                inputs=(
-                    InputSpec("model", _MODEL),
-                    InputSpec(
+                body=(
+                    Input("model", _MODEL),
+                    Input(
                         "ratio",
                         _FLOAT,
                         default=0.3,
                         widget=NumberWidget(min=0.0, max=1.0, step=0.01),
                     ),
+                    Output("MODEL", _MODEL),
                 ),
-                outputs=(OutputSpec("MODEL", _MODEL),),
             ),
             "TomePatchModel",
         )
@@ -255,32 +256,40 @@ class HyperTile(Node):
             NodeSchema(
                 node_type="dinkster.models.hyper_tile",
                 category=_CATEGORY,
-                inputs=(
-                    InputSpec("model", _MODEL),
-                    InputSpec(
-                        "tile_size",
-                        _INT,
-                        default=256,
-                        advanced=True,
-                        widget=NumberWidget(min=1, max=2048),
+                body=(
+                    Input("model", _MODEL),
+                    Section(
+                        "advanced",
+                        label="Advanced",
+                        collapsed=True,
+                        rows=(
+                            Input(
+                                "tile_size",
+                                _INT,
+                                default=256,
+                                widget=NumberWidget(min=1, max=2048),
+                            ),
+                            Input(
+                                "swap_size",
+                                _INT,
+                                default=2,
+                                widget=NumberWidget(min=1, max=128),
+                            ),
+                            Input(
+                                "max_depth",
+                                _INT,
+                                default=0,
+                                widget=NumberWidget(min=0, max=10),
+                            ),
+                            Input(
+                                "scale_depth",
+                                _BOOLEAN,
+                                default=False,
+                            ),
+                        ),
                     ),
-                    InputSpec(
-                        "swap_size",
-                        _INT,
-                        default=2,
-                        advanced=True,
-                        widget=NumberWidget(min=1, max=128),
-                    ),
-                    InputSpec(
-                        "max_depth",
-                        _INT,
-                        default=0,
-                        advanced=True,
-                        widget=NumberWidget(min=0, max=10),
-                    ),
-                    InputSpec("scale_depth", _BOOLEAN, default=False, advanced=True),
+                    Output("MODEL", _MODEL),
                 ),
-                outputs=(OutputSpec("MODEL", _MODEL),),
             ),
             "HyperTile",
         )
@@ -372,40 +381,48 @@ class PatchModelAddDownscale(Node):
                 node_type="dinkster.models.patch_model_add_downscale",
                 display_name="PatchModelAddDownscale (Kohya Deep Shrink)",
                 category=_CATEGORY,
-                inputs=(
-                    InputSpec("model", _MODEL),
-                    InputSpec(
-                        "block_number",
-                        _INT,
-                        default=3,
-                        advanced=True,
-                        widget=NumberWidget(min=1, max=32, step=1),
-                    ),
-                    InputSpec(
+                body=(
+                    Input("model", _MODEL),
+                    Input(
                         "downscale_factor",
                         _FLOAT,
                         default=2.0,
                         widget=NumberWidget(min=0.1, max=9.0, step=0.001),
                     ),
-                    InputSpec(
-                        "start_percent",
-                        _FLOAT,
-                        default=0.0,
-                        advanced=True,
-                        widget=NumberWidget(min=0.0, max=1.0, step=0.001),
+                    Input("downscale_method", _COMBO, widget=method_widget),
+                    Input("upscale_method", _COMBO, widget=method_widget),
+                    Section(
+                        "advanced",
+                        label="Advanced",
+                        collapsed=True,
+                        rows=(
+                            Input(
+                                "block_number",
+                                _INT,
+                                default=3,
+                                widget=NumberWidget(min=1, max=32, step=1),
+                            ),
+                            Input(
+                                "start_percent",
+                                _FLOAT,
+                                default=0.0,
+                                widget=NumberWidget(min=0.0, max=1.0, step=0.001),
+                            ),
+                            Input(
+                                "end_percent",
+                                _FLOAT,
+                                default=0.35,
+                                widget=NumberWidget(min=0.0, max=1.0, step=0.001),
+                            ),
+                            Input(
+                                "downscale_after_skip",
+                                _BOOLEAN,
+                                default=True,
+                            ),
+                        ),
                     ),
-                    InputSpec(
-                        "end_percent",
-                        _FLOAT,
-                        default=0.35,
-                        advanced=True,
-                        widget=NumberWidget(min=0.0, max=1.0, step=0.001),
-                    ),
-                    InputSpec("downscale_after_skip", _BOOLEAN, default=True, advanced=True),
-                    InputSpec("downscale_method", _COMBO, widget=method_widget),
-                    InputSpec("upscale_method", _COMBO, widget=method_widget),
+                    Output("MODEL", _MODEL),
                 ),
-                outputs=(OutputSpec("MODEL", _MODEL),),
             ),
             "PatchModelAddDownscale",
         )

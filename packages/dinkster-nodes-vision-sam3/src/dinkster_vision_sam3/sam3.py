@@ -15,11 +15,11 @@ from dinkster_api.v1 import (
     MASK_TYPE,
     MODEL_TYPE,
     SAM3_TRACK_DATA_TYPE,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
     StringWidget,
     TypeExpr,
     initialize_inference_process,
@@ -66,60 +66,56 @@ class SAM3_VideoTrack(Node):
             display_name="Run SAM3 Video Track",
             category="image/detection",
             search_terms=("sam3", "video", "track", "propagate"),
-            inputs=(
-                InputSpec(
+            body=(
+                Input(
                     "images",
                     TypeExpr.concrete(IMAGE_TYPE),
-                    display_name="images",
-                    doc="Video frames as batched images",
+                    label="images",
+                    tooltip="Video frames as batched images",
                 ),
-                InputSpec("model", TypeExpr.concrete(MODEL_TYPE), display_name="model"),
-                InputSpec(
+                Input("model", TypeExpr.concrete(MODEL_TYPE), label="model"),
+                Input(
                     "initial_mask",
                     TypeExpr.concrete(MASK_TYPE),
-                    display_name="initial_mask",
+                    label="initial_mask",
                     required=False,
-                    doc="Mask(s) for the first frame to track (one per object)",
+                    tooltip="Mask(s) for the first frame to track (one per object)",
                 ),
-                InputSpec(
+                Input(
                     "conditioning",
                     TypeExpr.concrete(CONDITIONING_TYPE),
-                    display_name="conditioning",
+                    label="conditioning",
                     required=False,
-                    doc="Text conditioning for detecting new objects during tracking",
+                    tooltip="Text conditioning for detecting new objects during tracking",
                 ),
-                InputSpec(
+                Input(
                     "detection_threshold",
                     TypeExpr.concrete(CORE_FLOAT),
-                    display_name="detection_threshold",
+                    label="detection_threshold",
                     default=0.5,
                     widget=NumberWidget(min=0.0, max=1.0, step=0.01),
-                    doc="Score threshold for text-prompted detection.",
+                    tooltip="Score threshold for text-prompted detection.",
                 ),
-                InputSpec(
+                Input(
                     "max_objects",
                     TypeExpr.concrete(CORE_INT),
-                    display_name="max_objects",
+                    label="max_objects",
                     default=4,
                     widget=NumberWidget(min=0, max=64),
-                    doc=(
+                    tooltip=(
                         "Max tracked objects. Initial masks count toward this limit. "
                         "0 uses the internal cap of 64."
                     ),
                 ),
-                InputSpec(
+                Input(
                     "detect_interval",
                     TypeExpr.concrete(CORE_INT),
-                    display_name="detect_interval",
+                    label="detect_interval",
                     default=1,
                     widget=NumberWidget(min=1),
-                    doc="Run detection every N frames (1=every frame). Higher values save compute.",
+                    tooltip="Run detection every N frames (1=every frame). Higher values save compute.",
                 ),
-            ),
-            outputs=(
-                OutputSpec(
-                    "track_data", TypeExpr.concrete(SAM3_TRACK_DATA_TYPE), display_name="track_data"
-                ),
+                Output("track_data", TypeExpr.concrete(SAM3_TRACK_DATA_TYPE), label="track_data"),
             ),
         )
         return with_identity_replacement(schema, "SAM3_VideoTrack")
@@ -181,23 +177,21 @@ class SAM3_TrackToMask(Node):
             node_type="dinkster.vision.sam3.sam3_track_to_mask",
             display_name="SAM3 Track to Mask",
             category="image/detection",
-            inputs=(
-                InputSpec(
-                    "track_data", TypeExpr.concrete(SAM3_TRACK_DATA_TYPE), display_name="track_data"
-                ),
-                InputSpec(
+            body=(
+                Input("track_data", TypeExpr.concrete(SAM3_TRACK_DATA_TYPE), label="track_data"),
+                Input(
                     "object_indices",
                     TypeExpr.concrete(CORE_STRING),
-                    display_name="object_indices",
+                    label="object_indices",
                     default="",
                     widget=StringWidget(multiline=False),
-                    doc=(
+                    tooltip=(
                         "Comma-separated object indices to include (e.g. '0,2,3'). "
                         "Empty = all objects."
                     ),
                 ),
+                Output("masks", TypeExpr.concrete(MASK_TYPE), label="masks"),
             ),
-            outputs=(OutputSpec("masks", TypeExpr.concrete(MASK_TYPE), display_name="masks"),),
         )
         return with_identity_replacement(schema, "SAM3_TrackToMask")
 

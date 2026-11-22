@@ -19,10 +19,10 @@ from dinkster_api.v1 import (  # noqa: E402
     IMAGE_TYPE,
     LATENT_TYPE,
     MASK_TYPE,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
-    OutputSpec,
+    Output,
     TypeExpr,
     materialize_image,
     materialize_latent,
@@ -198,12 +198,12 @@ class PostProcessingSource(Node):
     def define_schema(cls) -> NodeSchema:
         return NodeSchema(
             node_type="post-processing-fixture.source",
-            outputs=(
-                OutputSpec("target", _IMAGE),
-                OutputSpec("reference", _IMAGE),
-                OutputSpec("image", _IMAGE),
-                OutputSpec("mask", _MASK),
-                OutputSpec("latent", _LATENT),
+            body=(
+                Output("target", _IMAGE),
+                Output("reference", _IMAGE),
+                Output("image", _IMAGE),
+                Output("mask", _MASK),
+                Output("latent", _LATENT),
             ),
         )
 
@@ -224,21 +224,19 @@ class PostProcessingInspect(Node):
     def define_schema(cls) -> NodeSchema:
         return NodeSchema(
             node_type="post-processing-fixture.inspect",
-            inputs=(
-                InputSpec("source", _IMAGE),
-                InputSpec("resized", _IMAGE),
-                InputSpec("images", _IMAGE),
-                InputSpec("masks", _MASK),
-                InputSpec("latents", _LATENT),
-                InputSpec("transfer", _IMAGE),
-            ),
-            outputs=(
-                OutputSpec("source_pixel", _FLOAT),
-                OutputSpec("resized_width", _FLOAT),
-                OutputSpec("image_batch", _FLOAT),
-                OutputSpec("mask_batch", _FLOAT),
-                OutputSpec("latent_batch", _FLOAT),
-                OutputSpec("transfer_delta", _FLOAT),
+            body=(
+                Input("source", _IMAGE),
+                Input("resized", _IMAGE),
+                Input("images", _IMAGE),
+                Input("masks", _MASK),
+                Input("latents", _LATENT),
+                Input("transfer", _IMAGE),
+                Output("source_pixel", _FLOAT),
+                Output("resized_width", _FLOAT),
+                Output("image_batch", _FLOAT),
+                Output("mask_batch", _FLOAT),
+                Output("latent_batch", _FLOAT),
+                Output("transfer_delta", _FLOAT),
             ),
         )
 

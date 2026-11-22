@@ -4,11 +4,12 @@ from collections.abc import Mapping
 
 from dinkster_api.v1 import (
     CORE_INT,
-    InputFamilySpec,
-    InputSpec,
+    Group,
+    Input,
     Node,
     NodeSchema,
-    OutputSpec,
+    Numbered,
+    Output,
     TypeExpr,
     Value,
     list_children,
@@ -28,8 +29,10 @@ class MakeList(Node):
             node_type="dinkster.utilities.make_list",
             display_name="Create List",
             category="list",
-            input_families=(InputFamilySpec("items", T, min_members=1),),
-            outputs=(OutputSpec("list", LIST_T),),
+            body=(
+                Group("items", value=Input("value", T), min_members=1, keys=Numbered("", start=0)),
+                Output("list", LIST_T),
+            ),
             input_values=True,
         )
 
@@ -47,8 +50,11 @@ class ListElement(Node):
             node_type="dinkster.utilities.list_element",
             display_name="List Element",
             category="list",
-            inputs=(InputSpec("list", LIST_T), InputSpec("index", INT, default=0)),
-            outputs=(OutputSpec("item", T),),
+            body=(
+                Input("list", LIST_T),
+                Input("index", INT, default=0),
+                Output("item", T),
+            ),
             input_values=True,
         )
 

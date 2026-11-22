@@ -19,11 +19,12 @@ from dinkster_api.v1 import (
     ColorWidget,
     ComboOption,
     ComboWidget,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
+    Section,
     TypeExpr,
     initialize_inference_process,
     materialize_image,
@@ -48,74 +49,43 @@ class RenderSplat(Node):
                 "Camera Info node); leave it empty to auto-frame the splat. Set frames "
                 "greater than 1 for a turntable batch of images to feed a Video node."
             ),
-            inputs=(
-                InputSpec("splat", TypeExpr.concrete(SPLAT_TYPE)),
-                InputSpec(
+            body=(
+                Input("splat", TypeExpr.concrete(SPLAT_TYPE)),
+                Input(
                     "width",
                     TypeExpr.concrete(CORE_INT),
                     default=1024,
                     widget=NumberWidget(min=64, max=2048, step=8),
                 ),
-                InputSpec(
+                Input(
                     "height",
                     TypeExpr.concrete(CORE_INT),
                     default=1024,
                     widget=NumberWidget(min=64, max=2048, step=8),
                 ),
-                InputSpec(
+                Input(
                     "frames",
                     TypeExpr.concrete(CORE_INT),
                     default=1,
                     widget=NumberWidget(min=-240, max=240),
-                    doc=(
+                    tooltip=(
                         "-1, 0, 1 = single still image; >1 = turntable, the camera orbits over a "
                         "full 360 turn (works with any camera_info). Negative value orbits "
                         "the other way."
                     ),
                 ),
-                InputSpec(
-                    "splat_scale",
-                    TypeExpr.concrete(CORE_FLOAT),
-                    default=1.0,
-                    advanced=True,
-                    widget=NumberWidget(min=0.1, max=5.0, step=0.05),
-                    doc=(
-                        "Multiplier on each splat's projected footprint (lower = crisper points, "
-                        "higher = softer/fuller surface)."
-                    ),
-                ),
-                InputSpec(
+                Input(
                     "sharpen",
                     TypeExpr.concrete(CORE_FLOAT),
                     default=2.0,
                     widget=NumberWidget(min=1.0, max=8.0, step=0.5),
-                    doc=(
+                    tooltip=(
                         "Sharpen overlapping splats: 1.0 = physically-correct blend; higher biases "
                         "each pixel toward its dominant (nearest) splat for crisper texture, "
                         "without shrinking splats or opening gaps. Non-physical above 1."
                     ),
                 ),
-                InputSpec(
-                    "headlight_shading",
-                    TypeExpr.concrete(CORE_FLOAT),
-                    default=0.0,
-                    advanced=True,
-                    widget=NumberWidget(min=0.0, max=3.0, step=0.05),
-                    doc=(
-                        "Diffuse shading from a light at the camera (headlight), using the splat "
-                        "surfel normals: darkens surfaces that turn away from view to reveal "
-                        "form/curvature. 0 = flat albedo, 1 = strongest shading."
-                    ),
-                ),
-                InputSpec(
-                    "opacity_threshold",
-                    TypeExpr.concrete(CORE_FLOAT),
-                    default=0.0,
-                    advanced=True,
-                    widget=NumberWidget(min=0.0, max=1.0, step=0.01),
-                    doc="Cull gaussians with opacity below this (removes faint floaters).",
-                ),
-                InputSpec(
+                Input(
                     "render_style",
                     TypeExpr.concrete(CORE_COMBO),
                     default="color",
@@ -124,41 +94,74 @@ class RenderSplat(Node):
                             ComboOption(mode, mode) for mode in ("color", "clay", "depth", "normal")
                         )
                     ),
-                    doc=(
+                    tooltip=(
                         "What the image output shows: color, clay (neutral-albedo shaded), "
                         "depth (near=bright), normal (OpenGL normal map)."
                     ),
                 ),
-                InputSpec(
+                Input(
                     "background",
                     TypeExpr.concrete(COLOR_TYPE),
                     default="#000000",
                     widget=ColorWidget(),
                 ),
-                InputSpec(
+                Input(
                     "bg_image",
                     TypeExpr.concrete(IMAGE_TYPE),
                     required=False,
-                    doc=(
+                    tooltip=(
                         "Optional background plate composited behind the splat (overrides the "
                         "solid background colour). Resized to the render size; a batch is used "
                         "per frame, "
                         "a single image for all. color/clay only."
                     ),
                 ),
-                InputSpec(
+                Input(
                     "camera_info",
                     TypeExpr.concrete(LOAD3D_CAMERA_TYPE),
                     required=False,
-                    doc=(
+                    tooltip=(
                         "Camera to render from - a Load3D / Preview3D camera or a Create Camera "
                         "Info node. If empty, the splat is auto-framed from a default 3/4 view."
                     ),
                 ),
-            ),
-            outputs=(
-                OutputSpec("IMAGE", TypeExpr.concrete(IMAGE_TYPE), display_name="image"),
-                OutputSpec("MASK", TypeExpr.concrete(MASK_TYPE), display_name="mask"),
+                Section(
+                    "advanced",
+                    label="Advanced",
+                    collapsed=True,
+                    rows=(
+                        Input(
+                            "splat_scale",
+                            TypeExpr.concrete(CORE_FLOAT),
+                            default=1.0,
+                            widget=NumberWidget(min=0.1, max=5.0, step=0.05),
+                            tooltip=(
+                                "Multiplier on each splat's projected footprint (lower = crisper points, "
+                                "higher = softer/fuller surface)."
+                            ),
+                        ),
+                        Input(
+                            "headlight_shading",
+                            TypeExpr.concrete(CORE_FLOAT),
+                            default=0.0,
+                            widget=NumberWidget(min=0.0, max=3.0, step=0.05),
+                            tooltip=(
+                                "Diffuse shading from a light at the camera (headlight), using the splat "
+                                "surfel normals: darkens surfaces that turn away from view to reveal "
+                                "form/curvature. 0 = flat albedo, 1 = strongest shading."
+                            ),
+                        ),
+                        Input(
+                            "opacity_threshold",
+                            TypeExpr.concrete(CORE_FLOAT),
+                            default=0.0,
+                            widget=NumberWidget(min=0.0, max=1.0, step=0.01),
+                            tooltip="Cull gaussians with opacity below this (removes faint floaters).",
+                        ),
+                    ),
+                ),
+                Output("IMAGE", TypeExpr.concrete(IMAGE_TYPE), label="image"),
+                Output("MASK", TypeExpr.concrete(MASK_TYPE), label="mask"),
             ),
         )
         return with_identity_replacement(schema, "RenderSplat")

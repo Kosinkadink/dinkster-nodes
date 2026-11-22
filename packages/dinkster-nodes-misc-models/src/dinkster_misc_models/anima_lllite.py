@@ -12,11 +12,11 @@ from dinkster_api.v1 import (
     MASK_TYPE,
     MODEL_PATCH_TYPE,
     MODEL_TYPE,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
     TypeExpr,
     initialize_inference_process,
     materialize_image,
@@ -31,31 +31,31 @@ class AnimaLLLiteApply(Node):
             node_type="dinkster.misc.models.anima_ll_lite_apply",
             display_name="Apply Anima LLLite",
             category="model/patch/anima",
-            inputs=(
-                InputSpec("model", TypeExpr.concrete(MODEL_TYPE)),
-                InputSpec("model_patch", TypeExpr.concrete(MODEL_PATCH_TYPE)),
-                InputSpec("image", TypeExpr.concrete(IMAGE_TYPE)),
-                InputSpec(
+            body=(
+                Input("model", TypeExpr.concrete(MODEL_TYPE)),
+                Input("model_patch", TypeExpr.concrete(MODEL_PATCH_TYPE)),
+                Input("image", TypeExpr.concrete(IMAGE_TYPE)),
+                Input(
                     "strength",
                     TypeExpr.concrete(CORE_FLOAT),
                     default=1.0,
                     widget=NumberWidget(min=-10.0, max=10.0, step=0.01),
                 ),
-                InputSpec(
+                Input(
                     "start_percent",
                     TypeExpr.concrete(CORE_FLOAT),
                     default=0.0,
                     widget=NumberWidget(min=0.0, max=1.0, step=0.001),
                 ),
-                InputSpec(
+                Input(
                     "end_percent",
                     TypeExpr.concrete(CORE_FLOAT),
                     default=1.0,
                     widget=NumberWidget(min=0.0, max=1.0, step=0.001),
                 ),
-                InputSpec("mask", TypeExpr.concrete(MASK_TYPE), required=False),
+                Input("mask", TypeExpr.concrete(MASK_TYPE), required=False),
+                Output("MODEL", TypeExpr.concrete(MODEL_TYPE)),
             ),
-            outputs=(OutputSpec("MODEL", TypeExpr.concrete(MODEL_TYPE)),),
         )
         return with_identity_replacement(schema, "AnimaLLLiteApply")
 

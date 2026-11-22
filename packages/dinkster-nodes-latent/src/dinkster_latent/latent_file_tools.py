@@ -16,13 +16,14 @@ from dinkster_api.v1 import (
     AssetRef,
     AssetWidget,
     AssetWriter,
-    InputSpec,
+    Input,
     LocalAssetRef,
     MountSnapshotWriter,
     MountWidget,
     Node,
     NodeSchema,
-    OutputSpec,
+    Output,
+    Row,
     SourceFilenameSpec,
     TypeExpr,
     attach_saved_artifact,
@@ -50,8 +51,8 @@ class LoadLatent(Node):
                 display_name="Load Latent",
                 category="model/latent",
                 search_terms=("import latent", "open latent"),
-                inputs=(
-                    InputSpec(
+                body=(
+                    Input(
                         "latent",
                         _ASSET,
                         widget=AssetWidget(
@@ -59,8 +60,8 @@ class LoadLatent(Node):
                         ),
                         source_filename=SourceFilenameSpec("data/latent", "input"),
                     ),
+                    Output("LATENT", _LATENT),
                 ),
-                outputs=(OutputSpec("LATENT", _LATENT),),
             ),
             "LoadLatent",
         )
@@ -83,19 +84,22 @@ class SaveLatent(Node):
                 display_name="Save Latent",
                 category="model/latent",
                 search_terms=("export latent",),
-                inputs=(
-                    InputSpec("samples", _LATENT),
-                    InputSpec("filename_prefix", _STRING, default="latents/ComfyUI"),
-                    InputSpec(
-                        "mount",
-                        _STRING,
-                        required=False,
-                        default=None,
-                        widget=MountWidget(),
-                        adjacent_to="filename_prefix",
+                body=(
+                    Input("samples", _LATENT),
+                    Row(
+                        rows=(
+                            Input("filename_prefix", _STRING, default="latents/ComfyUI"),
+                            Input(
+                                "mount",
+                                _STRING,
+                                required=False,
+                                default=None,
+                                widget=MountWidget(),
+                            ),
+                        )
                     ),
+                    Output("samples", _LATENT),
                 ),
-                outputs=(OutputSpec("samples", _LATENT),),
                 idempotent=False,
                 output_node=True,
             ),

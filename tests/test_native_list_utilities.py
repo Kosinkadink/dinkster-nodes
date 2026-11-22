@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 from dinkster_api.v1 import (
-    InputSpec,
+    Input,
     TypeExpr,
     TypeRegistry,
     schema_from_wire,
@@ -144,6 +144,6 @@ def test_native_list_nodes_execute_scalar_and_list_envelopes_without_wrappers() 
 
 def test_whole_list_admission_binds_the_declared_element_type() -> None:
     assert bind_type_variables(
-        [InputSpec("item", TypeExpr.variable("T"), accepts_list=True)],
+        [Input("item", TypeExpr.variable("T"), accepts_list=True)],
         {"item": "list<INT>"},
     ) == {"T": "INT"}

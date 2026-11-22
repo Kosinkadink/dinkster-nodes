@@ -131,7 +131,7 @@ def test_empty_editable_combo_options_preserve_other_choice_contracts(
 def test_environment_options_remain_conditional_without_hiding_static_drift(
     name: str, parameter: str, baseline: list[str], observed: list[str], passed: bool
 ) -> None:
-    from dinkster_schema import ComboWidget, InputSpec, NodeSchema, TypeExpr, schema_to_wire
+    from dinkster_schema import ComboWidget, Input, NodeSchema, TypeExpr, schema_to_wire
 
     from tools.compare_nodes import compare_registry
     from tools.dump_comfy_nodes import annotate_environment_options
@@ -144,10 +144,8 @@ def test_environment_options_remain_conditional_without_hiding_static_drift(
     native = schema_to_wire(
         NodeSchema(
             node_type=name,
-            inputs=(
-                InputSpec(
-                    parameter, TypeExpr.concrete("COMBO"), widget=ComboWidget(tuple(observed))
-                ),
+            body=(
+                Input(parameter, TypeExpr.concrete("COMBO"), widget=ComboWidget(tuple(observed))),
             ),
         )
     )
@@ -162,7 +160,7 @@ def test_environment_options_remain_conditional_without_hiding_static_drift(
 
 
 def test_environment_remote_choices_still_require_same_default() -> None:
-    from dinkster_schema import ComboWidget, InputSpec, NodeSchema, TypeExpr, schema_to_wire
+    from dinkster_schema import ComboWidget, Input, NodeSchema, TypeExpr, schema_to_wire
 
     from tools.compare_nodes import compare_registry
     from tools.dump_comfy_nodes import annotate_environment_options
@@ -173,8 +171,8 @@ def test_environment_remote_choices_still_require_same_default() -> None:
     schema = schema_to_wire(
         NodeSchema(
             node_type="SelectModelDevice",
-            inputs=(
-                InputSpec(
+            body=(
+                Input(
                     "device",
                     TypeExpr.concrete("COMBO"),
                     default="default",
@@ -381,7 +379,7 @@ def test_cli_training_exclusion_keeps_deletion_errors(
 def test_save_mount_admission_uses_source_output_contract(
     name: str, output_node: bool, prefix_type: str, input_is_list: bool
 ) -> None:
-    from dinkster_schema import InputSpec, MountWidget, NodeSchema, TypeExpr, schema_to_wire
+    from dinkster_schema import Input, MountWidget, NodeSchema, TypeExpr, schema_to_wire
 
     from tools.compare_nodes import compare_registry
 
@@ -400,20 +398,19 @@ def test_save_mount_admission_uses_source_output_contract(
         NodeSchema(
             node_type=name,
             output_node=output_node,
-            inputs=(
-                InputSpec(
+            body=(
+                Input(
                     "filename_prefix",
                     TypeExpr.list_of(TypeExpr.concrete(prefix_type))
                     if input_is_list
                     else TypeExpr.concrete(prefix_type),
                 ),
-                InputSpec(
+                Input(
                     "mount",
                     TypeExpr.concrete("STRING"),
                     required=False,
                     default=None,
                     widget=MountWidget(),
-                    adjacent_to="filename_prefix",
                 ),
             ),
         )
@@ -494,13 +491,13 @@ class V3File:
 
 
 def test_comparison_cli(tmp_path: Path) -> None:
-    from dinkster_schema import InputSpec, NodeSchema, StringWidget, TypeExpr, schema_to_wire
+    from dinkster_schema import Input, NodeSchema, StringWidget, TypeExpr, schema_to_wire
 
     wire = schema_to_wire(
         NodeSchema(
             node_type="SaveExample",
-            inputs=(
-                InputSpec(
+            body=(
+                Input(
                     "mount",
                     TypeExpr.concrete("STRING"),
                     required=False,
@@ -760,13 +757,13 @@ def test_exact_ids_and_file_widget_exemption(
     assert not compare_registry(reference, registry)["passed"]
     reference["nodes"][0]["file_inputs"] = ["file"]
     if native_type == "ASSET":
-        from dinkster_schema import AssetWidget, InputSpec, NodeSchema, TypeExpr, schema_to_wire
+        from dinkster_schema import AssetWidget, Input, NodeSchema, TypeExpr, schema_to_wire
 
         wire = schema_to_wire(
             NodeSchema(
                 node_type="LoadExample",
-                inputs=(
-                    InputSpec(
+                body=(
+                    Input(
                         "file",
                         TypeExpr.concrete("ASSET"),
                         widget=AssetWidget(kind="model/lora", accept=("application/octet-stream",)),
@@ -1697,7 +1694,7 @@ def test_engine_nodes_are_compared_despite_historical_exclusion_metadata(name: s
     "kind", ["model/vae", "model/diffusers", "directory/input", "directory/dataset"]
 )
 def test_source_marked_selections_require_exact_picker_kind_and_socket(kind: str, v3: bool) -> None:
-    from dinkster_api.v1 import AssetWidget, InputSpec, NodeSchema, TypeExpr, schema_to_wire
+    from dinkster_api.v1 import AssetWidget, Input, NodeSchema, TypeExpr, schema_to_wire
 
     from tools.compare_nodes import compare
     from tools.dump_comfy_nodes import FileChoices, annotate_files
@@ -1712,8 +1709,8 @@ def test_source_marked_selections_require_exact_picker_kind_and_socket(kind: str
     schema = schema_to_wire(
         NodeSchema(
             node_type="SelectionExample",
-            inputs=(
-                InputSpec(
+            body=(
+                Input(
                     "selection",
                     TypeExpr.union("COMBO", "ASSET")
                     if kind == "model/vae"

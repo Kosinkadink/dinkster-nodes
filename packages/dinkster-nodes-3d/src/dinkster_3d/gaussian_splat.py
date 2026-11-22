@@ -11,12 +11,13 @@ from dinkster_api.v1 import (
     CORE_FLOAT,
     CORE_INT,
     SPLAT_TYPE,
-    InputFamilySpec,
-    InputSpec,
+    Group,
+    Input,
     Node,
     NodeSchema,
+    Numbered,
     NumberWidget,
-    OutputSpec,
+    Output,
     TypeExpr,
     initialize_inference_process,
     materialize_splat,
@@ -72,22 +73,24 @@ class TransformSplat(Node):
                 "Non-uniform scale also reshapes every individual splat, slower process."
             ),
             search_terms=("move splat", "rotate splat", "scale splat", "gaussian transform"),
-            inputs=(InputSpec("splat", TypeExpr.concrete(SPLAT_TYPE)),)
-            + tuple(
-                InputSpec(
-                    f"{operation}_{axis}",
-                    TypeExpr.concrete(CORE_FLOAT),
-                    default=default,
-                    widget=NumberWidget(min=minimum, max=maximum, step=step),
-                )
-                for operation, default, minimum, maximum, step in (
-                    ("translate", 0.0, -100.0, 100.0, 0.01),
-                    ("rotate", 0.0, -360.0, 360.0, 1.0),
-                    ("scale", 1.0, 0.01, 100.0, 0.01),
-                )
-                for axis in "xyz"
+            body=(
+                *(Input("splat", TypeExpr.concrete(SPLAT_TYPE)),)
+                + tuple(
+                    Input(
+                        f"{operation}_{axis}",
+                        TypeExpr.concrete(CORE_FLOAT),
+                        default=default,
+                        widget=NumberWidget(min=minimum, max=maximum, step=step),
+                    )
+                    for operation, default, minimum, maximum, step in (
+                        ("translate", 0.0, -100.0, 100.0, 0.01),
+                        ("rotate", 0.0, -360.0, 360.0, 1.0),
+                        ("scale", 1.0, 0.01, 100.0, 0.01),
+                    )
+                    for axis in "xyz"
+                ),
+                Output("splat", TypeExpr.concrete(SPLAT_TYPE)),
             ),
-            outputs=(OutputSpec("splat", TypeExpr.concrete(SPLAT_TYPE)),),
         )
         return with_identity_replacement(schema, "TransformSplat")
 
@@ -167,10 +170,10 @@ class GetSplatCount(Node):
             category="3d/splat",
             description="Returns the number of splats summed across the batch.",
             search_terms=("splat count", "gaussian count", "number of splats", "splat info"),
-            inputs=(InputSpec("splat", TypeExpr.concrete(SPLAT_TYPE)),),
-            outputs=(
-                OutputSpec("splat", TypeExpr.concrete(SPLAT_TYPE)),
-                OutputSpec("count", TypeExpr.concrete(CORE_INT)),
+            body=(
+                Input("splat", TypeExpr.concrete(SPLAT_TYPE)),
+                Output("splat", TypeExpr.concrete(SPLAT_TYPE)),
+                Output("count", TypeExpr.concrete(CORE_INT)),
             ),
         )
         return with_identity_replacement(schema, "GetSplatCount")
@@ -201,17 +204,17 @@ class MergeSplat(Node):
                 "surface quality when meshing."
             ),
             search_terms=("union splat", "densify gaussian", "combine splat", "merge gaussian"),
-            input_families=(
-                InputFamilySpec(
+            body=(
+                Group(
                     "splats",
-                    (InputSpec("splat", TypeExpr.concrete(SPLAT_TYPE)),),
+                    value=Input("splat", TypeExpr.concrete(SPLAT_TYPE)),
                     min_members=2,
                     max_members=32,
-                    member_prefix="splat",
                     optional_after_minimum=True,
+                    keys=Numbered("splat", start=0),
                 ),
+                Output("splat", TypeExpr.concrete(SPLAT_TYPE)),
             ),
-            outputs=(OutputSpec("splat", TypeExpr.concrete(SPLAT_TYPE)),),
         )
         return with_identity_replacement(schema, "MergeSplat")
 

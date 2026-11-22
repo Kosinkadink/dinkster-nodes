@@ -10,13 +10,15 @@ import numpy as np
 from dinkster_api.v1 import (
     ABSENT,
     CORE_STRING,
-    DynamicComboOption,
-    DynamicComboSpec,
-    InputFamilySpec,
-    InputSpec,
+    Choice,
+    Group,
+    Input,
     Node,
     NodeSchema,
-    OutputSpec,
+    Numbered,
+    Option,
+    Output,
+    Section,
     TypeExpr,
 )
 
@@ -59,9 +61,9 @@ def _check_batch_output_size(array: np.ndarray, count: int) -> None:
     check_output_size(cast("tuple[int, ...]", checked_shape))
 
 
-def _edit_inputs(value_id: str, value_type: TypeExpr) -> tuple[InputSpec, ...]:
+def _edit_inputs(value_id: str, value_type: TypeExpr) -> tuple[Input, ...]:
     return (
-        InputSpec(value_id, value_type),
+        Input(value_id, value_type),
         combo_input("operation", _EDIT_OPERATIONS, "range"),
         number_input("start", INT, 0, minimum=-MAX_DIMENSION, maximum=MAX_DIMENSION, step=1),
         number_input("count", INT, 1, minimum=1, maximum=MAX_DIMENSION, step=1),
@@ -69,7 +71,11 @@ def _edit_inputs(value_id: str, value_type: TypeExpr) -> tuple[InputSpec, ...]:
         number_input("size", INT, 1, minimum=1, maximum=4096, step=1),
         combo_input("expansion", _EXPANSION_METHODS, "expand"),
         number_input("seed", INT, 0, minimum=0, maximum=(1 << 53) - 1, step=1),
-        combo_input("range_end", ("clamp", "error"), "clamp", advanced=True),
+        combo_input(
+            "range_end",
+            ("clamp", "error"),
+            "clamp",
+        ),
     )
 
 
@@ -194,12 +200,11 @@ class ImageBatchEdit(Node):
     @classmethod
     def define_schema(cls) -> NodeSchema:
         specs = {spec.id: spec for spec in _edit_inputs("image", IMAGE)}
-        specs["generate_repeat_marker"] = InputSpec(
+        specs["generate_repeat_marker"] = Input(
             "generate_repeat_marker",
             BOOLEAN,
             required=False,
             default=False,
-            advanced=True,
         )
         return with_v1_migration(
             NodeSchema(
@@ -207,15 +212,12 @@ class ImageBatchEdit(Node):
                 node_type="dinkster.image.batch.edit",
                 display_name="Edit Image Batch",
                 category="image/batch",
-                inputs=(
+                body=(
                     specs["image"],
-                    InputSpec("mask", MASK, required=False, advanced=True),
-                ),
-                combos=(
-                    DynamicComboSpec(
+                    Choice(
                         "operation",
-                        tuple(
-                            DynamicComboOption(key, tuple(specs[name] for name in names))
+                        options=tuple(
+                            Option(key, rows=tuple(specs[name] for name in names))
                             for key, names in (
                                 ("range", ("start", "count", "range_end")),
                                 ("repeat_all", ("amount",)),
@@ -228,10 +230,20 @@ class ImageBatchEdit(Node):
                         ),
                         default="range",
                     ),
-                ),
-                outputs=(
-                    OutputSpec("image", IMAGE, preview=True),
-                    OutputSpec("mask", MASK, optional=True),
+                    Section(
+                        "advanced",
+                        label="Advanced",
+                        collapsed=True,
+                        rows=(
+                            Input(
+                                "mask",
+                                MASK,
+                                required=False,
+                            ),
+                        ),
+                    ),
+                    Output("image", IMAGE, preview=True),
+                    Output("mask", MASK, optional=True),
                 ),
                 search_terms=(
                     "ImageFromBatch",
@@ -310,12 +322,12 @@ class MaskBatchEdit(Node):
                 node_type="dinkster.mask.batch.edit",
                 display_name="Edit Mask Batch",
                 category="mask/batch",
-                inputs=(specs["mask"],),
-                combos=(
-                    DynamicComboSpec(
+                body=(
+                    specs["mask"],
+                    Choice(
                         "operation",
-                        tuple(
-                            DynamicComboOption(key, tuple(specs[name] for name in names))
+                        options=tuple(
+                            Option(key, rows=tuple(specs[name] for name in names))
                             for key, names in (
                                 ("range", ("start", "count", "range_end")),
                                 ("repeat_all", ("amount",)),
@@ -328,8 +340,8 @@ class MaskBatchEdit(Node):
                         ),
                         default="range",
                     ),
+                    Output("mask", MASK, preview=True),
                 ),
-                outputs=(OutputSpec("mask", MASK, preview=True),),
                 search_terms=("select mask", "expand mask batch", "repeat mask batch"),
             ),
             current_only_choices={"operation": frozenset({"pingpong"})},
@@ -504,21 +516,32 @@ class ImageBatchCombine(Node):
                 node_type="dinkster.image.batch.combine",
                 display_name="Combine Image Batches",
                 category="image/batch",
-                inputs=(
+                body=(
                     combo_input("channel_policy", ("strict", "pad_with_one"), "strict"),
                     number_input(
                         "input_count", INT, 0, minimum=0, maximum=1000, step=1, hidden=True
                     ),
-                    combo_input("mask_fallback", ("absent", "zero_64"), "absent", advanced=True),
-                ),
-                combos=(
-                    DynamicComboSpec(
+                    Group(
+                        "images",
+                        value=Input("value", IMAGE),
+                        min_members=1,
+                        max_members=1000,
+                        keys=Numbered("image_", start=0),
+                    ),
+                    Group(
+                        "masks",
+                        value=Input("value", MASK),
+                        min_members=0,
+                        max_members=2,
+                        keys=Numbered("mask_", start=0),
+                    ),
+                    Choice(
                         "operation",
-                        (
-                            DynamicComboOption("concat"),
-                            DynamicComboOption(
+                        options=(
+                            Option("concat"),
+                            Option(
                                 "replace_range",
-                                (
+                                rows=(
                                     number_input(
                                         "index",
                                         INT,
@@ -529,47 +552,48 @@ class ImageBatchCombine(Node):
                                     ),
                                 ),
                             ),
-                            DynamicComboOption(
+                            Option(
                                 "insert_indexed",
-                                (InputSpec("indexes", STRING, required=False, default="0"),),
+                                rows=(Input("indexes", STRING, required=False, default="0"),),
                             ),
-                            DynamicComboOption(
+                            Option(
                                 "replace_indexed",
-                                (InputSpec("indexes", STRING, required=False, default="0"),),
+                                rows=(Input("indexes", STRING, required=False, default="0"),),
                             ),
                         ),
                         default="concat",
                     ),
-                    DynamicComboSpec(
+                    Choice(
                         "shape_policy",
-                        (
-                            DynamicComboOption("strict"),
-                            DynamicComboOption(
+                        options=(
+                            Option("strict"),
+                            Option(
                                 "resize_to_first",
-                                (
+                                rows=(
                                     combo_input(
                                         "interpolation",
                                         INTERPOLATION_OPTIONS,
                                         "bilinear",
-                                        advanced=True,
                                     ),
                                 ),
                             ),
                         ),
                         default="strict",
                     ),
-                ),
-                input_families=(
-                    InputFamilySpec(
-                        "images", IMAGE, min_members=1, max_members=1000, member_prefix="image_"
+                    Section(
+                        "advanced",
+                        label="Advanced",
+                        collapsed=True,
+                        rows=(
+                            combo_input(
+                                "mask_fallback",
+                                ("absent", "zero_64"),
+                                "absent",
+                            ),
+                        ),
                     ),
-                    InputFamilySpec(
-                        "masks", MASK, min_members=0, max_members=2, member_prefix="mask_"
-                    ),
-                ),
-                outputs=(
-                    OutputSpec("image", IMAGE, preview=True),
-                    OutputSpec("mask", MASK, optional=True),
+                    Output("image", IMAGE, preview=True),
+                    Output("mask", MASK, optional=True),
                 ),
                 search_terms=("ImageBatch", "combine images", "insert images", "replace images"),
             )
@@ -670,15 +694,21 @@ class MaskBatchCombine(Node):
                 node_type="dinkster.mask.batch.combine",
                 display_name="Combine Mask Batches",
                 category="mask/batch",
-                inputs=(),
-                combos=(
-                    DynamicComboSpec(
+                body=(
+                    Group(
+                        "masks",
+                        value=Input("value", MASK),
+                        min_members=2,
+                        max_members=100,
+                        keys=Numbered("mask_", start=0),
+                    ),
+                    Choice(
                         "operation",
-                        (
-                            DynamicComboOption("concat"),
-                            DynamicComboOption(
+                        options=(
+                            Option("concat"),
+                            Option(
                                 "replace_range",
-                                (
+                                rows=(
                                     number_input(
                                         "index",
                                         INT,
@@ -692,31 +722,25 @@ class MaskBatchCombine(Node):
                         ),
                         default="concat",
                     ),
-                    DynamicComboSpec(
+                    Choice(
                         "shape_policy",
-                        (
-                            DynamicComboOption("strict"),
-                            DynamicComboOption(
+                        options=(
+                            Option("strict"),
+                            Option(
                                 "resize_to_first",
-                                (
+                                rows=(
                                     combo_input(
                                         "interpolation",
                                         INTERPOLATION_OPTIONS,
                                         "bicubic",
-                                        advanced=True,
                                     ),
                                 ),
                             ),
                         ),
                         default="strict",
                     ),
+                    Output("mask", MASK, preview=True),
                 ),
-                input_families=(
-                    InputFamilySpec(
-                        "masks", MASK, min_members=2, max_members=100, member_prefix="mask_"
-                    ),
-                ),
-                outputs=(OutputSpec("mask", MASK, preview=True),),
                 search_terms=("MaskBatch", "combine masks"),
             )
         )
@@ -793,8 +817,10 @@ class ImageBatchToList(Node):
             node_type="dinkster.image.batch.to_list",
             display_name="Image Batch to List",
             category="image/batch",
-            inputs=(InputSpec("image", IMAGE),),
-            outputs=(OutputSpec("images", IMAGE_LIST),),
+            body=(
+                Input("image", IMAGE),
+                Output("images", IMAGE_LIST),
+            ),
             search_terms=("ImageBatchToList", "split image batch"),
         )
 
@@ -815,28 +841,27 @@ class ImageListToBatch(Node):
                 node_type="dinkster.image.list.to_batch",
                 display_name="Image List to Batch",
                 category="image/batch",
-                inputs=(InputSpec("images", IMAGE_LIST),),
-                combos=(
-                    DynamicComboSpec(
+                body=(
+                    Input("images", IMAGE_LIST),
+                    Choice(
                         "shape_policy",
-                        (
-                            DynamicComboOption("strict"),
-                            DynamicComboOption(
+                        options=(
+                            Option("strict"),
+                            Option(
                                 "resize_to_first",
-                                (
+                                rows=(
                                     combo_input(
                                         "interpolation",
                                         INTERPOLATION_OPTIONS,
                                         "bicubic",
-                                        advanced=True,
                                     ),
                                 ),
                             ),
                         ),
                         default="strict",
                     ),
+                    Output("image", IMAGE, preview=True),
                 ),
-                outputs=(OutputSpec("image", IMAGE, preview=True),),
                 search_terms=("ImageListToBatch", "combine image list"),
             )
         )
@@ -866,11 +891,11 @@ class ImageRebatch(Node):
             node_type="dinkster.image.rebatch",
             display_name="Rebatch Images",
             category="image/batch",
-            inputs=(
-                InputSpec("images", IMAGE_LIST),
+            body=(
+                Input("images", IMAGE_LIST),
                 number_input("batch_size", INT, 1, minimum=1, maximum=4096, step=1),
+                Output("images", IMAGE_LIST),
             ),
-            outputs=(OutputSpec("images", IMAGE_LIST),),
             search_terms=("RebatchImages", "change image batch size"),
         )
 

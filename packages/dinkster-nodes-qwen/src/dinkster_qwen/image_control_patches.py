@@ -13,11 +13,12 @@ from dinkster_api.v1 import (
     MODEL_PATCH_TYPE,
     MODEL_TYPE,
     VAE_TYPE,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
+    Section,
     TypeExpr,
     initialize_inference_process,
     materialize_image,
@@ -37,22 +38,20 @@ _MASK = TypeExpr.concrete(MASK_TYPE)
 _FLOAT = TypeExpr.concrete(CORE_FLOAT)
 
 
-def _range() -> tuple[InputSpec, InputSpec]:
+def _range() -> tuple[Input, Input]:
     return (
-        InputSpec(
+        Input(
             "start_percent",
             _FLOAT,
             default=0.0,
             required=False,
-            advanced=True,
             widget=NumberWidget(min=0.0, max=1.0, step=0.001),
         ),
-        InputSpec(
+        Input(
             "end_percent",
             _FLOAT,
             default=1.0,
             required=False,
-            advanced=True,
             widget=NumberWidget(min=0.0, max=1.0, step=0.001),
         ),
     )
@@ -543,21 +542,21 @@ class QwenImageDiffsynthControlnet(Node):
             node_type="dinkster.qwen.qwen_image_diffsynth_controlnet",
             display_name="Apply Qwen Image DiffSynth ControlNet",
             category="model/patch/qwen",
-            inputs=(
-                InputSpec("model", _MODEL),
-                InputSpec("model_patch", _MODEL_PATCH),
-                InputSpec("vae", _VAE),
-                InputSpec("image", _IMAGE),
-                InputSpec(
+            body=(
+                Input("model", _MODEL),
+                Input("model_patch", _MODEL_PATCH),
+                Input("vae", _VAE),
+                Input("image", _IMAGE),
+                Input(
                     "strength",
                     _FLOAT,
                     default=1.0,
                     widget=NumberWidget(min=-10.0, max=10.0, step=0.01),
                 ),
-                InputSpec("mask", _MASK, required=False),
-                *_range(),
+                Input("mask", _MASK, required=False),
+                Section("advanced", label="Advanced", collapsed=True, rows=(*_range(),)),
+                Output("MODEL", _MODEL),
             ),
-            outputs=(OutputSpec("MODEL", _MODEL),),
         )
         return with_identity_replacement(schema, "QwenImageDiffsynthControlnet")
 

@@ -12,11 +12,12 @@ from dinkster_api.v1 import (
     VIDEO_EDIT_TYPE,
     VIDEO_TYPE,
     CustomWidgetDescriptor,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
+    Section,
     TypeExpr,
     assemble_video,
     bind_video_value,
@@ -79,25 +80,25 @@ class VideoSlice(Node):
                 "frame load cap",
                 "start time",
             ),
-            inputs=(
-                InputSpec("video", _VIDEO),
-                InputSpec(
+            body=(
+                Input("video", _VIDEO),
+                Input(
                     "start_time",
                     _FLOAT,
                     default=0.0,
                     widget=NumberWidget(min=-1e5, max=1e5, step=0.001),
-                    doc="Start time in seconds",
+                    tooltip="Start time in seconds",
                 ),
-                InputSpec(
+                Input(
                     "duration",
                     _FLOAT,
                     default=0.0,
                     widget=NumberWidget(min=0.0, step=0.001),
-                    doc="Duration in seconds, or 0 for unlimited duration",
+                    tooltip="Duration in seconds, or 0 for unlimited duration",
                 ),
-                InputSpec("strict_duration", _BOOLEAN, default=False),
+                Input("strict_duration", _BOOLEAN, default=False),
+                Output("video", _VIDEO),
             ),
-            outputs=(OutputSpec("video", _VIDEO),),
         )
         return with_identity_replacement(schema, "Video Slice")
 
@@ -123,18 +124,29 @@ class VideoTrim(Node):
             editor_role="video-trim",
             output_node=True,
             search_terms=("trim video duration", "skip first frames", "cut video", "start time"),
-            inputs=(
-                InputSpec("video", _VIDEO),
-                InputSpec(
+            body=(
+                Input("video", _VIDEO),
+                Input(
                     "trim",
                     TypeExpr.concrete(VIDEO_EDIT_TYPE),
                     default={"trim": {"start_time": 0.0, "duration": 0.0}},
                     widget=CustomWidgetDescriptor("VIDEO_EDIT", {"features": ["trim"]}),
-                    doc="Trim window using start/end frames.",
+                    tooltip="Trim window using start/end frames.",
                 ),
-                InputSpec("strict_duration", _BOOLEAN, default=False, advanced=True),
+                Section(
+                    "advanced",
+                    label="Advanced",
+                    collapsed=True,
+                    rows=(
+                        Input(
+                            "strict_duration",
+                            _BOOLEAN,
+                            default=False,
+                        ),
+                    ),
+                ),
+                Output("video", _VIDEO, preview=True),
             ),
-            outputs=(OutputSpec("video", _VIDEO, preview=True),),
         )
         return with_identity_replacement(schema, "VideoTrim")
 
@@ -161,17 +173,17 @@ class VideoCrop(Node):
             editor_role="video-crop",
             output_node=True,
             search_terms=("crop video", "cut region", "spatial crop"),
-            inputs=(
-                InputSpec("video", _VIDEO),
-                InputSpec(
+            body=(
+                Input("video", _VIDEO),
+                Input(
                     "crop",
                     TypeExpr.concrete(VIDEO_EDIT_TYPE),
                     default={"crop": {"x": 0, "y": 0, "width": 0, "height": 0}},
                     widget=CustomWidgetDescriptor("VIDEO_EDIT", {"features": ["crop"]}),
-                    doc="Crop region in pixels. Zero width/height keeps the full frame.",
+                    tooltip="Crop region in pixels. Zero width/height keeps the full frame.",
                 ),
+                Output("video", _VIDEO, preview=True),
             ),
-            outputs=(OutputSpec("video", _VIDEO, preview=True),),
         )
         return with_identity_replacement(schema, "VideoCrop")
 

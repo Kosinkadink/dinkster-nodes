@@ -18,12 +18,13 @@ from dinkster_api.v1 import (
     AssetRef,
     AssetWidget,
     ComboWidget,
-    InputSpec,
+    Input,
     LocalAssetRef,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
+    Section,
     TypeExpr,
     initialize_inference_process,
     materialize_image,
@@ -197,18 +198,16 @@ class LoadMediaPipeFaceLandmarker(Node):
             display_name="Load Face Detection Model (MediaPipe)",
             category="model/loaders",
             search_terms=_SEARCH,
-            inputs=(
-                InputSpec(
+            body=(
+                Input(
                     "model_name",
                     TypeExpr.concrete(ASSET_TYPE),
                     widget=AssetWidget(
                         accept=("application/octet-stream",), kind="model/detection"
                     ),
-                    doc="Face detection model from models/detection/.",
+                    tooltip="Face detection model from models/detection/.",
                 ),
-            ),
-            outputs=(
-                OutputSpec("FACE_DETECTION_MODEL", TypeExpr.concrete(FACE_DETECTION_MODEL_TYPE)),
+                Output("FACE_DETECTION_MODEL", TypeExpr.concrete(FACE_DETECTION_MODEL_TYPE)),
             ),
         )
         return with_identity_replacement(schema, "LoadMediaPipeFaceLandmarker")
@@ -234,43 +233,46 @@ class MediaPipeFaceLandmarker(Node):
             category="image/detection",
             search_terms=_SEARCH,
             description="Detects facial landmarks using MediaPipe model.",
-            inputs=(
-                InputSpec("face_detection_model", TypeExpr.concrete(FACE_DETECTION_MODEL_TYPE)),
-                InputSpec("image", TypeExpr.concrete(IMAGE_TYPE)),
-                InputSpec(
+            body=(
+                Input("face_detection_model", TypeExpr.concrete(FACE_DETECTION_MODEL_TYPE)),
+                Input("image", TypeExpr.concrete(IMAGE_TYPE)),
+                Input(
                     "detector_variant",
                     TypeExpr.concrete(CORE_COMBO),
                     default="short",
                     widget=ComboWidget(("short", "full", "both")),
                 ),
-                InputSpec(
+                Input(
                     "num_faces",
                     TypeExpr.concrete(CORE_INT),
                     default=1,
                     widget=NumberWidget(min=0, max=16, step=1),
                 ),
-                InputSpec(
-                    "min_confidence",
-                    TypeExpr.concrete(CORE_FLOAT),
-                    default=0.5,
-                    widget=NumberWidget(min=0.0, max=1.0, step=0.01),
-                    advanced=True,
+                Section(
+                    "advanced",
+                    label="Advanced",
+                    collapsed=True,
+                    rows=(
+                        Input(
+                            "min_confidence",
+                            TypeExpr.concrete(CORE_FLOAT),
+                            default=0.5,
+                            widget=NumberWidget(min=0.0, max=1.0, step=0.01),
+                        ),
+                        Input(
+                            "missing_frame_fallback",
+                            TypeExpr.concrete(CORE_COMBO),
+                            default="empty",
+                            widget=ComboWidget(("empty", "previous", "interpolate")),
+                        ),
+                    ),
                 ),
-                InputSpec(
-                    "missing_frame_fallback",
-                    TypeExpr.concrete(CORE_COMBO),
-                    default="empty",
-                    widget=ComboWidget(("empty", "previous", "interpolate")),
-                    advanced=True,
-                ),
-            ),
-            outputs=(
-                OutputSpec(
+                Output(
                     "face_landmarks",
                     TypeExpr.concrete(FACE_LANDMARKS_TYPE),
-                    display_name="face_landmarks",
+                    label="face_landmarks",
                 ),
-                OutputSpec("bboxes", TypeExpr.concrete(BOUNDING_BOX_TYPE)),
+                Output("bboxes", TypeExpr.concrete(BOUNDING_BOX_TYPE)),
             ),
         )
         return with_identity_replacement(schema, "MediaPipeFaceLandmarker")

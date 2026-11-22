@@ -12,11 +12,12 @@ from dinkster_api.v1 import (
     IMAGE_TYPE,
     MHR_POSE_DATA_TYPE,
     SAM3D_BODY_MODEL_TYPE,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
+    Section,
     TypeExpr,
     initialize_inference_process,
     materialize_image,
@@ -82,62 +83,64 @@ class SAM3DBody_FaceExpression(Node):
             display_name="Face Expression to SAM3D Body",
             description="Drive MHR face blendshapes from the core MediaPipe Face Landmarker.",
             category="image/detection",
-            inputs=(
-                InputSpec("sam3d_body_model", TypeExpr.concrete(SAM3D_BODY_MODEL_TYPE)),
-                InputSpec("mhr_pose_data", TypeExpr.concrete(MHR_POSE_DATA_TYPE)),
-                InputSpec("image", TypeExpr.concrete(IMAGE_TYPE)),
-                InputSpec(
+            body=(
+                Input("sam3d_body_model", TypeExpr.concrete(SAM3D_BODY_MODEL_TYPE)),
+                Input("mhr_pose_data", TypeExpr.concrete(MHR_POSE_DATA_TYPE)),
+                Input("image", TypeExpr.concrete(IMAGE_TYPE)),
+                Input(
                     "strength",
                     TypeExpr.concrete(CORE_FLOAT),
                     default=1.0,
                     widget=NumberWidget(min=0.0, max=4.0, step=0.05),
-                    doc="Global multiplier on all blendshapes. >1 exaggerates.",
+                    tooltip="Global multiplier on all blendshapes. >1 exaggerates.",
                 ),
-                InputSpec(
-                    "mouth_strength",
-                    TypeExpr.concrete(CORE_FLOAT),
-                    default=1.0,
-                    widget=NumberWidget(min=0.0, max=4.0, step=0.05),
-                    advanced=True,
-                    doc="Multiplier on mouth/jaw shapes. MediaPipe's jawOpen saturates near 1.0.",
+                Section(
+                    "advanced",
+                    label="Advanced",
+                    collapsed=True,
+                    rows=(
+                        Input(
+                            "mouth_strength",
+                            TypeExpr.concrete(CORE_FLOAT),
+                            default=1.0,
+                            widget=NumberWidget(min=0.0, max=4.0, step=0.05),
+                            tooltip="Multiplier on mouth/jaw shapes. MediaPipe's jawOpen saturates near 1.0.",
+                        ),
+                        Input(
+                            "eye_strength",
+                            TypeExpr.concrete(CORE_FLOAT),
+                            default=2.0,
+                            widget=NumberWidget(min=0.0, max=4.0, step=0.05),
+                            tooltip="Multiplier on eye shapes. MediaPipe rarely exceeds 0.5; "
+                            "2-3x often needed.",
+                        ),
+                        Input(
+                            "brow_strength",
+                            TypeExpr.concrete(CORE_FLOAT),
+                            default=2.0,
+                            widget=NumberWidget(min=0.0, max=4.0, step=0.05),
+                            tooltip="Multiplier on brow/cheek/sneer shapes. MediaPipe outputs ~0.1-0.3; 2-3x.",
+                        ),
+                        Input(
+                            "input_threshold",
+                            TypeExpr.concrete(CORE_FLOAT),
+                            default=0.02,
+                            widget=NumberWidget(min=0.0, max=0.5, step=0.01),
+                            tooltip="Deadzone on MediaPipe's raw output (below = zero, above = linear remap). ",
+                        ),
+                        Input(
+                            "blendshape_smooth_window",
+                            TypeExpr.concrete(CORE_INT),
+                            default=7,
+                            widget=NumberWidget(min=1, max=31, step=2),
+                            tooltip="Gaussian window on MediaPipe's per-frame signal before MHR mapping. "
+                            "MediaPipe's raw output swings 30-70% frame-to-frame on static faces. "
+                            "1 = disabled. Use odd values.",
+                        ),
+                    ),
                 ),
-                InputSpec(
-                    "eye_strength",
-                    TypeExpr.concrete(CORE_FLOAT),
-                    default=2.0,
-                    widget=NumberWidget(min=0.0, max=4.0, step=0.05),
-                    advanced=True,
-                    doc="Multiplier on eye shapes. MediaPipe rarely exceeds 0.5; "
-                    "2-3x often needed.",
-                ),
-                InputSpec(
-                    "brow_strength",
-                    TypeExpr.concrete(CORE_FLOAT),
-                    default=2.0,
-                    widget=NumberWidget(min=0.0, max=4.0, step=0.05),
-                    advanced=True,
-                    doc="Multiplier on brow/cheek/sneer shapes. MediaPipe outputs ~0.1-0.3; 2-3x.",
-                ),
-                InputSpec(
-                    "input_threshold",
-                    TypeExpr.concrete(CORE_FLOAT),
-                    default=0.02,
-                    widget=NumberWidget(min=0.0, max=0.5, step=0.01),
-                    advanced=True,
-                    doc="Deadzone on MediaPipe's raw output (below = zero, above = linear remap). ",
-                ),
-                InputSpec(
-                    "blendshape_smooth_window",
-                    TypeExpr.concrete(CORE_INT),
-                    default=7,
-                    widget=NumberWidget(min=1, max=31, step=2),
-                    advanced=True,
-                    doc="Gaussian window on MediaPipe's per-frame signal before MHR mapping. "
-                    "MediaPipe's raw output swings 30-70% frame-to-frame on static faces. "
-                    "1 = disabled. Use odd values.",
-                ),
+                Output("mhr_pose_data", TypeExpr.concrete(MHR_POSE_DATA_TYPE)),
             ),
-            outputs=(OutputSpec("mhr_pose_data", TypeExpr.concrete(MHR_POSE_DATA_TYPE)),),
         )
         return with_identity_replacement(schema, "SAM3DBody_FaceExpression")
 

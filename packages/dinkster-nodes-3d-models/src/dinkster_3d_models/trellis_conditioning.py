@@ -10,10 +10,10 @@ from dinkster_api.v1 import (
     CLIP_VISION_TYPE,
     CONDITIONING_TYPE,
     IMAGE_TYPE,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
-    OutputSpec,
+    Output,
     TypeExpr,
     initialize_inference_process,
     materialize_image,
@@ -29,15 +29,16 @@ class Trellis2Conditioning(Node):
             node_type="dinkster.3d.models.trellis2_conditioning",
             display_name="Trellis2 Conditioning",
             category="model/conditioning/trellis",
-            inputs=(
-                InputSpec("clip_vision_model", TypeExpr.concrete(CLIP_VISION_TYPE)),
-                InputSpec(
+            body=(
+                Input("clip_vision_model", TypeExpr.concrete(CLIP_VISION_TYPE)),
+                Input(
                     "image",
                     TypeExpr.concrete(IMAGE_TYPE),
-                    doc="Preprocessed image from ImageCropToMask (pad_factor=1.0 for TRELLIS.2).",
+                    tooltip="Preprocessed image from ImageCropToMask (pad_factor=1.0 for TRELLIS.2).",
                 ),
+                Output("positive", conditioning),
+                Output("negative", conditioning),
             ),
-            outputs=(OutputSpec("positive", conditioning), OutputSpec("negative", conditioning)),
         )
         return with_identity_replacement(schema, "Trellis2Conditioning")
 

@@ -14,11 +14,12 @@ from dinkster_api.v1 import (
     MASK_TYPE,
     ComboOption,
     ComboWidget,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
+    Section,
     TypeExpr,
     initialize_inference_process,
     materialize_image,
@@ -35,20 +36,17 @@ def _integer(
     minimum: int,
     maximum: int,
     step: int | None = None,
-    *,
-    advanced: bool = False,
-) -> InputSpec:
-    return InputSpec(
+) -> Input:
+    return Input(
         name,
         TypeExpr.concrete(CORE_INT),
         default=default,
-        advanced=advanced,
         widget=NumberWidget(min=minimum, max=maximum, step=step),
     )
 
 
-def _combo(name: str, options: tuple[str, ...]) -> InputSpec:
-    return InputSpec(
+def _combo(name: str, options: tuple[str, ...]) -> Input:
+    return Input(
         name,
         TypeExpr.concrete(CORE_COMBO),
         widget=ComboWidget(tuple(ComboOption(value) for value in options)),
@@ -56,14 +54,16 @@ def _combo(name: str, options: tuple[str, ...]) -> InputSpec:
 
 
 def _schema(
-    node_type: str, display_name: str, category: str, inputs: tuple[InputSpec, ...]
+    node_type: str, display_name: str, category: str, inputs: tuple[Input, ...]
 ) -> NodeSchema:
     return NodeSchema(
         node_type=node_type,
         display_name=display_name,
         category=category,
-        inputs=inputs,
-        outputs=(OutputSpec("IMAGE", _IMAGE),),
+        body=(
+            *inputs,
+            Output("IMAGE", _IMAGE),
+        ),
     )
 
 
@@ -76,7 +76,7 @@ class ImageScale(Node):
                 "Upscale Image",
                 "image/upscaling",
                 (
-                    InputSpec("image", _IMAGE),
+                    Input("image", _IMAGE),
                     _combo("upscale_method", _UPSCALE_METHODS),
                     _integer("width", 512, 0, 16384, 1),
                     _integer("height", 512, 0, 16384, 1),
@@ -111,9 +111,9 @@ class ImageScaleBy(Node):
                 "Upscale Image By",
                 "image/upscaling",
                 (
-                    InputSpec("image", _IMAGE),
+                    Input("image", _IMAGE),
                     _combo("upscale_method", _UPSCALE_METHODS),
-                    InputSpec(
+                    Input(
                         "scale_by",
                         TypeExpr.concrete(CORE_FLOAT),
                         default=1.0,
@@ -143,7 +143,7 @@ class ImageInvert(Node):
                 "dinkster.image.image_invert",
                 "Invert Image Colors",
                 "image/color",
-                (InputSpec("image", _IMAGE),),
+                (Input("image", _IMAGE),),
             ),
             "ImageInvert",
         )
@@ -164,7 +164,7 @@ class ImageBatch(Node):
                 "dinkster.image.image_batch",
                 "Batch Images (DEPRECATED)",
                 "image/batch",
-                (InputSpec("image1", _IMAGE), InputSpec("image2", _IMAGE)),
+                (Input("image1", _IMAGE), Input("image2", _IMAGE)),
             ),
             "ImageBatch",
         )
@@ -198,7 +198,7 @@ class EmptyImage(Node):
                     _integer("width", 512, 1, 16384, 1),
                     _integer("height", 512, 1, 16384, 1),
                     _integer("batch_size", 1, 1, 4096),
-                    InputSpec(
+                    Input(
                         "color",
                         TypeExpr.concrete(CORE_INT),
                         default=0,
@@ -236,14 +236,25 @@ class ImagePadForOutpaint(Node):
             node_type="dinkster.image.image_pad_for_outpaint",
             display_name="Pad Image for Outpainting",
             category="image/transform",
-            inputs=(
-                InputSpec("image", _IMAGE),
+            body=(
+                Input("image", _IMAGE),
                 *(_integer(side, 0, 0, 16384, 8) for side in ("left", "top", "right", "bottom")),
-                _integer("feathering", 40, 0, 16384, 1, advanced=True),
-            ),
-            outputs=(
-                OutputSpec("IMAGE", _IMAGE),
-                OutputSpec("MASK", TypeExpr.concrete(MASK_TYPE)),
+                Section(
+                    "advanced",
+                    label="Advanced",
+                    collapsed=True,
+                    rows=(
+                        _integer(
+                            "feathering",
+                            40,
+                            0,
+                            16384,
+                            1,
+                        ),
+                    ),
+                ),
+                Output("IMAGE", _IMAGE),
+                Output("MASK", TypeExpr.concrete(MASK_TYPE)),
             ),
         )
         return with_identity_replacement(schema, "ImagePadForOutpaint")

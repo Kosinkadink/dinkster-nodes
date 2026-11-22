@@ -16,12 +16,14 @@ from dinkster_api.v1 import (
     CORE_STRING,
     DICT_TYPE,
     ComboWidget,
-    InputFamilySpec,
-    InputSpec,
+    Group,
+    Input,
+    Named,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
+    Section,
     StringWidget,
     TypeExpr,
     with_identity_replacement,
@@ -33,17 +35,22 @@ BOOLEAN = TypeExpr.concrete(CORE_BOOLEAN)
 COMBO = TypeExpr.concrete(CORE_COMBO)
 
 
-def _text(name: str, *, multiline: bool = True, default: str | None = None) -> InputSpec:
-    return InputSpec(name, STRING, default=default, widget=StringWidget(multiline=multiline))
+def _text(name: str, *, multiline: bool = True, default: str | None = None) -> Input:
+    return Input(name, STRING, default=default, widget=StringWidget(multiline=multiline))
 
 
-def _combo(name: str, options: tuple[str, ...]) -> InputSpec:
-    return InputSpec(name, COMBO, widget=ComboWidget(options=options))
+def _combo(name: str, options: tuple[str, ...]) -> Input:
+    return Input(name, COMBO, widget=ComboWidget(options=options))
 
 
-def _regex_inputs(*, optional: bool = False) -> tuple[InputSpec, ...]:
+def _regex_inputs(*, optional: bool = False) -> tuple[Input, ...]:
     return tuple(
-        InputSpec(name, BOOLEAN, required=not optional, default=default, advanced=True)
+        Input(
+            name,
+            BOOLEAN,
+            required=not optional,
+            default=default,
+        )
         for name, default in (("case_insensitive", True), ("multiline", False), ("dotall", False))
     )
 
@@ -63,17 +70,16 @@ class StringFormat(Node):
             node_type="dinkster.text.string_format",
             display_name="Format Text",
             category="text",
-            inputs=(_text("f_string", default="{a}"),),
-            input_order=("values", "f_string"),
-            input_families=(
-                InputFamilySpec(
+            body=(
+                Group(
                     "values",
-                    (InputSpec("value", TypeExpr.wildcard(), required=False),),
+                    value=Input("value", TypeExpr.wildcard(), required=False),
                     min_members=0,
-                    member_names=tuple(string.ascii_lowercase),
+                    keys=Named(tuple(string.ascii_lowercase)),
                 ),
+                _text("f_string", default="{a}"),
+                Output("STRING", STRING),
             ),
-            outputs=(OutputSpec("STRING", STRING),),
         )
         return with_identity_replacement(schema, "StringFormat")
 
@@ -89,12 +95,12 @@ class StringConcatenate(Node):
             node_type="dinkster.text.string_concatenate",
             display_name="Concatenate Text",
             category="text",
-            inputs=(
+            body=(
                 _text("string_a"),
                 _text("string_b"),
                 _text("delimiter", multiline=False, default=""),
+                Output("STRING", STRING),
             ),
-            outputs=(OutputSpec("STRING", STRING),),
         )
         return with_identity_replacement(schema, "StringConcatenate")
 
@@ -110,8 +116,12 @@ class StringSubstring(Node):
             node_type="dinkster.text.string_substring",
             display_name="Substring",
             category="text",
-            inputs=(_text("string"), InputSpec("start", INT), InputSpec("end", INT)),
-            outputs=(OutputSpec("STRING", STRING),),
+            body=(
+                _text("string"),
+                Input("start", INT),
+                Input("end", INT),
+                Output("STRING", STRING),
+            ),
         )
         return with_identity_replacement(schema, "StringSubstring")
 
@@ -127,8 +137,10 @@ class StringLength(Node):
             node_type="dinkster.text.string_length",
             display_name="Text Length",
             category="text",
-            inputs=(_text("string"),),
-            outputs=(OutputSpec("length", INT),),
+            body=(
+                _text("string"),
+                Output("length", INT),
+            ),
         )
         return with_identity_replacement(schema, "StringLength")
 
@@ -144,11 +156,11 @@ class CaseConverter(Node):
             node_type="dinkster.text.case_converter",
             display_name="Convert Text Case",
             category="text",
-            inputs=(
+            body=(
                 _text("string"),
                 _combo("mode", ("UPPERCASE", "lowercase", "Capitalize", "Title Case")),
+                Output("STRING", STRING),
             ),
-            outputs=(OutputSpec("STRING", STRING),),
         )
         return with_identity_replacement(schema, "CaseConverter")
 
@@ -174,8 +186,11 @@ class StringTrim(Node):
             node_type="dinkster.text.string_trim",
             display_name="Trim Text",
             category="text",
-            inputs=(_text("string"), _combo("mode", ("Both", "Left", "Right"))),
-            outputs=(OutputSpec("STRING", STRING),),
+            body=(
+                _text("string"),
+                _combo("mode", ("Both", "Left", "Right")),
+                Output("STRING", STRING),
+            ),
         )
         return with_identity_replacement(schema, "StringTrim")
 
@@ -199,8 +214,12 @@ class StringReplace(Node):
             node_type="dinkster.text.string_replace",
             display_name="Replace Text",
             category="text",
-            inputs=(_text("string"), _text("find"), _text("replace")),
-            outputs=(OutputSpec("STRING", STRING),),
+            body=(
+                _text("string"),
+                _text("find"),
+                _text("replace"),
+                Output("STRING", STRING),
+            ),
         )
         return with_identity_replacement(schema, "StringReplace")
 
@@ -216,12 +235,23 @@ class StringContains(Node):
             node_type="dinkster.text.string_contains",
             display_name="Contains Text",
             category="text",
-            inputs=(
+            body=(
                 _text("string"),
                 _text("substring"),
-                InputSpec("case_sensitive", BOOLEAN, default=True, advanced=True),
+                Section(
+                    "advanced",
+                    label="Advanced",
+                    collapsed=True,
+                    rows=(
+                        Input(
+                            "case_sensitive",
+                            BOOLEAN,
+                            default=True,
+                        ),
+                    ),
+                ),
+                Output("contains", BOOLEAN),
             ),
-            outputs=(OutputSpec("contains", BOOLEAN),),
         )
         return with_identity_replacement(schema, "StringContains")
 
@@ -239,13 +269,24 @@ class StringCompare(Node):
             node_type="dinkster.text.string_compare",
             display_name="Compare Text",
             category="text",
-            inputs=(
+            body=(
                 _text("string_a"),
                 _text("string_b"),
                 _combo("mode", ("Starts With", "Ends With", "Equal")),
-                InputSpec("case_sensitive", BOOLEAN, default=True, advanced=True),
+                Section(
+                    "advanced",
+                    label="Advanced",
+                    collapsed=True,
+                    rows=(
+                        Input(
+                            "case_sensitive",
+                            BOOLEAN,
+                            default=True,
+                        ),
+                    ),
+                ),
+                Output("BOOLEAN", BOOLEAN),
             ),
-            outputs=(OutputSpec("BOOLEAN", BOOLEAN),),
         )
         return with_identity_replacement(schema, "StringCompare")
 
@@ -277,8 +318,12 @@ class RegexMatch(Node):
             node_type="dinkster.text.regex_match",
             display_name="Match Text",
             category="text",
-            inputs=(_text("string"), _text("regex_pattern"), *_regex_inputs()),
-            outputs=(OutputSpec("matches", BOOLEAN),),
+            body=(
+                _text("string"),
+                _text("regex_pattern"),
+                Section("advanced", label="Advanced", collapsed=True, rows=(*_regex_inputs(),)),
+                Output("matches", BOOLEAN),
+            ),
         )
         return with_identity_replacement(schema, "RegexMatch")
 
@@ -313,20 +358,26 @@ class RegexExtract(Node):
             node_type="dinkster.text.regex_extract",
             display_name="Extract Text",
             category="text",
-            inputs=(
+            body=(
                 _text("string"),
                 _text("regex_pattern"),
                 _combo("mode", ("First Match", "All Matches", "First Group", "All Groups")),
-                *_regex_inputs(),
-                InputSpec(
-                    "group_index",
-                    INT,
-                    default=1,
-                    advanced=True,
-                    widget=NumberWidget(min=0, max=100),
+                Section(
+                    "advanced",
+                    label="Advanced",
+                    collapsed=True,
+                    rows=(
+                        *_regex_inputs(),
+                        Input(
+                            "group_index",
+                            INT,
+                            default=1,
+                            widget=NumberWidget(min=0, max=100),
+                        ),
+                    ),
                 ),
+                Output("STRING", STRING),
             ),
-            outputs=(OutputSpec("STRING", STRING),),
         )
         return with_identity_replacement(schema, "RegexExtract")
 
@@ -375,21 +426,27 @@ class RegexReplace(Node):
             node_type="dinkster.text.regex_replace",
             display_name="Replace Text (Regex)",
             category="text",
-            inputs=(
+            body=(
                 _text("string"),
                 _text("regex_pattern"),
                 _text("replace"),
-                *_regex_inputs(optional=True),
-                InputSpec(
-                    "count",
-                    INT,
-                    required=False,
-                    default=0,
-                    advanced=True,
-                    widget=NumberWidget(min=0, max=100),
+                Section(
+                    "advanced",
+                    label="Advanced",
+                    collapsed=True,
+                    rows=(
+                        *_regex_inputs(optional=True),
+                        Input(
+                            "count",
+                            INT,
+                            required=False,
+                            default=0,
+                            widget=NumberWidget(min=0, max=100),
+                        ),
+                    ),
                 ),
+                Output("STRING", STRING),
             ),
-            outputs=(OutputSpec("STRING", STRING),),
         )
         return with_identity_replacement(schema, "RegexReplace")
 
@@ -423,8 +480,11 @@ class JsonExtractString(Node):
             node_type="dinkster.text.json_extract_string",
             display_name="Extract Text from JSON",
             category="text",
-            inputs=(_text("json_string"), _text("key", multiline=False)),
-            outputs=(OutputSpec("STRING", STRING),),
+            body=(
+                _text("json_string"),
+                _text("key", multiline=False),
+                Output("STRING", STRING),
+            ),
         )
         return with_identity_replacement(schema, "JsonExtractString")
 
@@ -448,11 +508,11 @@ class ConvertDictionaryToString(Node):
             node_type="dinkster.text.convert_dictionary_to_string",
             display_name="Convert Dictionary to String",
             category="text",
-            inputs=(
-                InputSpec("dictionary", TypeExpr.concrete(DICT_TYPE)),
-                InputSpec("indent", INT, default=2, widget=NumberWidget(min=0, max=8)),
+            body=(
+                Input("dictionary", TypeExpr.concrete(DICT_TYPE)),
+                Input("indent", INT, default=2, widget=NumberWidget(min=0, max=8)),
+                Output("STRING", STRING),
             ),
-            outputs=(OutputSpec("STRING", STRING),),
         )
         return with_identity_replacement(schema, "ConvertDictionaryToString")
 
@@ -468,11 +528,11 @@ class ConvertArrayToString(Node):
             node_type="dinkster.text.convert_array_to_string",
             display_name="Convert Array to String",
             category="text",
-            inputs=(
-                InputSpec("array", TypeExpr.concrete(ARRAY_TYPE)),
-                InputSpec("indent", INT, default=2, widget=NumberWidget(min=0, max=8)),
+            body=(
+                Input("array", TypeExpr.concrete(ARRAY_TYPE)),
+                Input("indent", INT, default=2, widget=NumberWidget(min=0, max=8)),
+                Output("STRING", STRING),
             ),
-            outputs=(OutputSpec("STRING", STRING),),
         )
         return with_identity_replacement(schema, "ConvertArrayToString")
 

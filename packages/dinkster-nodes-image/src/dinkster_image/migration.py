@@ -7,13 +7,13 @@ from dataclasses import replace
 from typing import cast
 
 from dinkster_api.v1 import (
+    Choice,
     ComboWidget,
-    DynamicComboSpec,
     DynamicSlotSpec,
+    Group,
+    Input,
     InputFamilyMapping,
     InputFamilyMember,
-    InputFamilySpec,
-    InputSpec,
     MappingSource,
     NodeSchema,
     OutputFamilyMapping,
@@ -43,8 +43,8 @@ def with_mask_polarity(schema: NodeSchema) -> NodeSchema:
         prefix, _, local = value.rpartition(".")
         return _path(prefix, "mask_polarity") if local in names else value
 
-    def entry[T: InputSpec | InputFamilySpec | DynamicComboSpec | DynamicSlotSpec](value: T) -> T:
-        if isinstance(value, InputSpec) and value.id in names:
+    def entry[T: Input | Group | Choice | DynamicSlotSpec](value: T) -> T:
+        if isinstance(value, Input) and value.id in names:
             assert isinstance(value.widget, ComboWidget)
             return cast(
                 T,
@@ -55,7 +55,7 @@ def with_mask_polarity(schema: NodeSchema) -> NodeSchema:
                     widget=replace(value.widget, options=("coverage", "transparency")),
                 ),
             )
-        if isinstance(value, DynamicComboSpec):
+        if isinstance(value, Choice):
             return cast(
                 T,
                 replace(
@@ -177,7 +177,7 @@ def _entry_states(
     prefix: str,
     current_only_choices: Mapping[str, frozenset[str]],
 ) -> list[dict[str, str]]:
-    if isinstance(entry, DynamicComboSpec):
+    if isinstance(entry, Choice):
         construct = _path(prefix, entry.id)
         states: list[dict[str, str]] = []
         for option in entry.options:
@@ -220,7 +220,7 @@ def _states(
 def _default_choices(entries: Sequence[object], prefix: str = "") -> dict[str, str]:
     choices: dict[str, str] = {}
     for entry in entries:
-        if not isinstance(entry, DynamicComboSpec):
+        if not isinstance(entry, Choice):
             continue
         if entry.default is None:
             raise ValueError(f"version-1 image migration requires a default for {entry.id}")
@@ -237,10 +237,10 @@ def _dynamic_ids(entries: Sequence[object]) -> tuple[str, ...]:
 
     def collect(children: Sequence[object]) -> None:
         for entry in children:
-            if isinstance(entry, (InputSpec, InputFamilySpec, DynamicComboSpec, DynamicSlotSpec)):
+            if isinstance(entry, (Input, Group, Choice, DynamicSlotSpec)):
                 if entry.id not in ids:
                     ids.append(entry.id)
-            if isinstance(entry, DynamicComboSpec):
+            if isinstance(entry, Choice):
                 for option in entry.options:
                     collect(option.inputs)
             elif isinstance(entry, DynamicSlotSpec):
@@ -260,12 +260,12 @@ def _active_interface(
     for entry in entries:
         path = (
             _path(prefix, entry.id)
-            if isinstance(entry, (InputSpec, InputFamilySpec, DynamicComboSpec, DynamicSlotSpec))
+            if isinstance(entry, (Input, Group, Choice, DynamicSlotSpec))
             else ""
         )
-        if isinstance(entry, InputSpec):
+        if isinstance(entry, Input):
             inputs.append((path, entry.id))
-        elif isinstance(entry, DynamicComboSpec):
+        elif isinstance(entry, Choice):
             choice = choices[path]
             constructs.append((path, entry.id, choice, False))
             option = entry.option(choice)
@@ -303,7 +303,7 @@ def _input_family_mappings(schema: NodeSchema) -> dict[str, InputFamilyMapping]:
         template = {
             entry.id: MappingSource.copy(entry.id)
             for entry in family.template
-            if isinstance(entry, InputSpec)
+            if isinstance(entry, Input)
         }
         if len(template) != len(family.template):
             raise ValueError("version-1 image migrations require static input-family templates")

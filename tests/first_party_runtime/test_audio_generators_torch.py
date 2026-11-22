@@ -12,10 +12,10 @@ from dinkster_api.v1 import (
     AUDIO_TYPE,
     CORE_STRING,
     LATENT_TYPE,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
-    OutputSpec,
+    Output,
     TypeExpr,
     materialize_audio,
     materialize_latent,
@@ -65,11 +65,11 @@ class AudioGeneratorInspect(Node):
     def define_schema(cls) -> NodeSchema:
         return NodeSchema(
             node_type="audio-generator-fixture.inspect",
-            inputs=(
-                InputSpec("audio", TypeExpr.concrete(AUDIO_TYPE)),
-                InputSpec("latent", TypeExpr.concrete(LATENT_TYPE)),
+            body=(
+                Input("audio", TypeExpr.concrete(AUDIO_TYPE)),
+                Input("latent", TypeExpr.concrete(LATENT_TYPE)),
+                Output("result", TypeExpr.concrete(CORE_STRING)),
             ),
-            outputs=(OutputSpec("result", TypeExpr.concrete(CORE_STRING)),),
         )
 
     @classmethod

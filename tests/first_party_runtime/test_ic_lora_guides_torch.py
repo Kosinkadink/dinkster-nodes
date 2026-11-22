@@ -26,15 +26,17 @@ from dinkster_api.v1 import (
     LATENT_TYPE,
     MODEL_TYPE,
     VAE_TYPE,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
-    OutputSpec,
+    Output,
     TypeExpr,
     initialize_inference_process,
     materialize_latent,
 )
-from dinkster_api.v1 import register_inference_types as register_inference_types
+from dinkster_api.v1 import (
+    register_inference_types as register_inference_types,
+)
 from dinkster_ltx.ltx_guides import GetICLoRAParameters
 
 
@@ -102,16 +104,18 @@ class Source(Node):
     def define_schema(cls) -> NodeSchema:
         return NodeSchema(
             node_type="ic-guide-fixture.source",
-            outputs=tuple(
-                OutputSpec(name, TypeExpr.concrete(kind))
-                for name, kind in (
-                    ("model", MODEL_TYPE),
-                    ("vae", VAE_TYPE),
-                    ("latent", LATENT_TYPE),
-                    ("image", IMAGE_TYPE),
-                    ("positive", CONDITIONING_TYPE),
-                    ("negative", CONDITIONING_TYPE),
-                )
+            body=(
+                *tuple(
+                    Output(name, TypeExpr.concrete(kind))
+                    for name, kind in (
+                        ("model", MODEL_TYPE),
+                        ("vae", VAE_TYPE),
+                        ("latent", LATENT_TYPE),
+                        ("image", IMAGE_TYPE),
+                        ("positive", CONDITIONING_TYPE),
+                        ("negative", CONDITIONING_TYPE),
+                    )
+                ),
             ),
         )
 
@@ -132,15 +136,17 @@ class Consumer(Node):
     def define_schema(cls) -> NodeSchema:
         return NodeSchema(
             node_type="ic-guide-fixture.consumer",
-            inputs=tuple(
-                InputSpec(name, TypeExpr.concrete(kind))
-                for name, kind in (
-                    ("latent", LATENT_TYPE),
-                    ("positive", CONDITIONING_TYPE),
-                    ("negative", CONDITIONING_TYPE),
-                )
+            body=(
+                *tuple(
+                    Input(name, TypeExpr.concrete(kind))
+                    for name, kind in (
+                        ("latent", LATENT_TYPE),
+                        ("positive", CONDITIONING_TYPE),
+                        ("negative", CONDITIONING_TYPE),
+                    )
+                ),
+                Output("summary", TypeExpr.concrete(CORE_STRING)),
             ),
-            outputs=(OutputSpec("summary", TypeExpr.concrete(CORE_STRING)),),
         )
 
     @classmethod

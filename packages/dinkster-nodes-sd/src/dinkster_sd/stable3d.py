@@ -14,11 +14,12 @@ from dinkster_api.v1 import (
     IMAGE_TYPE,
     LATENT_TYPE,
     VAE_TYPE,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
+    Section,
     TypeExpr,
     materialize_image,
     with_identity_replacement,
@@ -56,10 +57,8 @@ def camera_embeddings(elevation: float, azimuth: float) -> Any:
     ).unsqueeze(1)
 
 
-def _integer(
-    name: str, default: int, minimum: int, maximum: int, step: int | None = None
-) -> InputSpec:
-    return InputSpec(
+def _integer(name: str, default: int, minimum: int, maximum: int, step: int | None = None) -> Input:
+    return Input(
         name,
         _INT,
         default=default,
@@ -67,21 +66,24 @@ def _integer(
     )
 
 
-def _angle(name: str, minimum: float, maximum: float, *, advanced: bool = False) -> InputSpec:
-    return InputSpec(
+def _angle(
+    name: str,
+    minimum: float,
+    maximum: float,
+) -> Input:
+    return Input(
         name,
         _FLOAT,
         default=0.0,
         widget=NumberWidget(min=minimum, max=maximum, step=0.1, round=False),
-        advanced=advanced,
     )
 
 
-def _conditioning_outputs() -> tuple[OutputSpec, ...]:
+def _conditioning_outputs() -> tuple[Output, ...]:
     return (
-        OutputSpec("positive", _CONDITIONING),
-        OutputSpec("negative", _CONDITIONING),
-        OutputSpec("latent", _LATENT),
+        Output("positive", _CONDITIONING),
+        Output("negative", _CONDITIONING),
+        Output("latent", _LATENT),
     )
 
 
@@ -103,17 +105,17 @@ class StableZero123_Conditioning(Node):
         schema = NodeSchema(
             node_type="dinkster.sd.stable_zero123_conditioning",
             category=_ZERO123_CATEGORY,
-            inputs=(
-                InputSpec("clip_vision", _CLIP_VISION),
-                InputSpec("init_image", _IMAGE),
-                InputSpec("vae", _VAE),
+            body=(
+                Input("clip_vision", _CLIP_VISION),
+                Input("init_image", _IMAGE),
+                Input("vae", _VAE),
                 _integer("width", 256, 16, 16384, 8),
                 _integer("height", 256, 16, 16384, 8),
                 _integer("batch_size", 1, 1, 4096),
                 _angle("elevation", -180.0, 180.0),
                 _angle("azimuth", -180.0, 180.0),
+                *_conditioning_outputs(),
             ),
-            outputs=_conditioning_outputs(),
         )
         return with_identity_replacement(schema, "StableZero123_Conditioning")
 
@@ -151,19 +153,34 @@ class StableZero123_Conditioning_Batched(Node):
         schema = NodeSchema(
             node_type="dinkster.sd.stable_zero123_conditioning_batched",
             category=_ZERO123_CATEGORY,
-            inputs=(
-                InputSpec("clip_vision", _CLIP_VISION),
-                InputSpec("init_image", _IMAGE),
-                InputSpec("vae", _VAE),
+            body=(
+                Input("clip_vision", _CLIP_VISION),
+                Input("init_image", _IMAGE),
+                Input("vae", _VAE),
                 _integer("width", 256, 16, 16384, 8),
                 _integer("height", 256, 16, 16384, 8),
                 _integer("batch_size", 1, 1, 4096),
                 _angle("elevation", -180.0, 180.0),
                 _angle("azimuth", -180.0, 180.0),
-                _angle("elevation_batch_increment", -180.0, 180.0, advanced=True),
-                _angle("azimuth_batch_increment", -180.0, 180.0, advanced=True),
+                Section(
+                    "advanced",
+                    label="Advanced",
+                    collapsed=True,
+                    rows=(
+                        _angle(
+                            "elevation_batch_increment",
+                            -180.0,
+                            180.0,
+                        ),
+                        _angle(
+                            "azimuth_batch_increment",
+                            -180.0,
+                            180.0,
+                        ),
+                    ),
+                ),
+                *_conditioning_outputs(),
             ),
-            outputs=_conditioning_outputs(),
         )
         return with_identity_replacement(schema, "StableZero123_Conditioning_Batched")
 
@@ -211,16 +228,16 @@ class SV3D_Conditioning(Node):
         schema = NodeSchema(
             node_type="dinkster.sd.sv3_d_conditioning",
             category="model/conditioning/stable video 3d",
-            inputs=(
-                InputSpec("clip_vision", _CLIP_VISION),
-                InputSpec("init_image", _IMAGE),
-                InputSpec("vae", _VAE),
+            body=(
+                Input("clip_vision", _CLIP_VISION),
+                Input("init_image", _IMAGE),
+                Input("vae", _VAE),
                 _integer("width", 576, 16, 16384, 8),
                 _integer("height", 576, 16, 16384, 8),
                 _integer("video_frames", 21, 1, 4096),
                 _angle("elevation", -90.0, 90.0),
+                *_conditioning_outputs(),
             ),
-            outputs=_conditioning_outputs(),
         )
         return with_identity_replacement(schema, "SV3D_Conditioning")
 

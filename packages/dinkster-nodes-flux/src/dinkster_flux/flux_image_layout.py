@@ -11,10 +11,10 @@ from dinkster_api.v1 import (
     ARRAY_TYPE,
     CORE_STRING,
     IMAGE_TYPE,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
-    OutputSpec,
+    Output,
     StringWidget,
     TypeExpr,
     initialize_inference_process,
@@ -56,8 +56,10 @@ class FluxKontextImageScale(Node):
             node_type="dinkster.flux.flux_kontext_image_scale",
             category="model/conditioning/flux",
             description="This node resizes the image to one that is more optimal for flux kontext.",
-            inputs=(InputSpec("image", _IMAGE),),
-            outputs=(OutputSpec("IMAGE", _IMAGE),),
+            body=(
+                Input("image", _IMAGE),
+                Output("IMAGE", _IMAGE),
+            ),
         )
         return with_identity_replacement(schema, "FluxKontextImageScale")
 
@@ -89,23 +91,23 @@ class Flux3LayoutPrompt(Node):
                 "Appends the boxes from Create Bounding Boxes to a FLUX 3 Image prompt as its "
                 "layout table."
             ),
-            inputs=(
-                InputSpec(
+            body=(
+                Input(
                     "prompt",
                     _STRING,
                     widget=StringWidget(multiline=True, dynamic_prompts=True),
-                    doc="The prompt text. Cite box N as <obj_N> to tie words to it.",
+                    tooltip="The prompt text. Cite box N as <obj_N> to tie words to it.",
                 ),
-                InputSpec(
+                Input(
                     "element",
                     _ARRAY,
-                    doc=(
+                    tooltip=(
                         "Prompt elements from the node Create Bounding Boxes. Colour palettes are "
                         "not used, describe colours in the description."
                     ),
                 ),
+                Output("prompt", _STRING, label="prompt"),
             ),
-            outputs=(OutputSpec("prompt", _STRING, display_name="prompt"),),
         )
         return with_identity_replacement(schema, "Flux3LayoutPrompt")
 

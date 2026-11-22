@@ -16,15 +16,16 @@ from dinkster_api.v1 import (
     CORE_INT,
     CORE_STRING,
     MODEL_TYPE,
+    Choice,
     ComboOption,
     ComboWidget,
-    DynamicComboOption,
-    DynamicComboSpec,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Option,
+    Output,
+    Section,
     StringWidget,
     TypeExpr,
     initialize_inference_process,
@@ -556,24 +557,21 @@ def _number(
     minimum: float,
     maximum: float,
     step: float,
-    *,
-    advanced: bool = False,
-) -> InputSpec:
-    return InputSpec(
+) -> Input:
+    return Input(
         name,
         _FLOAT,
         default=default,
-        advanced=advanced,
         widget=NumberWidget(min=minimum, max=maximum, step=step),
     )
 
 
-def _method_input(name: str, default: float, doc: str) -> InputSpec:
-    return InputSpec(
+def _method_input(name: str, default: float, doc: str) -> Input:
+    return Input(
         name,
         _FLOAT,
         default=default,
-        doc=doc,
+        tooltip=doc,
         widget=NumberWidget(
             min=0.0 if name == "tau" else 0.5,
             max=4.0 if name == "tau" else 95.0,
@@ -596,64 +594,16 @@ class BlockSparseAttention(Node):
                     "for dense blocks, and below min_tokens."
                 ),
                 search_terms=("Block Sparse Attention", "sol-attn", "SLA", "FastVideo"),
-                inputs=(
-                    InputSpec("model", _MODEL, display_name="model", doc="The model to patch."),
-                    _number("start_percent", 0.2, 0.0, 1.0, 0.01),
-                    _number("end_percent", 1.0, 0.0, 1.0, 0.01),
-                    InputSpec(
-                        "dense_blocks",
-                        _STRING,
-                        default="",
-                        advanced=True,
-                        widget=StringWidget(multiline=False),
-                        doc="Transformer blocks that always run dense, e.g. '0, 1, 47-49'.",
-                    ),
-                    InputSpec(
-                        "min_tokens",
-                        _INT,
-                        default=12288,
-                        advanced=True,
-                        doc="Sequences shorter than this stay dense.",
-                        widget=NumberWidget(min=0, max=1_048_576, step=512),
-                    ),
-                    InputSpec(
-                        "extra_tokens",
-                        _INT,
-                        default=256,
-                        advanced=True,
-                        doc="Extra top-scoring tokens beyond selected blocks. Ignored for VSA.",
-                        widget=NumberWidget(min=0, max=256, step=64),
-                    ),
-                    InputSpec(
-                        "sink_conditioning",
-                        _COMBO,
-                        default="exact_kv_and_rows",
-                        advanced=True,
-                        doc="MiniMax-H3 conditioning rows kept exact.",
-                        widget=ComboWidget(
-                            tuple(
-                                ComboOption(value)
-                                for value in ("exact_kv", "exact_kv_and_rows", "off")
-                            )
-                        ),
-                    ),
-                    InputSpec(
-                        "verbose",
-                        _BOOLEAN,
-                        default=False,
-                        advanced=True,
-                        doc="Log sparse or dense routing.",
-                    ),
-                ),
-                combos=(
-                    DynamicComboSpec(
+                body=(
+                    Input("model", _MODEL, label="model", tooltip="The model to patch."),
+                    Choice(
                         "selection",
-                        display_name="method",
-                        doc="Method used to choose key blocks for exact token-level attention.",
+                        label="method",
+                        tooltip="Method used to choose key blocks for exact token-level attention.",
                         options=(
-                            DynamicComboOption(
+                            Option(
                                 "sol-attn",
-                                (
+                                rows=(
                                     _method_input(
                                         "tau",
                                         1.3,
@@ -661,9 +611,9 @@ class BlockSparseAttention(Node):
                                     ),
                                 ),
                             ),
-                            DynamicComboOption(
+                            Option(
                                 "sla",
-                                (
+                                rows=(
                                     _method_input(
                                         "keep_percent",
                                         10.0,
@@ -671,9 +621,9 @@ class BlockSparseAttention(Node):
                                     ),
                                 ),
                             ),
-                            DynamicComboOption(
+                            Option(
                                 "vsa",
-                                (
+                                rows=(
                                     _method_input(
                                         "keep_percent",
                                         10.0,
@@ -683,19 +633,56 @@ class BlockSparseAttention(Node):
                             ),
                         ),
                     ),
+                    _number("start_percent", 0.2, 0.0, 1.0, 0.01),
+                    _number("end_percent", 1.0, 0.0, 1.0, 0.01),
+                    Section(
+                        "advanced",
+                        label="Advanced",
+                        collapsed=True,
+                        rows=(
+                            Input(
+                                "dense_blocks",
+                                _STRING,
+                                default="",
+                                widget=StringWidget(multiline=False),
+                                tooltip="Transformer blocks that always run dense, e.g. '0, 1, 47-49'.",
+                            ),
+                            Input(
+                                "min_tokens",
+                                _INT,
+                                default=12288,
+                                tooltip="Sequences shorter than this stay dense.",
+                                widget=NumberWidget(min=0, max=1_048_576, step=512),
+                            ),
+                            Input(
+                                "extra_tokens",
+                                _INT,
+                                default=256,
+                                tooltip="Extra top-scoring tokens beyond selected blocks. Ignored for VSA.",
+                                widget=NumberWidget(min=0, max=256, step=64),
+                            ),
+                            Input(
+                                "sink_conditioning",
+                                _COMBO,
+                                default="exact_kv_and_rows",
+                                tooltip="MiniMax-H3 conditioning rows kept exact.",
+                                widget=ComboWidget(
+                                    tuple(
+                                        ComboOption(value)
+                                        for value in ("exact_kv", "exact_kv_and_rows", "off")
+                                    )
+                                ),
+                            ),
+                            Input(
+                                "verbose",
+                                _BOOLEAN,
+                                default=False,
+                                tooltip="Log sparse or dense routing.",
+                            ),
+                        ),
+                    ),
+                    Output("MODEL", _MODEL, label="model"),
                 ),
-                input_order=(
-                    "model",
-                    "selection",
-                    "start_percent",
-                    "end_percent",
-                    "dense_blocks",
-                    "min_tokens",
-                    "extra_tokens",
-                    "sink_conditioning",
-                    "verbose",
-                ),
-                outputs=(OutputSpec("MODEL", _MODEL, display_name="model"),),
             ),
             "BlockSparseAttention",
         )

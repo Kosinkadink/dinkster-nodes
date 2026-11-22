@@ -21,11 +21,11 @@ from dinkster_api.v1 import (
     SPLAT_TYPE,
     AssetRef,
     ComboWidget,
-    InputSpec,
+    Input,
     LocalAssetRef,
     Node,
     NodeSchema,
-    OutputSpec,
+    Output,
     TypeExpr,
     digest_bytes,
     materialize_splat,
@@ -197,8 +197,8 @@ class File3DToSplat(Node):
                 "the other formats are base color only. "
                 "Format is auto-detected from the file contents."
             ),
-            inputs=(
-                InputSpec(
+            body=(
+                Input(
                     "model_3d",
                     TypeExpr.union(
                         FILE_3D_TYPE,
@@ -208,10 +208,10 @@ class File3DToSplat(Node):
                         FILE_3D_KSPLAT_TYPE,
                         FILE_3D_SPZ_TYPE,
                     ),
-                    doc="A gaussian splat 3D file",
+                    tooltip="A gaussian splat 3D file",
                 ),
+                Output("splat", TypeExpr.concrete(SPLAT_TYPE)),
             ),
-            outputs=(OutputSpec("splat", TypeExpr.concrete(SPLAT_TYPE)),),
         )
         return with_identity_replacement(schema, "File3DToSplat")
 
@@ -319,16 +319,16 @@ class SplatToFile3D(Node):
                 "Serialize a gaussian splat to a File3D object for Save / Preview 3D nodes. "
                 "Supports one item per batch only."
             ),
-            inputs=(
-                InputSpec("splat", TypeExpr.concrete(SPLAT_TYPE)),
-                InputSpec(
+            body=(
+                Input("splat", TypeExpr.concrete(SPLAT_TYPE)),
+                Input(
                     "format",
                     TypeExpr.concrete(CORE_COMBO),
                     default="ply",
                     widget=ComboWidget(options=("ply", "ksplat", "spz")),
                 ),
+                Output("model_3d", TypeExpr.concrete(FILE_3D_SPLAT_ANY_TYPE)),
             ),
-            outputs=(OutputSpec("model_3d", TypeExpr.concrete(FILE_3D_SPLAT_ANY_TYPE)),),
         )
         return with_identity_replacement(schema, "SplatToFile3D")
 

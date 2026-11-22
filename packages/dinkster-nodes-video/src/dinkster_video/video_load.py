@@ -9,11 +9,11 @@ from dinkster_api.v1 import (
     VIDEO_TYPE,
     AssetRef,
     AssetWidget,
-    InputSpec,
+    Input,
     LocalAssetRef,
     Node,
     NodeSchema,
-    OutputSpec,
+    Output,
     SourceFilenameSpec,
     TypeExpr,
     admit_video_source,
@@ -29,15 +29,15 @@ class LoadVideo(Node):
             display_name="Load Video",
             category="video",
             search_terms=("import video", "open video", "video file"),
-            inputs=(
-                InputSpec(
+            body=(
+                Input(
                     "file",
                     TypeExpr.concrete(ASSET_TYPE),
                     widget=AssetWidget(kind="media/video", accept=("video/*",), allow_upload=True),
                     source_filename=SourceFilenameSpec("media/video", "input"),
                 ),
+                Output("VIDEO", TypeExpr.concrete(VIDEO_TYPE), preview=True),
             ),
-            outputs=(OutputSpec("VIDEO", TypeExpr.concrete(VIDEO_TYPE), preview=True),),
         )
         return with_identity_replacement(schema, "LoadVideo")
 

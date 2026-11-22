@@ -13,11 +13,11 @@ from dinkster_api.v1 import (
     IMAGE_TYPE,
     LATENT_TYPE,
     VAE_TYPE,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
     TypeExpr,
     initialize_inference_process,
     materialize_clip_vision_output,
@@ -54,8 +54,8 @@ def _number(
     minimum: float | int,
     maximum: float | int,
     step: float | int | None = None,
-) -> InputSpec:
-    return InputSpec(
+) -> Input:
+    return Input(
         name, type_, default=default, widget=NumberWidget(min=minimum, max=maximum, step=step)
     )
 
@@ -156,69 +156,69 @@ class WanSCAILToVideo(Node):
         schema = NodeSchema(
             node_type="dinkster.wan.wan_scail_to_video",
             category=_CATEGORY,
-            inputs=(
-                InputSpec("positive", _CONDITIONING),
-                InputSpec("negative", _CONDITIONING),
-                InputSpec("vae", _VAE),
+            body=(
+                Input("positive", _CONDITIONING),
+                Input("negative", _CONDITIONING),
+                Input("vae", _VAE),
                 _number("width", _INT, 512, 32, 16384, 32),
                 _number("height", _INT, 896, 32, 16384, 32),
                 _number("length", _INT, 81, 1, 16384, 4),
                 _number("batch_size", _INT, 1, 1, 4096),
-                InputSpec(
+                Input(
                     "pose_video",
                     _IMAGE,
                     required=False,
-                    doc=(
+                    tooltip=(
                         "Video used for pose conditioning. Will be downscaled to half the "
                         "resolution of the main video."
                     ),
                 ),
-                InputSpec(
+                Input(
                     "pose_video_mask",
                     _IMAGE,
                     required=False,
-                    doc=(
+                    tooltip=(
                         "SCAIL-2 only. Colored per-identity SAM3 mask video at the same resolution "
                         "as pose_video."
                     ),
                 ),
-                InputSpec(
+                Input(
                     "replacement_mode",
                     _BOOLEAN,
                     required=False,
                     default=False,
-                    doc=(
+                    tooltip=(
                         "SCAIL-2 only. False = Animation Mode (pose_video_mask should have black "
                         "background). True = Replacement Mode (pose_video_mask should have white "
                         "background)."
                     ),
                 ),
-                InputSpec(
+                Input(
                     "pose_strength",
                     _FLOAT,
                     default=1.0,
                     widget=NumberWidget(min=0.0, max=10.0, step=0.01),
-                    doc="Strength of the pose latent.",
+                    tooltip="Strength of the pose latent.",
                 ),
-                InputSpec(
+                Input(
                     "pose_start",
                     _FLOAT,
                     default=0.0,
                     widget=NumberWidget(min=0.0, max=1.0, step=0.01),
-                    doc="Start step of the pose conditioning.",
+                    tooltip="Start step of the pose conditioning.",
                 ),
-                InputSpec(
+                Input(
                     "pose_end",
                     _FLOAT,
                     default=1.0,
                     widget=NumberWidget(min=0.0, max=1.0, step=0.01),
-                    doc="End step of the pose conditioning.",
+                    tooltip="End step of the pose conditioning.",
                 ),
-                InputSpec(
+                Input(
                     "reference_image",
                     _IMAGE,
                     required=False,
-                    doc=(
+                    tooltip=(
                         "Reference image. The first image is the primary reference (composite all "
                         "identities onto it). SCAIL-2: extra batch images are used as additional "
                         "views "
@@ -226,69 +226,67 @@ class WanSCAILToVideo(Node):
                         "reference_image_mask in that identity's color."
                     ),
                 ),
-                InputSpec(
+                Input(
                     "reference_image_mask",
                     _IMAGE,
                     required=False,
-                    doc=(
+                    tooltip=(
                         "SCAIL-2 only. Colored reference mask, batch matching reference_image "
                         "(first = primary reference mask, rest = identity masks for the additional "
                         "reference_image)."
                     ),
                 ),
-                InputSpec(
+                Input(
                     "clip_vision_output",
                     _CLIP_VISION_OUTPUT,
                     required=False,
-                    doc=(
+                    tooltip=(
                         "CLIP vision features for conditioning. Model is trained with stretch "
                         "resize to aspect ratio."
                     ),
                 ),
-                InputSpec(
+                Input(
                     "video_frame_offset",
                     _INT,
                     default=0,
                     widget=NumberWidget(min=0, max=16384, step=1),
-                    doc=(
+                    tooltip=(
                         "Cumulative output frame this chunk begins at. Wire from the previous "
                         "chunk's video_frame_offset output."
                     ),
                 ),
-                InputSpec(
+                Input(
                     "previous_frame_count",
                     _INT,
                     default=5,
                     widget=NumberWidget(min=1, max=16384, step=4),
-                    doc=(
+                    tooltip=(
                         "Tail frames of previous_frames to anchor. SCAIL-2 trained at 5 "
                         "(81-frame chunks, 76-frame step)."
                     ),
                 ),
-                InputSpec(
+                Input(
                     "previous_frames",
                     _IMAGE,
                     required=False,
-                    doc=(
+                    tooltip=(
                         "SCAIL-2 only. Full decoded output of the previous chunk. Only the last "
                         "previous_frame_count are used as the extension anchor."
                     ),
                 ),
-            ),
-            outputs=(
-                OutputSpec("positive", _CONDITIONING, display_name="positive"),
-                OutputSpec("negative", _CONDITIONING, display_name="negative"),
-                OutputSpec(
+                Output("positive", _CONDITIONING, label="positive"),
+                Output("negative", _CONDITIONING, label="negative"),
+                Output(
                     "latent",
                     _LATENT,
-                    display_name="latent",
-                    doc="Empty latent of the generation size.",
+                    label="latent",
+                    tooltip="Empty latent of the generation size.",
                 ),
-                OutputSpec(
+                Output(
                     "video_frame_offset",
                     _INT,
-                    display_name="video_frame_offset",
-                    doc="Adjusted offset + length. Wire into the next chunk.",
+                    label="video_frame_offset",
+                    tooltip="Adjusted offset + length. Wire into the next chunk.",
                 ),
             ),
         )

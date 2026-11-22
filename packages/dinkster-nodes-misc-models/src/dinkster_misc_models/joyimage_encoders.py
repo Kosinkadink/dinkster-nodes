@@ -12,11 +12,12 @@ from dinkster_api.v1 import (
     CORE_STRING,
     IMAGE_TYPE,
     VAE_TYPE,
-    InputFamilySpec,
-    InputSpec,
+    Group,
+    Input,
     Node,
     NodeSchema,
-    OutputSpec,
+    Numbered,
+    Output,
     StringWidget,
     TypeExpr,
     initialize_inference_process,
@@ -112,24 +113,19 @@ class TextEncodeJoyImageEdit(Node):
         schema = NodeSchema(
             node_type="dinkster.misc.models.text_encode_joy_image_edit",
             category="model/conditioning/joyimage",
-            inputs=(
-                InputSpec("clip", _CLIP),
-                InputSpec(
-                    "prompt", _STRING, widget=StringWidget(multiline=True, dynamic_prompts=True)
-                ),
-                InputSpec("vae", _VAE, required=False),
-            ),
-            input_families=(
-                InputFamilySpec(
+            body=(
+                Input("clip", _CLIP),
+                Input("prompt", _STRING, widget=StringWidget(multiline=True, dynamic_prompts=True)),
+                Input("vae", _VAE, required=False),
+                Group(
                     "images",
-                    (InputSpec("image", _IMAGE, required=False),),
+                    value=Input("image", _IMAGE, required=False),
                     min_members=0,
                     max_members=6,
-                    required=False,
-                    member_prefix="image",
+                    keys=Numbered("image", start=0),
                 ),
+                Output("CONDITIONING", _CONDITIONING),
             ),
-            outputs=(OutputSpec("CONDITIONING", _CONDITIONING),),
         )
         return with_identity_replacement(schema, "TextEncodeJoyImageEdit")
 

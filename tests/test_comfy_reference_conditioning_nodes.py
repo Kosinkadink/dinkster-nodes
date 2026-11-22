@@ -15,10 +15,10 @@ from dinkster_api.v1 import (
     IMAGE_TYPE,
     LATENT_TYPE,
     VAE_TYPE,
-    InputSpec,
+    Input,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
     TypeExpr,
     schema_from_wire,
     schema_to_wire,
@@ -91,7 +91,9 @@ def test_reference_conditioning_interfaces_and_manifest() -> None:
 
 
 def test_hunyuan_vision_interfaces_are_native() -> None:
-    from dinkster_api.v1 import CLIP_VISION_OUTPUT_TYPE
+    from dinkster_api.v1 import (
+        CLIP_VISION_OUTPUT_TYPE,
+    )
     from dinkster_hunyuan.hunyuan3d import (
         Hunyuan3Dv2Conditioning,
         Hunyuan3Dv2ConditioningMultiView,
@@ -136,7 +138,7 @@ def test_reference_multi_latent_exposes_resize_and_optional_ordered_images() -> 
     assert combo.id == "resolution" and combo.default is None
     assert [option.key for option in combo.options] == ["keep resolution", "resize"]
     megapixels = combo.options[1].inputs[0]
-    assert isinstance(megapixels, InputSpec)
+    assert isinstance(megapixels, Input)
     assert megapixels.id == "megapixels" and megapixels.default == 1.0
     assert isinstance(megapixels.widget, NumberWidget)
     assert megapixels.widget.min == 0.01
@@ -144,7 +146,7 @@ def test_reference_multi_latent_exposes_resize_and_optional_ordered_images() -> 
     family = schema.input_families[0]
     assert family.id == "images" and not family.required
     assert (family.min_members, family.max_members, family.member_prefix) == (1, 100, "image")
-    assert isinstance(family.template[0], InputSpec)
+    assert isinstance(family.template[0], Input)
     assert family.template[0].type == TypeExpr.concrete(IMAGE_TYPE)
 
 
@@ -164,7 +166,7 @@ def test_reference_image_families_keep_required_initial_positions(
         prefix,
     )
     assert family.required is moss
-    assert isinstance(family.template[0], InputSpec)
+    assert isinstance(family.template[0], Input)
     assert family.template[0].required is moss
     member_indices = (9, 2, 0) if moss else (10, 9, 2, 0)
     members = tuple(f"images.{prefix}{index}" for index in member_indices)
@@ -193,18 +195,18 @@ def test_reference_image_families_keep_required_initial_positions(
     assert family.optional_after_minimum
     source = NodeSchema(
         "test.source",
-        outputs=(
-            OutputSpec("clip", TypeExpr.concrete(CLIP_TYPE)),
-            OutputSpec("vae", TypeExpr.concrete(VAE_TYPE)),
-            OutputSpec("image", TypeExpr.concrete(IMAGE_TYPE)),
-            OutputSpec("conditioning", TypeExpr.concrete(CONDITIONING_TYPE)),
+        body=(
+            Output("clip", TypeExpr.concrete(CLIP_TYPE)),
+            Output("vae", TypeExpr.concrete(VAE_TYPE)),
+            Output("image", TypeExpr.concrete(IMAGE_TYPE)),
+            Output("conditioning", TypeExpr.concrete(CONDITIONING_TYPE)),
         ),
     )
     sink = NodeSchema(
         "test.sink",
-        inputs=(
-            InputSpec("positive", TypeExpr.concrete(CONDITIONING_TYPE)),
-            InputSpec("negative", TypeExpr.concrete(CONDITIONING_TYPE)),
+        body=(
+            Input("positive", TypeExpr.concrete(CONDITIONING_TYPE)),
+            Input("negative", TypeExpr.concrete(CONDITIONING_TYPE)),
         ),
     )
     stored.update({f"images.{prefix}{index}": Link("source", "image") for index in connected})
@@ -265,16 +267,16 @@ def test_joy_authored_image_members_are_optional_in_native_graphs(
     effective = elaborate(schema, ("clip", "prompt", *members))
     source = NodeSchema(
         "test.source",
-        outputs=(
-            OutputSpec("clip", TypeExpr.concrete(CLIP_TYPE)),
-            OutputSpec("image", TypeExpr.concrete(IMAGE_TYPE)),
+        body=(
+            Output("clip", TypeExpr.concrete(CLIP_TYPE)),
+            Output("image", TypeExpr.concrete(IMAGE_TYPE)),
         ),
     )
     sink = NodeSchema(
         "test.sink",
-        inputs=(
-            InputSpec("positive", TypeExpr.concrete(CONDITIONING_TYPE)),
-            InputSpec("negative", TypeExpr.concrete(CONDITIONING_TYPE)),
+        body=(
+            Input("positive", TypeExpr.concrete(CONDITIONING_TYPE)),
+            Input("negative", TypeExpr.concrete(CONDITIONING_TYPE)),
         ),
     )
     image_links = {members[index]: Link("source", "image") for index in connected}
@@ -337,17 +339,17 @@ def test_boogu_authored_image_members_are_optional_in_native_graphs(
     assert [port.id for port in absent.inputs] == list(required)
     source = NodeSchema(
         "test.source",
-        outputs=(
-            OutputSpec("clip", TypeExpr.concrete(CLIP_TYPE)),
-            OutputSpec("vae", TypeExpr.concrete(VAE_TYPE)),
-            OutputSpec("image", TypeExpr.concrete(IMAGE_TYPE)),
+        body=(
+            Output("clip", TypeExpr.concrete(CLIP_TYPE)),
+            Output("vae", TypeExpr.concrete(VAE_TYPE)),
+            Output("image", TypeExpr.concrete(IMAGE_TYPE)),
         ),
     )
     sink = NodeSchema(
         "test.sink",
-        inputs=(
-            InputSpec("positive", TypeExpr.concrete(CONDITIONING_TYPE)),
-            InputSpec("negative", TypeExpr.concrete(CONDITIONING_TYPE)),
+        body=(
+            Input("positive", TypeExpr.concrete(CONDITIONING_TYPE)),
+            Input("negative", TypeExpr.concrete(CONDITIONING_TYPE)),
         ),
     )
     inputs = {
@@ -428,17 +430,17 @@ def test_vision_reference_image_members_are_optional_in_native_graphs(
     ] == [(member, TypeExpr.concrete(IMAGE_TYPE), False) for member in members]
     source = NodeSchema(
         "test.source",
-        outputs=(
-            OutputSpec("conditioning", TypeExpr.concrete(CONDITIONING_TYPE)),
-            OutputSpec("vae", TypeExpr.concrete(VAE_TYPE)),
-            OutputSpec("image", TypeExpr.concrete(IMAGE_TYPE)),
+        body=(
+            Output("conditioning", TypeExpr.concrete(CONDITIONING_TYPE)),
+            Output("vae", TypeExpr.concrete(VAE_TYPE)),
+            Output("image", TypeExpr.concrete(IMAGE_TYPE)),
         ),
     )
     sink = NodeSchema(
         "test.sink",
-        inputs=(
-            InputSpec("positive", TypeExpr.concrete(CONDITIONING_TYPE)),
-            InputSpec("negative", TypeExpr.concrete(CONDITIONING_TYPE)),
+        body=(
+            Input("positive", TypeExpr.concrete(CONDITIONING_TYPE)),
+            Input("negative", TypeExpr.concrete(CONDITIONING_TYPE)),
         ),
     )
     inputs = {
@@ -526,16 +528,16 @@ def test_model_encoder_authored_images_are_optional_in_native_graphs(
     ] == [(member, TypeExpr.concrete(IMAGE_TYPE), False) for member in members]
     source = NodeSchema(
         "test.source",
-        outputs=(
-            OutputSpec("clip", TypeExpr.concrete(CLIP_TYPE)),
-            OutputSpec("image", TypeExpr.concrete(IMAGE_TYPE)),
+        body=(
+            Output("clip", TypeExpr.concrete(CLIP_TYPE)),
+            Output("image", TypeExpr.concrete(IMAGE_TYPE)),
         ),
     )
     sink = NodeSchema(
         "test.sink",
-        inputs=(
-            InputSpec("positive", TypeExpr.concrete(CONDITIONING_TYPE)),
-            InputSpec("negative", TypeExpr.concrete(CONDITIONING_TYPE)),
+        body=(
+            Input("positive", TypeExpr.concrete(CONDITIONING_TYPE)),
+            Input("negative", TypeExpr.concrete(CONDITIONING_TYPE)),
         ),
     )
     inputs: dict[str, object] = {"clip": Link("source", "clip"), "prompt": "edit"}

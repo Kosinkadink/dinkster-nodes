@@ -14,16 +14,17 @@ from dinkster_api.v1 import (
     IMAGE_TYPE,
     LATENT_TYPE,
     MASK_TYPE,
+    Choice,
     ComboOption,
     ComboWidget,
-    DynamicComboOption,
-    DynamicComboSpec,
-    InputFamilySpec,
-    InputSpec,
+    Group,
+    Input,
     Node,
     NodeSchema,
+    Numbered,
     NumberWidget,
-    OutputSpec,
+    Option,
+    Output,
     TypeExpr,
     materialize_image,
     report_progress,
@@ -52,24 +53,24 @@ def _number(
     step: float | int | None = None,
     *,
     doc: str = "",
-) -> InputSpec:
-    return InputSpec(
+) -> Input:
+    return Input(
         name,
         value_type,
         default=default,
-        doc=doc,
+        tooltip=doc,
         widget=NumberWidget(min=minimum, max=maximum, step=step),
     )
 
 
 def _combo(
     name: str, options: tuple[str, ...], default: str | None = None, *, doc: str = ""
-) -> InputSpec:
-    return InputSpec(
+) -> Input:
+    return Input(
         name,
         _COMBO,
         default=default,
-        doc=doc,
+        tooltip=doc,
         widget=ComboWidget(tuple(ComboOption(option) for option in options)),
     )
 
@@ -210,8 +211,47 @@ class ResizeImageMaskNode(Node):
             display_name="Resize Image/Mask",
             description="Resize an image or mask using various scaling methods.",
             category="image/transform",
-            inputs=(
-                InputSpec("input", _RESIZE_INPUT),
+            body=(
+                Input("input", _RESIZE_INPUT),
+                Choice(
+                    "resize_type",
+                    options=(
+                        Option("scale dimensions", rows=dimensions),
+                        Option(
+                            "scale by multiplier",
+                            rows=(_number("multiplier", _FLOAT, 1.0, 0.01, 8.0, 0.01),),
+                        ),
+                        Option(
+                            "scale longer dimension",
+                            rows=(_number("longer_size", _INT, 512, 0, _MAX_RESOLUTION, 1),),
+                        ),
+                        Option(
+                            "scale shorter dimension",
+                            rows=(_number("shorter_size", _INT, 512, 0, _MAX_RESOLUTION, 1),),
+                        ),
+                        Option(
+                            "scale width",
+                            rows=(_number("width", _INT, 512, 0, _MAX_RESOLUTION, 1),),
+                        ),
+                        Option(
+                            "scale height",
+                            rows=(_number("height", _INT, 512, 0, _MAX_RESOLUTION, 1),),
+                        ),
+                        Option(
+                            "scale total pixels",
+                            rows=(_number("megapixels", _FLOAT, 1.0, 0.01, 16.0, 0.01),),
+                        ),
+                        Option("match size", rows=(Input("match", _IMAGE_OR_MASK), crop)),
+                        Option(
+                            "scale to multiple",
+                            rows=(_number("multiple", _INT, 8, 1, _MAX_RESOLUTION, 1),),
+                        ),
+                    ),
+                    tooltip=(
+                        "Select how to resize: by exact dimensions, scale factor, matching another "
+                        "image, etc."
+                    ),
+                ),
                 _combo(
                     "scale_method",
                     _SCALE_METHODS,
@@ -221,51 +261,8 @@ class ResizeImageMaskNode(Node):
                         "for upscaling, 'nearest-exact' for pixel art."
                     ),
                 ),
+                Output("resized", _RESIZE_INPUT),
             ),
-            combos=(
-                DynamicComboSpec(
-                    "resize_type",
-                    (
-                        DynamicComboOption("scale dimensions", dimensions),
-                        DynamicComboOption(
-                            "scale by multiplier",
-                            (_number("multiplier", _FLOAT, 1.0, 0.01, 8.0, 0.01),),
-                        ),
-                        DynamicComboOption(
-                            "scale longer dimension",
-                            (_number("longer_size", _INT, 512, 0, _MAX_RESOLUTION, 1),),
-                        ),
-                        DynamicComboOption(
-                            "scale shorter dimension",
-                            (_number("shorter_size", _INT, 512, 0, _MAX_RESOLUTION, 1),),
-                        ),
-                        DynamicComboOption(
-                            "scale width", (_number("width", _INT, 512, 0, _MAX_RESOLUTION, 1),)
-                        ),
-                        DynamicComboOption(
-                            "scale height",
-                            (_number("height", _INT, 512, 0, _MAX_RESOLUTION, 1),),
-                        ),
-                        DynamicComboOption(
-                            "scale total pixels",
-                            (_number("megapixels", _FLOAT, 1.0, 0.01, 16.0, 0.01),),
-                        ),
-                        DynamicComboOption(
-                            "match size", (InputSpec("match", _IMAGE_OR_MASK), crop)
-                        ),
-                        DynamicComboOption(
-                            "scale to multiple",
-                            (_number("multiple", _INT, 8, 1, _MAX_RESOLUTION, 1),),
-                        ),
-                    ),
-                    doc=(
-                        "Select how to resize: by exact dimensions, scale factor, matching another "
-                        "image, etc."
-                    ),
-                ),
-            ),
-            outputs=(OutputSpec("resized", _RESIZE_INPUT),),
-            input_order=("input", "resize_type", "scale_method"),
         )
         return with_identity_replacement(schema, "ResizeImageMaskNode")
 
@@ -355,17 +352,17 @@ class BatchImagesNode(Node):
             node_type="dinkster.image.batch_images_node",
             display_name="Batch Images",
             category="image/batch",
-            input_families=(
-                InputFamilySpec(
+            body=(
+                Group(
                     "images",
-                    (InputSpec("image", _IMAGE),),
-                    1,
-                    50,
-                    member_prefix="image",
+                    value=Input("image", _IMAGE),
+                    min_members=1,
+                    max_members=50,
                     optional_after_minimum=True,
+                    keys=Numbered("image", start=0),
                 ),
+                Output("IMAGE", _IMAGE),
             ),
-            outputs=(OutputSpec("IMAGE", _IMAGE),),
         )
         return with_identity_replacement(schema, "BatchImagesNode")
 
@@ -381,17 +378,17 @@ class BatchMasksNode(Node):
             node_type="dinkster.image.batch_masks_node",
             display_name="Batch Masks",
             category="image/mask",
-            input_families=(
-                InputFamilySpec(
+            body=(
+                Group(
                     "masks",
-                    (InputSpec("mask", _MASK),),
-                    1,
-                    50,
-                    member_prefix="mask",
+                    value=Input("mask", _MASK),
+                    min_members=1,
+                    max_members=50,
                     optional_after_minimum=True,
+                    keys=Numbered("mask", start=0),
                 ),
+                Output("MASK", _MASK),
             ),
-            outputs=(OutputSpec("MASK", _MASK),),
         )
         return with_identity_replacement(schema, "BatchMasksNode")
 
@@ -408,23 +405,18 @@ class ColorTransfer(Node):
             display_name="Transfer Color",
             description="Match the colors of one image to another using various algorithms.",
             category="image/filters",
-            inputs=(
-                InputSpec("image_target", _IMAGE, doc="Image(s) to apply the color transform to."),
-                InputSpec("image_ref", _IMAGE, doc="Reference image(s) to match colors to."),
+            body=(
+                Input("image_target", _IMAGE, tooltip="Image(s) to apply the color transform to."),
+                Input("image_ref", _IMAGE, tooltip="Reference image(s) to match colors to."),
                 _combo("method", ("reinhard_lab", "mkl_lab", "histogram"), "reinhard_lab"),
-                _number("strength", _FLOAT, 1.0, 0.0, 10.0, 0.01),
-            ),
-            combos=(
-                DynamicComboSpec(
+                Choice(
                     "source_stats",
-                    (
-                        DynamicComboOption("per_frame"),
-                        DynamicComboOption("uniform"),
-                        DynamicComboOption(
-                            "target_frame", (_number("target_index", _INT, 0, 0, 10000),)
-                        ),
+                    options=(
+                        Option("per_frame"),
+                        Option("uniform"),
+                        Option("target_frame", rows=(_number("target_index", _INT, 0, 0, 10000),)),
                     ),
-                    doc=(
+                    tooltip=(
                         "per_frame: each frame matched to image_ref individually. uniform: pool "
                         "stats across all source frames as baseline, match to image_ref. "
                         "target_frame: use one chosen frame as the source baseline for the "
@@ -432,9 +424,9 @@ class ColorTransfer(Node):
                         "relative differences)"
                     ),
                 ),
+                _number("strength", _FLOAT, 1.0, 0.0, 10.0, 0.01),
+                Output("image", _IMAGE),
             ),
-            outputs=(OutputSpec("image", _IMAGE),),
-            input_order=("image_target", "image_ref", "method", "source_stats", "strength"),
         )
         return with_identity_replacement(schema, "ColorTransfer")
 

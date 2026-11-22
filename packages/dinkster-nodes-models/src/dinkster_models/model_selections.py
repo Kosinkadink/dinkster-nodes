@@ -16,11 +16,11 @@ from dinkster_api.v1 import (
     AssetRef,
     AssetWidget,
     Deprecation,
-    InputSpec,
+    Input,
     LocalAssetRef,
     Node,
     NodeSchema,
-    OutputSpec,
+    Output,
     TypeExpr,
     initialize_inference_process,
     mount_roots_for_kind,
@@ -37,15 +37,14 @@ class VAELoader(Node):
                 node_type="dinkster.models.vae_loader",
                 display_name="Load VAE",
                 category="model/loaders",
-                inputs=(
-                    InputSpec(
+                body=(
+                    Input(
                         "vae_name",
                         TypeExpr.union(CORE_COMBO, ASSET_TYPE),
                         widget=AssetWidget(kind="model/vae", selection=True),
                     ),
+                    Output("VAE", TypeExpr.concrete(VAE_TYPE)),
                 ),
-                outputs=(OutputSpec("VAE", TypeExpr.concrete(VAE_TYPE)),),
-                # Source strings name live grants, not immutable file revisions.
                 idempotent=False,
             ),
             "VAELoader",
@@ -117,17 +116,15 @@ class DiffusersLoader(Node):
                 node_type="dinkster.models.diffusers_loader",
                 display_name="Load Diffusers Model (DEPRECATED)",
                 category="model/loaders",
-                inputs=(
-                    InputSpec(
+                body=(
+                    Input(
                         "model_path",
                         TypeExpr.concrete(CORE_COMBO),
                         widget=AssetWidget(kind="model/diffusers", selection=True),
                     ),
-                ),
-                outputs=(
-                    OutputSpec("MODEL", TypeExpr.concrete(MODEL_TYPE)),
-                    OutputSpec("CLIP", TypeExpr.concrete(CLIP_TYPE)),
-                    OutputSpec("VAE", TypeExpr.concrete(VAE_TYPE)),
+                    Output("MODEL", TypeExpr.concrete(MODEL_TYPE)),
+                    Output("CLIP", TypeExpr.concrete(CLIP_TYPE)),
+                    Output("VAE", TypeExpr.concrete(VAE_TYPE)),
                 ),
                 idempotent=False,
                 deprecation=Deprecation("Deprecated in ComfyUI."),

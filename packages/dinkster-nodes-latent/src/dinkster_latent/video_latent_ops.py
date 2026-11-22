@@ -9,11 +9,11 @@ from typing import Any
 from dinkster_api.v1 import (
     CORE_INT,
     LATENT_TYPE,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
     TypeExpr,
     materialize_latent,
     with_identity_replacement,
@@ -30,16 +30,16 @@ class TrimVideoLatent(Node):
                 node_type="dinkster.latent.trim_video_latent",
                 display_name="Trim Video Latent",
                 category="model/latent",
-                inputs=(
-                    InputSpec("samples", _LATENT),
-                    InputSpec(
+                body=(
+                    Input("samples", _LATENT),
+                    Input(
                         "trim_amount",
                         TypeExpr.concrete(CORE_INT),
                         default=0,
                         widget=NumberWidget(min=0, max=99999),
                     ),
+                    Output("LATENT", _LATENT),
                 ),
-                outputs=(OutputSpec("LATENT", _LATENT),),
             ),
             "TrimVideoLatent",
         )
@@ -60,22 +60,22 @@ class NormalizeVideoLatentStart(Node):
                 node_type="dinkster.latent.normalize_video_latent_start",
                 display_name="NormalizeVideoLatentStart",
                 category="model/conditioning",
-                inputs=(
-                    InputSpec("latent", _LATENT),
-                    InputSpec(
+                body=(
+                    Input("latent", _LATENT),
+                    Input(
                         "start_frame_count",
                         TypeExpr.concrete(CORE_INT),
                         default=4,
                         widget=NumberWidget(min=1, max=16384, step=1),
                     ),
-                    InputSpec(
+                    Input(
                         "reference_frame_count",
                         TypeExpr.concrete(CORE_INT),
                         default=5,
                         widget=NumberWidget(min=1, max=16384, step=1),
                     ),
+                    Output("latent", _LATENT),
                 ),
-                outputs=(OutputSpec("latent", _LATENT),),
             ),
             "NormalizeVideoLatentStart",
         )

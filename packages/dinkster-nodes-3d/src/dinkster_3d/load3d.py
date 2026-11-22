@@ -15,12 +15,12 @@ from dinkster_api.v1 import (
     AssetRef,
     AssetWidget,
     CustomWidgetDescriptor,
-    InputSpec,
+    Input,
     LocalAssetRef,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
     SourceFilenameSpec,
     TypeExpr,
     load_file3d,
@@ -36,39 +36,39 @@ class Load3DAdvanced(Node):
             display_name="Load 3D (Advanced)",
             category="3d",
             search_terms=("load mesh", "load gltf", "load glb", "load obj", "load fbx", "load stl"),
-            inputs=(
-                InputSpec(
+            body=(
+                Input(
                     "model_file",
                     TypeExpr.concrete(ASSET_TYPE),
                     default="none",
                     widget=AssetWidget(kind="media/model3d", allow_upload=True),
                     source_filename=SourceFilenameSpec("media/model3d", "input"),
                 ),
-                InputSpec(
+                Input(
                     "viewport_state",
                     TypeExpr.concrete(LOAD_3D_TYPE),
                     widget=CustomWidgetDescriptor("LOAD_3D"),
                 ),
                 *(
-                    InputSpec(
+                    Input(
                         axis,
                         TypeExpr.concrete(CORE_INT),
                         default=1024,
                         widget=NumberWidget(min=1, max=4096, step=1),
-                        doc=f"Render {axis} of the viewport in pixels.",
+                        tooltip=f"Render {axis} of the viewport in pixels.",
                     )
                     for axis in ("width", "height")
                 ),
-            ),
-            outputs=tuple(
-                OutputSpec(name, TypeExpr.concrete(type_id), preview=name == "model_3d")
-                for name, type_id in (
-                    ("model_3d", FILE_3D_TYPE),
-                    ("model_3d_info", LOAD3D_MODEL_INFO_TYPE),
-                    ("camera_info", LOAD3D_CAMERA_TYPE),
-                    ("width", CORE_INT),
-                    ("height", CORE_INT),
-                )
+                *tuple(
+                    Output(name, TypeExpr.concrete(type_id), preview=name == "model_3d")
+                    for name, type_id in (
+                        ("model_3d", FILE_3D_TYPE),
+                        ("model_3d_info", LOAD3D_MODEL_INFO_TYPE),
+                        ("camera_info", LOAD3D_CAMERA_TYPE),
+                        ("width", CORE_INT),
+                        ("height", CORE_INT),
+                    )
+                ),
             ),
         )
         return with_identity_replacement(schema, "Load3DAdvanced")

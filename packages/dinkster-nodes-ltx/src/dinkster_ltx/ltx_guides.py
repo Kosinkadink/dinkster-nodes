@@ -14,11 +14,11 @@ from dinkster_api.v1 import (
     MASK_TYPE,
     MODEL_TYPE,
     VAE_TYPE,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
     TypeExpr,
     initialize_inference_process,
     materialize_image,
@@ -265,8 +265,10 @@ class GetICLoRAParameters(Node):
                 "downscale factor",
                 "reference downscale",
             ),
-            inputs=(InputSpec("iclora_model", TypeExpr.concrete(MODEL_TYPE)),),
-            outputs=(OutputSpec("iclora_parameters", TypeExpr.concrete(IC_LORA_PARAMETERS_TYPE)),),
+            body=(
+                Input("iclora_model", TypeExpr.concrete(MODEL_TYPE)),
+                Output("iclora_parameters", TypeExpr.concrete(IC_LORA_PARAMETERS_TYPE)),
+            ),
         )
         return with_identity_replacement(schema, "GetICLoRAParameters")
 
@@ -301,35 +303,33 @@ class LTXVAddGuide(Node):
         schema = NodeSchema(
             node_type="dinkster.ltx.ltxv_add_guide",
             category="model/conditioning/ltxv",
-            inputs=(
-                InputSpec("positive", conditioning),
-                InputSpec("negative", conditioning),
-                InputSpec("vae", TypeExpr.concrete(VAE_TYPE)),
-                InputSpec("latent", latent),
-                InputSpec("image", TypeExpr.concrete(IMAGE_TYPE)),
-                InputSpec(
+            body=(
+                Input("positive", conditioning),
+                Input("negative", conditioning),
+                Input("vae", TypeExpr.concrete(VAE_TYPE)),
+                Input("latent", latent),
+                Input("image", TypeExpr.concrete(IMAGE_TYPE)),
+                Input(
                     "frame_idx",
                     TypeExpr.concrete(CORE_INT),
                     default=0,
                     widget=NumberWidget(min=-9999, max=9999),
                 ),
-                InputSpec(
+                Input(
                     "strength",
                     TypeExpr.concrete(CORE_FLOAT),
                     default=1.0,
                     widget=NumberWidget(min=0.0, max=10.0, step=0.01),
                 ),
-                InputSpec("attention_mask", TypeExpr.concrete(MASK_TYPE), required=False),
-                InputSpec(
+                Input("attention_mask", TypeExpr.concrete(MASK_TYPE), required=False),
+                Input(
                     "iclora_parameters",
                     TypeExpr.concrete(IC_LORA_PARAMETERS_TYPE),
                     required=False,
                 ),
-            ),
-            outputs=(
-                OutputSpec("positive", conditioning, display_name="positive"),
-                OutputSpec("negative", conditioning, display_name="negative"),
-                OutputSpec("latent", latent, display_name="latent"),
+                Output("positive", conditioning, label="positive"),
+                Output("negative", conditioning, label="negative"),
+                Output("latent", latent, label="latent"),
             ),
         )
         return with_identity_replacement(schema, "LTXVAddGuide")
@@ -372,30 +372,28 @@ class LTXVAddLatentGuide(Node):
             display_name="LTXV Add Latent Guide",
             category="model/conditioning/ltxv",
             search_terms=("latent guide", "add latent guide", "guide latent"),
-            inputs=(
-                InputSpec("positive", conditioning),
-                InputSpec("negative", conditioning),
-                InputSpec("vae", TypeExpr.concrete(VAE_TYPE)),
-                InputSpec("latent", latent),
-                InputSpec("guiding_latent", latent),
-                InputSpec(
+            body=(
+                Input("positive", conditioning),
+                Input("negative", conditioning),
+                Input("vae", TypeExpr.concrete(VAE_TYPE)),
+                Input("latent", latent),
+                Input("guiding_latent", latent),
+                Input(
                     "latent_idx",
                     TypeExpr.concrete(CORE_INT),
                     default=0,
                     widget=NumberWidget(min=-9999, max=9999),
                 ),
-                InputSpec(
+                Input(
                     "strength",
                     TypeExpr.concrete(CORE_FLOAT),
                     default=1.0,
                     widget=NumberWidget(min=0.0, max=1.0, step=0.01),
                 ),
-                InputSpec("attention_mask", TypeExpr.concrete(MASK_TYPE), required=False),
-            ),
-            outputs=(
-                OutputSpec("positive", conditioning),
-                OutputSpec("negative", conditioning),
-                OutputSpec("latent", latent),
+                Input("attention_mask", TypeExpr.concrete(MASK_TYPE), required=False),
+                Output("positive", conditioning),
+                Output("negative", conditioning),
+                Output("latent", latent),
             ),
         )
         return with_identity_replacement(schema, "LTXVAddLatentGuide")

@@ -12,14 +12,15 @@ from dinkster_api.v1 import (
     CORE_COMBO,
     CORE_FLOAT,
     LOAD3D_CAMERA_TYPE,
+    Choice,
     ComboWidget,
-    DynamicComboOption,
-    DynamicComboSpec,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Option,
+    Output,
+    Section,
     TypeExpr,
     initialize_inference_process,
     with_identity_replacement,
@@ -34,15 +35,13 @@ def _number(
     step: float,
     *,
     doc: str = "",
-    advanced: bool = False,
-) -> InputSpec:
-    return InputSpec(
+) -> Input:
+    return Input(
         name,
         TypeExpr.concrete(CORE_FLOAT),
         default=default,
         widget=NumberWidget(min=minimum, max=maximum, step=step),
-        doc=doc,
-        advanced=advanced,
+        tooltip=doc,
     )
 
 
@@ -177,13 +176,13 @@ class CreateCameraInfo(Node):
                 "target; 'look_at' places the camera at world position. Coordinates are the "
                 "viewer's world space (right-handed,Y-up)."
             ),
-            combos=(
-                DynamicComboSpec(
+            body=(
+                Choice(
                     "mode",
-                    (
-                        DynamicComboOption(
+                    options=(
+                        Option(
                             "orbit",
-                            (
+                            rows=(
                                 _number("yaw", 35.0, -360.0, 360.0, 1.0),
                                 _number("pitch", 30.0, -89.0, 89.0, 1.0),
                                 _number(
@@ -196,10 +195,10 @@ class CreateCameraInfo(Node):
                                 ),
                             ),
                         ),
-                        DynamicComboOption("look_at", position_inputs),
-                        DynamicComboOption(
+                        Option("look_at", rows=position_inputs),
+                        Option(
                             "quaternion",
-                            (
+                            rows=(
                                 *position_inputs,
                                 _number("quat_x", 0.0, -1.0, 1.0, 0.001),
                                 _number("quat_y", 0.0, -1.0, 1.0, 0.001),
@@ -218,28 +217,11 @@ class CreateCameraInfo(Node):
                             ),
                         ),
                     ),
-                    doc=(
+                    tooltip=(
                         "How to define the camera: orbit angles, an explicit position, "
                         "or a position + quaternion."
                     ),
                 ),
-            ),
-            inputs=(
-                _number(
-                    "target_x",
-                    0.0,
-                    -1000.0,
-                    1000.0,
-                    0.01,
-                    advanced=True,
-                    doc=(
-                        "Look-at point (orbit pivot / aim). In orbit mode, move it to "
-                        "pan/translate the whole camera. Ignored in quaternion mode. "
-                        "Defaults to the origin."
-                    ),
-                ),
-                _number("target_y", 0.0, -1000.0, 1000.0, 0.01, advanced=True),
-                _number("target_z", 0.0, -1000.0, 1000.0, 0.01, advanced=True),
                 _number(
                     "roll", 0.0, -180.0, 180.0, 1.0, doc="Camera roll about the view axis, degrees."
                 ),
@@ -255,37 +237,55 @@ class CreateCameraInfo(Node):
                         ">1 zooms in without moving the camera."
                     ),
                 ),
-                InputSpec(
+                Input(
                     "camera_type",
                     TypeExpr.concrete(CORE_COMBO),
                     widget=ComboWidget(("perspective", "orthographic")),
-                    doc=(
+                    tooltip=(
                         "Projection used by Render Splat: perspective (foreshortening) "
                         "or orthographic (parallel)."
                     ),
                 ),
-                InputSpec(
+                Input(
                     "camera_info_state",
                     TypeExpr.concrete(CAMERA_INFO_STATE_TYPE),
                     required=False,
-                    socketless=True,
+                    pin=False,
                 ),
-            ),
-            input_order=(
-                "mode",
-                "target_x",
-                "target_y",
-                "target_z",
-                "roll",
-                "fov",
-                "zoom",
-                "camera_type",
-                "camera_info_state",
-            ),
-            outputs=(
-                OutputSpec(
-                    "camera_info", TypeExpr.concrete(LOAD3D_CAMERA_TYPE), display_name="camera_info"
+                Section(
+                    "advanced",
+                    label="Advanced",
+                    collapsed=True,
+                    rows=(
+                        _number(
+                            "target_x",
+                            0.0,
+                            -1000.0,
+                            1000.0,
+                            0.01,
+                            doc=(
+                                "Look-at point (orbit pivot / aim). In orbit mode, move it to "
+                                "pan/translate the whole camera. Ignored in quaternion mode. "
+                                "Defaults to the origin."
+                            ),
+                        ),
+                        _number(
+                            "target_y",
+                            0.0,
+                            -1000.0,
+                            1000.0,
+                            0.01,
+                        ),
+                        _number(
+                            "target_z",
+                            0.0,
+                            -1000.0,
+                            1000.0,
+                            0.01,
+                        ),
+                    ),
                 ),
+                Output("camera_info", TypeExpr.concrete(LOAD3D_CAMERA_TYPE), label="camera_info"),
             ),
         )
         return with_identity_replacement(schema, "CreateCameraInfo")

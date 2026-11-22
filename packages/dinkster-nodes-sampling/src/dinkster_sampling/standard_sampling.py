@@ -15,11 +15,12 @@ from dinkster_api.v1 import (
     MODEL_TYPE,
     ComboOption,
     ComboWidget,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
+    Section,
     TypeExpr,
     initialize_inference_process,
     materialize_latent,
@@ -49,8 +50,8 @@ _LATENT = TypeExpr.concrete(LATENT_TYPE)
 _MODEL = TypeExpr.concrete(MODEL_TYPE)
 
 
-def _combo(name: str, options: tuple[str, ...]) -> InputSpec:
-    return InputSpec(
+def _combo(name: str, options: tuple[str, ...]) -> Input:
+    return Input(
         name,
         _COMBO,
         widget=ComboWidget(tuple(ComboOption(option) for option in options)),
@@ -58,13 +59,15 @@ def _combo(name: str, options: tuple[str, ...]) -> InputSpec:
 
 
 def _integer(
-    name: str, default: int, minimum: int, maximum: int, *, advanced: bool = False
-) -> InputSpec:
-    return InputSpec(
+    name: str,
+    default: int,
+    minimum: int,
+    maximum: int,
+) -> Input:
+    return Input(
         name,
         _INT,
         default=default,
-        advanced=advanced,
         widget=NumberWidget(min=minimum, max=maximum),
     )
 
@@ -153,20 +156,17 @@ class KSampler(Node):
                     "txt2img",
                     "img2img",
                 ),
-                inputs=(
-                    InputSpec("model", _MODEL),
-                    InputSpec(
+                body=(
+                    Input("model", _MODEL),
+                    Input(
                         "seed",
                         _INT,
                         default=0,
-                        widget=NumberWidget(
-                            min=0,
-                            max=0xFFFFFFFFFFFFFFFF,
-                            control_after_generate="fixed",
-                        ),
+                        widget=NumberWidget(min=0, max=0xFFFFFFFFFFFFFFFF),
+                        after_run="fixed",
                     ),
                     _integer("steps", 20, 1, 10_000),
-                    InputSpec(
+                    Input(
                         "cfg",
                         _FLOAT,
                         default=8.0,
@@ -174,17 +174,17 @@ class KSampler(Node):
                     ),
                     _combo("sampler_name", SAMPLER_NAMES),
                     _combo("scheduler", SCHEDULER_NAMES),
-                    InputSpec("positive", _CONDITIONING),
-                    InputSpec("negative", _CONDITIONING),
-                    InputSpec("latent_image", _LATENT),
-                    InputSpec(
+                    Input("positive", _CONDITIONING),
+                    Input("negative", _CONDITIONING),
+                    Input("latent_image", _LATENT),
+                    Input(
                         "denoise",
                         _FLOAT,
                         default=1.0,
                         widget=NumberWidget(min=0.0, max=1.0, step=0.01),
                     ),
+                    Output("LATENT", _LATENT, tooltip="The denoised latent."),
                 ),
-                outputs=(OutputSpec("LATENT", _LATENT, doc="The denoised latent."),),
             ),
             "KSampler",
         )
@@ -232,26 +232,17 @@ class KSamplerAdvanced(Node):
                 node_type="dinkster.sampling.k_sampler_advanced",
                 display_name="KSampler (Advanced)",
                 category="model/sampling",
-                inputs=(
-                    InputSpec("model", _MODEL),
-                    InputSpec(
-                        "add_noise",
-                        _COMBO,
-                        advanced=True,
-                        widget=ComboWidget((ComboOption("enable"), ComboOption("disable"))),
-                    ),
-                    InputSpec(
+                body=(
+                    Input("model", _MODEL),
+                    Input(
                         "noise_seed",
                         _INT,
                         default=0,
-                        widget=NumberWidget(
-                            min=0,
-                            max=0xFFFFFFFFFFFFFFFF,
-                            control_after_generate="fixed",
-                        ),
+                        widget=NumberWidget(min=0, max=0xFFFFFFFFFFFFFFFF),
+                        after_run="fixed",
                     ),
                     _integer("steps", 20, 1, 10_000),
-                    InputSpec(
+                    Input(
                         "cfg",
                         _FLOAT,
                         default=8.0,
@@ -259,19 +250,40 @@ class KSamplerAdvanced(Node):
                     ),
                     _combo("sampler_name", SAMPLER_NAMES),
                     _combo("scheduler", SCHEDULER_NAMES),
-                    InputSpec("positive", _CONDITIONING),
-                    InputSpec("negative", _CONDITIONING),
-                    InputSpec("latent_image", _LATENT),
-                    _integer("start_at_step", 0, 0, 10_000, advanced=True),
-                    _integer("end_at_step", 10_000, 0, 10_000, advanced=True),
-                    InputSpec(
-                        "return_with_leftover_noise",
-                        _COMBO,
-                        advanced=True,
-                        widget=ComboWidget((ComboOption("disable"), ComboOption("enable"))),
+                    Input("positive", _CONDITIONING),
+                    Input("negative", _CONDITIONING),
+                    Input("latent_image", _LATENT),
+                    Section(
+                        "advanced",
+                        label="Advanced",
+                        collapsed=True,
+                        rows=(
+                            Input(
+                                "add_noise",
+                                _COMBO,
+                                widget=ComboWidget((ComboOption("enable"), ComboOption("disable"))),
+                            ),
+                            _integer(
+                                "start_at_step",
+                                0,
+                                0,
+                                10_000,
+                            ),
+                            _integer(
+                                "end_at_step",
+                                10_000,
+                                0,
+                                10_000,
+                            ),
+                            Input(
+                                "return_with_leftover_noise",
+                                _COMBO,
+                                widget=ComboWidget((ComboOption("disable"), ComboOption("enable"))),
+                            ),
+                        ),
                     ),
+                    Output("LATENT", _LATENT),
                 ),
-                outputs=(OutputSpec("LATENT", _LATENT),),
             ),
             "KSamplerAdvanced",
         )

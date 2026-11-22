@@ -13,10 +13,10 @@ import pytest
 from dinkster_api.v1 import (
     VIDEO_EDIT_TYPE,
     VIDEO_TYPE,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
-    OutputSpec,
+    Output,
     TypeExpr,
     assemble_video,
     disassemble_video,
@@ -45,7 +45,10 @@ def test_native_video_registration_is_torch_free_and_preserves_first_authority()
         ],
         check=True,
     )
-    from dinkster_api.v1 import TypeRegistry, register_video_edit_type
+    from dinkster_api.v1 import (
+        TypeRegistry,
+        register_video_edit_type,
+    )
     from dinkster_inference_wire.types import register_inference_types
     from dinkster_video import register_types
 
@@ -89,7 +92,10 @@ def test_shared_video_edit_registration_is_torch_free_and_preserves_first_author
         ],
         check=True,
     )
-    from dinkster_api.v1 import TypeRegistry, register_video_edit_type
+    from dinkster_api.v1 import (
+        TypeRegistry,
+        register_video_edit_type,
+    )
     from dinkster_inference_wire.types import register_inference_types
 
     value = {
@@ -127,8 +133,10 @@ class VideoEditLiteralFixture(Node):
     def define_schema(cls) -> NodeSchema:
         return NodeSchema(
             node_type="video-edit-public.apply",
-            inputs=(InputSpec("edit", TypeExpr.concrete(VIDEO_EDIT_TYPE)),),
-            outputs=(OutputSpec("edit", TypeExpr.concrete(VIDEO_EDIT_TYPE)),),
+            body=(
+                Input("edit", TypeExpr.concrete(VIDEO_EDIT_TYPE)),
+                Output("edit", TypeExpr.concrete(VIDEO_EDIT_TYPE)),
+            ),
         )
 
     @classmethod

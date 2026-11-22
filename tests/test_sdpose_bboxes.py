@@ -12,10 +12,10 @@ from dinkster_api.v1 import (
     BOUNDING_BOX_TYPE,
     CORE_STRING,
     POSE_KEYPOINT_TYPE,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
-    OutputSpec,
+    Output,
     TypeExpr,
 )
 from dinkster_graph import Graph, GraphNode, Link
@@ -127,7 +127,7 @@ class FaceSource(Node):
     def define_schema(cls) -> NodeSchema:
         return NodeSchema(
             "sdpose-fixture.source",
-            outputs=(OutputSpec("keypoints", TypeExpr.concrete(POSE_KEYPOINT_TYPE)),),
+            body=(Output("keypoints", TypeExpr.concrete(POSE_KEYPOINT_TYPE)),),
         )
 
     @classmethod
@@ -140,11 +140,11 @@ class FaceObserver(Node):
     def define_schema(cls) -> NodeSchema:
         return NodeSchema(
             "sdpose-fixture.observer",
-            inputs=(
-                InputSpec("keypoints", TypeExpr.concrete(POSE_KEYPOINT_TYPE)),
-                InputSpec("boxes", TypeExpr.concrete(BOUNDING_BOX_TYPE)),
+            body=(
+                Input("keypoints", TypeExpr.concrete(POSE_KEYPOINT_TYPE)),
+                Input("boxes", TypeExpr.concrete(BOUNDING_BOX_TYPE)),
+                Output("result", TypeExpr.concrete(CORE_STRING)),
             ),
-            outputs=(OutputSpec("result", TypeExpr.concrete(CORE_STRING)),),
         )
 
     @classmethod

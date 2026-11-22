@@ -10,11 +10,11 @@ from dinkster_api.v1 import (
     IMAGE_TYPE,
     LATENT_TYPE,
     OPTICAL_FLOW_TYPE,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
     TypeExpr,
     initialize_inference_process,
     materialize_image,
@@ -29,43 +29,41 @@ class VOIDWarpedNoise(Node):
         schema = NodeSchema(
             node_type="dinkster.void.void_warped_noise",
             category="model/latent/void",
-            inputs=(
-                InputSpec(
+            body=(
+                Input(
                     "optical_flow",
                     TypeExpr.concrete(OPTICAL_FLOW_TYPE),
-                    doc="Optical flow model from OpticalFlowLoader (RAFT-large).",
+                    tooltip="Optical flow model from OpticalFlowLoader (RAFT-large).",
                 ),
-                InputSpec(
+                Input(
                     "video",
                     TypeExpr.concrete(IMAGE_TYPE),
-                    doc="Pass 1 output video frames [T, H, W, 3]",
+                    tooltip="Pass 1 output video frames [T, H, W, 3]",
                 ),
-                InputSpec(
+                Input(
                     "width",
                     integer,
                     default=672,
                     widget=NumberWidget(min=16, max=16384, step=8),
                 ),
-                InputSpec(
+                Input(
                     "height",
                     integer,
                     default=384,
                     widget=NumberWidget(min=16, max=16384, step=8),
                 ),
-                InputSpec(
+                Input(
                     "length",
                     integer,
                     default=45,
                     widget=NumberWidget(min=1, max=16384, step=1),
-                    doc=(
+                    tooltip=(
                         "Number of pixel frames. Rounded down to make latent_t even "
                         "(patch_size_t=2 requirement), e.g. 49 -> 45."
                     ),
                 ),
-                InputSpec("batch_size", integer, default=1, widget=NumberWidget(min=1, max=64)),
-            ),
-            outputs=(
-                OutputSpec("LATENT", TypeExpr.concrete(LATENT_TYPE), display_name="warped_noise"),
+                Input("batch_size", integer, default=1, widget=NumberWidget(min=1, max=64)),
+                Output("LATENT", TypeExpr.concrete(LATENT_TYPE), label="warped_noise"),
             ),
         )
         return with_identity_replacement(schema, "VOIDWarpedNoise")

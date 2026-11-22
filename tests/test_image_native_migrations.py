@@ -11,12 +11,12 @@ from typing import Any, cast
 
 from dinkster_image._draft_initialization import IMAGE_NODES
 from dinkster_schema import (
+    Choice,
     ComboWidget,
-    DynamicComboSpec,
     DynamicEntry,
     DynamicSlotSpec,
-    InputFamilySpec,
-    InputSpec,
+    Group,
+    Input,
     MappingSource,
     NodeSchema,
     ReplacementPredicate,
@@ -297,9 +297,9 @@ def _dynamic_ids(entries: Sequence[DynamicEntry]) -> set[str]:
     found: set[str] = set()
     for entry in entries:
         found.add(entry.id)
-        if isinstance(entry, InputFamilySpec):
+        if isinstance(entry, Group):
             found.update(_dynamic_ids(entry.template))
-        elif isinstance(entry, DynamicComboSpec):
+        elif isinstance(entry, Choice):
             for option in entry.options:
                 found.update(_dynamic_ids(option.inputs))
         elif isinstance(entry, DynamicSlotSpec):
@@ -313,9 +313,9 @@ def _nested_entries(entries: Sequence[DynamicEntry]) -> list[DynamicEntry]:
     found: list[DynamicEntry] = []
     for entry in entries:
         found.append(entry)
-        if isinstance(entry, InputFamilySpec):
+        if isinstance(entry, Group):
             found.extend(_nested_entries(entry.template))
-        elif isinstance(entry, DynamicComboSpec):
+        elif isinstance(entry, Choice):
             for option in entry.options:
                 found.extend(_nested_entries(option.inputs))
         elif isinstance(entry, DynamicSlotSpec):
@@ -328,7 +328,7 @@ def _nested_entries(entries: Sequence[DynamicEntry]) -> list[DynamicEntry]:
 def _default_choices(entries: Sequence[DynamicEntry], parent: str = "") -> dict[str, str]:
     choices: dict[str, str] = {}
     for entry in entries:
-        if not isinstance(entry, DynamicComboSpec):
+        if not isinstance(entry, Choice):
             continue
         path = f"{parent}.{entry.id}" if parent else entry.id
         assert entry.default is not None
@@ -434,7 +434,7 @@ def test_dynamic_inputs_preserve_v1_types_defaults_and_options() -> None:
         old_inputs = {spec.id: spec for spec in _v1_schemas()[node_type].inputs}
         entries = _nested_entries((*current.combos, *current.slots))
         for entry in entries:
-            if isinstance(entry, InputSpec) and entry.id == "mask_polarity":
+            if isinstance(entry, Input) and entry.id == "mask_polarity":
                 assert isinstance(entry.widget, ComboWidget)
                 assert entry.widget.options == ("coverage", "transparency")
                 assert entry.default == "coverage"
@@ -447,7 +447,7 @@ def test_dynamic_inputs_preserve_v1_types_defaults_and_options() -> None:
                     ("dinkster.mask.morphology", "connectivity"),
                 }
                 continue
-            if isinstance(entry, InputSpec):
+            if isinstance(entry, Input):
                 expected_type = (
                     TypeExpr.concrete("REGION")
                     if old.type == TypeExpr.concrete("dinkster.region")
@@ -458,7 +458,7 @@ def test_dynamic_inputs_preserve_v1_types_defaults_and_options() -> None:
                     old.default,
                     old.widget,
                 )
-            elif isinstance(entry, DynamicComboSpec):
+            elif isinstance(entry, Choice):
                 assert entry.default == old.default
                 assert isinstance(old.widget, ComboWidget)
                 current_only = {option.key for option in entry.options} - set(old.widget.options)

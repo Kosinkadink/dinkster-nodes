@@ -10,11 +10,11 @@ from dinkster_api.v1 import (
     CORE_INT,
     IMAGE_TYPE,
     LATENT_TYPE,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
     TypeExpr,
     materialize_image,
     materialize_latent,
@@ -36,8 +36,8 @@ _LATENTS = TypeExpr.list_of(_LATENT)
 _INT = TypeExpr.concrete(CORE_INT)
 
 
-def _batch_size() -> InputSpec:
-    return InputSpec("batch_size", _INT, default=1, widget=NumberWidget(min=1, max=4096))
+def _batch_size() -> Input:
+    return Input("batch_size", _INT, default=1, widget=NumberWidget(min=1, max=4096))
 
 
 class RebatchLatents(Node):
@@ -48,8 +48,11 @@ class RebatchLatents(Node):
                 node_type="dinkster.latent.rebatch_latents",
                 display_name="Rebatch Latents",
                 category="model/latent/batch",
-                inputs=(InputSpec("latents", _LATENTS), _batch_size()),
-                outputs=(OutputSpec("LATENT", _LATENTS),),
+                body=(
+                    Input("latents", _LATENTS),
+                    _batch_size(),
+                    Output("LATENT", _LATENTS),
+                ),
             ),
             "RebatchLatents",
         )
@@ -152,8 +155,11 @@ class RebatchImages(Node):
                 node_type="dinkster.latent.rebatch_images",
                 display_name="Rebatch Images",
                 category="image/batch",
-                inputs=(InputSpec("images", _IMAGES), _batch_size()),
-                outputs=(OutputSpec("IMAGE", _IMAGES),),
+                body=(
+                    Input("images", _IMAGES),
+                    _batch_size(),
+                    Output("IMAGE", _IMAGES),
+                ),
             ),
             "RebatchImages",
         )

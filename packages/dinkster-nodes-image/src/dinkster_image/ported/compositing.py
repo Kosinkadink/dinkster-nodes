@@ -13,10 +13,10 @@ from dinkster_api.v1 import (
     MASK_TYPE,
     ComboOption,
     ComboWidget,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
-    OutputSpec,
+    Output,
     TypeExpr,
     materialize_image,
     with_identity_replacement,
@@ -172,19 +172,20 @@ class PorterDuffImageComposite(Node):
                 "layer blend",
                 "transparency blend",
             ),
-            inputs=(
-                InputSpec("source", _IMAGE),
-                InputSpec("source_alpha", _MASK),
-                InputSpec("destination", _IMAGE),
-                InputSpec("destination_alpha", _MASK),
-                InputSpec(
+            body=(
+                Input("source", _IMAGE),
+                Input("source_alpha", _MASK),
+                Input("destination", _IMAGE),
+                Input("destination_alpha", _MASK),
+                Input(
                     "mode",
                     _COMBO,
                     default=PorterDuffMode.DST.name,
                     widget=ComboWidget(tuple(ComboOption(mode.name) for mode in PorterDuffMode)),
                 ),
+                Output("IMAGE", _IMAGE),
+                Output("MASK", _MASK),
             ),
-            outputs=(OutputSpec("IMAGE", _IMAGE), OutputSpec("MASK", _MASK)),
         )
         return with_identity_replacement(schema, "PorterDuffImageComposite")
 
@@ -273,8 +274,7 @@ class SplitImageWithAlpha(Node):
             display_name="Split Image with Alpha",
             category="image/compositing",
             search_terms=("extract alpha", "separate transparency", "remove alpha"),
-            inputs=(InputSpec("image", _IMAGE),),
-            outputs=(OutputSpec("IMAGE", _IMAGE), OutputSpec("MASK", _MASK)),
+            body=(Input("image", _IMAGE), Output("IMAGE", _IMAGE), Output("MASK", _MASK)),
         )
         return with_identity_replacement(schema, "SplitImageWithAlpha")
 
@@ -297,8 +297,11 @@ class JoinImageWithAlpha(Node):
             display_name="Join Image with Alpha",
             category="image/compositing",
             search_terms=("add transparency", "apply alpha", "composite alpha", "RGBA"),
-            inputs=(InputSpec("image", _IMAGE), InputSpec("alpha", _MASK)),
-            outputs=(OutputSpec("IMAGE", _IMAGE),),
+            body=(
+                Input("image", _IMAGE),
+                Input("alpha", _MASK),
+                Output("IMAGE", _IMAGE),
+            ),
         )
         return with_identity_replacement(schema, "JoinImageWithAlpha")
 

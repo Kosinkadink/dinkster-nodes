@@ -10,11 +10,12 @@ from dinkster_api.v1 import (
     CORE_INT,
     WAN_CAMERA_EMBEDDING_TYPE,
     ComboWidget,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
+    Section,
     TypeExpr,
     initialize_inference_process,
     with_identity_replacement,
@@ -95,80 +96,81 @@ class WanCameraEmbedding(Node):
         schema = NodeSchema(
             node_type="dinkster.wan.wan_camera_embedding",
             category="model/conditioning/wan/camera",
-            inputs=(
-                InputSpec(
+            body=(
+                Input(
                     "camera_pose",
                     TypeExpr.concrete(CORE_COMBO),
                     default="Static",
                     widget=ComboWidget(tuple(_MOTIONS)),
                 ),
-                InputSpec(
+                Input(
                     "width",
                     TypeExpr.concrete(CORE_INT),
                     default=832,
                     widget=NumberWidget(min=16, max=16384, step=16),
                 ),
-                InputSpec(
+                Input(
                     "height",
                     TypeExpr.concrete(CORE_INT),
                     default=480,
                     widget=NumberWidget(min=16, max=16384, step=16),
                 ),
-                InputSpec(
+                Input(
                     "length",
                     TypeExpr.concrete(CORE_INT),
                     default=81,
                     widget=NumberWidget(min=1, max=16384, step=4),
                 ),
-                InputSpec(
+                Input(
                     "speed",
                     TypeExpr.concrete(CORE_FLOAT),
                     default=1.0,
                     required=False,
                     widget=NumberWidget(min=0, max=10.0, step=0.1),
                 ),
-                InputSpec(
-                    "fx",
-                    TypeExpr.concrete(CORE_FLOAT),
-                    default=0.5,
-                    required=False,
-                    advanced=True,
-                    widget=NumberWidget(min=0, max=1, step=0.000000001),
+                Section(
+                    "advanced",
+                    label="Advanced",
+                    collapsed=True,
+                    rows=(
+                        Input(
+                            "fx",
+                            TypeExpr.concrete(CORE_FLOAT),
+                            default=0.5,
+                            required=False,
+                            widget=NumberWidget(min=0, max=1, step=0.000000001),
+                        ),
+                        Input(
+                            "fy",
+                            TypeExpr.concrete(CORE_FLOAT),
+                            default=0.5,
+                            required=False,
+                            widget=NumberWidget(min=0, max=1, step=0.000000001),
+                        ),
+                        Input(
+                            "cx",
+                            TypeExpr.concrete(CORE_FLOAT),
+                            default=0.5,
+                            required=False,
+                            widget=NumberWidget(min=0, max=1, step=0.01),
+                        ),
+                        Input(
+                            "cy",
+                            TypeExpr.concrete(CORE_FLOAT),
+                            default=0.5,
+                            required=False,
+                            widget=NumberWidget(min=0, max=1, step=0.01),
+                        ),
+                    ),
                 ),
-                InputSpec(
-                    "fy",
-                    TypeExpr.concrete(CORE_FLOAT),
-                    default=0.5,
-                    required=False,
-                    advanced=True,
-                    widget=NumberWidget(min=0, max=1, step=0.000000001),
-                ),
-                InputSpec(
-                    "cx",
-                    TypeExpr.concrete(CORE_FLOAT),
-                    default=0.5,
-                    required=False,
-                    advanced=True,
-                    widget=NumberWidget(min=0, max=1, step=0.01),
-                ),
-                InputSpec(
-                    "cy",
-                    TypeExpr.concrete(CORE_FLOAT),
-                    default=0.5,
-                    required=False,
-                    advanced=True,
-                    widget=NumberWidget(min=0, max=1, step=0.01),
-                ),
-            ),
-            outputs=(
-                OutputSpec(
+                Output(
                     "camera_embedding",
                     TypeExpr.concrete(WAN_CAMERA_EMBEDDING_TYPE),
-                    display_name="camera_embedding",
+                    label="camera_embedding",
                 ),
-                OutputSpec("width", TypeExpr.concrete(CORE_INT), display_name="width"),
-                OutputSpec("height", TypeExpr.concrete(CORE_INT), display_name="height"),
-                OutputSpec("length", TypeExpr.concrete(CORE_INT), display_name="length"),
+                Output("width", TypeExpr.concrete(CORE_INT), label="width"),
+                Output("height", TypeExpr.concrete(CORE_INT), label="height"),
+                Output("length", TypeExpr.concrete(CORE_INT), label="length"),
             ),
         )
         return with_identity_replacement(schema, "WanCameraEmbedding")

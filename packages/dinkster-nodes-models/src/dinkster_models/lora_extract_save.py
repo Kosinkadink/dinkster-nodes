@@ -21,12 +21,14 @@ from dinkster_api.v1 import (
     AssetError,
     AssetWriter,
     ComboWidget,
-    InputSpec,
+    Input,
     MountSnapshotWriter,
     MountWidget,
     Node,
     NodeSchema,
     NumberWidget,
+    Row,
+    Section,
     StringWidget,
     TypeExpr,
     attach_saved_artifact,
@@ -169,49 +171,59 @@ class LoraSave(Node):
                 display_name="Extract and Save Lora",
                 category="experimental",
                 search_terms=("export lora",),
-                inputs=(
-                    InputSpec(
-                        "filename_prefix",
-                        _STRING,
-                        default="loras/ComfyUI_extracted_lora",
-                        widget=StringWidget(multiline=False),
+                body=(
+                    Row(
+                        rows=(
+                            Input(
+                                "filename_prefix",
+                                _STRING,
+                                default="loras/ComfyUI_extracted_lora",
+                                widget=StringWidget(multiline=False),
+                            ),
+                            Input(
+                                "mount",
+                                _STRING,
+                                required=False,
+                                default=None,
+                                widget=MountWidget(),
+                            ),
+                        )
                     ),
-                    InputSpec(
-                        "rank",
-                        TypeExpr.concrete(CORE_INT),
-                        default=8,
-                        advanced=True,
-                        widget=NumberWidget(min=1, max=4096, step=1),
-                    ),
-                    InputSpec(
-                        "lora_type",
-                        TypeExpr.concrete(CORE_COMBO),
-                        default="standard",
-                        advanced=True,
-                        widget=ComboWidget(tuple(LORA_TYPES)),
-                    ),
-                    InputSpec(
-                        "bias_diff", TypeExpr.concrete(CORE_BOOLEAN), default=True, advanced=True
-                    ),
-                    InputSpec(
+                    Input(
                         "model_diff",
                         _MODEL,
                         required=False,
-                        doc="The ModelSubtract output to be converted to a lora.",
+                        tooltip="The ModelSubtract output to be converted to a lora.",
                     ),
-                    InputSpec(
+                    Input(
                         "text_encoder_diff",
                         _CLIP,
                         required=False,
-                        doc="The CLIPSubtract output to be converted to a lora.",
+                        tooltip="The CLIPSubtract output to be converted to a lora.",
                     ),
-                    InputSpec(
-                        "mount",
-                        _STRING,
-                        required=False,
-                        default=None,
-                        widget=MountWidget(),
-                        adjacent_to="filename_prefix",
+                    Section(
+                        "advanced",
+                        label="Advanced",
+                        collapsed=True,
+                        rows=(
+                            Input(
+                                "rank",
+                                TypeExpr.concrete(CORE_INT),
+                                default=8,
+                                widget=NumberWidget(min=1, max=4096, step=1),
+                            ),
+                            Input(
+                                "lora_type",
+                                TypeExpr.concrete(CORE_COMBO),
+                                default="standard",
+                                widget=ComboWidget(tuple(LORA_TYPES)),
+                            ),
+                            Input(
+                                "bias_diff",
+                                TypeExpr.concrete(CORE_BOOLEAN),
+                                default=True,
+                            ),
+                        ),
                     ),
                 ),
                 idempotent=False,

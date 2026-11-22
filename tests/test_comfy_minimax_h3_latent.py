@@ -8,9 +8,9 @@ from dinkster_api.v1 import (
     IMAGE_TYPE,
     LATENT_TYPE,
     VAE_TYPE,
-    InputSpec,
+    Input,
     NumberWidget,
-    OutputSpec,
+    Output,
     StringWidget,
     TypeExpr,
     schema_from_wire,
@@ -28,13 +28,13 @@ def test_minimax_h3_empty_av_schema_and_cold_discovery() -> None:
     assert schema.display_name == "Empty MiniMax H3 AV Latent"
     assert schema.category == "model/latent/minimax"
     assert schema.inputs[:2] == (
-        InputSpec("width", integer, default=1344, widget=NumberWidget(min=32, max=16384, step=32)),
-        InputSpec("height", integer, default=768, widget=NumberWidget(min=32, max=16384, step=32)),
+        Input("width", integer, default=1344, widget=NumberWidget(min=32, max=16384, step=32)),
+        Input("height", integer, default=768, widget=NumberWidget(min=32, max=16384, step=32)),
     )
     assert schema.inputs[2].id == "length"
     assert schema.inputs[2].default == 124
     assert schema.inputs[2].widget == NumberWidget(min=5, max=3600, step=17)
-    assert schema.outputs == (OutputSpec("LATENT", TypeExpr.concrete(LATENT_TYPE)),)
+    assert schema.outputs == (Output("LATENT", TypeExpr.concrete(LATENT_TYPE)),)
     assert schema_from_wire(schema_to_wire(schema)) == schema
 
 
@@ -44,20 +44,20 @@ def test_minimax_h3_image_schema_and_cold_discovery() -> None:
     assert schema.display_name == "MiniMax H3 Image to Video"
     assert schema.category == "model/conditioning/minimax"
     assert schema.inputs == (
-        InputSpec("clip", TypeExpr.concrete(CLIP_TYPE)),
-        InputSpec("vae", TypeExpr.concrete(VAE_TYPE)),
-        InputSpec(
+        Input("clip", TypeExpr.concrete(CLIP_TYPE)),
+        Input("vae", TypeExpr.concrete(VAE_TYPE)),
+        Input(
             "prompt",
             TypeExpr.concrete(CORE_STRING),
             widget=StringWidget(multiline=True, dynamic_prompts=True),
         ),
         *EmptyMiniMaxH3LatentAV.schema().inputs,
-        InputSpec("first_frame", TypeExpr.concrete(IMAGE_TYPE), required=False),
-        InputSpec("last_frame", TypeExpr.concrete(IMAGE_TYPE), required=False),
+        Input("first_frame", TypeExpr.concrete(IMAGE_TYPE), required=False),
+        Input("last_frame", TypeExpr.concrete(IMAGE_TYPE), required=False),
     )
     assert schema.outputs == (
-        OutputSpec("positive", TypeExpr.concrete(CONDITIONING_TYPE)),
-        OutputSpec("LATENT", TypeExpr.concrete(LATENT_TYPE)),
+        Output("positive", TypeExpr.concrete(CONDITIONING_TYPE)),
+        Output("LATENT", TypeExpr.concrete(LATENT_TYPE)),
     )
     assert schema_from_wire(schema_to_wire(schema)) == schema
     assert NODES.count(MiniMaxH3ImageToVideo) == 1

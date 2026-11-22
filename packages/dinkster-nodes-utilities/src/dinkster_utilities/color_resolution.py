@@ -15,11 +15,12 @@ from dinkster_api.v1 import (
     ComboOption,
     ComboWidget,
     CustomWidgetDescriptor,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
+    Section,
     TypeExpr,
     with_identity_replacement,
 )
@@ -47,11 +48,11 @@ class ColorToRGBInt(Node):
             display_name="Color Picker",
             category="utilities",
             description="Return a color RGB integer value and hexadecimal representation.",
-            inputs=(InputSpec("color", _COLOR, default="#ffffff", widget=ColorWidget()),),
-            outputs=(
-                OutputSpec("rgb_int", _INT),
-                OutputSpec("hex", _COLOR),
-                OutputSpec("alpha", _FLOAT),
+            body=(
+                Input("color", _COLOR, default="#ffffff", widget=ColorWidget()),
+                Output("rgb_int", _INT),
+                Output("hex", _COLOR),
+                Output("alpha", _FLOAT),
             ),
         )
         return with_identity_replacement(schema, "ColorToRGBInt")
@@ -86,27 +87,27 @@ class ResolutionSelector(Node):
                 "Calculate width and height from aspect ratio and megapixel target. Useful for "
                 "setting up Empty Latent Image dimensions."
             ),
-            inputs=(
-                InputSpec(
+            body=(
+                Input(
                     "aspect_ratio",
                     TypeExpr.concrete(CORE_COMBO),
                     default="1:1 (Square)",
-                    doc="The aspect ratio for the output dimensions.",
+                    tooltip="The aspect ratio for the output dimensions.",
                     widget=ComboWidget(tuple(ComboOption(value) for value in _ASPECT_RATIOS)),
                 ),
-                InputSpec(
+                Input(
                     "megapixels",
                     _FLOAT,
                     default=1.0,
-                    doc="Target total megapixels. 1.0 MP is approximately 1024x1024 for square.",
+                    tooltip="Target total megapixels. 1.0 MP is approximately 1024x1024 for square.",
                     widget=NumberWidget(min=0.1, max=16.0, step=0.1),
                 ),
-                InputSpec(
+                Input(
                     "preview",
                     TypeExpr.concrete(RESOLUTION_PREVIEW_TYPE),
                     required=False,
                     default=None,
-                    doc="Live preview of the calculated output resolution.",
+                    tooltip="Live preview of the calculated output resolution.",
                     widget=CustomWidgetDescriptor(
                         "RESOLUTION_PREVIEW",
                         {
@@ -116,25 +117,29 @@ class ResolutionSelector(Node):
                         },
                     ),
                 ),
-                InputSpec(
-                    "multiple",
-                    _INT,
-                    default=8,
-                    advanced=True,
-                    doc="Nearest multiple of the result to set the selected resolution to.",
-                    widget=NumberWidget(min=8, max=128, step=4),
+                Section(
+                    "advanced",
+                    label="Advanced",
+                    collapsed=True,
+                    rows=(
+                        Input(
+                            "multiple",
+                            _INT,
+                            default=8,
+                            tooltip="Nearest multiple of the result to set the selected resolution to.",
+                            widget=NumberWidget(min=8, max=128, step=4),
+                        ),
+                    ),
                 ),
-            ),
-            outputs=(
-                OutputSpec(
+                Output(
                     "width",
                     _INT,
-                    doc="Calculated width in pixels multiplied by the selected multiple.",
+                    tooltip="Calculated width in pixels multiplied by the selected multiple.",
                 ),
-                OutputSpec(
+                Output(
                     "height",
                     _INT,
-                    doc="Calculated height in pixels multiplied by the selected multiple.",
+                    tooltip="Calculated height in pixels multiplied by the selected multiple.",
                 ),
             ),
         )

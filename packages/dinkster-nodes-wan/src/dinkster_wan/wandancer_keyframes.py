@@ -10,11 +10,11 @@ from dinkster_api.v1 import (
     CORE_INT,
     IMAGE_TYPE,
     MASK_TYPE,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
     TypeExpr,
     initialize_inference_process,
     materialize_audio,
@@ -97,32 +97,30 @@ class WanDancerPadKeyframes(Node):
         schema = NodeSchema(
             node_type="dinkster.wan.wan_dancer_pad_keyframes",
             category="image/video",
-            inputs=(
-                InputSpec("images", _IMAGE),
-                InputSpec(
+            body=(
+                Input("images", _IMAGE),
+                Input(
                     "segment_length",
                     _INT,
                     default=149,
                     widget=NumberWidget(min=1, max=10000),
-                    doc="Length of this segment (usually 149 frames)",
+                    tooltip="Length of this segment (usually 149 frames)",
                 ),
-                InputSpec(
+                Input(
                     "segment_index",
                     _INT,
                     default=0,
                     widget=NumberWidget(min=0, max=100),
-                    doc="Which segment this is (0 for first, 1 for second, etc.)",
+                    tooltip="Which segment this is (0 for first, 1 for second, etc.)",
                 ),
-                InputSpec(
+                Input(
                     "audio",
                     _AUDIO,
-                    doc="Audio to calculate total output frames from and extract segment audio.",
+                    tooltip="Audio to calculate total output frames from and extract segment audio.",
                 ),
-            ),
-            outputs=(
-                OutputSpec("keyframes_sequence", _IMAGE, doc="Padded keyframe sequence"),
-                OutputSpec("keyframes_mask", _MASK, doc="Mask indicating valid frames"),
-                OutputSpec("audio_segment", _AUDIO, doc="Audio segment for this video segment"),
+                Output("keyframes_sequence", _IMAGE, tooltip="Padded keyframe sequence"),
+                Output("keyframes_mask", _MASK, tooltip="Mask indicating valid frames"),
+                Output("audio_segment", _AUDIO, tooltip="Audio segment for this video segment"),
             ),
         )
         return with_identity_replacement(schema, "WanDancerPadKeyframes")
@@ -144,35 +142,37 @@ class WanDancerPadKeyframesList(Node):
         schema = NodeSchema(
             node_type="dinkster.wan.wan_dancer_pad_keyframes_list",
             category="image/video",
-            inputs=(
-                InputSpec("images", _IMAGE),
-                InputSpec(
+            body=(
+                Input("images", _IMAGE),
+                Input(
                     "segment_length",
                     _INT,
                     default=149,
                     widget=NumberWidget(min=1, max=10000),
-                    doc="Length of each segment (usually 149 frames)",
+                    tooltip="Length of each segment (usually 149 frames)",
                 ),
-                InputSpec(
+                Input(
                     "num_segments",
                     _INT,
                     default=1,
                     widget=NumberWidget(min=1, max=100),
-                    doc="How many padded segments to emit as lists.",
+                    tooltip="How many padded segments to emit as lists.",
                 ),
-                InputSpec("audio", _AUDIO, doc="Audio to slice for each emitted segment."),
-            ),
-            outputs=(
-                OutputSpec(
-                    "keyframes_sequence", TypeExpr.list_of(_IMAGE), doc="Padded keyframe sequences"
+                Input("audio", _AUDIO, tooltip="Audio to slice for each emitted segment."),
+                Output(
+                    "keyframes_sequence",
+                    TypeExpr.list_of(_IMAGE),
+                    tooltip="Padded keyframe sequences",
                 ),
-                OutputSpec(
-                    "keyframes_mask", TypeExpr.list_of(_MASK), doc="Masks indicating valid frames"
+                Output(
+                    "keyframes_mask",
+                    TypeExpr.list_of(_MASK),
+                    tooltip="Masks indicating valid frames",
                 ),
-                OutputSpec(
+                Output(
                     "audio_segment",
                     TypeExpr.list_of(_AUDIO),
-                    doc="Audio segment for each video segment",
+                    tooltip="Audio segment for each video segment",
                 ),
             ),
         )

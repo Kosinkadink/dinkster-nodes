@@ -14,10 +14,10 @@ from dinkster_api.v1 import (
     CORE_COMBO,
     AssetWidget,
     ComboWidget,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
-    OutputSpec,
+    Output,
     TypeExpr,
 )
 
@@ -42,9 +42,9 @@ class UpscaleWithModel(Node):
                 "(ESRGAN-family checkpoint asset). Large images are "
                 "processed as overlapping tiles blended back together."
             ),
-            inputs=(
-                InputSpec("image", IMAGE),
-                InputSpec(
+            body=(
+                Input("image", IMAGE),
+                Input(
                     "upscale_model",
                     ASSET,
                     widget=AssetWidget(
@@ -52,7 +52,7 @@ class UpscaleWithModel(Node):
                         kind="model/upscale",
                     ),
                 ),
-                InputSpec(
+                Input(
                     "provider",
                     COMBO,
                     required=False,
@@ -63,8 +63,8 @@ class UpscaleWithModel(Node):
                 ),
                 number_input("tile_size", INT, 512, minimum=128, maximum=16_384, step=64),
                 number_input("overlap", INT, 32, minimum=0, maximum=2_048, step=8),
+                Output("image", IMAGE, preview=True),
             ),
-            outputs=(OutputSpec("image", IMAGE, preview=True),),
             search_terms=("upscale model", "ESRGAN", "super resolution", "upscaler"),
         )
 

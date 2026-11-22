@@ -18,12 +18,13 @@ from dinkster_api.v1 import (
     MODEL_TYPE,
     SPLAT_TYPE,
     VAE_TYPE,
-    InputSpec,
+    Input,
     MultiStreamLatent,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
+    Section,
     TypeExpr,
     initialize_inference_process,
     materialize_image,
@@ -80,31 +81,31 @@ class TripoSplatPreprocessImage(Node):
             description=(
                 "Crop center each image to a square canvas on a black background and add padding."
             ),
-            inputs=(
-                InputSpec("image", TypeExpr.concrete(IMAGE_TYPE)),
-                InputSpec("mask", TypeExpr.concrete(MASK_TYPE)),
-                InputSpec(
+            body=(
+                Input("image", TypeExpr.concrete(IMAGE_TYPE)),
+                Input("mask", TypeExpr.concrete(MASK_TYPE)),
+                Input(
                     "erode_radius",
                     TypeExpr.concrete(CORE_INT),
                     default=1,
                     widget=NumberWidget(min=0, max=16),
-                    doc=(
+                    tooltip=(
                         "Erode the alpha matte by this pixel radius before cropping "
                         "(avoids border bleed)."
                     ),
                 ),
-                InputSpec(
+                Input(
                     "size",
                     TypeExpr.concrete(CORE_INT),
                     default=1024,
                     widget=NumberWidget(min=256, max=4096, step=16),
-                    doc=(
+                    tooltip=(
                         "Square image size. The model is trained at 1024; "
                         "other sizes run but are off-distribution."
                     ),
                 ),
+                Output("image", TypeExpr.concrete(IMAGE_TYPE)),
             ),
-            outputs=(OutputSpec("image", TypeExpr.concrete(IMAGE_TYPE)),),
         )
         return with_identity_replacement(schema, "TripoSplatPreprocessImage")
 
@@ -146,22 +147,20 @@ class TripoSplatConditioning(Node):
                 "positive/negative conditioning, and create the fixed size noise target "
                 "(latent + camera) for the KSampler"
             ),
-            inputs=(
-                InputSpec(
+            body=(
+                Input(
                     "clip_vision",
                     TypeExpr.concrete(CLIP_VISION_TYPE),
-                    doc="DINOv3 ViT-H/16+ image encoder",
+                    tooltip="DINOv3 ViT-H/16+ image encoder",
                 ),
-                InputSpec("vae", TypeExpr.concrete(VAE_TYPE), doc="Flux2 VAE"),
-                InputSpec("image", TypeExpr.concrete(IMAGE_TYPE)),
-            ),
-            outputs=(
-                OutputSpec("positive", TypeExpr.concrete(CONDITIONING_TYPE)),
-                OutputSpec("negative", TypeExpr.concrete(CONDITIONING_TYPE)),
-                OutputSpec(
+                Input("vae", TypeExpr.concrete(VAE_TYPE), tooltip="Flux2 VAE"),
+                Input("image", TypeExpr.concrete(IMAGE_TYPE)),
+                Output("positive", TypeExpr.concrete(CONDITIONING_TYPE)),
+                Output("negative", TypeExpr.concrete(CONDITIONING_TYPE)),
+                Output(
                     "latent",
                     TypeExpr.concrete(LATENT_TYPE),
-                    doc="The fixed size noise target (latent +camera).",
+                    tooltip="The fixed size noise target (latent +camera).",
                 ),
             ),
         )
@@ -211,30 +210,30 @@ class VAEDecodeTripoSplat(Node):
                 "Decode the sampled TripoSplat latent into a 3D gaussian splat. "
                 "Modify the number of gaussians to vary the density."
             ),
-            inputs=(
-                InputSpec("samples", TypeExpr.concrete(LATENT_TYPE)),
-                InputSpec("vae", TypeExpr.concrete(VAE_TYPE), doc="TripoSplat VAE decoder"),
-                InputSpec(
+            body=(
+                Input("samples", TypeExpr.concrete(LATENT_TYPE)),
+                Input("vae", TypeExpr.concrete(VAE_TYPE), tooltip="TripoSplat VAE decoder"),
+                Input(
                     "num_gaussians",
                     TypeExpr.concrete(CORE_INT),
                     default=262144,
                     widget=NumberWidget(min=32768, max=1048576, step=32),
-                    doc=(
+                    tooltip=(
                         "Number of gaussians to produce (rounded to a multiple of 32). "
                         "262144 matches the octree's point density; higher oversamples "
                         "the same points (denser, but no new detail) and costs "
                         "proportionally more VRAM/time."
                     ),
                 ),
-                InputSpec(
+                Input(
                     "seed",
                     TypeExpr.concrete(CORE_INT),
                     default=0,
                     widget=NumberWidget(min=0, max=0xFFFFFFFFFFFFFFFF),
-                    doc="Seeds the octree point sampler (global RNG) for deterministic decodes.",
+                    tooltip="Seeds the octree point sampler (global RNG) for deterministic decodes.",
                 ),
+                Output("splat", TypeExpr.concrete(SPLAT_TYPE)),
             ),
-            outputs=(OutputSpec("splat", TypeExpr.concrete(SPLAT_TYPE)),),
         )
         return with_identity_replacement(schema, "VAEDecodeTripoSplat")
 
@@ -289,55 +288,59 @@ class TripoSplatSamplingPreview(Node):
                 "Patch the TripoSplat model for the standard Ksampler node to show a live decoded "
                 "gaussian splat preview at each step."
             ),
-            inputs=(
-                InputSpec("model", TypeExpr.concrete(MODEL_TYPE)),
-                InputSpec("vae", TypeExpr.concrete(VAE_TYPE), doc="TripoSplat VAE decoder"),
-                InputSpec(
-                    "octree_level",
-                    TypeExpr.concrete(CORE_INT),
-                    default=5,
-                    widget=NumberWidget(min=2, max=8),
-                    advanced=True,
-                    doc="Octree depth for the preview decode (lower = cheaper/coarser).",
-                ),
-                InputSpec(
+            body=(
+                Input("model", TypeExpr.concrete(MODEL_TYPE)),
+                Input("vae", TypeExpr.concrete(VAE_TYPE), tooltip="TripoSplat VAE decoder"),
+                Input(
                     "num_gaussians",
                     TypeExpr.concrete(CORE_INT),
                     default=16384,
                     widget=NumberWidget(min=1024, max=262144, step=32),
-                    doc=(
+                    tooltip=(
                         "Number of gaussians to produce for the preview "
                         "(rounded to a multiple of 32)."
                     ),
                 ),
-                InputSpec(
-                    "yaw",
-                    TypeExpr.concrete(CORE_FLOAT),
-                    default=90.0,
-                    widget=NumberWidget(min=-360.0, max=360.0, step=1.0),
-                    advanced=True,
-                    doc="Preview camera yaw in degrees.",
-                ),
-                InputSpec(
-                    "pitch",
-                    TypeExpr.concrete(CORE_FLOAT),
-                    default=15.0,
-                    widget=NumberWidget(min=-89.0, max=89.0, step=1.0),
-                    advanced=True,
-                    doc="Preview camera pitch in degrees.",
-                ),
-                InputSpec(
+                Input(
                     "point_size",
                     TypeExpr.concrete(CORE_INT),
                     default=3,
                     widget=NumberWidget(min=1, max=16),
-                    doc=(
+                    tooltip=(
                         "Maximum splat radius in pixels. Each gaussian is sized from its scale "
                         "and capped here; lower = finer/pointier, higher = chunkier."
                     ),
                 ),
+                Section(
+                    "advanced",
+                    label="Advanced",
+                    collapsed=True,
+                    rows=(
+                        Input(
+                            "octree_level",
+                            TypeExpr.concrete(CORE_INT),
+                            default=5,
+                            widget=NumberWidget(min=2, max=8),
+                            tooltip="Octree depth for the preview decode (lower = cheaper/coarser).",
+                        ),
+                        Input(
+                            "yaw",
+                            TypeExpr.concrete(CORE_FLOAT),
+                            default=90.0,
+                            widget=NumberWidget(min=-360.0, max=360.0, step=1.0),
+                            tooltip="Preview camera yaw in degrees.",
+                        ),
+                        Input(
+                            "pitch",
+                            TypeExpr.concrete(CORE_FLOAT),
+                            default=15.0,
+                            widget=NumberWidget(min=-89.0, max=89.0, step=1.0),
+                            tooltip="Preview camera pitch in degrees.",
+                        ),
+                    ),
+                ),
+                Output("model", TypeExpr.concrete(MODEL_TYPE), label="MODEL"),
             ),
-            outputs=(OutputSpec("model", TypeExpr.concrete(MODEL_TYPE), display_name="MODEL"),),
         )
         return with_identity_replacement(schema, "TripoSplatSamplingPreview")
 

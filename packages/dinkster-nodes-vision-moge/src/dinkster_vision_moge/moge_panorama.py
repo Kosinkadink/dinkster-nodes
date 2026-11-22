@@ -11,11 +11,12 @@ from dinkster_api.v1 import (
     IMAGE_TYPE,
     MOGE_GEOMETRY_TYPE,
     MOGE_MODEL_TYPE,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
+    Section,
     TypeExpr,
     initialize_inference_process,
     materialize_image,
@@ -43,56 +44,62 @@ class MoGePanoramaInference(Node):
                 "depth estimation",
                 "geometry estimation",
             ),
-            inputs=(
-                InputSpec("moge_model", TypeExpr.concrete(MOGE_MODEL_TYPE)),
-                InputSpec(
+            body=(
+                Input("moge_model", TypeExpr.concrete(MOGE_MODEL_TYPE)),
+                Input(
                     "image",
                     TypeExpr.concrete(IMAGE_TYPE),
-                    doc="Equirectangular panorama (any aspect).",
+                    tooltip="Equirectangular panorama (any aspect).",
                 ),
-                InputSpec(
+                Input(
                     "resolution_level",
                     TypeExpr.concrete(CORE_INT),
                     default=9,
                     widget=NumberWidget(min=0, max=9),
-                    doc="Per-view detail (0 = fastest, 9 = most detailed).",
+                    tooltip="Per-view detail (0 = fastest, 9 = most detailed).",
                 ),
-                InputSpec(
+                Input(
                     "split_resolution",
                     TypeExpr.concrete(CORE_INT),
                     default=512,
                     widget=NumberWidget(min=256, max=1024),
-                    doc="Resolution of each perspective split.",
+                    tooltip="Resolution of each perspective split.",
                 ),
-                InputSpec(
+                Input(
                     "merge_resolution",
                     TypeExpr.concrete(CORE_INT),
                     default=1920,
                     widget=NumberWidget(min=256, max=8192),
-                    doc="Long-side resolution of the merged equirect distance map.",
+                    tooltip="Long-side resolution of the merged equirect distance map.",
                 ),
-                InputSpec(
+                Input(
                     "batch_size",
                     TypeExpr.concrete(CORE_INT),
                     default=4,
                     widget=NumberWidget(min=1, max=12),
-                    doc="Views per inference batch (12 splits total).",
+                    tooltip="Views per inference batch (12 splits total).",
                 ),
-                InputSpec(
-                    "refine_steps",
-                    TypeExpr.concrete(CORE_INT),
-                    default=3,
-                    advanced=True,
-                    widget=NumberWidget(min=0, max=8),
-                    doc=(
-                        "MoGe-3 only: sparse volumetric refinement passes over the predicted "
-                        "depth. "
-                        "More passes sharpen fine detail and edges at a roughly linear cost. "
-                        "0 disables refinement. Ignored by MoGe-1 / MoGe-2."
+                Section(
+                    "advanced",
+                    label="Advanced",
+                    collapsed=True,
+                    rows=(
+                        Input(
+                            "refine_steps",
+                            TypeExpr.concrete(CORE_INT),
+                            default=3,
+                            widget=NumberWidget(min=0, max=8),
+                            tooltip=(
+                                "MoGe-3 only: sparse volumetric refinement passes over the predicted "
+                                "depth. "
+                                "More passes sharpen fine detail and edges at a roughly linear cost. "
+                                "0 disables refinement. Ignored by MoGe-1 / MoGe-2."
+                            ),
+                        ),
                     ),
                 ),
+                Output("moge_geometry", TypeExpr.concrete(MOGE_GEOMETRY_TYPE)),
             ),
-            outputs=(OutputSpec("moge_geometry", TypeExpr.concrete(MOGE_GEOMETRY_TYPE)),),
         )
         return with_identity_replacement(schema, "MoGePanoramaInference")
 

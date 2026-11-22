@@ -15,14 +15,14 @@ from dinkster_api.v1 import (
     KIMODO_POSE_DATA_TYPE,
     LOAD3D_CAMERA_TYPE,
     MHR_POSE_DATA_TYPE,
+    Choice,
     ComboWidget,
-    DynamicComboOption,
-    DynamicComboSpec,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Option,
+    Output,
     TypeExpr,
     initialize_inference_process,
     materialize_image,
@@ -35,26 +35,26 @@ class SAM3DBody_Render(Node):
     @classmethod
     def define_schema(cls) -> NodeSchema:
         integer, floating = TypeExpr.concrete(CORE_INT), TypeExpr.concrete(CORE_FLOAT)
-        palette = InputSpec(
+        palette = Input(
             "person_palette_falloff",
             floating,
             default=0.6,
             widget=NumberWidget(min=0.1, max=1.0, step=0.05),
         )
-        hands = InputSpec(
+        hands = Input(
             "hand_style",
             TypeExpr.concrete(CORE_COMBO),
             default="disabled",
             widget=ComboWidget(("disabled", "dwpose", "openpose")),
         )
-        face = InputSpec(
+        face = Input(
             "face_style",
             TypeExpr.concrete(CORE_COMBO),
             default="disabled",
             widget=ComboWidget(("disabled", "full", "eyes_mouth")),
         )
         tilts = tuple(
-            InputSpec(
+            Input(
                 f"rainbow_tilt_{axis}",
                 floating,
                 default=value,
@@ -62,10 +62,10 @@ class SAM3DBody_Render(Node):
             )
             for axis, value in (("z", -35.0), ("x", 0.0))
         )
-        shader = DynamicComboSpec(
+        shader = Choice(
             "shader",
-            tuple(
-                DynamicComboOption(name, tilts if name.startswith("rainbow") else ())
+            options=tuple(
+                Option(name, rows=tilts if name.startswith("rainbow") else ())
                 for name in (
                     "default",
                     "normals",
@@ -81,33 +81,27 @@ class SAM3DBody_Render(Node):
             display_name="Render 3D Body Pose",
             category="image/detection",
             search_terms=("Render SAM3D Body", "sam3d render", "kimodo render"),
-            inputs=(
-                InputSpec("pose_data", TypeExpr.union(MHR_POSE_DATA_TYPE, KIMODO_POSE_DATA_TYPE)),
-                InputSpec("background", TypeExpr.concrete(IMAGE_TYPE), required=False),
-                InputSpec(
-                    "width", integer, default=0, widget=NumberWidget(min=0, max=16384, step=8)
-                ),
-                InputSpec(
-                    "height", integer, default=0, widget=NumberWidget(min=0, max=16384, step=8)
-                ),
-                InputSpec("camera_info", TypeExpr.concrete(LOAD3D_CAMERA_TYPE), required=False),
-            ),
-            combos=(
-                DynamicComboSpec(
+            body=(
+                Input("pose_data", TypeExpr.union(MHR_POSE_DATA_TYPE, KIMODO_POSE_DATA_TYPE)),
+                Input("background", TypeExpr.concrete(IMAGE_TYPE), required=False),
+                Input("width", integer, default=0, widget=NumberWidget(min=0, max=16384, step=8)),
+                Input("height", integer, default=0, widget=NumberWidget(min=0, max=16384, step=8)),
+                Input("camera_info", TypeExpr.concrete(LOAD3D_CAMERA_TYPE), required=False),
+                Choice(
                     "render_style",
-                    (
-                        DynamicComboOption(
+                    options=(
+                        Option(
                             "mesh",
-                            (
+                            rows=(
                                 shader,
-                                InputSpec(
+                                Input(
                                     "opacity",
                                     floating,
                                     default=1.0,
                                     widget=NumberWidget(min=0.0, max=1.0, step=0.01),
                                 ),
                                 palette,
-                                InputSpec(
+                                Input(
                                     "region",
                                     TypeExpr.concrete(CORE_COMBO),
                                     default="full_body",
@@ -115,23 +109,23 @@ class SAM3DBody_Render(Node):
                                 ),
                             ),
                         ),
-                        DynamicComboOption("silhouette"),
-                        DynamicComboOption(
+                        Option("silhouette"),
+                        Option(
                             "openpose_2d",
-                            (
-                                InputSpec(
+                            rows=(
+                                Input(
                                     "marker_radius_px",
                                     integer,
                                     default=4,
                                     widget=NumberWidget(min=1, max=32, step=1),
                                 ),
-                                InputSpec(
+                                Input(
                                     "stick_width_px",
                                     integer,
                                     default=4,
                                     widget=NumberWidget(min=1, max=32, step=1),
                                 ),
-                                InputSpec(
+                                Input(
                                     "limb_alpha",
                                     floating,
                                     default=0.6,
@@ -142,31 +136,31 @@ class SAM3DBody_Render(Node):
                                 palette,
                             ),
                         ),
-                        DynamicComboOption(
+                        Option(
                             "openpose_3d",
-                            (
-                                InputSpec(
+                            rows=(
+                                Input(
                                     "radius_m",
                                     floating,
                                     default=0.015,
                                     widget=NumberWidget(min=0.004, max=0.1, step=0.001),
                                 ),
-                                InputSpec(
+                                Input(
                                     "include_hands", TypeExpr.concrete(CORE_BOOLEAN), default=True
                                 ),
                                 palette,
                             ),
                         ),
-                        DynamicComboOption(
+                        Option(
                             "scail",
-                            (
-                                InputSpec(
+                            rows=(
+                                Input(
                                     "radius_m",
                                     floating,
                                     default=0.022,
                                     widget=NumberWidget(min=0.005, max=0.2, step=0.001),
                                 ),
-                                InputSpec(
+                                Input(
                                     "hand_style",
                                     TypeExpr.concrete(CORE_COMBO),
                                     default="dwpose",
@@ -178,16 +172,8 @@ class SAM3DBody_Render(Node):
                         ),
                     ),
                 ),
+                Output("image", TypeExpr.concrete(IMAGE_TYPE)),
             ),
-            input_order=(
-                "pose_data",
-                "background",
-                "width",
-                "height",
-                "camera_info",
-                "render_style",
-            ),
-            outputs=(OutputSpec("image", TypeExpr.concrete(IMAGE_TYPE)),),
         )
         return with_identity_replacement(schema, "SAM3DBody_Render")
 

@@ -15,13 +15,14 @@ from dinkster_api.v1 import (
     MODEL_TYPE,
     AssetRef,
     AssetWidget,
-    InputFamilySpec,
-    InputSpec,
+    Group,
+    Input,
     LocalAssetRef,
     Node,
     NodeSchema,
+    Numbered,
     NumberWidget,
-    OutputSpec,
+    Output,
     TypeExpr,
     initialize_inference_process,
     obtain_resident,
@@ -71,18 +72,18 @@ class _Tensor(Protocol):
     def untyped_storage(self) -> _Storage: ...
 
 
-def _strength(name: str, *, doc: str = "") -> InputSpec:
-    return InputSpec(
+def _strength(name: str, *, doc: str = "") -> Input:
+    return Input(
         name,
         _FLOAT,
         default=1.0,
         widget=NumberWidget(min=-100.0, max=100.0, step=0.01),
-        doc=doc,
+        tooltip=doc,
     )
 
 
-def _asset_input(*, doc: str = _LORA_TOOLTIP) -> InputSpec:
-    return InputSpec("lora_name", _ASSET, widget=AssetWidget(kind="model/lora"), doc=doc)
+def _asset_input(*, doc: str = _LORA_TOOLTIP) -> Input:
+    return Input("lora_name", _ASSET, widget=AssetWidget(kind="model/lora"), tooltip=doc)
 
 
 def _ram_bytes(value: Any) -> int:
@@ -164,8 +165,12 @@ def _loader_schema(node_type: str, *, bypass: bool, model_only: bool) -> NodeSch
             search_terms=()
             if bypass
             else ("lora", "load lora", "apply lora", "lora loader", "lora model"),
-            inputs=(InputSpec("model", _MODEL), _asset_input(doc=""), _strength("strength_model")),
-            outputs=(OutputSpec("MODEL", _MODEL),),
+            body=(
+                Input("model", _MODEL),
+                _asset_input(doc=""),
+                _strength("strength_model"),
+                Output("MODEL", _MODEL),
+            ),
         )
     return NodeSchema(
         node_type=node_type,
@@ -185,16 +190,14 @@ def _loader_schema(node_type: str, *, bypass: bool, model_only: bool) -> NodeSch
         search_terms=()
         if bypass
         else ("lora", "load lora", "apply lora", "lora loader", "lora model"),
-        inputs=(
-            InputSpec("model", _MODEL, doc=_MODEL_TOOLTIP),
-            InputSpec("clip", _CLIP, doc=_CLIP_TOOLTIP),
+        body=(
+            Input("model", _MODEL, tooltip=_MODEL_TOOLTIP),
+            Input("clip", _CLIP, tooltip=_CLIP_TOOLTIP),
             _asset_input(),
             _strength("strength_model", doc=_STRENGTH_TOOLTIP.format("diffusion model")),
             _strength("strength_clip", doc=_STRENGTH_TOOLTIP.format("CLIP model")),
-        ),
-        outputs=(
-            OutputSpec("MODEL", _MODEL, doc="The modified diffusion model."),
-            OutputSpec("CLIP", _CLIP, doc="The modified CLIP model."),
+            Output("MODEL", _MODEL, tooltip="The modified diffusion model."),
+            Output("CLIP", _CLIP, tooltip="The modified CLIP model."),
         ),
     )
 
@@ -281,28 +284,29 @@ class LoraLoaderBypassModelOnly(Node):
         return cls.outputs(MODEL=model)
 
 
-def _stack_family(doc: str) -> InputFamilySpec:
-    return InputFamilySpec(
+def _stack_family(doc: str) -> Group:
+    return Group(
         "loras",
-        (
-            InputSpec(
+        member=(
+            Input(
                 "lora_name",
                 _ASSET,
                 widget=AssetWidget(kind="model/lora"),
-                doc="The name of the LoRA file to apply.",
+                tooltip="The name of the LoRA file to apply.",
             ),
             _strength("strength", doc=_STACK_STRENGTH_TOOLTIP),
-            InputSpec(
+            Input(
                 "enabled",
                 TypeExpr.concrete(CORE_BOOLEAN),
                 default=True,
-                doc="Turn off to skip this LoRA without changing its file or strength.",
+                tooltip="Turn off to skip this LoRA without changing its file or strength.",
             ),
         ),
         min_members=1,
         max_members=20,
-        doc=doc,
-        display_name="LoRA",
+        tooltip=doc,
+        label="LoRA",
+        keys=Numbered("", start=0),
     )
 
 
@@ -337,13 +341,13 @@ class LoadLoraModel(Node):
                     "a LoRA file and its strength."
                 ),
                 search_terms=("lora", "load lora", "apply lora", "lora model", "lora stack"),
-                inputs=(
-                    InputSpec(
-                        "model", _MODEL, doc="The diffusion model the LoRAs will be applied to."
+                body=(
+                    Input(
+                        "model", _MODEL, tooltip="The diffusion model the LoRAs will be applied to."
                     ),
+                    _stack_family("Each row applies one LoRA to the model."),
+                    Output("MODEL", _MODEL, tooltip="The modified diffusion model."),
                 ),
-                input_families=(_stack_family("Each row applies one LoRA to the model."),),
-                outputs=(OutputSpec("MODEL", _MODEL, doc="The modified diffusion model."),),
             ),
             "LoadLoraModel",
         )
@@ -373,13 +377,13 @@ class LoadLoraTextEncoder(Node):
                     "a LoRA file and its strength."
                 ),
                 search_terms=("lora", "load lora", "apply lora", "clip lora", "lora stack"),
-                inputs=(
-                    InputSpec(
-                        "clip", _CLIP, doc="The CLIP text encoder the LoRAs will be applied to."
+                body=(
+                    Input(
+                        "clip", _CLIP, tooltip="The CLIP text encoder the LoRAs will be applied to."
                     ),
+                    _stack_family("Each row applies one LoRA to the text encoder."),
+                    Output("CLIP", _CLIP, tooltip="The modified CLIP text encoder."),
                 ),
-                input_families=(_stack_family("Each row applies one LoRA to the text encoder."),),
-                outputs=(OutputSpec("CLIP", _CLIP, doc="The modified CLIP text encoder."),),
             ),
             "LoadLoraTextEncoder",
         )

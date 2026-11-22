@@ -8,11 +8,11 @@ from collections.abc import Mapping
 from dinkster_api.v1 import (
     CORE_INT,
     LATENT_TYPE,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
     TypeExpr,
     initialize_inference_process,
     with_identity_replacement,
@@ -25,33 +25,33 @@ class EmptyMochiLatentVideo(Node):
         schema = NodeSchema(
             node_type="dinkster.misc.models.empty_mochi_latent_video",
             category="model/latent/mochi",
-            inputs=(
-                InputSpec(
+            body=(
+                Input(
                     "width",
                     TypeExpr.concrete(CORE_INT),
                     default=848,
                     widget=NumberWidget(min=16, max=16384, step=16),
                 ),
-                InputSpec(
+                Input(
                     "height",
                     TypeExpr.concrete(CORE_INT),
                     default=480,
                     widget=NumberWidget(min=16, max=16384, step=16),
                 ),
-                InputSpec(
+                Input(
                     "length",
                     TypeExpr.concrete(CORE_INT),
                     default=25,
                     widget=NumberWidget(min=7, max=16384, step=6),
                 ),
-                InputSpec(
+                Input(
                     "batch_size",
                     TypeExpr.concrete(CORE_INT),
                     default=1,
                     widget=NumberWidget(min=1, max=4096),
                 ),
+                Output("LATENT", TypeExpr.concrete(LATENT_TYPE)),
             ),
-            outputs=(OutputSpec("LATENT", TypeExpr.concrete(LATENT_TYPE)),),
         )
         return with_identity_replacement(schema, "EmptyMochiLatentVideo")
 

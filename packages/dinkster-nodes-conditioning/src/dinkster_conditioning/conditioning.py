@@ -13,11 +13,11 @@ from dinkster_api.v1 import (
     CORE_INT,
     MASK_TYPE,
     ComboWidget,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
     TypeExpr,
     materialize_image,
     with_identity_replacement,
@@ -49,8 +49,8 @@ def _number(
     minimum: float | int,
     maximum: float | int,
     step: float | int,
-) -> InputSpec:
-    return InputSpec(
+) -> Input:
+    return Input(
         name,
         type_,
         default=default,
@@ -58,13 +58,15 @@ def _number(
     )
 
 
-def _schema(node_type: str, display_name: str, inputs: tuple[InputSpec, ...]) -> NodeSchema:
+def _schema(node_type: str, display_name: str, inputs: tuple[Input, ...]) -> NodeSchema:
     return NodeSchema(
         node_type=node_type,
         display_name=display_name,
         category=_CATEGORY,
-        inputs=inputs,
-        outputs=(OutputSpec("CONDITIONING", _CONDITIONING),),
+        body=(
+            *inputs,
+            Output("CONDITIONING", _CONDITIONING),
+        ),
     )
 
 
@@ -76,8 +78,8 @@ class ConditioningCombine(Node):
                 "dinkster.conditioning.conditioning_combine",
                 "Conditioning (Combine)",
                 (
-                    InputSpec("conditioning_1", _CONDITIONING),
-                    InputSpec("conditioning_2", _CONDITIONING),
+                    Input("conditioning_1", _CONDITIONING),
+                    Input("conditioning_2", _CONDITIONING),
                 ),
             ),
             "ConditioningCombine",
@@ -98,8 +100,8 @@ class ConditioningAverage(Node):
                 "dinkster.conditioning.conditioning_average",
                 "Conditioning (Average)",
                 (
-                    InputSpec("conditioning_to", _CONDITIONING),
-                    InputSpec("conditioning_from", _CONDITIONING),
+                    Input("conditioning_to", _CONDITIONING),
+                    Input("conditioning_from", _CONDITIONING),
                     _number("conditioning_to_strength", _FLOAT, 1.0, 0.0, 1.0, 0.01),
                 ),
             ),
@@ -151,8 +153,8 @@ class ConditioningConcat(Node):
                 "dinkster.conditioning.conditioning_concat",
                 "Conditioning (Concat)",
                 (
-                    InputSpec("conditioning_to", _CONDITIONING),
-                    InputSpec("conditioning_from", _CONDITIONING),
+                    Input("conditioning_to", _CONDITIONING),
+                    Input("conditioning_from", _CONDITIONING),
                 ),
             ),
             "ConditioningConcat",
@@ -180,7 +182,7 @@ class ConditioningMultiply(Node):
                 "dinkster.conditioning.conditioning_multiply",
                 "Conditioning (Multiply)",
                 (
-                    InputSpec("conditioning", _CONDITIONING),
+                    Input("conditioning", _CONDITIONING),
                     _number("multiplier", _FLOAT, 1.0, -100.0, 100.0, 0.01),
                 ),
             ),
@@ -209,7 +211,7 @@ class ConditioningSetArea(Node):
                 "dinkster.conditioning.conditioning_set_area",
                 "Conditioning (Set Area)",
                 (
-                    InputSpec("conditioning", _CONDITIONING),
+                    Input("conditioning", _CONDITIONING),
                     _number("width", _INT, 64, 64, 16384, 8),
                     _number("height", _INT, 64, 64, 16384, 8),
                     _number("x", _INT, 0, 0, 16384, 8),
@@ -251,7 +253,7 @@ class ConditioningSetAreaPercentage(Node):
                 "dinkster.conditioning.conditioning_set_area_percentage",
                 "Conditioning (Set Area with Percentage)",
                 (
-                    InputSpec("conditioning", _CONDITIONING),
+                    Input("conditioning", _CONDITIONING),
                     _number("width", _FLOAT, 1.0, 0.0, 1.0, 0.01),
                     _number("height", _FLOAT, 1.0, 0.0, 1.0, 0.01),
                     _number("x", _FLOAT, 0.0, 0.0, 1.0, 0.01),
@@ -293,7 +295,7 @@ class ConditioningSetAreaPercentageVideo(Node):
                 "dinkster.conditioning.conditioning_set_area_percentage_video",
                 "Conditioning (Set Area with Percentage for Video)",
                 (
-                    InputSpec("conditioning", _CONDITIONING),
+                    Input("conditioning", _CONDITIONING),
                     _number("width", _FLOAT, 1.0, 0.0, 1.0, 0.01),
                     _number("height", _FLOAT, 1.0, 0.0, 1.0, 0.01),
                     _number("temporal", _FLOAT, 1.0, 0.0, 1.0, 0.01),
@@ -339,7 +341,7 @@ class ConditioningSetAreaStrength(Node):
                 "dinkster.conditioning.conditioning_set_area_strength",
                 "Conditioning (Set Area Strength)",
                 (
-                    InputSpec("conditioning", _CONDITIONING),
+                    Input("conditioning", _CONDITIONING),
                     _number("strength", _FLOAT, 1.0, 0.0, 10.0, 0.01),
                 ),
             ),
@@ -363,12 +365,10 @@ class ConditioningSetMask(Node):
                 "dinkster.conditioning.conditioning_set_mask",
                 "Conditioning (Set Mask)",
                 (
-                    InputSpec("conditioning", _CONDITIONING),
-                    InputSpec("mask", _MASK),
+                    Input("conditioning", _CONDITIONING),
+                    Input("mask", _MASK),
                     _number("strength", _FLOAT, 1.0, 0.0, 10.0, 0.01),
-                    InputSpec(
-                        "set_cond_area", _COMBO, widget=ComboWidget(("default", "mask bounds"))
-                    ),
+                    Input("set_cond_area", _COMBO, widget=ComboWidget(("default", "mask bounds"))),
                 ),
             ),
             "ConditioningSetMask",
@@ -398,7 +398,7 @@ class ConditioningZeroOut(Node):
             _schema(
                 "dinkster.conditioning.conditioning_zero_out",
                 "Conditioning Zero Out",
-                (InputSpec("conditioning", _CONDITIONING),),
+                (Input("conditioning", _CONDITIONING),),
             ),
             "ConditioningZeroOut",
         )
@@ -430,7 +430,7 @@ class ConditioningSetTimestepRange(Node):
                 "dinkster.conditioning.conditioning_set_timestep_range",
                 "",
                 (
-                    InputSpec("conditioning", _CONDITIONING),
+                    Input("conditioning", _CONDITIONING),
                     _number("start", _FLOAT, 0.0, 0.0, 1.0, 0.001),
                     _number("end", _FLOAT, 1.0, 0.0, 1.0, 0.001),
                 ),

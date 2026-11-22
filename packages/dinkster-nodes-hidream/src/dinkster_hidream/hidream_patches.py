@@ -13,12 +13,13 @@ from dinkster_api.v1 import (
     IMAGE_TYPE,
     MODEL_TYPE,
     ComboWidget,
-    InputFamilySpec,
-    InputSpec,
+    Group,
+    Input,
+    Named,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
     TypeExpr,
     initialize_inference_process,
     materialize_image,
@@ -36,18 +37,19 @@ class HiDreamO1ReferenceImages(Node):
             display_name="HiDream-O1 Reference Images",
             category="model/conditioning/hidream",
             description="Attach ordered reference images to positive and negative conditioning.",
-            inputs=(InputSpec("positive", conditioning), InputSpec("negative", conditioning)),
-            input_families=(
-                InputFamilySpec(
+            body=(
+                Input("positive", conditioning),
+                Input("negative", conditioning),
+                Group(
                     "images",
-                    (InputSpec("image", TypeExpr.concrete(IMAGE_TYPE), required=False),),
+                    value=Input("image", TypeExpr.concrete(IMAGE_TYPE), required=False),
                     min_members=0,
-                    member_names=tuple(f"image_{index}" for index in range(1, 101)),
-                    required=False,
-                    doc="Reference images are used in numeric socket order.",
+                    tooltip="Reference images are used in numeric socket order.",
+                    keys=Named(tuple(f"image_{index}" for index in range(1, 101))),
                 ),
+                Output("positive", conditioning),
+                Output("negative", conditioning),
             ),
-            outputs=(OutputSpec("positive", conditioning), OutputSpec("negative", conditioning)),
         )
         return with_identity_replacement(schema, "HiDreamO1ReferenceImages")
 
@@ -120,46 +122,46 @@ class HiDreamO1PatchSeamSmoothing(Node):
                 "Average the model output across multiple shifted patch-grid "
                 "positions during the late portion of sampling. Cancels seams."
             ),
-            inputs=(
-                InputSpec("model", TypeExpr.concrete(MODEL_TYPE)),
-                InputSpec(
+            body=(
+                Input("model", TypeExpr.concrete(MODEL_TYPE)),
+                Input(
                     "start_percent",
                     TypeExpr.concrete(CORE_FLOAT),
                     default=0.8,
                     widget=NumberWidget(min=0.0, max=1.0, step=0.01),
                 ),
-                InputSpec(
+                Input(
                     "end_percent",
                     TypeExpr.concrete(CORE_FLOAT),
                     default=1.0,
                     widget=NumberWidget(min=0.0, max=1.0, step=0.01),
                 ),
-                InputSpec(
+                Input(
                     "pattern",
                     TypeExpr.concrete(CORE_COMBO),
                     default="single_shift",
                     widget=ComboWidget(("single_shift", "symmetric")),
                 ),
-                InputSpec(
+                Input(
                     "passes",
                     TypeExpr.concrete(CORE_COMBO),
                     default="2",
                     widget=ComboWidget(("2", "4", "ramp_2_4", "ramp_2_4_8")),
                 ),
-                InputSpec(
+                Input(
                     "blend",
                     TypeExpr.concrete(CORE_COMBO),
                     default="average",
                     widget=ComboWidget(("average", "window", "median")),
                 ),
-                InputSpec(
+                Input(
                     "strength",
                     TypeExpr.concrete(CORE_FLOAT),
                     default=1.0,
                     widget=NumberWidget(min=0.0, max=1.0, step=0.01),
                 ),
+                Output("MODEL", TypeExpr.concrete(MODEL_TYPE)),
             ),
-            outputs=(OutputSpec("MODEL", TypeExpr.concrete(MODEL_TYPE)),),
         )
         return with_identity_replacement(schema, "HiDreamO1PatchSeamSmoothing")
 

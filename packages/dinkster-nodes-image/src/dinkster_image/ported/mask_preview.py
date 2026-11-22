@@ -7,10 +7,10 @@ from typing import Any
 
 from dinkster_api.v1 import (
     MASK_TYPE,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
-    OutputSpec,
+    Output,
     TypeExpr,
     materialize_image,
     render_mask_png,
@@ -37,8 +37,10 @@ class MaskPreview(Node):
                 "inspect mask",
                 "debug mask",
             ),
-            inputs=(InputSpec("mask", _MASK),),
-            outputs=(OutputSpec("mask", _MASK, preview=True),),
+            body=(
+                Input("mask", _MASK),
+                Output("mask", _MASK, preview=True),
+            ),
             emits_previews=True,
             output_node=True,
         )

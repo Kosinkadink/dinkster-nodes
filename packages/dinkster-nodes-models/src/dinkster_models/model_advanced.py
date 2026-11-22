@@ -15,11 +15,12 @@ from dinkster_api.v1 import (
     MODEL_TYPE,
     ComboOption,
     ComboWidget,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
+    Section,
     TypeExpr,
     initialize_inference_process,
     with_identity_replacement,
@@ -43,34 +44,36 @@ _BOOLEAN = TypeExpr.concrete(CORE_BOOLEAN)
 _MAX_RESOLUTION = 16384
 
 
-def _float(name: str, default: float, *, advanced: bool = False) -> InputSpec:
-    return InputSpec(
+def _float(
+    name: str,
+    default: float,
+) -> Input:
+    return Input(
         name,
         _FLOAT,
         default=default,
-        advanced=advanced,
         widget=NumberWidget(min=0.0, max=100.0, step=0.01),
     )
 
 
-def _sigma(name: str, default: float) -> InputSpec:
-    return InputSpec(
+def _sigma(name: str, default: float) -> Input:
+    return Input(
         name,
         _FLOAT,
         default=default,
-        advanced=True,
         widget=NumberWidget(min=0.0, max=1000.0, step=0.001, round=False),
     )
 
 
 def _combo(
-    name: str, options: tuple[str, ...], default: str, *, advanced: bool = False
-) -> InputSpec:
-    return InputSpec(
+    name: str,
+    options: tuple[str, ...],
+    default: str,
+) -> Input:
+    return Input(
         name,
         _COMBO,
         default=default,
-        advanced=advanced,
         widget=ComboWidget(tuple(ComboOption(value) for value in options)),
     )
 
@@ -78,7 +81,7 @@ def _combo(
 def _sampling_schema(
     node_type: str,
     category: str,
-    inputs: tuple[InputSpec, ...],
+    inputs: tuple[Input, ...],
     *,
     search_terms: tuple[str, ...] = (),
 ) -> NodeSchema:
@@ -86,8 +89,11 @@ def _sampling_schema(
         node_type=node_type,
         category=category,
         search_terms=search_terms,
-        inputs=(InputSpec("model", _MODEL), *inputs),
-        outputs=(OutputSpec("MODEL", _MODEL),),
+        body=(
+            Input("model", _MODEL),
+            *inputs,
+            Output("MODEL", _MODEL),
+        ),
     )
 
 
@@ -114,7 +120,18 @@ class ModelSamplingDiscrete(Node):
                         ("eps", "v_prediction", "lcm", "x0", "img_to_img", "img_to_img_flow"),
                         "eps",
                     ),
-                    InputSpec("zsnr", _BOOLEAN, default=False, advanced=True),
+                    Section(
+                        "advanced",
+                        label="Advanced",
+                        collapsed=True,
+                        rows=(
+                            Input(
+                                "zsnr",
+                                _BOOLEAN,
+                                default=False,
+                            ),
+                        ),
+                    ),
                 ),
             ),
             "ModelSamplingDiscrete",
@@ -205,8 +222,15 @@ class ModelSamplingContinuousEDM(Node):
                         ("v_prediction", "edm", "edm_playground_v2.5", "eps", "cosmos_rflow"),
                         "v_prediction",
                     ),
-                    _sigma("sigma_max", 120.0),
-                    _sigma("sigma_min", 0.002),
+                    Section(
+                        "advanced",
+                        label="Advanced",
+                        collapsed=True,
+                        rows=(
+                            _sigma("sigma_max", 120.0),
+                            _sigma("sigma_min", 0.002),
+                        ),
+                    ),
                 ),
             ),
             "ModelSamplingContinuousEDM",
@@ -253,8 +277,15 @@ class ModelSamplingContinuousV(Node):
                 "model/patch",
                 (
                     _combo("sampling", ("v_prediction",), "v_prediction"),
-                    _sigma("sigma_max", 500.0),
-                    _sigma("sigma_min", 0.03),
+                    Section(
+                        "advanced",
+                        label="Advanced",
+                        collapsed=True,
+                        rows=(
+                            _sigma("sigma_max", 500.0),
+                            _sigma("sigma_min", 0.03),
+                        ),
+                    ),
                 ),
             ),
             "ModelSamplingContinuousV",
@@ -342,14 +373,20 @@ class ModelSamplingAuraFlow(Node):
                 "model/patch",
                 (
                     _float("shift", 1.73),
-                    InputSpec(
-                        "sampling",
-                        _COMBO,
-                        required=False,
-                        default="flow",
-                        advanced=True,
-                        widget=ComboWidget(
-                            (ComboOption("flow"), ComboOption("img_to_img_velocity"))
+                    Section(
+                        "advanced",
+                        label="Advanced",
+                        collapsed=True,
+                        rows=(
+                            Input(
+                                "sampling",
+                                _COMBO,
+                                required=False,
+                                default="flow",
+                                widget=ComboWidget(
+                                    (ComboOption("flow"), ComboOption("img_to_img_velocity"))
+                                ),
+                            ),
                         ),
                     ),
                 ),
@@ -370,19 +407,32 @@ class ModelSamplingFlux(Node):
                 "dinkster.models.model_sampling_flux",
                 "model/patch/flux",
                 (
-                    _float("max_shift", 1.15, advanced=True),
-                    _float("base_shift", 0.5, advanced=True),
-                    InputSpec(
+                    Input(
                         "width",
                         _INT,
                         default=1024,
                         widget=NumberWidget(min=16, max=_MAX_RESOLUTION, step=8),
                     ),
-                    InputSpec(
+                    Input(
                         "height",
                         _INT,
                         default=1024,
                         widget=NumberWidget(min=16, max=_MAX_RESOLUTION, step=8),
+                    ),
+                    Section(
+                        "advanced",
+                        label="Advanced",
+                        collapsed=True,
+                        rows=(
+                            _float(
+                                "max_shift",
+                                1.15,
+                            ),
+                            _float(
+                                "base_shift",
+                                0.5,
+                            ),
+                        ),
                     ),
                 ),
             ),
@@ -411,11 +461,11 @@ class ModelNoiseScale(Node):
                 "dinkster.models.model_noise_scale",
                 "model/patch",
                 (
-                    InputSpec(
+                    Input(
                         "noise_scale",
                         _FLOAT,
                         default=1.0,
-                        doc=(
+                        tooltip=(
                             "Absolute training noise scale. "
                             "For example HiDream-O1 base: 8.0, dev: 7.5."
                         ),
@@ -445,7 +495,7 @@ class RescaleCFG(Node):
                 "dinkster.models.rescale_cfg",
                 "model/patch",
                 (
-                    InputSpec(
+                    Input(
                         "multiplier",
                         _FLOAT,
                         default=0.7,
@@ -502,7 +552,20 @@ class ModelComputeDtype(Node):
             _sampling_schema(
                 "dinkster.models.model_compute_dtype",
                 "advanced/debug",
-                (_combo("dtype", ("default", "fp32", "fp16", "bf16"), "default", advanced=True),),
+                (
+                    Section(
+                        "advanced",
+                        label="Advanced",
+                        collapsed=True,
+                        rows=(
+                            _combo(
+                                "dtype",
+                                ("default", "fp32", "fp16", "bf16"),
+                                "default",
+                            ),
+                        ),
+                    ),
+                ),
                 search_terms=("model precision", "change dtype"),
             ),
             "ModelComputeDtype",
@@ -536,27 +599,25 @@ class ModelAttentionBackend(Node):
                     "unsupported."
                 ),
                 search_terms=("comfy kitchen", "attention", "pytorch", "kitchen attention"),
-                inputs=(
-                    InputSpec("model", _MODEL, doc="The model to patch."),
-                    InputSpec(
+                body=(
+                    Input("model", _MODEL, tooltip="The model to patch."),
+                    Input(
                         "attention",
                         _COMBO,
                         default="pytorch attention",
-                        display_name="backend",
-                        doc=(
+                        label="backend",
+                        tooltip=(
                             "The dense attention backend. "
                             "Comfy Kitchen attention uses quantized INT8 "
                             "attention and is available only on Nvidia and AMD GPUs."
                         ),
                         widget=ComboWidget(("pytorch attention", "comfy kitchen attention")),
                     ),
-                ),
-                outputs=(
-                    OutputSpec(
+                    Output(
                         "MODEL",
                         _MODEL,
-                        display_name="model",
-                        doc="The model with the selected attention backend.",
+                        label="model",
+                        tooltip="The model with the selected attention backend.",
                     ),
                 ),
             ),

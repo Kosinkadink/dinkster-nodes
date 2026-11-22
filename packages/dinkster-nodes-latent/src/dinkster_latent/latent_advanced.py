@@ -15,11 +15,11 @@ from dinkster_api.v1 import (
     ComboOption,
     ComboWidget,
     Deprecation,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
     TypeExpr,
     materialize_latent,
     with_identity_replacement,
@@ -40,8 +40,8 @@ _COMBO = TypeExpr.concrete(CORE_COMBO)
 _MAX_RESOLUTION = 16384
 
 
-def _integer(name: str, default: int, minimum: int, maximum: int) -> InputSpec:
-    return InputSpec(
+def _integer(name: str, default: int, minimum: int, maximum: int) -> Input:
+    return Input(
         name,
         _INT,
         default=default,
@@ -49,8 +49,8 @@ def _integer(name: str, default: int, minimum: int, maximum: int) -> InputSpec:
     )
 
 
-def _combo(name: str, options: tuple[str, ...], default: str | None = None) -> InputSpec:
-    return InputSpec(
+def _combo(name: str, options: tuple[str, ...], default: str | None = None) -> Input:
+    return Input(
         name,
         _COMBO,
         default=default,
@@ -61,7 +61,7 @@ def _combo(name: str, options: tuple[str, ...], default: str | None = None) -> I
 def _schema(
     node_type: str,
     display_name: str,
-    inputs: tuple[InputSpec, ...],
+    inputs: tuple[Input, ...],
     category: str,
     *,
     deprecated: bool = False,
@@ -70,8 +70,10 @@ def _schema(
         node_type=node_type,
         display_name=display_name,
         category=category,
-        inputs=inputs,
-        outputs=(OutputSpec("LATENT", _LATENT),),
+        body=(
+            *inputs,
+            Output("LATENT", _LATENT),
+        ),
         deprecation=Deprecation("Deprecated in ComfyUI.") if deprecated else None,
         search_visibility="deprecated" if deprecated else "normal",
     )
@@ -95,7 +97,7 @@ class LatentAdd(Node):
             _schema(
                 "dinkster.latent.latent_add",
                 "LatentAdd",
-                (InputSpec("samples1", _LATENT), InputSpec("samples2", _LATENT)),
+                (Input("samples1", _LATENT), Input("samples2", _LATENT)),
                 "model/latent/advanced",
             ),
             "LatentAdd",
@@ -118,7 +120,7 @@ class LatentSubtract(Node):
             _schema(
                 "dinkster.latent.latent_subtract",
                 "LatentSubtract",
-                (InputSpec("samples1", _LATENT), InputSpec("samples2", _LATENT)),
+                (Input("samples1", _LATENT), Input("samples2", _LATENT)),
                 "model/latent/advanced",
             ),
             "LatentSubtract",
@@ -142,8 +144,8 @@ class LatentMultiply(Node):
                 "dinkster.latent.latent_multiply",
                 "LatentMultiply",
                 (
-                    InputSpec("samples", _LATENT),
-                    InputSpec(
+                    Input("samples", _LATENT),
+                    Input(
                         "multiplier",
                         _FLOAT,
                         default=1.0,
@@ -171,9 +173,9 @@ class LatentInterpolate(Node):
                 "dinkster.latent.latent_interpolate",
                 "LatentInterpolate",
                 (
-                    InputSpec("samples1", _LATENT),
-                    InputSpec("samples2", _LATENT),
-                    InputSpec(
+                    Input("samples1", _LATENT),
+                    Input("samples2", _LATENT),
+                    Input(
                         "ratio",
                         _FLOAT,
                         default=1.0,
@@ -214,8 +216,8 @@ class LatentConcat(Node):
                 "dinkster.latent.latent_concat",
                 "LatentConcat",
                 (
-                    InputSpec("samples1", _LATENT),
-                    InputSpec("samples2", _LATENT),
+                    Input("samples1", _LATENT),
+                    Input("samples2", _LATENT),
                     _combo("dim", ("x", "-x", "y", "-y", "t", "-t")),
                 ),
                 "model/latent/advanced",
@@ -249,7 +251,7 @@ class LatentCut(Node):
                 "dinkster.latent.latent_cut",
                 "LatentCut",
                 (
-                    InputSpec("samples", _LATENT),
+                    Input("samples", _LATENT),
                     _combo("dim", ("x", "y", "t")),
                     _integer("index", 0, -_MAX_RESOLUTION, _MAX_RESOLUTION),
                     _integer("amount", 1, 1, _MAX_RESOLUTION),
@@ -286,7 +288,7 @@ class LatentCutToBatch(Node):
                 "dinkster.latent.latent_cut_to_batch",
                 "LatentCutToBatch",
                 (
-                    InputSpec("samples", _LATENT),
+                    Input("samples", _LATENT),
                     _combo("dim", ("t", "x", "y")),
                     _integer("slice_size", 1, 1, _MAX_RESOLUTION),
                 ),
@@ -319,7 +321,7 @@ class LatentBatch(Node):
             _schema(
                 "dinkster.latent.latent_batch",
                 "Batch Latents (DEPRECATED)",
-                (InputSpec("samples1", _LATENT), InputSpec("samples2", _LATENT)),
+                (Input("samples1", _LATENT), Input("samples2", _LATENT)),
                 "model/latent/batch",
                 deprecated=True,
             ),
@@ -348,7 +350,7 @@ class LatentBatchSeedBehavior(Node):
                 "dinkster.latent.latent_batch_seed_behavior",
                 "LatentBatchSeedBehavior",
                 (
-                    InputSpec("samples", _LATENT),
+                    Input("samples", _LATENT),
                     _combo("seed_behavior", ("random", "fixed"), "fixed"),
                 ),
                 "model/latent/advanced",

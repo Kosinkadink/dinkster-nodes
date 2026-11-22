@@ -11,11 +11,12 @@ from dinkster_api.v1 import (
     CORE_BOOLEAN,
     CORE_FLOAT,
     MODEL_TYPE,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
+    Section,
     TypeExpr,
     initialize_inference_process,
     with_identity_replacement,
@@ -492,38 +493,43 @@ class _CacheNode(Node):
                 display_name=cls.__name__,
                 category="advanced/debug",
                 description=cls.description,
-                inputs=(
-                    InputSpec("model", _MODEL, doc=f"The model to add {cls.__name__} to."),
-                    *(
-                        InputSpec(
-                            name,
-                            TypeExpr.concrete(CORE_FLOAT),
-                            default=default,
-                            doc=(
-                                "The threshold for reusing cached steps."
-                                if name == "reuse_threshold"
-                                else "The relative sampling step to "
-                                f"{'begin' if name == 'start_percent' else 'end'} "
-                                f"use of {cls.__name__}."
+                body=(
+                    Input("model", _MODEL, tooltip=f"The model to add {cls.__name__} to."),
+                    Section(
+                        "advanced",
+                        label="Advanced",
+                        collapsed=True,
+                        rows=(
+                            *(
+                                Input(
+                                    name,
+                                    TypeExpr.concrete(CORE_FLOAT),
+                                    default=default,
+                                    tooltip=(
+                                        "The threshold for reusing cached steps."
+                                        if name == "reuse_threshold"
+                                        else "The relative sampling step to "
+                                        f"{'begin' if name == 'start_percent' else 'end'} "
+                                        f"use of {cls.__name__}."
+                                    ),
+                                    widget=NumberWidget(min=0.0, max=maximum, step=0.01),
+                                )
+                                for name, default, maximum in (
+                                    ("reuse_threshold", 0.2, 3.0),
+                                    ("start_percent", 0.15, 1.0),
+                                    ("end_percent", 0.95, 1.0),
+                                )
                             ),
-                            advanced=True,
-                            widget=NumberWidget(min=0.0, max=maximum, step=0.01),
-                        )
-                        for name, default, maximum in (
-                            ("reuse_threshold", 0.2, 3.0),
-                            ("start_percent", 0.15, 1.0),
-                            ("end_percent", 0.95, 1.0),
-                        )
+                            Input(
+                                "verbose",
+                                TypeExpr.concrete(CORE_BOOLEAN),
+                                default=False,
+                                tooltip="Whether to log verbose information.",
+                            ),
+                        ),
                     ),
-                    InputSpec(
-                        "verbose",
-                        TypeExpr.concrete(CORE_BOOLEAN),
-                        default=False,
-                        doc="Whether to log verbose information.",
-                        advanced=True,
-                    ),
+                    Output("MODEL", _MODEL, tooltip=f"The model with {cls.__name__}."),
                 ),
-                outputs=(OutputSpec("MODEL", _MODEL, doc=f"The model with {cls.__name__}."),),
             ),
             cls.source_type,
         )

@@ -13,10 +13,10 @@ import pytest
 from dinkster_api.v1 import (
     CORE_STRING,
     IC_LORA_PARAMETERS_TYPE,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
-    OutputSpec,
+    Output,
     TypeExpr,
     TypeRegistry,
 )
@@ -109,7 +109,7 @@ class ICLoRAParametersSource(Node):
     def define_schema(cls) -> NodeSchema:
         return NodeSchema(
             node_type="ic-lora-source.node",
-            outputs=(OutputSpec("parameters", TypeExpr.concrete(IC_LORA_PARAMETERS_TYPE)),),
+            body=(Output("parameters", TypeExpr.concrete(IC_LORA_PARAMETERS_TYPE)),),
         )
 
     @classmethod
@@ -130,8 +130,10 @@ class ICLoRAParametersConsumer(Node):
     def define_schema(cls) -> NodeSchema:
         return NodeSchema(
             node_type="ic-lora-consumer.node",
-            inputs=(InputSpec("parameters", TypeExpr.concrete(IC_LORA_PARAMETERS_TYPE)),),
-            outputs=(OutputSpec("summary", TypeExpr.concrete(CORE_STRING)),),
+            body=(
+                Input("parameters", TypeExpr.concrete(IC_LORA_PARAMETERS_TYPE)),
+                Output("summary", TypeExpr.concrete(CORE_STRING)),
+            ),
         )
 
     @classmethod

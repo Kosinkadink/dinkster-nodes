@@ -12,10 +12,10 @@ from dinkster_api.v1 import (
     MASK_TYPE,
     SAM3_TRACK_DATA_TYPE,
     ComboWidget,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
-    OutputSpec,
+    Output,
     StringWidget,
     TypeExpr,
     initialize_inference_process,
@@ -159,35 +159,33 @@ class SCAIL2ColoredMask(Node):
             node_type="dinkster.wan.scail2_colored_mask",
             display_name="Create SCAIL-2 Colored Mask",
             category=_CATEGORY,
-            inputs=(
-                InputSpec("driving_track_data", _SAM3_TRACK_DATA),
-                InputSpec(
+            body=(
+                Input("driving_track_data", _SAM3_TRACK_DATA),
+                Input(
                     "ref_track_data",
                     _REFERENCE_MASKS,
                     required=False,
-                    display_name="reference_masks",
-                    doc=(
+                    label="reference_masks",
+                    tooltip=(
                         "SAM3 track of the reference image(s), or a plain MASK of the reference "
                         "subject rendered as a single identity."
                     ),
                 ),
-                InputSpec(
+                Input(
                     "object_indices",
                     _STRING,
                     default="",
                     widget=StringWidget(multiline=False),
                 ),
-                InputSpec(
+                Input(
                     "sort_by",
                     _COMBO,
                     default="left_to_right",
                     widget=ComboWidget(options=_SORT_OPTIONS),
                 ),
-                InputSpec("replacement_mode", _BOOLEAN, default=False),
-            ),
-            outputs=(
-                OutputSpec("pose_video_mask", _IMAGE),
-                OutputSpec("reference_image_mask", _IMAGE),
+                Input("replacement_mode", _BOOLEAN, default=False),
+                Output("pose_video_mask", _IMAGE),
+                Output("reference_image_mask", _IMAGE),
             ),
         )
         return with_identity_replacement(schema, "SCAIL2ColoredMask")

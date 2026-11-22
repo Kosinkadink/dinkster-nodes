@@ -8,11 +8,11 @@ from typing import Any
 from dinkster_api.v1 import (
     AUDIO_TYPE,
     CORE_INT,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
     TypeExpr,
     materialize_audio,
     with_identity_replacement,
@@ -29,8 +29,7 @@ class SplitAudioChannels(Node):
             node_type="dinkster.audio.split_audio_channels",
             display_name="Split Audio Channels",
             category="audio",
-            inputs=(InputSpec("audio", _AUDIO),),
-            outputs=(OutputSpec("left", _AUDIO), OutputSpec("right", _AUDIO)),
+            body=(Input("audio", _AUDIO), Output("left", _AUDIO), Output("right", _AUDIO)),
         )
         return with_identity_replacement(schema, "SplitAudioChannels")
 
@@ -59,20 +58,20 @@ class AudioAdjustVolume(Node):
             node_type="dinkster.audio.audio_adjust_volume",
             display_name="Adjust Audio Volume",
             category="audio",
-            inputs=(
-                InputSpec("audio", _AUDIO),
-                InputSpec(
+            body=(
+                Input("audio", _AUDIO),
+                Input(
                     "volume",
                     _INT,
                     default=1,
                     widget=NumberWidget(min=-100, max=100),
-                    doc=(
+                    tooltip=(
                         "Volume adjustment in decibels (dB). 0 = no change, "
                         "+6 = double, -6 = half, etc"
                     ),
                 ),
+                Output("AUDIO", _AUDIO),
             ),
-            outputs=(OutputSpec("AUDIO", _AUDIO),),
         )
         return with_identity_replacement(schema, "AudioAdjustVolume")
 

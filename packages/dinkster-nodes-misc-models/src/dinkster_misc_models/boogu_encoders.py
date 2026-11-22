@@ -13,11 +13,13 @@ from dinkster_api.v1 import (
     CORE_STRING,
     IMAGE_TYPE,
     VAE_TYPE,
-    InputFamilySpec,
-    InputSpec,
+    Group,
+    Input,
+    Named,
     Node,
     NodeSchema,
-    OutputSpec,
+    Output,
+    Section,
     StringWidget,
     TypeExpr,
     initialize_inference_process,
@@ -43,28 +45,31 @@ class TextEncodeBooguEdit(Node):
         schema = NodeSchema(
             node_type="dinkster.misc.models.text_encode_boogu_edit",
             category="model/conditioning/boogu",
-            inputs=(
-                InputSpec("clip", _CLIP),
-                InputSpec(
-                    "prompt", _STRING, widget=StringWidget(multiline=True, dynamic_prompts=True)
-                ),
-                InputSpec(
-                    "negative_prompt",
-                    _STRING,
-                    advanced=True,
-                    widget=StringWidget(multiline=True, dynamic_prompts=True),
-                ),
-                InputSpec("vae", _VAE),
-            ),
-            input_families=(
-                InputFamilySpec(
+            body=(
+                Input("clip", _CLIP),
+                Input("prompt", _STRING, widget=StringWidget(multiline=True, dynamic_prompts=True)),
+                Input("vae", _VAE),
+                Group(
                     "images",
-                    (InputSpec("image", _IMAGE, required=False),),
+                    value=Input("image", _IMAGE, required=False),
                     min_members=0,
-                    member_names=tuple(f"image_{index}" for index in range(1, 17)),
+                    keys=Named(tuple(f"image_{index}" for index in range(1, 17))),
                 ),
+                Section(
+                    "advanced",
+                    label="Advanced",
+                    collapsed=True,
+                    rows=(
+                        Input(
+                            "negative_prompt",
+                            _STRING,
+                            widget=StringWidget(multiline=True, dynamic_prompts=True),
+                        ),
+                    ),
+                ),
+                Output("positive", _CONDITIONING),
+                Output("negative", _CONDITIONING),
             ),
-            outputs=(OutputSpec("positive", _CONDITIONING), OutputSpec("negative", _CONDITIONING)),
         )
         return with_identity_replacement(schema, "TextEncodeBooguEdit")
 

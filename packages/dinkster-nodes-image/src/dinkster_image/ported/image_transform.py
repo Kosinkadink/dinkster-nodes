@@ -14,19 +14,20 @@ from dinkster_api.v1 import (
     CORE_FLOAT,
     CORE_INT,
     IMAGE_TYPE,
+    Choice,
     ColorWidget,
     ComboOption,
     ComboWidget,
-    DynamicComboOption,
-    DynamicComboSpec,
-    InputSpec,
+    Input,
     MappingSource,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Option,
+    Output,
     ReplacementCase,
     ReplacementRule,
+    Section,
     TypeExpr,
     materialize_image,
     with_identity_replacement,
@@ -46,39 +47,40 @@ def _integer(
     minimum: int,
     maximum: int,
     step: int | None = None,
-    *,
-    advanced: bool = False,
-) -> InputSpec:
-    return InputSpec(
+) -> Input:
+    return Input(
         name,
         _INT,
         default=default,
-        advanced=advanced,
         widget=NumberWidget(min=minimum, max=maximum, step=step),
     )
 
 
 def _combo(
-    name: str, options: tuple[str, ...], *, default: str | None = None, advanced: bool = False
-) -> InputSpec:
-    return InputSpec(
+    name: str,
+    options: tuple[str, ...],
+    *,
+    default: str | None = None,
+) -> Input:
+    return Input(
         name,
         _COMBO,
         default=default,
-        advanced=advanced,
         widget=ComboWidget(tuple(ComboOption(option) for option in options)),
     )
 
 
 def _schema(
-    node_type: str, display_name: str, category: str, inputs: tuple[InputSpec, ...]
+    node_type: str, display_name: str, category: str, inputs: tuple[Input, ...]
 ) -> NodeSchema:
     return NodeSchema(
         node_type=node_type,
         display_name=display_name,
         category=category,
-        inputs=inputs,
-        outputs=(OutputSpec("IMAGE", _IMAGE),),
+        body=(
+            *inputs,
+            Output("IMAGE", _IMAGE),
+        ),
     )
 
 
@@ -91,7 +93,7 @@ class ImageCrop(Node):
                 "Crop Image (DEPRECATED)",
                 "image/transform",
                 (
-                    InputSpec("image", _IMAGE),
+                    Input("image", _IMAGE),
                     _integer("width", 512, 1, _MAX_RESOLUTION, 1),
                     _integer("height", 512, 1, _MAX_RESOLUTION, 1),
                     _integer("x", 0, 0, _MAX_RESOLUTION, 1),
@@ -119,7 +121,7 @@ class RepeatImageBatch(Node):
                 "dinkster.image.repeat_image_batch",
                 "Repeat Image Batch",
                 "image/batch",
-                (InputSpec("image", _IMAGE), _integer("amount", 1, 1, 4096)),
+                (Input("image", _IMAGE), _integer("amount", 1, 1, 4096)),
             ),
             "RepeatImageBatch",
         )
@@ -139,7 +141,7 @@ class ImageFromBatch(Node):
                 "Get Image from Batch",
                 "image/batch",
                 (
-                    InputSpec("image", _IMAGE),
+                    Input("image", _IMAGE),
                     _integer("batch_index", 0, -_MAX_RESOLUTION, _MAX_RESOLUTION),
                     _integer("length", 1, 1, 4096),
                 ),
@@ -166,16 +168,15 @@ class ImageAddNoise(Node):
                 "Add Noise to Image",
                 "image/filters",
                 (
-                    InputSpec("image", _IMAGE),
-                    InputSpec(
+                    Input("image", _IMAGE),
+                    Input(
                         "seed",
                         _INT,
                         default=0,
-                        widget=NumberWidget(
-                            min=0, max=0xFFFFFFFFFFFFFFFF, control_after_generate="fixed"
-                        ),
+                        widget=NumberWidget(min=0, max=0xFFFFFFFFFFFFFFFF),
+                        after_run="fixed",
                     ),
-                    InputSpec(
+                    Input(
                         "strength",
                         _FLOAT,
                         default=0.5,
@@ -211,17 +212,29 @@ class ImageStitch(Node):
                 "Stitch Images",
                 "image/transform",
                 (
-                    InputSpec("image1", _IMAGE),
+                    Input("image1", _IMAGE),
                     _combo("direction", ("right", "down", "left", "up"), default="right"),
-                    InputSpec("match_image_size", _BOOLEAN, default=True),
-                    _integer("spacing_width", 0, 0, 1024, 2, advanced=True),
-                    _combo(
-                        "spacing_color",
-                        ("white", "black", "red", "green", "blue"),
-                        default="white",
-                        advanced=True,
+                    Input("match_image_size", _BOOLEAN, default=True),
+                    Input("image2", _IMAGE, required=False),
+                    Section(
+                        "advanced",
+                        label="Advanced",
+                        collapsed=True,
+                        rows=(
+                            _integer(
+                                "spacing_width",
+                                0,
+                                0,
+                                1024,
+                                2,
+                            ),
+                            _combo(
+                                "spacing_color",
+                                ("white", "black", "red", "green", "blue"),
+                                default="white",
+                            ),
+                        ),
                     ),
-                    InputSpec("image2", _IMAGE, required=False),
                 ),
             ),
             "ImageStitch",
@@ -364,14 +377,23 @@ class ResizeAndPadImage(Node):
                 "Resize And Pad Image",
                 "image/transform",
                 (
-                    InputSpec("image", _IMAGE),
+                    Input("image", _IMAGE),
                     _integer("target_width", 512, 1, _MAX_RESOLUTION, 1),
                     _integer("target_height", 512, 1, _MAX_RESOLUTION, 1),
-                    _combo("padding_color", ("white", "black"), advanced=True),
-                    _combo(
-                        "interpolation",
-                        ("area", "bicubic", "nearest-exact", "bilinear", "lanczos"),
-                        advanced=True,
+                    Section(
+                        "advanced",
+                        label="Advanced",
+                        collapsed=True,
+                        rows=(
+                            _combo(
+                                "padding_color",
+                                ("white", "black"),
+                            ),
+                            _combo(
+                                "interpolation",
+                                ("area", "bicubic", "nearest-exact", "bilinear", "lanczos"),
+                            ),
+                        ),
                     ),
                 ),
             ),
@@ -417,7 +439,7 @@ class ImageRotate(Node):
                 "Rotate Image",
                 "image/transform",
                 (
-                    InputSpec("image", _IMAGE),
+                    Input("image", _IMAGE),
                     _combo("rotation", ("none", "90 degrees", "180 degrees", "270 degrees")),
                 ),
             ),
@@ -449,7 +471,7 @@ class ImageFlip(Node):
                 "Flip Image",
                 "image/transform",
                 (
-                    InputSpec("image", _IMAGE),
+                    Input("image", _IMAGE),
                     _combo("flip_method", ("x-axis: vertically", "y-axis: horizontally")),
                 ),
             ),
@@ -470,15 +492,15 @@ class ImageScaleToMaxDimension(Node):
             node_type="dinkster.image.image_scale_to_max_dimension",
             display_name="Scale Image to Max Dimension",
             category="image/upscaling",
-            inputs=(
-                InputSpec("image", _IMAGE),
+            body=(
+                Input("image", _IMAGE),
                 _combo(
                     "upscale_method",
                     ("area", "lanczos", "bilinear", "nearest-exact", "bilinear", "bicubic"),
                 ),
                 _integer("largest_size", 512, 0, _MAX_RESOLUTION, 1),
+                Output("IMAGE", _IMAGE),
             ),
-            outputs=(OutputSpec("IMAGE", _IMAGE),),
         )
         schema = with_identity_replacement(schema, "ImageScaleToMaxDimension")
         return replace(
@@ -538,22 +560,22 @@ class PadImageNode(Node):
                 "expand image",
                 "border",
             ),
-            inputs=(InputSpec("image", _IMAGE),),
-            combos=(
-                DynamicComboSpec(
+            body=(
+                Input("image", _IMAGE),
+                Choice(
                     "padding_type",
-                    (
-                        DynamicComboOption(
+                    options=(
+                        Option(
                             "pad dimensions",
-                            tuple(
+                            rows=tuple(
                                 _integer(side, 0, 0, _MAX_RESOLUTION, 1)
                                 for side in ("left", "top", "right", "bottom")
                             ),
                         ),
-                        DynamicComboOption(
+                        Option(
                             "pad by multiplier",
-                            (
-                                InputSpec(
+                            rows=(
+                                Input(
                                     "multiplier",
                                     _FLOAT,
                                     default=1.0,
@@ -561,19 +583,19 @@ class PadImageNode(Node):
                                 ),
                             ),
                         ),
-                        DynamicComboOption(
+                        Option(
                             "pad to multiple",
-                            (_integer("multiple", 32, 1, _MAX_RESOLUTION, 1),),
+                            rows=(_integer("multiple", 32, 1, _MAX_RESOLUTION, 1),),
                         ),
                     ),
                 ),
-                DynamicComboSpec(
+                Choice(
                     "padding_style",
-                    (
-                        DynamicComboOption(
+                    options=(
+                        Option(
                             "color",
-                            (
-                                InputSpec(
+                            rows=(
+                                Input(
                                     "color",
                                     TypeExpr.concrete(COLOR_TYPE),
                                     default="#000000",
@@ -582,11 +604,11 @@ class PadImageNode(Node):
                                 _integer("feathering", 0, 0, _MAX_RESOLUTION, 1),
                             ),
                         ),
-                        DynamicComboOption("mirror image"),
+                        Option("mirror image"),
                     ),
                 ),
+                Output("image", _IMAGE),
             ),
-            outputs=(OutputSpec("image", _IMAGE),),
         )
         return with_identity_replacement(schema, "PadImageNode")
 

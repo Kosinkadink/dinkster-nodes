@@ -15,10 +15,10 @@ from dinkster_api.v1 import (
     ABSENT,
     AUDIO_TYPE,
     VIDEO_TYPE,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
-    OutputSpec,
+    Output,
     TypeExpr,
 )
 from dinkster_assets import (
@@ -591,12 +591,12 @@ class TrimAudioFixture(Node):
     def define_schema(cls) -> NodeSchema:
         return NodeSchema(
             node_type="audio-contract.trim",
-            inputs=(
-                InputSpec("audio", TypeExpr.concrete(AUDIO_TYPE)),
-                InputSpec("start", TypeExpr.concrete("FLOAT")),
-                InputSpec("duration", TypeExpr.concrete("FLOAT")),
+            body=(
+                Input("audio", TypeExpr.concrete(AUDIO_TYPE)),
+                Input("start", TypeExpr.concrete("FLOAT")),
+                Input("duration", TypeExpr.concrete("FLOAT")),
+                Output("audio", TypeExpr.concrete(AUDIO_TYPE)),
             ),
-            outputs=(OutputSpec("audio", TypeExpr.concrete(AUDIO_TYPE)),),
         )
 
     @classmethod
@@ -620,8 +620,10 @@ class DecodeAudioFixture(Node):
     def define_schema(cls) -> NodeSchema:
         return NodeSchema(
             node_type="audio-contract.decode",
-            inputs=(InputSpec("audio", TypeExpr.concrete(AUDIO_TYPE)),),
-            outputs=(OutputSpec("audio", TypeExpr.concrete(AUDIO_TYPE)),),
+            body=(
+                Input("audio", TypeExpr.concrete(AUDIO_TYPE)),
+                Output("audio", TypeExpr.concrete(AUDIO_TYPE)),
+            ),
         )
 
     @classmethod

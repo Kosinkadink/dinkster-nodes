@@ -9,10 +9,10 @@ from dinkster_api.v1 import (
     LATENT_TYPE,
     LATENT_UPSCALE_MODEL_TYPE,
     VAE_TYPE,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
-    OutputSpec,
+    Output,
     TypeExpr,
     initialize_inference_process,
     materialize_latent,
@@ -32,12 +32,12 @@ class LTXVLatentUpsampler(Node):
         schema = NodeSchema(
             node_type="dinkster.ltx.ltxv_latent_upsampler",
             category="model/latent/ltxv",
-            inputs=(
-                InputSpec("samples", _LATENT),
-                InputSpec("upscale_model", _LATENT_UPSCALE_MODEL),
-                InputSpec("vae", _VAE),
+            body=(
+                Input("samples", _LATENT),
+                Input("upscale_model", _LATENT_UPSCALE_MODEL),
+                Input("vae", _VAE),
+                Output("LATENT", _LATENT),
             ),
-            outputs=(OutputSpec("LATENT", _LATENT),),
         )
         return with_identity_replacement(schema, "LTXVLatentUpsampler")
 

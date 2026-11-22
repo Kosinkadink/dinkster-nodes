@@ -13,12 +13,12 @@ from dinkster_api.v1 import (
     HOOKS_TYPE,
     AssetRef,
     AssetWidget,
-    InputSpec,
+    Input,
     LocalAssetRef,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
     TypeExpr,
     initialize_inference_process,
     with_identity_replacement,
@@ -32,14 +32,14 @@ def _schema(node_type: str, *, model_only: bool) -> NodeSchema:
         node_type=node_type,
         display_name="Create Hook Model as LoRA" + (" (MO)" if model_only else ""),
         category="advanced/hooks/create",
-        inputs=(
-            InputSpec(
+        body=(
+            Input(
                 "ckpt_name",
                 TypeExpr.concrete(ASSET_TYPE),
                 widget=AssetWidget(kind="model/checkpoint", accept=("application/octet-stream",)),
             ),
             *(
-                InputSpec(
+                Input(
                     name,
                     TypeExpr.concrete(CORE_FLOAT),
                     default=1.0,
@@ -49,9 +49,9 @@ def _schema(node_type: str, *, model_only: bool) -> NodeSchema:
                     ("strength_model",) if model_only else ("strength_model", "strength_clip")
                 )
             ),
-            InputSpec("prev_hooks", TypeExpr.concrete(HOOKS_TYPE), required=False),
+            Input("prev_hooks", TypeExpr.concrete(HOOKS_TYPE), required=False),
+            Output("HOOKS", TypeExpr.concrete(HOOKS_TYPE)),
         ),
-        outputs=(OutputSpec("HOOKS", TypeExpr.concrete(HOOKS_TYPE)),),
     )
 
 

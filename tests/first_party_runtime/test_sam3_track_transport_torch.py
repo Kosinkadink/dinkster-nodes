@@ -13,10 +13,10 @@ import torch
 from dinkster_api.v1 import (
     CORE_STRING,
     SAM3_TRACK_DATA_TYPE,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
-    OutputSpec,
+    Output,
     TypeExpr,
     TypeRegistry,
     materialize_latent,
@@ -180,8 +180,10 @@ class SAM3TrackSource(Node):
     def define_schema(cls) -> NodeSchema:
         return NodeSchema(
             node_type="sam3-public-source.source",
-            inputs=(InputSpec("case", STRING),),
-            outputs=(OutputSpec("track", SAM3_TRACK),),
+            body=(
+                Input("case", STRING),
+                Output("track", SAM3_TRACK),
+            ),
         )
 
     @classmethod
@@ -194,8 +196,11 @@ class SAM3TrackConsumer(Node):
     def define_schema(cls) -> NodeSchema:
         return NodeSchema(
             node_type="sam3-public-consumer.consumer",
-            inputs=(InputSpec("track", SAM3_TRACK), InputSpec("case", STRING)),
-            outputs=(OutputSpec("summary", STRING),),
+            body=(
+                Input("track", SAM3_TRACK),
+                Input("case", STRING),
+                Output("summary", STRING),
+            ),
         )
 
     @classmethod

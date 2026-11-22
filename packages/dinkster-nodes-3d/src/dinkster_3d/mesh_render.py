@@ -20,11 +20,11 @@ from dinkster_api.v1 import (
     ColorWidget,
     ComboOption,
     ComboWidget,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
     TypeExpr,
     initialize_inference_process,
     materialize_mesh,
@@ -44,9 +44,9 @@ class RenderMesh(Node):
                 "Ray-casts a single view of a mesh. The camera and optional model transform "
                 "can come from a Load3D / Preview3D viewer."
             ),
-            inputs=(
-                InputSpec("mesh", TypeExpr.concrete(MESH_TYPE)),
-                InputSpec(
+            body=(
+                Input("mesh", TypeExpr.concrete(MESH_TYPE)),
+                Input(
                     "mode",
                     TypeExpr.concrete(CORE_COMBO),
                     widget=ComboWidget(
@@ -62,13 +62,13 @@ class RenderMesh(Node):
                             )
                         )
                     ),
-                    doc=(
+                    tooltip=(
                         "What to render. auto: texture if present, else vertex colours, "
                         "else shaded clay."
                     ),
                 ),
                 *(
-                    InputSpec(
+                    Input(
                         axis,
                         TypeExpr.concrete(CORE_INT),
                         default=1024,
@@ -76,30 +76,28 @@ class RenderMesh(Node):
                     )
                     for axis in ("width", "height")
                 ),
-                InputSpec(
+                Input(
                     "background",
                     TypeExpr.concrete(COLOR_TYPE),
                     default="#000000",
                     widget=ColorWidget(),
                 ),
-                InputSpec(
+                Input(
                     "model_3d_info",
                     TypeExpr.concrete(LOAD3D_MODEL_INFO_TYPE),
                     required=False,
-                    doc="Model transform from the same Load3D / Preview3D viewer. "
+                    tooltip="Model transform from the same Load3D / Preview3D viewer. "
                     "Connect it with camera_info to match the viewer framing.",
                 ),
-                InputSpec(
+                Input(
                     "camera_info",
                     TypeExpr.concrete(LOAD3D_CAMERA_TYPE),
                     required=False,
-                    doc="Camera from a Load3D / Preview3D viewer or a Create Camera Info "
+                    tooltip="Camera from a Load3D / Preview3D viewer or a Create Camera Info "
                     "node. If none is connected, a default front view is auto-framed.",
                 ),
-            ),
-            outputs=(
-                OutputSpec("IMAGE", TypeExpr.concrete(IMAGE_TYPE), display_name="image"),
-                OutputSpec("MASK", TypeExpr.concrete(MASK_TYPE), display_name="mask"),
+                Output("IMAGE", TypeExpr.concrete(IMAGE_TYPE), label="image"),
+                Output("MASK", TypeExpr.concrete(MASK_TYPE), label="mask"),
             ),
         )
         return with_identity_replacement(schema, "RenderMesh")

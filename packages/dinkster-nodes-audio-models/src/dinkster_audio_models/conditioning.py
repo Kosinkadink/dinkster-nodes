@@ -8,11 +8,11 @@ from typing import Any
 from dinkster_api.v1 import (
     CONDITIONING_TYPE,
     CORE_FLOAT,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
     TypeExpr,
     with_identity_replacement,
 )
@@ -29,8 +29,8 @@ def _number(
     minimum: float | int,
     maximum: float | int,
     step: float | int,
-) -> InputSpec:
-    return InputSpec(
+) -> Input:
+    return Input(
         name,
         type_,
         default=default,
@@ -57,15 +57,13 @@ class ConditioningStableAudio(Node):
         schema = NodeSchema(
             node_type="dinkster.audio.models.conditioning_stable_audio",
             category="model/conditioning/stable audio",
-            inputs=(
-                InputSpec("positive", _CONDITIONING),
-                InputSpec("negative", _CONDITIONING),
+            body=(
+                Input("positive", _CONDITIONING),
+                Input("negative", _CONDITIONING),
                 _number("seconds_start", _FLOAT, 0.0, 0.0, 1000.0, 0.1),
                 _number("seconds_total", _FLOAT, 47.0, 0.0, 1000.0, 0.1),
-            ),
-            outputs=(
-                OutputSpec("positive", _CONDITIONING),
-                OutputSpec("negative", _CONDITIONING),
+                Output("positive", _CONDITIONING),
+                Output("negative", _CONDITIONING),
             ),
         )
         return with_identity_replacement(schema, "ConditioningStableAudio")

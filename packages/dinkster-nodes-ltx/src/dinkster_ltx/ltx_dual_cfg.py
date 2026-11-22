@@ -10,11 +10,11 @@ from dinkster_api.v1 import (
     CORE_FLOAT,
     GUIDER_TYPE,
     MODEL_TYPE,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
     TypeExpr,
     initialize_inference_process,
     with_identity_replacement,
@@ -32,12 +32,12 @@ class LTXVDualCFGGuider(Node):
             description=(
                 "Separate CFG scales for the video and audio modalities of a packed LTXV-AV latent."
             ),
-            inputs=(
-                InputSpec("model", TypeExpr.concrete(MODEL_TYPE)),
-                InputSpec("positive", conditioning),
-                InputSpec("negative", conditioning),
+            body=(
+                Input("model", TypeExpr.concrete(MODEL_TYPE)),
+                Input("positive", conditioning),
+                Input("negative", conditioning),
                 *(
-                    InputSpec(
+                    Input(
                         name,
                         TypeExpr.concrete(CORE_FLOAT),
                         default=default,
@@ -45,8 +45,8 @@ class LTXVDualCFGGuider(Node):
                     )
                     for name, default in (("video_cfg", 3.0), ("audio_cfg", 7.0))
                 ),
+                Output("GUIDER", TypeExpr.concrete(GUIDER_TYPE)),
             ),
-            outputs=(OutputSpec("GUIDER", TypeExpr.concrete(GUIDER_TYPE)),),
         )
         return with_identity_replacement(schema, "LTXVDualCFGGuider")
 

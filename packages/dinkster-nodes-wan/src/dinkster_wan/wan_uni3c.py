@@ -10,11 +10,11 @@ from dinkster_api.v1 import (
     MODEL_PATCH_TYPE,
     MODEL_TYPE,
     VAE_TYPE,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
     TypeExpr,
     initialize_inference_process,
     materialize_image,
@@ -142,31 +142,31 @@ class WanUni3CControlnetApply(Node):
             node_type="dinkster.wan.wan_uni3_c_controlnet_apply",
             display_name="Apply Wan Uni3C ControlNet",
             category="model/patch/wan",
-            inputs=(
-                InputSpec("model", TypeExpr.concrete(MODEL_TYPE)),
-                InputSpec("model_patch", TypeExpr.concrete(MODEL_PATCH_TYPE)),
-                InputSpec("vae", TypeExpr.concrete(VAE_TYPE)),
-                InputSpec("render_video", TypeExpr.concrete(IMAGE_TYPE)),
-                InputSpec(
+            body=(
+                Input("model", TypeExpr.concrete(MODEL_TYPE)),
+                Input("model_patch", TypeExpr.concrete(MODEL_PATCH_TYPE)),
+                Input("vae", TypeExpr.concrete(VAE_TYPE)),
+                Input("render_video", TypeExpr.concrete(IMAGE_TYPE)),
+                Input(
                     "strength",
                     TypeExpr.concrete(CORE_FLOAT),
                     default=1.0,
                     widget=NumberWidget(min=-10.0, max=10.0, step=0.01),
                 ),
-                InputSpec(
+                Input(
                     "start_percent",
                     TypeExpr.concrete(CORE_FLOAT),
                     default=0.0,
                     widget=NumberWidget(min=0.0, max=1.0, step=0.001),
                 ),
-                InputSpec(
+                Input(
                     "end_percent",
                     TypeExpr.concrete(CORE_FLOAT),
                     default=1.0,
                     widget=NumberWidget(min=0.0, max=1.0, step=0.001),
                 ),
+                Output("MODEL", TypeExpr.concrete(MODEL_TYPE)),
             ),
-            outputs=(OutputSpec("MODEL", TypeExpr.concrete(MODEL_TYPE)),),
         )
         return with_identity_replacement(schema, "WanUni3CControlnetApply")
 

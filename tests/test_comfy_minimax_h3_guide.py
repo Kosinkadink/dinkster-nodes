@@ -8,9 +8,9 @@ from dinkster_api.v1 import (
     IMAGE_TYPE,
     LATENT_TYPE,
     VAE_TYPE,
-    InputSpec,
+    Input,
     NumberWidget,
-    OutputSpec,
+    Output,
     TypeExpr,
     schema_from_wire,
     schema_to_wire,
@@ -29,51 +29,51 @@ def test_minimax_h3_add_guide_schema_and_cold_discovery() -> None:
         "model/conditioning/minimax",
     )
     assert schema.inputs == (
-        InputSpec("positive", TypeExpr.concrete(CONDITIONING_TYPE)),
-        InputSpec(
+        Input("positive", TypeExpr.concrete(CONDITIONING_TYPE)),
+        Input(
             "vae",
             TypeExpr.concrete(VAE_TYPE),
             required=False,
-            doc="Video VAE, needed when an image is connected.",
+            tooltip="Video VAE, needed when an image is connected.",
         ),
-        InputSpec(
+        Input(
             "audio_vae",
             TypeExpr.concrete(VAE_TYPE),
             required=False,
-            doc="Audio VAE, needed when an audio is connected.",
+            tooltip="Audio VAE, needed when an audio is connected.",
         ),
-        InputSpec("latent", TypeExpr.concrete(LATENT_TYPE)),
-        InputSpec(
+        Input("latent", TypeExpr.concrete(LATENT_TYPE)),
+        Input(
             "image",
             TypeExpr.concrete(IMAGE_TYPE),
             required=False,
-            doc=(
+            tooltip=(
                 "Image or video frames to anchor. Multi-frame batches are anchored as a clip and "
                 "cropped down to the model's valid clip lengths: 5, 22, 39... (17k + 5) frames. "
                 "Batches shorter than 5 frames use only the first image."
             ),
         ),
-        InputSpec(
+        Input(
             "audio",
             TypeExpr.concrete(AUDIO_TYPE),
             required=False,
-            doc=(
+            tooltip=(
                 "Soundtrack to anchor starting at the same frame index, cropped to the video's "
                 "remaining duration."
             ),
         ),
-        InputSpec(
+        Input(
             "frame_idx",
             TypeExpr.concrete(CORE_INT),
             default=0,
             widget=NumberWidget(min=-9999, max=9999),
-            doc=(
+            tooltip=(
                 "Frame index to anchor the image or the clip's first frame at. Negative values are "
                 "counted from the end of the video."
             ),
         ),
     )
-    assert schema.outputs == (OutputSpec("positive", TypeExpr.concrete(CONDITIONING_TYPE)),)
+    assert schema.outputs == (Output("positive", TypeExpr.concrete(CONDITIONING_TYPE)),)
     assert schema_from_wire(schema_to_wire(schema)) == schema
 
 
@@ -81,7 +81,7 @@ def test_minimax_h3_reference_members_are_optional_and_roundtrip() -> None:
     schema = MiniMaxH3ReferenceToVideo.schema()
     assert NODES.count(MiniMaxH3ReferenceToVideo) == 1
     assert schema.node_type == "dinkster.minimax.mini_max_h3_reference_to_video"
-    assert schema.inputs[0] == InputSpec("clip", TypeExpr.concrete(CLIP_TYPE))
+    assert schema.inputs[0] == Input("clip", TypeExpr.concrete(CLIP_TYPE))
     assert schema.inputs[0].required
 
     expected_families = (
@@ -105,7 +105,7 @@ def test_minimax_h3_reference_members_are_optional_and_roundtrip() -> None:
         )
         assert not family.required
         assert family.template == (
-            InputSpec(prefix.rstrip("_"), TypeExpr.concrete(kind), required=False),
+            Input(prefix.rstrip("_"), TypeExpr.concrete(kind), required=False),
         )
 
     assert schema_from_wire(schema_to_wire(schema)) == schema

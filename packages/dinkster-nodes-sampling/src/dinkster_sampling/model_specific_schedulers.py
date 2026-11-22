@@ -11,11 +11,12 @@ from dinkster_api.v1 import (
     CORE_INT,
     SIGMAS_TYPE,
     ComboWidget,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
+    Section,
     TypeExpr,
     with_identity_replacement,
 )
@@ -71,26 +72,26 @@ class AlignYourStepsScheduler(Node):
                 node_type="dinkster.sampling.align_your_steps_scheduler",
                 search_terms=("AYS scheduler",),
                 category="model/sampling/schedulers",
-                inputs=(
-                    InputSpec(
+                body=(
+                    Input(
                         "model_type",
                         TypeExpr.concrete(CORE_COMBO),
                         widget=ComboWidget(("SD1", "SDXL", "SVD")),
                     ),
-                    InputSpec(
+                    Input(
                         "steps",
                         TypeExpr.concrete(CORE_INT),
                         default=10,
                         widget=NumberWidget(min=1, max=10000),
                     ),
-                    InputSpec(
+                    Input(
                         "denoise",
                         TypeExpr.concrete(CORE_FLOAT),
                         default=1.0,
                         widget=NumberWidget(min=0.0, max=1.0, step=0.01),
                     ),
+                    Output("SIGMAS", TypeExpr.concrete(SIGMAS_TYPE)),
                 ),
-                outputs=(OutputSpec("SIGMAS", TypeExpr.concrete(SIGMAS_TYPE)),),
             ),
             "AlignYourStepsScheduler",
         )
@@ -3694,28 +3695,34 @@ class GITSScheduler(Node):
             NodeSchema(
                 node_type="dinkster.sampling.gits_scheduler",
                 category="model/sampling/schedulers",
-                inputs=(
-                    InputSpec(
-                        "coeff",
-                        TypeExpr.concrete(CORE_FLOAT),
-                        default=1.2,
-                        advanced=True,
-                        widget=NumberWidget(min=0.8, max=1.5, step=0.05),
-                    ),
-                    InputSpec(
+                body=(
+                    Input(
                         "steps",
                         TypeExpr.concrete(CORE_INT),
                         default=10,
                         widget=NumberWidget(min=2, max=1000),
                     ),
-                    InputSpec(
+                    Input(
                         "denoise",
                         TypeExpr.concrete(CORE_FLOAT),
                         default=1.0,
                         widget=NumberWidget(min=0.0, max=1.0, step=0.01),
                     ),
+                    Section(
+                        "advanced",
+                        label="Advanced",
+                        collapsed=True,
+                        rows=(
+                            Input(
+                                "coeff",
+                                TypeExpr.concrete(CORE_FLOAT),
+                                default=1.2,
+                                widget=NumberWidget(min=0.8, max=1.5, step=0.05),
+                            ),
+                        ),
+                    ),
+                    Output("SIGMAS", TypeExpr.concrete(SIGMAS_TYPE)),
                 ),
-                outputs=(OutputSpec("SIGMAS", TypeExpr.concrete(SIGMAS_TYPE)),),
             ),
             "GITSScheduler",
         )
@@ -3818,26 +3825,26 @@ class OptimalStepsScheduler(Node):
             NodeSchema(
                 node_type="dinkster.sampling.optimal_steps_scheduler",
                 category="model/sampling/schedulers",
-                inputs=(
-                    InputSpec(
+                body=(
+                    Input(
                         "model_type",
                         TypeExpr.concrete(CORE_COMBO),
                         widget=ComboWidget(("FLUX", "Wan", "Chroma")),
                     ),
-                    InputSpec(
+                    Input(
                         "steps",
                         TypeExpr.concrete(CORE_INT),
                         default=20,
                         widget=NumberWidget(min=3, max=1000),
                     ),
-                    InputSpec(
+                    Input(
                         "denoise",
                         TypeExpr.concrete(CORE_FLOAT),
                         default=1.0,
                         widget=NumberWidget(min=0.0, max=1.0, step=0.01),
                     ),
+                    Output("SIGMAS", TypeExpr.concrete(SIGMAS_TYPE)),
                 ),
-                outputs=(OutputSpec("SIGMAS", TypeExpr.concrete(SIGMAS_TYPE)),),
             ),
             "OptimalStepsScheduler",
         )

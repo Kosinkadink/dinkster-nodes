@@ -10,10 +10,10 @@ from typing import Any
 from dinkster_api.v1 import (
     MESH_TYPE,
     VOXEL_TYPE,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
-    OutputSpec,
+    Output,
     TriangleMeshBatch,
     TypeExpr,
     materialize_mesh,
@@ -52,11 +52,11 @@ class PaintMesh(Node):
             description=(
                 "Paints each mesh vertex with its nearest voxel color from the input voxel field."
             ),
-            inputs=(
-                InputSpec("mesh", TypeExpr.concrete(MESH_TYPE)),
-                InputSpec("voxel_colors", TypeExpr.concrete(VOXEL_TYPE)),
+            body=(
+                Input("mesh", TypeExpr.concrete(MESH_TYPE)),
+                Input("voxel_colors", TypeExpr.concrete(VOXEL_TYPE)),
+                Output("mesh", TypeExpr.concrete(MESH_TYPE)),
             ),
-            outputs=(OutputSpec("mesh", TypeExpr.concrete(MESH_TYPE)),),
         )
         return with_identity_replacement(schema, "PaintMesh")
 

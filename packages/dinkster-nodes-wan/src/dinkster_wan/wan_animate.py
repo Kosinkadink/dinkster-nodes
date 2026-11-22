@@ -16,11 +16,11 @@ from dinkster_api.v1 import (
     MODEL_TYPE,
     VAE_TYPE,
     ComboWidget,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
     TypeExpr,
     initialize_inference_process,
     materialize_clip_vision_output,
@@ -60,13 +60,13 @@ def _number(
     maximum: float | int,
     step: float | int | None,
     doc: str = "",
-) -> InputSpec:
-    return InputSpec(
+) -> Input:
+    return Input(
         name,
         type_,
         default=default,
         widget=NumberWidget(min=minimum, max=maximum, step=step),
-        doc=doc,
+        tooltip=doc,
     )
 
 
@@ -81,22 +81,22 @@ class WanAnimateToVideo(Node):
         schema = NodeSchema(
             node_type="dinkster.wan.wan_animate_to_video",
             category=_CATEGORY,
-            inputs=(
-                InputSpec("positive", _CONDITIONING),
-                InputSpec("negative", _CONDITIONING),
-                InputSpec("vae", _VAE),
+            body=(
+                Input("positive", _CONDITIONING),
+                Input("negative", _CONDITIONING),
+                Input("vae", _VAE),
                 _number("width", _INT, 832, 16, 16384, 16),
                 _number("height", _INT, 480, 16, 16384, 16),
                 _number("length", _INT, 77, 1, 16384, 4),
                 _number("batch_size", _INT, 1, 1, 4096, None),
-                InputSpec("clip_vision_output", _CLIP_VISION_OUTPUT, required=False),
-                InputSpec("reference_image", _IMAGE, required=False),
-                InputSpec("face_video", _IMAGE, required=False),
-                InputSpec("pose_video", _IMAGE, required=False),
+                Input("clip_vision_output", _CLIP_VISION_OUTPUT, required=False),
+                Input("reference_image", _IMAGE, required=False),
+                Input("face_video", _IMAGE, required=False),
+                Input("pose_video", _IMAGE, required=False),
                 _number("continue_motion_max_frames", _INT, 5, 1, 16384, 4),
-                InputSpec("background_video", _IMAGE, required=False),
-                InputSpec("character_mask", _MASK, required=False),
-                InputSpec("continue_motion", _IMAGE, required=False),
+                Input("background_video", _IMAGE, required=False),
+                Input("character_mask", _MASK, required=False),
+                Input("continue_motion", _IMAGE, required=False),
                 _number(
                     "video_frame_offset",
                     _INT,
@@ -108,14 +108,12 @@ class WanAnimateToVideo(Node):
                     "longer videos by chunk. Connect to the video_frame_offset output of the "
                     "previous node for extending a video.",
                 ),
-            ),
-            outputs=(
-                OutputSpec("positive", _CONDITIONING, display_name="positive"),
-                OutputSpec("negative", _CONDITIONING, display_name="negative"),
-                OutputSpec("latent", _LATENT, display_name="latent"),
-                OutputSpec("trim_latent", _INT, display_name="trim_latent"),
-                OutputSpec("trim_image", _INT, display_name="trim_image"),
-                OutputSpec("video_frame_offset", _INT, display_name="video_frame_offset"),
+                Output("positive", _CONDITIONING, label="positive"),
+                Output("negative", _CONDITIONING, label="negative"),
+                Output("latent", _LATENT, label="latent"),
+                Output("trim_latent", _INT, label="trim_latent"),
+                Output("trim_image", _INT, label="trim_image"),
+                Output("video_frame_offset", _INT, label="video_frame_offset"),
             ),
         )
         return with_identity_replacement(schema, "WanAnimateToVideo")
@@ -288,10 +286,10 @@ class WanAnimate2ToVideo(Node):
                 "Animate a character in a reference image using a video, effectively replicating "
                 "the facial animation, body motion and hands gesture from the video."
             ),
-            inputs=(
-                InputSpec("positive", _CONDITIONING),
-                InputSpec("negative", _CONDITIONING),
-                InputSpec("vae", _VAE),
+            body=(
+                Input("positive", _CONDITIONING),
+                Input("negative", _CONDITIONING),
+                Input("vae", _VAE),
                 _number("width", _INT, 832, 16, 16384, 16, "Output video width in pixels."),
                 _number("height", _INT, 480, 16, 16384, 16, "Output video height in pixels."),
                 _number("length", _INT, 81, 1, 16384, 4, "Number of frames to generate."),
@@ -304,44 +302,44 @@ class WanAnimate2ToVideo(Node):
                     None,
                     "Number of videos to generate simultaneously.",
                 ),
-                InputSpec(
-                    "reference_image", _IMAGE, required=False, doc="The character to animate."
+                Input(
+                    "reference_image", _IMAGE, required=False, tooltip="The character to animate."
                 ),
-                InputSpec(
+                Input(
                     "pose_video",
                     _IMAGE,
                     required=False,
-                    doc="The video whose motion is transferred to the reference character.",
+                    tooltip="The video whose motion is transferred to the reference character.",
                 ),
-                InputSpec(
+                Input(
                     "clip_vision_output",
                     _CLIP_VISION_OUTPUT,
                     required=False,
-                    doc="CLIP vision of the reference image.",
+                    tooltip="CLIP vision of the reference image.",
                 ),
-                InputSpec(
+                Input(
                     "positive_pose",
                     _CONDITIONING,
                     required=False,
-                    doc=(
+                    tooltip=(
                         "Prompt for the pose-video branch, describing the motion rather than the "
                         "character. Defaults to positive. Used for both the cond and uncond passes."
                     ),
                 ),
-                InputSpec(
+                Input(
                     "clip_vision_output_pose",
                     _CLIP_VISION_OUTPUT,
                     required=False,
-                    doc=(
+                    tooltip=(
                         "CLIP vision of the pose video's first frame. Defaults to "
                         "clip_vision_output."
                     ),
                 ),
-                InputSpec(
+                Input(
                     "continue_motion",
                     _IMAGE,
                     required=False,
-                    doc="Previous motion sequence to continue from for temporal consistency.",
+                    tooltip="Previous motion sequence to continue from for temporal consistency.",
                 ),
                 _number(
                     "video_frame_offset",
@@ -396,28 +394,26 @@ class WanAnimate2ToVideo(Node):
                     "latent frame. Below 1.0 loosens identity/appearance adherence (e.g. to let "
                     "the prompt restyle), above tightens it against drift.",
                 ),
-            ),
-            outputs=(
-                OutputSpec("positive", _CONDITIONING, display_name="positive"),
-                OutputSpec("negative", _CONDITIONING, display_name="negative"),
-                OutputSpec("latent", _LATENT, display_name="latent"),
-                OutputSpec(
+                Output("positive", _CONDITIONING, label="positive"),
+                Output("negative", _CONDITIONING, label="negative"),
+                Output("latent", _LATENT, label="latent"),
+                Output(
                     "trim_latent",
                     _INT,
-                    display_name="trim_latent",
-                    doc="Number of latent frames that should be trimmed before decoding.",
+                    label="trim_latent",
+                    tooltip="Number of latent frames that should be trimmed before decoding.",
                 ),
-                OutputSpec(
+                Output(
                     "trim_image",
                     _INT,
-                    display_name="trim_image",
-                    doc="Number of overlapping image frames when extending a video.",
+                    label="trim_image",
+                    tooltip="Number of overlapping image frames when extending a video.",
                 ),
-                OutputSpec(
+                Output(
                     "video_frame_offset",
                     _INT,
-                    display_name="video_frame_offset",
-                    doc="Frames to seek into the pose video.",
+                    label="video_frame_offset",
+                    tooltip="Frames to seek into the pose video.",
                 ),
             ),
         )
@@ -584,33 +580,33 @@ class WanAnimate2Cache(Node):
                 "window count; use the static_standard schedule, as uniform schedules shift the "
                 "windows every step and nothing ever recurs to hit the cache."
             ),
-            inputs=(
-                InputSpec("model", _MODEL),
-                InputSpec(
+            body=(
+                Input("model", _MODEL),
+                Input(
                     "device",
                     _COMBO,
                     default="cpu",
                     widget=ComboWidget(("cpu", "gpu")),
-                    doc=(
+                    tooltip=(
                         "Where to keep the cache. cpu (RAM) is the safe choice, the cache will not "
                         "fit in VRAM alongside the model at typical sizes. gpu (VRAM) can be "
                         "faster "
                         "if it fits."
                     ),
                 ),
-                InputSpec(
+                Input(
                     "dtype",
                     _COMBO,
                     default="default",
                     widget=ComboWidget(("default", "int8", "int4")),
-                    doc=(
+                    tooltip=(
                         "Storage precision. default stores the activations in the model's compute "
                         "dtype. int8 halves the cache, int4 quarters it, convrot is used to retain "
                         "accuracy."
                     ),
                 ),
+                Output("MODEL", _MODEL),
             ),
-            outputs=(OutputSpec("MODEL", _MODEL),),
         )
         return with_identity_replacement(schema, "WanAnimate2Cache")
 

@@ -13,14 +13,15 @@ from dinkster_api.v1 import (
     CORE_FLOAT,
     CORE_STRING,
     MESH_TYPE,
-    DynamicComboOption,
-    DynamicComboSpec,
-    InputFamilySpec,
-    InputSpec,
+    Choice,
+    Group,
+    Input,
     Node,
     NodeSchema,
+    Numbered,
     NumberWidget,
-    OutputSpec,
+    Option,
+    Output,
     TriangleMeshBatch,
     TypeExpr,
     materialize_mesh,
@@ -43,28 +44,28 @@ class RotateMesh(Node):
                 "Rotate a mesh. Euler XYZ applies X then Y then Z about the world axes (degrees). "
                 "Quaternion is (w, x, y, z), auto-normalized."
             ),
-            inputs=(InputSpec("mesh", _MESH),),
-            combos=(
-                DynamicComboSpec(
+            body=(
+                Input("mesh", _MESH),
+                Choice(
                     "mode",
-                    (
-                        DynamicComboOption(
+                    options=(
+                        Option(
                             "euler_xyz",
-                            tuple(
-                                InputSpec(
+                            rows=tuple(
+                                Input(
                                     f"angle_{axis}",
                                     _FLOAT,
                                     default=0.0,
                                     widget=NumberWidget(min=-360.0, max=360.0, step=0.1),
-                                    doc=f"Rotation around the {axis.upper()} axis in degrees.",
+                                    tooltip=f"Rotation around the {axis.upper()} axis in degrees.",
                                 )
                                 for axis in "xyz"
                             ),
                         ),
-                        DynamicComboOption(
+                        Option(
                             "quaternion",
-                            tuple(
-                                InputSpec(
+                            rows=tuple(
+                                Input(
                                     f"q{axis}",
                                     _FLOAT,
                                     default=1.0 if axis == "w" else 0.0,
@@ -75,9 +76,8 @@ class RotateMesh(Node):
                         ),
                     ),
                 ),
+                Output("mesh", _MESH),
             ),
-            input_order=("mesh", "mode"),
-            outputs=(OutputSpec("mesh", _MESH),),
         )
         return with_identity_replacement(schema, "RotateMesh")
 
@@ -134,12 +134,10 @@ class GetMeshInfo(Node):
             node_type="dinkster.3d.get_mesh_info",
             display_name="Get Mesh Info",
             category="3d/mesh",
-            inputs=(InputSpec("mesh", _MESH),),
-            outputs=(
-                OutputSpec("MESH", _MESH, display_name="mesh"),
-                OutputSpec(
-                    "STRING", TypeExpr.concrete(CORE_STRING), display_name="info", preview=True
-                ),
+            body=(
+                Input("mesh", _MESH),
+                Output("MESH", _MESH, label="mesh"),
+                Output("STRING", TypeExpr.concrete(CORE_STRING), label="info", preview=True),
             ),
         )
         return with_identity_replacement(schema, "GetMeshInfo")
@@ -217,17 +215,17 @@ class MergeMeshes(Node):
                 "Concatenate N meshes into one by offsetting face indices and stacking verts, "
                 "faces, uvs, and colors."
             ),
-            input_families=(
-                InputFamilySpec(
+            body=(
+                Group(
                     "meshes",
-                    (InputSpec("mesh", _MESH),),
+                    value=Input("mesh", _MESH),
                     min_members=2,
                     max_members=50,
-                    member_prefix="mesh",
                     optional_after_minimum=True,
+                    keys=Numbered("mesh", start=0),
                 ),
+                Output("mesh", _MESH),
             ),
-            outputs=(OutputSpec("mesh", _MESH),),
         )
         return with_identity_replacement(schema, "MergeMeshes")
 

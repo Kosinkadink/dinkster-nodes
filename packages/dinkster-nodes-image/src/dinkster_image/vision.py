@@ -16,10 +16,11 @@ from dinkster_api.v1 import (
     MASK_TYPE,
     ComboOption,
     ComboWidget,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
-    OutputSpec,
+    Output,
+    Section,
     StringWidget,
     TypeExpr,
 )
@@ -47,8 +48,8 @@ MATTE_PROVIDER_CHOICE = "dinkster.image.matte.providers"
 TRACK_PROVIDER_CHOICE = "dinkster.detection.track.providers"
 
 
-def _provider_input(choice: str) -> InputSpec:
-    return InputSpec(
+def _provider_input(choice: str) -> Input:
+    return Input(
         "provider",
         COMBO,
         required=False,
@@ -57,8 +58,8 @@ def _provider_input(choice: str) -> InputSpec:
     )
 
 
-def _model_input(options: tuple[ComboOption, ...]) -> InputSpec:
-    return InputSpec(
+def _model_input(options: tuple[ComboOption, ...]) -> Input:
+    return Input(
         "model",
         COMBO,
         required=False,
@@ -81,13 +82,11 @@ class DetectObjects(Node):
                 "as a label filter, and an empty prompt keeps every class. Prompt "
                 "mode controls whether commas separate phrases or remain literal."
             ),
-            inputs=(
-                InputSpec("image", IMAGE),
-                InputSpec("prompt", STRING, required=False, default="", widget=StringWidget()),
-                _combo("prompt_mode", _PROMPT_MODES, "comma-separated", advanced=True),
+            body=(
+                Input("image", IMAGE),
+                Input("prompt", STRING, required=False, default="", widget=StringWidget()),
                 _number("min_score", FLOAT, 0.5, step=0.01),
                 _number("max_results", INT, -1, step=1),
-                _combo("result_limit_mode", _RESULT_LIMIT_MODES, "count", advanced=True),
                 _model_input(
                     (
                         ComboOption("sam-3.1", "SAM 3.1"),
@@ -96,10 +95,25 @@ class DetectObjects(Node):
                     )
                 ),
                 _provider_input(DETECT_PROVIDER_CHOICE),
-            ),
-            outputs=(
-                OutputSpec("detections", DETECTIONS),
-                OutputSpec("count", INT),
+                Section(
+                    "advanced",
+                    label="Advanced",
+                    collapsed=True,
+                    rows=(
+                        _combo(
+                            "prompt_mode",
+                            _PROMPT_MODES,
+                            "comma-separated",
+                        ),
+                        _combo(
+                            "result_limit_mode",
+                            _RESULT_LIMIT_MODES,
+                            "count",
+                        ),
+                    ),
+                ),
+                Output("detections", DETECTIONS),
+                Output("count", INT),
             ),
             search_terms=(
                 "object detection",
@@ -129,9 +143,9 @@ class SegmentDetections(Node):
                 "detections carrying full-frame soft masks, plus the masks as a "
                 "list."
             ),
-            inputs=(
-                InputSpec("image", IMAGE),
-                InputSpec("detections", DETECTIONS),
+            body=(
+                Input("image", IMAGE),
+                Input("detections", DETECTIONS),
                 _model_input(
                     (
                         ComboOption("sam-3.1", "SAM 3.1"),
@@ -139,10 +153,8 @@ class SegmentDetections(Node):
                     )
                 ),
                 _provider_input(SEGMENT_PROVIDER_CHOICE),
-            ),
-            outputs=(
-                OutputSpec("detections", DETECTIONS),
-                OutputSpec("masks", MASKS),
+                Output("detections", DETECTIONS),
+                Output("masks", MASKS),
             ),
             search_terms=(
                 "SAM",
@@ -170,16 +182,25 @@ class SegmentByText(Node):
                 "full-frame masks, plus the masks as a list. Prompt mode controls "
                 "whether commas separate phrases or remain literal."
             ),
-            inputs=(
-                InputSpec("image", IMAGE),
-                InputSpec("prompt", STRING, required=False, default="", widget=StringWidget()),
-                _combo("prompt_mode", _PROMPT_MODES, "comma-separated", advanced=True),
+            body=(
+                Input("image", IMAGE),
+                Input("prompt", STRING, required=False, default="", widget=StringWidget()),
                 _number("min_score", FLOAT, 0.5, minimum=0.0, maximum=1.0, step=0.01),
                 _provider_input(TEXT_SEGMENT_PROVIDER_CHOICE),
-            ),
-            outputs=(
-                OutputSpec("detections", DETECTIONS),
-                OutputSpec("masks", MASKS),
+                Section(
+                    "advanced",
+                    label="Advanced",
+                    collapsed=True,
+                    rows=(
+                        _combo(
+                            "prompt_mode",
+                            _PROMPT_MODES,
+                            "comma-separated",
+                        ),
+                    ),
+                ),
+                Output("detections", DETECTIONS),
+                Output("masks", MASKS),
             ),
             search_terms=(
                 "text prompted segmentation",
@@ -207,14 +228,10 @@ class ImageMatte(Node):
                 "combine it with the input through alpha join or compositing "
                 "for background removal."
             ),
-            inputs=(
-                InputSpec("image", IMAGE),
+            body=(
+                Input("image", IMAGE),
                 _provider_input(MATTE_PROVIDER_CHOICE),
-            ),
-            outputs=(
-                OutputSpec(
-                    "mask", MASK, preview=True, mask_polarity="coverage", mask_semantic="alpha"
-                ),
+                Output("mask", MASK, preview=True, mask_polarity="coverage", mask_semantic="alpha"),
             ),
             search_terms=(
                 "background removal",
@@ -243,15 +260,13 @@ class TrackObjects(Node):
                 "objects; each tracked object yields one mask batched across every "
                 "frame, plus their combined union."
             ),
-            inputs=(
-                InputSpec("image", IMAGE),
-                InputSpec("detections", DETECTIONS, required=False),
-                InputSpec("initial_masks", MASK, required=False),
+            body=(
+                Input("image", IMAGE),
+                Input("detections", DETECTIONS, required=False),
+                Input("initial_masks", MASK, required=False),
                 _provider_input(TRACK_PROVIDER_CHOICE),
-            ),
-            outputs=(
-                OutputSpec("masks", MASKS),
-                OutputSpec("combined", MASK, preview=True),
+                Output("masks", MASKS),
+                Output("combined", MASK, preview=True),
             ),
             search_terms=(
                 "video object tracking",

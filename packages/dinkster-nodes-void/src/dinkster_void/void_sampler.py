@@ -8,7 +8,7 @@ from dinkster_api.v1 import (
     SAMPLER_TYPE,
     Node,
     NodeSchema,
-    OutputSpec,
+    Output,
     TypeExpr,
     initialize_inference_process,
     with_identity_replacement,
@@ -21,8 +21,7 @@ class VOIDSampler(Node):
         schema = NodeSchema(
             node_type="dinkster.void.void_sampler",
             category="model/sampling/samplers",
-            inputs=(),
-            outputs=(OutputSpec("SAMPLER", TypeExpr.concrete(SAMPLER_TYPE)),),
+            body=(Output("SAMPLER", TypeExpr.concrete(SAMPLER_TYPE)),),
         )
         return with_identity_replacement(schema, "VOIDSampler")
 

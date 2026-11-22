@@ -11,13 +11,14 @@ from dinkster_api.v1 import (
     CORE_FLOAT,
     CORE_INT,
     MESH_TYPE,
-    DynamicComboOption,
-    DynamicComboSpec,
-    InputSpec,
+    Choice,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Option,
+    Output,
+    Section,
     TypeExpr,
     initialize_inference_process,
     materialize_mesh,
@@ -41,120 +42,106 @@ class RemeshMesh(Node):
                 "self-intersecting topology; run before Decimate Mesh to hit an exact face count. "
                 "Output stays welded."
             ),
-            inputs=(
-                InputSpec("mesh", TypeExpr.concrete(MESH_TYPE)),
-                InputSpec(
+            body=(
+                Input("mesh", TypeExpr.concrete(MESH_TYPE)),
+                Input(
                     "resolution",
                     TypeExpr.concrete(CORE_INT),
                     default=512,
                     widget=NumberWidget(min=32, max=2048),
                 ),
-                InputSpec(
-                    "band",
-                    TypeExpr.concrete(CORE_FLOAT),
-                    default=1.0,
-                    widget=NumberWidget(min=0.5, max=4.0, step=0.1),
-                    advanced=True,
-                ),
-                InputSpec(
-                    "project_back",
-                    TypeExpr.concrete(CORE_FLOAT),
-                    default=0.0,
-                    widget=NumberWidget(min=0.0, max=1.0, step=0.05),
-                    advanced=True,
-                ),
-                InputSpec(
-                    "fix_poles", TypeExpr.concrete(CORE_BOOLEAN), default=False, advanced=True
-                ),
-                InputSpec(
-                    "smooth_iters",
-                    TypeExpr.concrete(CORE_INT),
-                    default=0,
-                    widget=NumberWidget(min=0, max=20),
-                ),
-                InputSpec(
-                    "drop_small_components",
-                    TypeExpr.concrete(CORE_FLOAT),
-                    default=0.01,
-                    widget=NumberWidget(min=0.0, max=0.5, step=0.005),
-                    advanced=True,
-                ),
-                InputSpec(
-                    "precluster_max_verts",
-                    TypeExpr.concrete(CORE_INT),
-                    default=20_000_000,
-                    widget=NumberWidget(min=0, max=100_000_000),
-                    advanced=True,
-                ),
-            ),
-            combos=(
-                DynamicComboSpec(
+                Choice(
                     "sign_mode",
-                    (
-                        DynamicComboOption(
+                    options=(
+                        Option(
                             "udf",
-                            (
-                                InputSpec(
+                            rows=(
+                                Input(
                                     "qef",
                                     TypeExpr.concrete(CORE_BOOLEAN),
                                     default=False,
-                                    advanced=True,
                                 ),
-                                InputSpec(
+                                Input(
                                     "drop_inverted_components",
                                     TypeExpr.concrete(CORE_BOOLEAN),
                                     default=False,
-                                    advanced=True,
                                 ),
-                                InputSpec(
+                                Input(
                                     "drop_enclosed_components",
                                     TypeExpr.concrete(CORE_BOOLEAN),
                                     default=False,
-                                    advanced=True,
                                 ),
                             ),
                         ),
-                        DynamicComboOption(
+                        Option(
                             "sdf",
-                            (
-                                InputSpec("qef", TypeExpr.concrete(CORE_BOOLEAN), default=True),
-                                InputSpec(
-                                    "manifold", TypeExpr.concrete(CORE_BOOLEAN), default=False
-                                ),
+                            rows=(
+                                Input("qef", TypeExpr.concrete(CORE_BOOLEAN), default=True),
+                                Input("manifold", TypeExpr.concrete(CORE_BOOLEAN), default=False),
                             ),
                         ),
-                        DynamicComboOption(
+                        Option(
                             "solid",
-                            (
-                                InputSpec(
+                            rows=(
+                                Input(
                                     "fill",
                                     TypeExpr.concrete(CORE_FLOAT),
                                     default=20.0,
                                     widget=NumberWidget(min=0.0, max=1000.0, step=1.0),
                                 ),
-                                InputSpec(
+                                Input(
                                     "qef",
                                     TypeExpr.concrete(CORE_BOOLEAN),
                                     default=False,
-                                    advanced=True,
                                 ),
                             ),
                         ),
                     ),
                 ),
+                Input(
+                    "smooth_iters",
+                    TypeExpr.concrete(CORE_INT),
+                    default=0,
+                    widget=NumberWidget(min=0, max=20),
+                ),
+                Section(
+                    "advanced",
+                    label="Advanced",
+                    collapsed=True,
+                    rows=(
+                        Input(
+                            "band",
+                            TypeExpr.concrete(CORE_FLOAT),
+                            default=1.0,
+                            widget=NumberWidget(min=0.5, max=4.0, step=0.1),
+                        ),
+                        Input(
+                            "project_back",
+                            TypeExpr.concrete(CORE_FLOAT),
+                            default=0.0,
+                            widget=NumberWidget(min=0.0, max=1.0, step=0.05),
+                        ),
+                        Input(
+                            "fix_poles",
+                            TypeExpr.concrete(CORE_BOOLEAN),
+                            default=False,
+                        ),
+                        Input(
+                            "drop_small_components",
+                            TypeExpr.concrete(CORE_FLOAT),
+                            default=0.01,
+                            widget=NumberWidget(min=0.0, max=0.5, step=0.005),
+                        ),
+                        Input(
+                            "precluster_max_verts",
+                            TypeExpr.concrete(CORE_INT),
+                            default=20_000_000,
+                            widget=NumberWidget(min=0, max=100_000_000),
+                        ),
+                    ),
+                ),
+                Output("mesh", TypeExpr.concrete(MESH_TYPE)),
             ),
-            input_order=(
-                "mesh",
-                "resolution",
-                "sign_mode",
-                "band",
-                "project_back",
-                "fix_poles",
-                "smooth_iters",
-                "drop_small_components",
-                "precluster_max_verts",
-            ),
-            outputs=(OutputSpec("mesh", TypeExpr.concrete(MESH_TYPE)),),
         )
         return with_identity_replacement(schema, "RemeshMesh")
 

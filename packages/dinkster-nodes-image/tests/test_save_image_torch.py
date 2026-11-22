@@ -23,10 +23,10 @@ from dinkster_api.v1 import (
     AssetError,
     AssetRef,
     ExportSnapshot,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
-    OutputSpec,
+    Output,
     TypeExpr,
     materialize_image,
 )
@@ -473,14 +473,14 @@ class _FileHostInspect(Node):
     def define_schema(cls) -> NodeSchema:
         return NodeSchema(
             "image-file-fixture.inspect",
-            inputs=(
+            body=(
                 *(
-                    InputSpec(name, TypeExpr.concrete(IMAGE_TYPE))
+                    Input(name, TypeExpr.concrete(IMAGE_TYPE))
                     for name in ("loaded", "output_loaded", "saved", "preview", "png", "webp")
                 ),
-                InputSpec("mask", TypeExpr.concrete(MASK_TYPE)),
+                Input("mask", TypeExpr.concrete(MASK_TYPE)),
+                Output("summary", TypeExpr.concrete(CORE_STRING)),
             ),
-            outputs=(OutputSpec("summary", TypeExpr.concrete(CORE_STRING)),),
         )
 
     @classmethod
@@ -843,7 +843,7 @@ class _AdvancedAVIFHostSource(Node):
     def define_schema(cls) -> NodeSchema:
         return NodeSchema(
             "advanced-avif-fixture.source",
-            outputs=(OutputSpec("images", TypeExpr.concrete(IMAGE_TYPE)),),
+            body=(Output("images", TypeExpr.concrete(IMAGE_TYPE)),),
         )
 
     @classmethod
@@ -976,7 +976,7 @@ class _ImageBatchAttachmentSource(Node):
     def define_schema(cls) -> NodeSchema:
         return NodeSchema(
             "image-batch-attachment.source",
-            outputs=(OutputSpec("images", TypeExpr.concrete(IMAGE_TYPE)),),
+            body=(Output("images", TypeExpr.concrete(IMAGE_TYPE)),),
         )
 
     @classmethod
@@ -1310,8 +1310,10 @@ class _EXRPreviewSource(Node):
     def define_schema(cls) -> NodeSchema:
         return NodeSchema(
             "exr-preview-fixture.source",
-            outputs=tuple(
-                OutputSpec(name, TypeExpr.concrete(IMAGE_TYPE)) for name in ("rgb", "rgba", "gray")
+            body=(
+                *tuple(
+                    Output(name, TypeExpr.concrete(IMAGE_TYPE)) for name in ("rgb", "rgba", "gray")
+                ),
             ),
         )
 

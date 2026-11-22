@@ -18,11 +18,12 @@ from dinkster_api.v1 import (
     VAE_TYPE,
     AssetError,
     AssetWriter,
-    InputSpec,
+    Input,
     MountSnapshotWriter,
     MountWidget,
     Node,
     NodeSchema,
+    Row,
     TypeExpr,
     attach_saved_artifact,
     initialize_inference_process,
@@ -37,24 +38,26 @@ class ImageOnlyCheckpointSave(Node):
         schema = NodeSchema(
             node_type="dinkster.sd.image_only_checkpoint_save",
             category="model/merging",
-            inputs=(
-                InputSpec("model", TypeExpr.concrete(MODEL_TYPE)),
-                InputSpec("clip_vision", TypeExpr.concrete(CLIP_VISION_TYPE)),
-                InputSpec("vae", TypeExpr.concrete(VAE_TYPE)),
-                InputSpec(
-                    "filename_prefix",
-                    string,
-                    default="checkpoints/ComfyUI",
-                ),
-                InputSpec(
-                    "mount",
-                    string,
-                    required=False,
-                    widget=MountWidget(),
-                    adjacent_to="filename_prefix",
+            body=(
+                Input("model", TypeExpr.concrete(MODEL_TYPE)),
+                Input("clip_vision", TypeExpr.concrete(CLIP_VISION_TYPE)),
+                Input("vae", TypeExpr.concrete(VAE_TYPE)),
+                Row(
+                    rows=(
+                        Input(
+                            "filename_prefix",
+                            string,
+                            default="checkpoints/ComfyUI",
+                        ),
+                        Input(
+                            "mount",
+                            string,
+                            required=False,
+                            widget=MountWidget(),
+                        ),
+                    )
                 ),
             ),
-            outputs=(),
             idempotent=False,
             output_node=True,
         )

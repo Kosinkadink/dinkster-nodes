@@ -17,15 +17,16 @@ from dinkster_api.v1 import (
     CORE_STRING,
     ENCODED_MEDIA_LIMIT_BYTES,
     IMAGE_TYPE,
+    Choice,
     ComboWidget,
-    DynamicComboOption,
-    DynamicComboSpec,
-    InputSpec,
+    Input,
     MountWidget,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Option,
+    Output,
+    Row,
     StringWidget,
     TypeExpr,
     attach_saved_artifact,
@@ -55,69 +56,66 @@ class SaveImageAdvanced(Node):
             description="Saves the input images to your ComfyUI output directory.",
             category="image",
             search_terms=("save", "save image", "export image", "output image", "write image"),
-            inputs=(
-                InputSpec("images", _IMAGE, doc="The images to save."),
-                InputSpec(
-                    "filename_prefix",
-                    _STRING,
-                    default="ComfyUI",
-                    widget=StringWidget(multiline=False),
-                    doc=(
-                        "The prefix for the file to save. May include formatting tokens such as "
-                        "%date:yyyy-MM-dd% or %Empty Latent Image.width%."
-                    ),
+            body=(
+                Input("images", _IMAGE, tooltip="The images to save."),
+                Row(
+                    rows=(
+                        Input(
+                            "filename_prefix",
+                            _STRING,
+                            default="ComfyUI",
+                            widget=StringWidget(multiline=False),
+                            tooltip=(
+                                "The prefix for the file to save. May include formatting tokens such as "
+                                "%date:yyyy-MM-dd% or %Empty Latent Image.width%."
+                            ),
+                        ),
+                        Input(
+                            "mount",
+                            _STRING,
+                            required=False,
+                            default=None,
+                            widget=MountWidget(),
+                        ),
+                    )
                 ),
-                InputSpec(
-                    "mount",
-                    _STRING,
-                    required=False,
-                    default=None,
-                    widget=MountWidget(),
-                    adjacent_to="filename_prefix",
-                ),
-            ),
-            combos=(
-                DynamicComboSpec(
+                Choice(
                     "format",
-                    (
-                        DynamicComboOption(
+                    options=(
+                        Option(
                             "png",
-                            (
-                                InputSpec(
+                            rows=(
+                                Input(
                                     "bit_depth",
                                     _COMBO,
                                     default="8-bit",
-                                    advanced=True,
                                     widget=ComboWidget(options=("8-bit", "16-bit")),
                                 ),
-                                InputSpec(
+                                Input(
                                     "input_color_space",
                                     _COMBO,
                                     default="sRGB",
-                                    advanced=True,
                                     widget=ComboWidget(options=("sRGB",)),
                                 ),
                             ),
                         ),
-                        DynamicComboOption(
+                        Option(
                             "exr",
-                            (
-                                InputSpec(
+                            rows=(
+                                Input(
                                     "bit_depth",
                                     _COMBO,
                                     default="16-bit float",
-                                    advanced=True,
                                     widget=ComboWidget(options=("32-bit float", "16-bit float")),
                                 ),
-                                InputSpec(
+                                Input(
                                     "input_color_space",
                                     _COMBO,
                                     default="sRGB",
-                                    advanced=True,
                                     widget=ComboWidget(
                                         options=("sRGB", "HDR", "linear", "linear ACEScg")
                                     ),
-                                    doc=(
+                                    tooltip=(
                                         "Colorspace of the input tensor. The EXR is always written "
                                         "as scene-linear in the matching gamut.\n"
                                         "sRGB - input is sRGB-encoded Rec.709; the inverse sRGB "
@@ -134,48 +132,45 @@ class SaveImageAdvanced(Node):
                                 ),
                             ),
                         ),
-                        DynamicComboOption(
+                        Option(
                             "avif",
-                            (
-                                InputSpec(
+                            rows=(
+                                Input(
                                     "bit_depth",
                                     _COMBO,
                                     default="auto",
-                                    advanced=True,
                                     widget=ComboWidget(
                                         options=("auto", "8-bit YUV420", "10-bit YUV420")
                                     ),
-                                    doc=(
+                                    tooltip=(
                                         "Auto uses 8-bit YUV420 for sRGB and 10-bit YUV420 for HDR."
                                     ),
                                 ),
-                                InputSpec(
+                                Input(
                                     "input_color_space",
                                     _COMBO,
                                     default="sRGB",
-                                    advanced=True,
                                     widget=ComboWidget(options=("sRGB", "HDR", "HDR PQ")),
-                                    doc=(
+                                    tooltip=(
                                         "Colorspace of the input images. HDR selects BT.2020/HLG "
                                         "and HDR PQ selects BT.2020/PQ."
                                     ),
                                 ),
-                                InputSpec(
+                                Input(
                                     "crf",
                                     _INT,
                                     default=18,
-                                    advanced=True,
                                     widget=NumberWidget(min=1, max=63),
-                                    doc="Lower values produce higher quality and larger files.",
+                                    tooltip="Lower values produce higher quality and larger files.",
                                 ),
-                                DynamicComboSpec(
+                                Choice(
                                     "save_mode",
-                                    (
-                                        DynamicComboOption("still images"),
-                                        DynamicComboOption(
+                                    options=(
+                                        Option("still images"),
+                                        Option(
                                             "animated",
-                                            (
-                                                InputSpec(
+                                            rows=(
+                                                Input(
                                                     "fps",
                                                     _FLOAT,
                                                     default=6.0,
@@ -183,13 +178,12 @@ class SaveImageAdvanced(Node):
                                                         min=0.01, max=1000.0, step=0.01
                                                     ),
                                                 ),
-                                                InputSpec(
+                                                Input(
                                                     "loop_count",
                                                     _INT,
                                                     default=0,
-                                                    advanced=True,
                                                     widget=NumberWidget(min=0, max=1000),
-                                                    doc=(
+                                                    tooltip=(
                                                         "Number of times to loop the animation. "
                                                         "0 loops forever."
                                                     ),
@@ -197,16 +191,15 @@ class SaveImageAdvanced(Node):
                                             ),
                                         ),
                                     ),
-                                    display_name="save mode",
+                                    label="save mode",
                                 ),
                             ),
                         ),
                     ),
-                    doc="The file format in which to save the image.",
+                    tooltip="The file format in which to save the image.",
                 ),
+                Output("images", _IMAGE),
             ),
-            input_order=("images", "filename_prefix", "format", "mount"),
-            outputs=(OutputSpec("images", _IMAGE),),
             idempotent=False,
             output_node=True,
         )

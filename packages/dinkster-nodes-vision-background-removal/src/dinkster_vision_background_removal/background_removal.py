@@ -13,11 +13,11 @@ from dinkster_api.v1 import (
     MASK_TYPE,
     AssetRef,
     AssetWidget,
-    InputSpec,
+    Input,
     LocalAssetRef,
     Node,
     NodeSchema,
-    OutputSpec,
+    Output,
     TypeExpr,
     initialize_inference_process,
     materialize_image,
@@ -32,15 +32,15 @@ class LoadBackgroundRemovalModel(Node):
             node_type="dinkster.vision.background.removal.load_background_removal_model",
             display_name="Load Background Removal Model",
             category="model/loaders",
-            inputs=(
-                InputSpec(
+            body=(
+                Input(
                     "bg_removal_name",
                     TypeExpr.concrete(ASSET_TYPE),
                     widget=AssetWidget(kind="model/background-removal"),
-                    doc="The model used to remove backgrounds from images",
+                    tooltip="The model used to remove backgrounds from images",
                 ),
+                Output("bg_model", TypeExpr.concrete(BACKGROUND_REMOVAL_TYPE)),
             ),
-            outputs=(OutputSpec("bg_model", TypeExpr.concrete(BACKGROUND_REMOVAL_TYPE)),),
         )
         return with_identity_replacement(schema, "LoadBackgroundRemovalModel")
 
@@ -71,20 +71,18 @@ class RemoveBackground(Node):
                 "Generates a foreground mask to remove the background from an image "
                 "using a background removal model."
             ),
-            inputs=(
-                InputSpec(
+            body=(
+                Input(
                     "bg_removal_model",
                     TypeExpr.concrete(BACKGROUND_REMOVAL_TYPE),
-                    doc="Background removal model used to generate the mask",
+                    tooltip="Background removal model used to generate the mask",
                 ),
-                InputSpec(
+                Input(
                     "image",
                     TypeExpr.concrete(IMAGE_TYPE),
-                    doc="Input image to remove the background from",
+                    tooltip="Input image to remove the background from",
                 ),
-            ),
-            outputs=(
-                OutputSpec("mask", TypeExpr.concrete(MASK_TYPE), doc="Generated foreground mask"),
+                Output("mask", TypeExpr.concrete(MASK_TYPE), tooltip="Generated foreground mask"),
             ),
         )
         return with_identity_replacement(schema, "RemoveBackground")

@@ -8,13 +8,13 @@ from dinkster_api.v1 import (
     CORE_INT,
     GIBIBYTE,
     LATENT_TYPE,
-    DynamicComboOption,
-    DynamicComboSpec,
-    InputSpec,
+    Choice,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Option,
+    Output,
     TypeExpr,
     initialize_inference_process,
     materialize_latent,
@@ -42,10 +42,8 @@ _CHUNK_SIGMA_K = 4
 _MAX_FRAMES = 16384
 
 
-def _integer(
-    name: str, default: int, minimum: int, maximum: int, step: int | None = None
-) -> InputSpec:
-    return InputSpec(
+def _integer(name: str, default: int, minimum: int, maximum: int, step: int | None = None) -> Input:
+    return Input(
         name,
         _INT,
         default=default,
@@ -92,25 +90,21 @@ class SeedVR2TemporalChunk(Node):
             category="model/latent/seedvr",
             description="Split a SeedVR2 video latent into overlapping temporal chunks.",
             search_terms=("seedvr2", "split", "chunk", "temporal", "video upscale", "rebatch"),
-            inputs=(
-                InputSpec("latent", _LATENT, doc="The VAE-encoded SeedVR2 latent to split."),
+            body=(
+                Input("latent", _LATENT, tooltip="The VAE-encoded SeedVR2 latent to split."),
                 _integer("temporal_overlap", 0, 0, _MAX_FRAMES),
-            ),
-            combos=(
-                DynamicComboSpec(
+                Choice(
                     "chunking_mode",
-                    (
-                        DynamicComboOption("auto"),
-                        DynamicComboOption(
-                            "manual", (_integer("frames_per_chunk", 21, 1, _MAX_FRAMES, 4),)
+                    options=(
+                        Option("auto"),
+                        Option(
+                            "manual", rows=(_integer("frames_per_chunk", 21, 1, _MAX_FRAMES, 4),)
                         ),
                     ),
-                    doc="manual uses frames_per_chunk; auto uses free device memory.",
+                    tooltip="manual uses frames_per_chunk; auto uses free device memory.",
                 ),
-            ),
-            outputs=(
-                OutputSpec("latents", _LATENT_LIST, doc="Temporal chunks in sequence order."),
-                OutputSpec("temporal_overlap", _INT, doc="Effective latent-frame overlap."),
+                Output("latents", _LATENT_LIST, tooltip="Temporal chunks in sequence order."),
+                Output("temporal_overlap", _INT, tooltip="Effective latent-frame overlap."),
             ),
         )
         return with_identity_replacement(schema, "SeedVR2TemporalChunk")
@@ -189,19 +183,19 @@ class SeedVR2TemporalMerge(Node):
             category="model/latent/seedvr",
             description="Recombine SeedVR2 temporal chunks with a Hann overlap crossfade.",
             search_terms=("seedvr2", "merge", "temporal", "hann", "crossfade"),
-            inputs=(
-                InputSpec(
-                    "latents", _LATENT_LIST, doc="Sampled temporal chunks in sequence order."
+            body=(
+                Input(
+                    "latents", _LATENT_LIST, tooltip="Sampled temporal chunks in sequence order."
                 ),
-                InputSpec(
+                Input(
                     "temporal_overlap",
                     _INT,
                     default=0,
                     widget=NumberWidget(min=0, max=_MAX_FRAMES),
-                    force_input=True,
+                    pin_first=True,
                 ),
+                Output("latent", _LATENT, tooltip="The recombined latent."),
             ),
-            outputs=(OutputSpec("latent", _LATENT, doc="The recombined latent."),),
         )
         return with_identity_replacement(schema, "SeedVR2TemporalMerge")
 

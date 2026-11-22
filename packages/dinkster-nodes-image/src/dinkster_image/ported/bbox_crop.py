@@ -13,11 +13,11 @@ from dinkster_api.v1 import (
     IMAGE_TYPE,
     ComboOption,
     ComboWidget,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
     TypeExpr,
     initialize_inference_process,
     materialize_image,
@@ -37,51 +37,49 @@ class CropByBBoxes(Node):
                 "Crop and resize regions from the input image batch "
                 "based on provided bounding boxes."
             ),
-            inputs=(
-                InputSpec("image", TypeExpr.concrete(IMAGE_TYPE)),
-                InputSpec(
+            body=(
+                Input("image", TypeExpr.concrete(IMAGE_TYPE)),
+                Input(
                     "bboxes",
                     TypeExpr.concrete(BOUNDING_BOX_TYPE),
-                    force_input=True,
+                    pin_first=True,
                     default={"x": 0, "y": 0, "width": 512, "height": 512},
                 ),
-                InputSpec(
+                Input(
                     "output_width",
                     TypeExpr.concrete(CORE_INT),
                     default=512,
                     widget=NumberWidget(min=64, max=4096, step=8),
-                    doc="Width each crop is resized to.",
+                    tooltip="Width each crop is resized to.",
                 ),
-                InputSpec(
+                Input(
                     "output_height",
                     TypeExpr.concrete(CORE_INT),
                     default=512,
                     widget=NumberWidget(min=64, max=4096, step=8),
-                    doc="Height each crop is resized to.",
+                    tooltip="Height each crop is resized to.",
                 ),
-                InputSpec(
+                Input(
                     "padding",
                     TypeExpr.concrete(CORE_INT),
                     default=0,
                     widget=NumberWidget(min=0, max=1024, step=1),
-                    doc="Extra padding in pixels added on each side of the bbox before cropping.",
+                    tooltip="Extra padding in pixels added on each side of the bbox before cropping.",
                 ),
-                InputSpec(
+                Input(
                     "keep_aspect",
                     TypeExpr.concrete(CORE_COMBO),
                     default="stretch",
                     widget=ComboWidget(options=(ComboOption("stretch"), ComboOption("pad"))),
-                    doc=(
+                    tooltip=(
                         "Whether to stretch the crop to fit the output size, or pad with black "
                         "pixels to preserve aspect ratio."
                     ),
                 ),
-            ),
-            outputs=(
-                OutputSpec(
+                Output(
                     "IMAGE",
                     TypeExpr.concrete(IMAGE_TYPE),
-                    doc="All crops stacked into a single image batch.",
+                    tooltip="All crops stacked into a single image batch.",
                 ),
             ),
         )

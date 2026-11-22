@@ -11,11 +11,11 @@ from dinkster_api.v1 import (
     CORE_FLOAT,
     CORE_INT,
     SIGMAS_TYPE,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
     TypeExpr,
     with_identity_replacement,
 )
@@ -50,39 +50,39 @@ class Ideogram4Scheduler(Node):
             node_type="dinkster.misc.models.ideogram4_scheduler",
             display_name="Ideogram 4 Scheduler",
             category="model/sampling/schedulers",
-            inputs=(
-                InputSpec(
+            body=(
+                Input(
                     "steps",
                     TypeExpr.concrete(CORE_INT),
                     default=20,
                     widget=NumberWidget(min=1, max=200),
                 ),
-                InputSpec(
+                Input(
                     "width",
                     TypeExpr.concrete(CORE_INT),
                     default=1024,
                     widget=NumberWidget(min=256, max=8192, step=16),
                 ),
-                InputSpec(
+                Input(
                     "height",
                     TypeExpr.concrete(CORE_INT),
                     default=1024,
                     widget=NumberWidget(min=256, max=8192, step=16),
                 ),
-                InputSpec(
+                Input(
                     "mu",
                     TypeExpr.concrete(CORE_FLOAT),
                     default=0.0,
                     widget=NumberWidget(min=-10.0, max=10.0, step=0.05),
                 ),
-                InputSpec(
+                Input(
                     "std",
                     TypeExpr.concrete(CORE_FLOAT),
                     default=1.75,
                     widget=NumberWidget(min=0.1, max=5.0, step=0.05),
                 ),
+                Output("SIGMAS", TypeExpr.concrete(SIGMAS_TYPE)),
             ),
-            outputs=(OutputSpec("SIGMAS", TypeExpr.concrete(SIGMAS_TYPE)),),
         )
         return with_identity_replacement(schema, "Ideogram4Scheduler")
 

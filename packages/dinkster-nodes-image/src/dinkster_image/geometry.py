@@ -16,13 +16,14 @@ from dinkster_api.v1 import (
     IMAGE_TYPE,
     MASK_TYPE,
     MEBIBYTE,
-    DynamicComboOption,
-    DynamicComboSpec,
-    InputSpec,
+    Choice,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Option,
+    Output,
+    Section,
     StringWidget,
     TypeExpr,
 )
@@ -616,86 +617,84 @@ class ImageResize(Node):
     @classmethod
     def define_schema(cls) -> NodeSchema:
         dynamic_inputs = (
-            InputSpec(
+            Input(
                 "width",
                 INT,
                 required=False,
                 default=512,
                 widget=NumberWidget(min=0, max=MAX_DIMENSION, step=1),
-                display_name="Width",
+                label="Width",
             ),
-            InputSpec(
+            Input(
                 "height",
                 INT,
                 required=False,
                 default=512,
                 widget=NumberWidget(min=0, max=MAX_DIMENSION, step=1),
-                display_name="Height",
+                label="Height",
             ),
-            InputSpec(
+            Input(
                 "size",
                 INT,
                 required=False,
                 default=512,
                 widget=NumberWidget(min=1, max=MAX_DIMENSION, step=1),
-                display_name="Size",
+                label="Size",
             ),
-            InputSpec(
+            Input(
                 "factor",
                 FLOAT,
                 required=False,
                 default=1.0,
                 widget=NumberWidget(min=0.01, max=64.0, step=0.01),
-                display_name="Scale factor",
+                label="Scale factor",
             ),
-            InputSpec(
+            Input(
                 "megapixels",
                 FLOAT,
                 required=False,
                 default=1.0,
                 widget=NumberWidget(min=0.001, max=268.0, step=0.01),
-                display_name="Megapixels",
+                label="Megapixels",
             ),
-            InputSpec(
+            Input(
                 "multiple_of",
                 INT,
                 required=False,
                 default=8,
                 widget=NumberWidget(min=0, max=1024, step=1),
-                display_name="Multiple of",
+                label="Multiple of",
             ),
-            InputSpec(
+            Input(
                 "resolution_steps",
                 INT,
                 required=False,
                 default=1,
                 widget=NumberWidget(min=1, max=1024, step=1),
-                advanced=True,
-                display_name="Resolution steps",
+                label="Resolution steps",
             ),
-            InputSpec(
+            Input(
                 "pad_value",
                 FLOAT,
                 required=False,
                 default=0.0,
                 widget=NumberWidget(min=0.0, max=1.0, step=0.01),
-                display_name="Value",
+                label="Value",
             ),
-            InputSpec(
+            Input(
                 "pad_color",
                 STRING,
                 required=False,
                 default="",
                 widget=StringWidget(multiline=False),
-                display_name="Color override",
-                advanced=True,
+                label="Color override",
             ),
-            InputSpec(
+            Input(
                 "reference",
                 IMAGE_OR_MASK,
                 required=False,
                 default=None,
-                display_name="Reference image or mask",
+                label="Reference image or mask",
             ),
             _combo(
                 "mode_anchor",
@@ -703,22 +702,21 @@ class ImageResize(Node):
                 "center",
                 display_name="Anchor",
             ),
-            InputSpec(
+            Input(
                 "final_pad_value",
                 FLOAT,
                 required=False,
                 default=0.0,
                 widget=NumberWidget(min=0.0, max=1.0, step=0.01),
-                display_name="Value",
+                label="Value",
             ),
-            InputSpec(
+            Input(
                 "final_pad_color",
                 STRING,
                 required=False,
                 default="",
                 widget=StringWidget(multiline=False),
-                display_name="Color override",
-                advanced=True,
+                label="Color override",
             ),
             _combo(
                 "final_anchor",
@@ -729,12 +727,12 @@ class ImageResize(Node):
         )
         by_id = {item.id: item for item in dynamic_inputs}
 
-        def option(key: str, *ids: str) -> DynamicComboOption:
-            return DynamicComboOption(key, tuple(by_id[input_id] for input_id in ids))
+        def option(key: str, *ids: str) -> Option:
+            return Option(key, rows=tuple(by_id[input_id] for input_id in ids))
 
-        target = DynamicComboSpec(
+        target = Choice(
             "target",
-            (
+            options=(
                 option("dimensions", "width", "height"),
                 option("width", "width"),
                 option("height", "height"),
@@ -746,54 +744,51 @@ class ImageResize(Node):
                 option("multiple_cover", "multiple_of"),
             ),
             default="dimensions",
-            display_name="Target",
+            label="Target",
         )
-        mode_padding = DynamicComboSpec(
+        mode_padding = Choice(
             "mode_padding",
-            (
+            options=(
                 option("constant", "pad_value", "pad_color"),
                 option("edge_average"),
                 option("edge_pixel"),
                 option("blurred_background"),
             ),
             default="constant",
-            display_name="Padding style",
+            label="Padding style",
         )
-        mode = DynamicComboSpec(
+        mode = Choice(
             "mode",
-            (
+            options=(
                 option("stretch"),
                 option("fit"),
                 option("fill", "mode_anchor"),
-                DynamicComboOption("pad", (by_id["mode_anchor"], mode_padding)),
+                Option("pad", rows=(by_id["mode_anchor"], mode_padding)),
             ),
             default="stretch",
-            display_name="Mode",
+            label="Mode",
         )
-        final_padding = DynamicComboSpec(
+        final_padding = Choice(
             "final_padding",
-            (
+            options=(
                 option("constant", "final_pad_value", "final_pad_color"),
                 option("edge_average"),
                 option("edge_pixel"),
                 option("blurred_background"),
             ),
             default="constant",
-            display_name="Final pad",
+            label="Final pad",
         )
-        divisibility = DynamicComboSpec(
+        divisibility = Choice(
             "divisibility",
-            (
+            options=(
                 option("none"),
                 option("nearest", "multiple_of"),
                 option("crop", "multiple_of", "final_anchor"),
-                DynamicComboOption(
-                    "pad",
-                    (by_id["multiple_of"], by_id["final_anchor"], final_padding),
-                ),
+                Option("pad", rows=(by_id["multiple_of"], by_id["final_anchor"], final_padding)),
             ),
             default="none",
-            display_name="Divisibility finalization",
+            label="Divisibility finalization",
         )
 
         return with_resize_migrations(
@@ -802,35 +797,44 @@ class ImageResize(Node):
                 version=4,
                 display_name="Resize Image/Mask",
                 category="image/geometry",
-                inputs=(
-                    InputSpec("image", RESIZE_INPUT),
-                    InputSpec("mask", MASK, required=False, default=None),
-                    _combo("fit_rounding", ("round", "floor"), "round", advanced=True),
-                    _combo(
-                        "apply",
-                        (
-                            "always",
-                            "only_if_bigger",
-                            "only_if_smaller",
-                            "only_if_bigger_area",
-                            "only_if_smaller_area",
+                body=(
+                    Input("image", RESIZE_INPUT),
+                    Input("mask", MASK, required=False, default=None),
+                    target,
+                    mode,
+                    divisibility,
+                    Section(
+                        "advanced",
+                        label="Advanced",
+                        collapsed=True,
+                        rows=(
+                            _combo(
+                                "fit_rounding",
+                                ("round", "floor"),
+                                "round",
+                            ),
+                            _combo(
+                                "apply",
+                                (
+                                    "always",
+                                    "only_if_bigger",
+                                    "only_if_smaller",
+                                    "only_if_bigger_area",
+                                    "only_if_smaller_area",
+                                ),
+                                "always",
+                                display_name="Apply condition",
+                            ),
+                            _combo(
+                                "interpolation",
+                                _INTERPOLATION_OPTIONS,
+                                "bilinear",
+                                display_name="Interpolation",
+                            ),
                         ),
-                        "always",
-                        advanced=True,
-                        display_name="Apply condition",
                     ),
-                    _combo(
-                        "interpolation",
-                        _INTERPOLATION_OPTIONS,
-                        "bilinear",
-                        advanced=True,
-                        display_name="Interpolation",
-                    ),
-                ),
-                combos=(target, mode, divisibility),
-                outputs=(
-                    OutputSpec("image", RESIZE_INPUT, preview=True),
-                    OutputSpec("mask", MASK, optional=True, preview=True),
+                    Output("image", RESIZE_INPUT, preview=True),
+                    Output("mask", MASK, optional=True, preview=True),
                 ),
                 search_terms=(
                     "scale image",
@@ -1072,28 +1076,28 @@ class ImageTransform(Node):
     @classmethod
     def define_schema(cls) -> NodeSchema:
         dynamic_inputs = (
-            InputSpec(
+            Input(
                 "angle",
                 FLOAT,
                 required=False,
                 default=0.0,
                 widget=NumberWidget(min=-360.0, max=360.0, step=0.1),
             ),
-            InputSpec(
+            Input(
                 "steps",
                 INT,
                 required=False,
                 default=1,
                 widget=NumberWidget(min=-4, max=4, step=1),
             ),
-            InputSpec(
+            Input(
                 "x",
                 FLOAT,
                 required=False,
                 default=0.0,
                 widget=NumberWidget(step=0.01),
             ),
-            InputSpec(
+            Input(
                 "y",
                 FLOAT,
                 required=False,
@@ -1106,57 +1110,54 @@ class ImageTransform(Node):
                 "interpolation",
                 _TRANSFORM_INTERPOLATION_OPTIONS,
                 "bilinear",
-                advanced=True,
             ),
-            InputSpec(
+            Input(
                 "fill",
                 FLOAT,
                 required=False,
                 default=0.0,
                 widget=NumberWidget(min=0.0, max=1.0, step=0.01),
-                advanced=True,
             ),
-            InputSpec(
+            Input(
                 "left",
                 INT,
                 required=False,
                 default=0,
                 widget=NumberWidget(min=0, max=MAX_DIMENSION, step=1),
             ),
-            InputSpec(
+            Input(
                 "top",
                 INT,
                 required=False,
                 default=0,
                 widget=NumberWidget(min=0, max=MAX_DIMENSION, step=1),
             ),
-            InputSpec(
+            Input(
                 "right",
                 INT,
                 required=False,
                 default=0,
                 widget=NumberWidget(min=0, max=MAX_DIMENSION, step=1),
             ),
-            InputSpec(
+            Input(
                 "bottom",
                 INT,
                 required=False,
                 default=0,
                 widget=NumberWidget(min=0, max=MAX_DIMENSION, step=1),
             ),
-            InputSpec(
+            Input(
                 "feathering",
                 INT,
                 required=False,
                 default=40,
                 widget=NumberWidget(min=0, max=MAX_DIMENSION, step=1),
-                advanced=True,
             ),
         )
         by_id = {item.id: item for item in dynamic_inputs}
 
-        def option(key: str, *ids: str) -> DynamicComboOption:
-            return DynamicComboOption(key, tuple(by_id[input_id] for input_id in ids))
+        def option(key: str, *ids: str) -> Option:
+            return Option(key, rows=tuple(by_id[input_id] for input_id in ids))
 
         return with_v1_migration(
             NodeSchema(
@@ -1164,11 +1165,11 @@ class ImageTransform(Node):
                 version=2,
                 display_name="Transform Image",
                 category="image/geometry",
-                inputs=(InputSpec("image", IMAGE),),
-                combos=(
-                    DynamicComboSpec(
+                body=(
+                    Input("image", IMAGE),
+                    Choice(
                         "operation",
-                        (
+                        options=(
                             option("rotate_90", "steps"),
                             option("rotate", "angle", "expand", "interpolation", "fill"),
                             option("flip_horizontal"),
@@ -1179,10 +1180,8 @@ class ImageTransform(Node):
                         ),
                         default="rotate_90",
                     ),
-                ),
-                outputs=(
-                    OutputSpec("image", IMAGE, preview=True),
-                    OutputSpec("mask", MASK, optional=True, preview=True),
+                    Output("image", IMAGE, preview=True),
+                    Output("mask", MASK, optional=True, preview=True),
                 ),
                 search_terms=(
                     "rotate image",
@@ -1253,25 +1252,25 @@ class MakeRegion(Node):
             node_type="dinkster.region.make",
             display_name="Create Region",
             category="image/region",
-            inputs=(
-                InputSpec("x", FLOAT, required=False, default=0.0, widget=NumberWidget(step=1.0)),
-                InputSpec("y", FLOAT, required=False, default=0.0, widget=NumberWidget(step=1.0)),
-                InputSpec(
+            body=(
+                Input("x", FLOAT, required=False, default=0.0, widget=NumberWidget(step=1.0)),
+                Input("y", FLOAT, required=False, default=0.0, widget=NumberWidget(step=1.0)),
+                Input(
                     "width",
                     FLOAT,
                     required=False,
                     default=512.0,
                     widget=NumberWidget(min=0.0, step=1.0),
                 ),
-                InputSpec(
+                Input(
                     "height",
                     FLOAT,
                     required=False,
                     default=512.0,
                     widget=NumberWidget(min=0.0, step=1.0),
                 ),
+                Output("region", REGION),
             ),
-            outputs=(OutputSpec("region", REGION),),
             search_terms=("bounding box", "bbox", "rectangle"),
         )
 
@@ -1289,25 +1288,29 @@ class RegionInfo(Node):
             node_type="dinkster.region.info",
             display_name="Region Information",
             category="image/region",
-            inputs=(
-                InputSpec("region", REGION),
-                _combo(
-                    "integer_rounding",
-                    ("floor", "round", "ceil", "expand"),
-                    "expand",
-                    advanced=True,
+            body=(
+                Input("region", REGION),
+                Section(
+                    "advanced",
+                    label="Advanced",
+                    collapsed=True,
+                    rows=(
+                        _combo(
+                            "integer_rounding",
+                            ("floor", "round", "ceil", "expand"),
+                            "expand",
+                        ),
+                    ),
                 ),
-            ),
-            outputs=(
-                OutputSpec("region", REGION),
-                OutputSpec("x", FLOAT),
-                OutputSpec("y", FLOAT),
-                OutputSpec("width", FLOAT),
-                OutputSpec("height", FLOAT),
-                OutputSpec("integer_x", INT),
-                OutputSpec("integer_y", INT),
-                OutputSpec("integer_width", INT),
-                OutputSpec("integer_height", INT),
+                Output("region", REGION),
+                Output("x", FLOAT),
+                Output("y", FLOAT),
+                Output("width", FLOAT),
+                Output("height", FLOAT),
+                Output("integer_x", INT),
+                Output("integer_y", INT),
+                Output("integer_width", INT),
+                Output("integer_height", INT),
             ),
             search_terms=("bounding box coordinates", "bbox info", "region size"),
         )
@@ -1418,52 +1421,49 @@ class ImageCrop(Node):
                     "center",
                 ),
                 "coordinates",
-                advanced=True,
             ),
-            InputSpec("x", FLOAT, required=False, default=0.0, widget=NumberWidget(step=1.0)),
-            InputSpec("y", FLOAT, required=False, default=0.0, widget=NumberWidget(step=1.0)),
-            InputSpec(
+            Input("x", FLOAT, required=False, default=0.0, widget=NumberWidget(step=1.0)),
+            Input("y", FLOAT, required=False, default=0.0, widget=NumberWidget(step=1.0)),
+            Input(
                 "width",
                 FLOAT,
                 required=False,
                 default=0.0,
                 widget=NumberWidget(min=0.0, step=1.0),
             ),
-            InputSpec(
+            Input(
                 "height",
                 FLOAT,
                 required=False,
                 default=0.0,
                 widget=NumberWidget(min=0.0, step=1.0),
             ),
-            InputSpec(
+            Input(
                 "fill",
                 FLOAT,
                 required=False,
                 default=0.0,
                 widget=NumberWidget(min=0.0, max=1.0, step=0.01),
             ),
-            InputSpec(
+            Input(
                 "mask_threshold",
                 FLOAT,
                 required=False,
                 default=0.0,
                 widget=NumberWidget(min=0.0, max=1.0, step=0.01),
-                advanced=True,
             ),
-            InputSpec(
+            Input(
                 "mask_blur",
                 INT,
                 required=False,
                 default=0,
                 widget=NumberWidget(min=0, max=512, step=1),
-                advanced=True,
             ),
         )
         by_id = {item.id: item for item in dynamic_inputs}
 
-        def option(key: str, *ids: str) -> DynamicComboOption:
-            return DynamicComboOption(key, tuple(by_id[input_id] for input_id in ids))
+        def option(key: str, *ids: str) -> Option:
+            return Option(key, rows=tuple(by_id[input_id] for input_id in ids))
 
         return with_v1_migration(
             NodeSchema(
@@ -1471,39 +1471,31 @@ class ImageCrop(Node):
                 version=2,
                 display_name="Crop Image",
                 category="image/geometry",
-                inputs=(
-                    InputSpec("image", IMAGE),
-                    InputSpec(
+                body=(
+                    Input("image", IMAGE),
+                    Input(
                         "padding",
                         INT,
                         required=False,
                         default=0,
                         widget=NumberWidget(min=0, max=MAX_DIMENSION, step=1),
                     ),
-                    _combo(
-                        "rounding",
-                        ("floor", "round", "ceil", "expand"),
-                        "expand",
-                        advanced=True,
-                    ),
-                ),
-                combos=(
-                    DynamicComboSpec(
+                    Choice(
                         "source",
-                        (
+                        options=(
                             option("coordinates", "placement", "x", "y", "width", "height"),
-                            DynamicComboOption(
+                            Option(
                                 "region",
-                                (
-                                    InputSpec("region", REGION),
-                                    InputSpec("mask", MASK, required=False, default=None),
+                                rows=(
+                                    Input("region", REGION),
+                                    Input("mask", MASK, required=False, default=None),
                                     by_id["mask_blur"],
                                 ),
                             ),
-                            DynamicComboOption(
+                            Option(
                                 "mask",
-                                (
-                                    InputSpec("mask", MASK),
+                                rows=(
+                                    Input("mask", MASK),
                                     by_id["mask_threshold"],
                                     by_id["mask_blur"],
                                 ),
@@ -1511,20 +1503,30 @@ class ImageCrop(Node):
                         ),
                         default="coordinates",
                     ),
-                    DynamicComboSpec(
+                    Choice(
                         "outside",
-                        (
+                        options=(
                             option("clip"),
                             option("pad", "fill"),
                             option("comfy"),
                         ),
                         default="clip",
                     ),
-                ),
-                outputs=(
-                    OutputSpec("image", IMAGE, preview=True),
-                    OutputSpec("mask", MASK, optional=True, preview=True),
-                    OutputSpec("region", REGION),
+                    Section(
+                        "advanced",
+                        label="Advanced",
+                        collapsed=True,
+                        rows=(
+                            _combo(
+                                "rounding",
+                                ("floor", "round", "ceil", "expand"),
+                                "expand",
+                            ),
+                        ),
+                    ),
+                    Output("image", IMAGE, preview=True),
+                    Output("mask", MASK, optional=True, preview=True),
+                    Output("region", REGION),
                 ),
                 search_terms=(
                     "ImageCrop",
@@ -1690,36 +1692,49 @@ class ImageUncrop(Node):
             node_type="dinkster.image.uncrop",
             display_name="Uncrop Image",
             category="image/geometry",
-            inputs=(
-                InputSpec("base", IMAGE),
-                InputSpec("crop", IMAGE),
-                InputSpec("region", REGION),
-                InputSpec("mask", MASK, required=False, default=None),
-                InputSpec(
+            body=(
+                Input("base", IMAGE),
+                Input("crop", IMAGE),
+                Input("region", REGION),
+                Input("mask", MASK, required=False, default=None),
+                Input(
                     "opacity",
                     FLOAT,
                     required=False,
                     default=1.0,
                     widget=NumberWidget(min=0.0, max=1.0, step=0.01),
                 ),
-                InputSpec(
-                    "border_blending",
-                    FLOAT,
-                    required=False,
-                    default=0.0,
-                    widget=NumberWidget(min=0.0, max=1.0, step=0.01),
-                    advanced=True,
+                Section(
+                    "advanced",
+                    label="Advanced",
+                    collapsed=True,
+                    rows=(
+                        Input(
+                            "border_blending",
+                            FLOAT,
+                            required=False,
+                            default=0.0,
+                            widget=NumberWidget(min=0.0, max=1.0, step=0.01),
+                        ),
+                        _combo(
+                            "rounding",
+                            ("floor", "round", "ceil", "expand"),
+                            "expand",
+                        ),
+                        _combo(
+                            "interpolation",
+                            _INTERPOLATION_OPTIONS,
+                            "bilinear",
+                        ),
+                        _combo(
+                            "outside",
+                            ("error", "ignore"),
+                            "error",
+                        ),
+                    ),
                 ),
-                _combo(
-                    "rounding",
-                    ("floor", "round", "ceil", "expand"),
-                    "expand",
-                    advanced=True,
-                ),
-                _combo("interpolation", _INTERPOLATION_OPTIONS, "bilinear", advanced=True),
-                _combo("outside", ("error", "ignore"), "error", advanced=True),
+                Output("image", IMAGE, preview=True),
             ),
-            outputs=(OutputSpec("image", IMAGE, preview=True),),
             search_terms=(
                 "stitch crop",
                 "BatchUncrop",
@@ -1840,25 +1855,23 @@ class ImageInfo(Node):
             node_type="dinkster.image.info",
             display_name="Image Information",
             category="image/inspect",
-            inputs=(
-                InputSpec("image", IMAGE),
-                InputSpec(
+            body=(
+                Input("image", IMAGE),
+                Input(
                     "histogram_bins",
                     INT,
                     required=False,
                     default=256,
                     widget=NumberWidget(min=2, max=4096, step=1),
                 ),
-            ),
-            outputs=(
-                OutputSpec("width", INT),
-                OutputSpec("height", INT),
-                OutputSpec("count", INT),
-                OutputSpec("channels", INT),
-                OutputSpec("mean", FLOAT),
-                OutputSpec("minimum", FLOAT),
-                OutputSpec("maximum", FLOAT),
-                OutputSpec("histogram", INT_LIST),
+                Output("width", INT),
+                Output("height", INT),
+                Output("count", INT),
+                Output("channels", INT),
+                Output("mean", FLOAT),
+                Output("minimum", FLOAT),
+                Output("maximum", FLOAT),
+                Output("histogram", INT_LIST),
             ),
             search_terms=(
                 "image size",

@@ -6,10 +6,10 @@ import asyncio
 from collections.abc import Mapping
 
 from dinkster_schema import (
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
-    OutputSpec,
+    Output,
     TypeExpr,
     report_event,
     report_preview,
@@ -68,11 +68,11 @@ class Chatty(Node):
             node_type="iso.chatty",
             display_name="Chatty",
             category="test",
-            inputs=(
-                InputSpec("value", STRING),
-                InputSpec("seconds", FLOAT, default=0.0),
+            body=(
+                Input("value", STRING),
+                Input("seconds", FLOAT, default=0.0),
+                Output("value", STRING),
             ),
-            outputs=(OutputSpec("value", STRING),),
             io_bound=True,
         )
 
@@ -96,8 +96,8 @@ class BlobOut(Node):
             node_type="iso.blob_out",
             display_name="Blob Out",
             category="test",
-            inputs=(
-                InputSpec(
+            body=(
+                Input(
                     "size",
                     INT,
                     default=8,
@@ -106,8 +106,8 @@ class BlobOut(Node):
                         {"min": 1, "max": 12, "unit": "bytes"},
                     ),
                 ),
+                Output("blob", BLOB),
             ),
-            outputs=(OutputSpec("blob", BLOB),),
         )
 
     @classmethod

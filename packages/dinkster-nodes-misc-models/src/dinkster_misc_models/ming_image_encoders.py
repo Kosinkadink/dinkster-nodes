@@ -12,11 +12,12 @@ from dinkster_api.v1 import (
     CORE_STRING,
     IMAGE_TYPE,
     VAE_TYPE,
-    InputFamilySpec,
-    InputSpec,
+    Group,
+    Input,
+    Named,
     Node,
     NodeSchema,
-    OutputSpec,
+    Output,
     StringWidget,
     TypeExpr,
     initialize_inference_process,
@@ -43,23 +44,18 @@ class TextEncodeMingImageEdit(Node):
             node_type="dinkster.misc.models.text_encode_ming_image_edit",
             display_name="Text Encode Ming Image Edit",
             category="model/conditioning/ming image",
-            inputs=(
-                InputSpec("clip", _CLIP),
-                InputSpec("vae", _VAE, required=False),
-                InputSpec(
-                    "prompt", _STRING, widget=StringWidget(multiline=True, dynamic_prompts=True)
-                ),
-            ),
-            input_families=(
-                InputFamilySpec(
+            body=(
+                Input("clip", _CLIP),
+                Input("vae", _VAE, required=False),
+                Input("prompt", _STRING, widget=StringWidget(multiline=True, dynamic_prompts=True)),
+                Group(
                     "images",
-                    (InputSpec("image", _IMAGE, required=False),),
+                    value=Input("image", _IMAGE, required=False),
                     min_members=0,
-                    member_names=tuple(f"image_{index}" for index in range(1, 9)),
+                    keys=Named(tuple(f"image_{index}" for index in range(1, 9))),
                 ),
+                Output("CONDITIONING", _CONDITIONING),
             ),
-            outputs=(OutputSpec("CONDITIONING", _CONDITIONING),),
-            input_order=("clip", "vae", "prompt", "images"),
         )
         return with_identity_replacement(schema, "TextEncodeMingImageEdit")
 

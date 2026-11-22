@@ -13,11 +13,11 @@ from dinkster_api.v1 import (
     CORE_STRING,
     LATENT_TYPE,
     VAE_TYPE,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
     StringWidget,
     TypeExpr,
     initialize_inference_process,
@@ -123,31 +123,29 @@ class LTXVAddGeneratedKeyframes(Node):
             display_name="LTXV Add Generated Keyframes",
             category="model/conditioning/ltxv",
             search_terms=("detailing", "dfr", "generated keyframes"),
-            inputs=(
-                InputSpec("positive", conditioning),
-                InputSpec("negative", conditioning),
-                InputSpec("vae", TypeExpr.concrete(VAE_TYPE)),
-                InputSpec("latent", latent),
-                InputSpec(
+            body=(
+                Input("positive", conditioning),
+                Input("negative", conditioning),
+                Input("vae", TypeExpr.concrete(VAE_TYPE)),
+                Input("latent", latent),
+                Input(
                     "interval_frames",
                     TypeExpr.concrete(CORE_INT),
                     required=False,
                     default=24,
                     widget=NumberWidget(min=1, max=1024),
                 ),
-                InputSpec("keyframes", latent, required=False),
-                InputSpec(
+                Input("keyframes", latent, required=False),
+                Input(
                     "frame_indices",
                     TypeExpr.concrete(CORE_STRING),
                     required=False,
                     default="",
                     widget=StringWidget(multiline=False),
                 ),
-            ),
-            outputs=(
-                OutputSpec("positive", conditioning),
-                OutputSpec("negative", conditioning),
-                OutputSpec("latent", latent),
+                Output("positive", conditioning),
+                Output("negative", conditioning),
+                Output("latent", latent),
             ),
         )
         return with_identity_replacement(schema, "LTXVAddGeneratedKeyframes")
@@ -423,30 +421,28 @@ class LTXVGeneratedKeyframesToGuides(Node):
             display_name="LTXV Generated Keyframes to Guides",
             category="model/conditioning/ltxv",
             search_terms=("detailing", "dfr", "keyframe guides"),
-            inputs=(
-                InputSpec("positive", conditioning),
-                InputSpec("negative", conditioning),
-                InputSpec("vae", TypeExpr.concrete(VAE_TYPE)),
-                InputSpec("latent", latent),
-                InputSpec("keyframes", latent),
-                InputSpec(
+            body=(
+                Input("positive", conditioning),
+                Input("negative", conditioning),
+                Input("vae", TypeExpr.concrete(VAE_TYPE)),
+                Input("latent", latent),
+                Input("keyframes", latent),
+                Input(
                     "strength",
                     TypeExpr.concrete(CORE_FLOAT),
                     default=1.0,
                     widget=NumberWidget(min=0.0, max=10.0, step=0.01),
                 ),
-                InputSpec(
+                Input(
                     "override_frame_indices",
                     TypeExpr.concrete(CORE_STRING),
                     required=False,
                     default="",
                     widget=StringWidget(multiline=False),
                 ),
-            ),
-            outputs=(
-                OutputSpec("positive", conditioning),
-                OutputSpec("negative", conditioning),
-                OutputSpec("latent", latent),
+                Output("positive", conditioning),
+                Output("negative", conditioning),
+                Output("latent", latent),
             ),
         )
         return with_identity_replacement(schema, "LTXVGeneratedKeyframesToGuides")
@@ -579,21 +575,19 @@ class LTXVSeparateGeneratedKeyframes(Node):
             display_name="LTXV Separate Generated Keyframes",
             category="model/conditioning/ltxv",
             search_terms=("detailing", "dfr", "peel keyframes"),
-            inputs=(
-                InputSpec("positive", conditioning),
-                InputSpec("negative", conditioning),
-                InputSpec("latent", latent),
-                InputSpec(
+            body=(
+                Input("positive", conditioning),
+                Input("negative", conditioning),
+                Input("latent", latent),
+                Input(
                     "keyframes_to_batch",
                     TypeExpr.concrete(CORE_BOOLEAN),
                     default=False,
                 ),
-            ),
-            outputs=(
-                OutputSpec("positive", conditioning),
-                OutputSpec("negative", conditioning),
-                OutputSpec("latent", latent),
-                OutputSpec("keyframes", latent),
+                Output("positive", conditioning),
+                Output("negative", conditioning),
+                Output("latent", latent),
+                Output("keyframes", latent),
             ),
         )
         return with_identity_replacement(schema, "LTXVSeparateGeneratedKeyframes")

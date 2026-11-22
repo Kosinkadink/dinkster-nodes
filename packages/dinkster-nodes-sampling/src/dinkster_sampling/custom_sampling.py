@@ -17,11 +17,12 @@ from dinkster_api.v1 import (
     NOISE_TYPE,
     SAMPLER_TYPE,
     SIGMAS_TYPE,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
+    Section,
     TypeExpr,
     initialize_inference_process,
     materialize_latent,
@@ -121,12 +122,11 @@ def _outputs(
     return {"output": output, "denoised_output": denoised}
 
 
-def _schema(node_type: str, inputs: tuple[InputSpec, ...]) -> NodeSchema:
+def _schema(node_type: str, inputs: tuple[Input, ...]) -> NodeSchema:
     return NodeSchema(
         node_type=node_type,
         category="model/sampling/custom",
-        inputs=inputs,
-        outputs=(OutputSpec("output", _LATENT), OutputSpec("denoised_output", _LATENT)),
+        body=(*inputs, Output("output", _LATENT), Output("denoised_output", _LATENT)),
     )
 
 
@@ -137,25 +137,37 @@ class SamplerCustom(Node):
             _schema(
                 "dinkster.sampling.sampler_custom",
                 (
-                    InputSpec("model", _MODEL),
-                    InputSpec("add_noise", _BOOLEAN, default=True, advanced=True),
-                    InputSpec(
+                    Input("model", _MODEL),
+                    Input(
                         "noise_seed",
                         _INT,
                         default=0,
-                        widget=NumberWidget(min=0, max=_MAX_SEED, control_after_generate="fixed"),
+                        widget=NumberWidget(min=0, max=_MAX_SEED),
+                        after_run="fixed",
                     ),
-                    InputSpec(
+                    Input(
                         "cfg",
                         _FLOAT,
                         default=8.0,
                         widget=NumberWidget(min=0.0, max=100.0, step=0.1, round=0.01),
                     ),
-                    InputSpec("positive", _CONDITIONING),
-                    InputSpec("negative", _CONDITIONING),
-                    InputSpec("sampler", _SAMPLER),
-                    InputSpec("sigmas", _SIGMAS),
-                    InputSpec("latent_image", _LATENT),
+                    Input("positive", _CONDITIONING),
+                    Input("negative", _CONDITIONING),
+                    Input("sampler", _SAMPLER),
+                    Input("sigmas", _SIGMAS),
+                    Input("latent_image", _LATENT),
+                    Section(
+                        "advanced",
+                        label="Advanced",
+                        collapsed=True,
+                        rows=(
+                            Input(
+                                "add_noise",
+                                _BOOLEAN,
+                                default=True,
+                            ),
+                        ),
+                    ),
                 ),
             ),
             "SamplerCustom",
@@ -208,11 +220,11 @@ class SamplerCustomAdvanced(Node):
             _schema(
                 "dinkster.sampling.sampler_custom_advanced",
                 (
-                    InputSpec("noise", _NOISE),
-                    InputSpec("guider", _GUIDER),
-                    InputSpec("sampler", _SAMPLER),
-                    InputSpec("sigmas", _SIGMAS),
-                    InputSpec("latent_image", _LATENT),
+                    Input("noise", _NOISE),
+                    Input("guider", _GUIDER),
+                    Input("sampler", _SAMPLER),
+                    Input("sigmas", _SIGMAS),
+                    Input("latent_image", _LATENT),
                 ),
             ),
             "SamplerCustomAdvanced",

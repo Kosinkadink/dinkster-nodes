@@ -13,14 +13,15 @@ from dinkster_api.v1 import (
     IMAGE_TYPE,
     LATENT_TYPE,
     VAE_TYPE,
-    DynamicComboOption,
-    DynamicComboSpec,
-    InputFamilySpec,
-    InputSpec,
+    Choice,
+    Group,
+    Input,
     Node,
     NodeSchema,
+    Numbered,
     NumberWidget,
-    OutputSpec,
+    Option,
+    Output,
     TypeExpr,
     initialize_inference_process,
     materialize_image,
@@ -64,11 +65,11 @@ class ReferenceLatent(Node):
                     "This node sets the guiding latent for an edit model. If the model supports it "
                     "you can chain multiple to set multiple reference images."
                 ),
-                inputs=(
-                    InputSpec("conditioning", _CONDITIONING),
-                    InputSpec("latent", _LATENT, required=False),
+                body=(
+                    Input("conditioning", _CONDITIONING),
+                    Input("latent", _LATENT, required=False),
+                    Output("CONDITIONING", _CONDITIONING),
                 ),
-                outputs=(OutputSpec("CONDITIONING", _CONDITIONING),),
             ),
             "ReferenceLatent",
         )
@@ -100,30 +101,28 @@ class ReferenceMultiLatent(Node):
                     "Encodes reference images and appends their latents to positive and optional "
                     "negative conditioning for edit models."
                 ),
-                inputs=(
-                    InputSpec("positive", _CONDITIONING),
-                    InputSpec("negative", _CONDITIONING, required=False),
-                    InputSpec(
+                body=(
+                    Input("positive", _CONDITIONING),
+                    Input("negative", _CONDITIONING, required=False),
+                    Input(
                         "vae",
                         TypeExpr.concrete(VAE_TYPE),
                         required=False,
-                        doc="Reference images are ignored when no VAE is connected.",
+                        tooltip="Reference images are ignored when no VAE is connected.",
                     ),
-                ),
-                combos=(
-                    DynamicComboSpec(
+                    Choice(
                         "resolution",
-                        (
-                            DynamicComboOption("keep resolution"),
-                            DynamicComboOption(
+                        options=(
+                            Option("keep resolution"),
+                            Option(
                                 "resize",
-                                (
-                                    InputSpec(
+                                rows=(
+                                    Input(
                                         "megapixels",
                                         _FLOAT,
                                         default=1.0,
                                         widget=NumberWidget(min=0.01, max=16.0, step=0.01),
-                                        doc=(
+                                        tooltip=(
                                             "Target size of each reference image, "
                                             "preserving aspect "
                                             "ratio. "
@@ -134,24 +133,18 @@ class ReferenceMultiLatent(Node):
                             ),
                         ),
                     ),
-                ),
-                input_families=(
-                    InputFamilySpec(
+                    Group(
                         "images",
-                        (InputSpec("image", _IMAGE, required=False),),
+                        value=Input("image", _IMAGE, required=False),
                         min_members=1,
                         max_members=100,
-                        required=False,
-                        member_prefix="image",
                         optional_after_minimum=True,
+                        keys=Numbered("image", start=0),
                     ),
+                    Output("positive", _CONDITIONING),
+                    Output("negative", _CONDITIONING),
+                    Output("empty_latent", _LATENT),
                 ),
-                outputs=(
-                    OutputSpec("positive", _CONDITIONING),
-                    OutputSpec("negative", _CONDITIONING),
-                    OutputSpec("empty_latent", _LATENT),
-                ),
-                input_order=("positive", "negative", "vae", "resolution", "images"),
             ),
             "ReferenceMultiLatent",
         )

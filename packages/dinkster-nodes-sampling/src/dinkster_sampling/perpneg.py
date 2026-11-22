@@ -13,11 +13,12 @@ from dinkster_api.v1 import (
     GUIDER_TYPE,
     MODEL_TYPE,
     Deprecation,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
+    Section,
     TypeExpr,
     initialize_inference_process,
     with_identity_replacement,
@@ -70,18 +71,24 @@ class PerpNeg(Node):
                 category="experimental",
                 deprecation=Deprecation(message="Use Perp-Neg Guider instead."),
                 search_visibility="deprecated",
-                inputs=(
-                    InputSpec("model", _MODEL),
-                    InputSpec("empty_conditioning", _CONDITIONING),
-                    InputSpec(
-                        "neg_scale",
-                        _FLOAT,
-                        default=1.0,
-                        advanced=True,
-                        widget=NumberWidget(min=0.0, max=100.0, step=0.01),
+                body=(
+                    Input("model", _MODEL),
+                    Input("empty_conditioning", _CONDITIONING),
+                    Section(
+                        "advanced",
+                        label="Advanced",
+                        collapsed=True,
+                        rows=(
+                            Input(
+                                "neg_scale",
+                                _FLOAT,
+                                default=1.0,
+                                widget=NumberWidget(min=0.0, max=100.0, step=0.01),
+                            ),
+                        ),
                     ),
+                    Output("MODEL", _MODEL),
                 ),
-                outputs=(OutputSpec("MODEL", _MODEL),),
             ),
             "PerpNeg",
         )
@@ -123,26 +130,32 @@ class PerpNegGuider(Node):
                 node_type="dinkster.sampling.perp_neg_guider",
                 display_name="Perp-Neg Guider",
                 category="experimental",
-                inputs=(
-                    InputSpec("model", _MODEL),
-                    InputSpec("positive", _CONDITIONING),
-                    InputSpec("negative", _CONDITIONING),
-                    InputSpec("empty_conditioning", _CONDITIONING),
-                    InputSpec(
+                body=(
+                    Input("model", _MODEL),
+                    Input("positive", _CONDITIONING),
+                    Input("negative", _CONDITIONING),
+                    Input("empty_conditioning", _CONDITIONING),
+                    Input(
                         "cfg",
                         _FLOAT,
                         default=8.0,
                         widget=NumberWidget(min=0.0, max=100.0, step=0.1, round=0.01),
                     ),
-                    InputSpec(
-                        "neg_scale",
-                        _FLOAT,
-                        default=1.0,
-                        advanced=True,
-                        widget=NumberWidget(min=0.0, max=100.0, step=0.01),
+                    Section(
+                        "advanced",
+                        label="Advanced",
+                        collapsed=True,
+                        rows=(
+                            Input(
+                                "neg_scale",
+                                _FLOAT,
+                                default=1.0,
+                                widget=NumberWidget(min=0.0, max=100.0, step=0.01),
+                            ),
+                        ),
                     ),
+                    Output("GUIDER", _GUIDER),
                 ),
-                outputs=(OutputSpec("GUIDER", _GUIDER),),
             ),
             "PerpNegGuider",
         )

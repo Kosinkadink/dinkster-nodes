@@ -10,11 +10,11 @@ from dinkster_api.v1 import (
     IMAGE_TYPE,
     LATENT_TYPE,
     VAE_TYPE,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
     TypeExpr,
     materialize_image,
     materialize_latent,
@@ -23,21 +23,20 @@ from dinkster_api.v1 import (
 
 
 def _schema(node_type: str, display_name: str, *, encode: bool, tiled: bool) -> NodeSchema:
-    inputs: tuple[InputSpec, ...] = (
-        InputSpec(
+    inputs: tuple[Input, ...] = (
+        Input(
             "pixels" if encode else "samples",
             TypeExpr.concrete(IMAGE_TYPE if encode else LATENT_TYPE),
         ),
-        InputSpec("vae", TypeExpr.concrete(VAE_TYPE)),
+        Input("vae", TypeExpr.concrete(VAE_TYPE)),
     )
     if tiled:
         inputs += tuple(
-            InputSpec(
+            Input(
                 name,
                 TypeExpr.concrete(CORE_INT),
                 default=default,
                 widget=NumberWidget(min=minimum, max=4096, step=step),
-                advanced=True,
             )
             for name, default, minimum, step in (
                 ("tile_size", 512, 64, 64 if encode else 32),
@@ -59,7 +58,7 @@ def _schema(node_type: str, display_name: str, *, encode: bool, tiled: bool) -> 
         ),
         inputs=inputs,
         outputs=(
-            OutputSpec(
+            Output(
                 "LATENT" if encode else "IMAGE",
                 TypeExpr.concrete(LATENT_TYPE if encode else IMAGE_TYPE),
             ),

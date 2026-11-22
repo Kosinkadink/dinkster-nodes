@@ -19,15 +19,15 @@ from dinkster_api.v1 import (
     MESH_TYPE,
     AssetRef,
     AssetWidget,
+    Choice,
     ComboWidget,
-    DynamicComboOption,
-    DynamicComboSpec,
-    InputSpec,
+    Input,
     LocalAssetRef,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Option,
+    Output,
     TriangleMeshBatch,
     TypeExpr,
     initialize_inference_process,
@@ -44,22 +44,22 @@ class LoadDA3Model(Node):
             node_type="dinkster.vision.depth.anything.3.load_da3_model",
             display_name="Load Depth Anything 3",
             category="model/loaders",
-            inputs=(
-                InputSpec(
+            body=(
+                Input(
                     "model_name",
                     TypeExpr.concrete(ASSET_TYPE),
                     widget=AssetWidget(
                         kind="model/geometry-estimation", accept=("application/octet-stream",)
                     ),
                 ),
-                InputSpec(
+                Input(
                     "weight_dtype",
                     TypeExpr.concrete(CORE_COMBO),
                     default="default",
                     widget=ComboWidget(("default", "fp16", "bf16", "fp32")),
                 ),
+                Output("DA3_MODEL", TypeExpr.concrete(DA3_MODEL_TYPE)),
             ),
-            outputs=(OutputSpec("DA3_MODEL", TypeExpr.concrete(DA3_MODEL_TYPE)),),
         )
         return with_identity_replacement(schema, "LoadDA3Model")
 
@@ -102,33 +102,31 @@ class DA3Inference(Node):
                 "metric depth",
                 "disparity",
             ),
-            inputs=(
-                InputSpec("da3_model", TypeExpr.concrete(DA3_MODEL_TYPE)),
-                InputSpec("image", TypeExpr.concrete(IMAGE_TYPE)),
-                InputSpec(
+            body=(
+                Input("da3_model", TypeExpr.concrete(DA3_MODEL_TYPE)),
+                Input("image", TypeExpr.concrete(IMAGE_TYPE)),
+                Input(
                     "resolution",
                     TypeExpr.concrete(CORE_INT),
                     default=504,
                     widget=NumberWidget(min=140, max=2520, step=14),
-                    doc="Model processing resolution; output returns to the original size.",
+                    tooltip="Model processing resolution; output returns to the original size.",
                 ),
-                InputSpec(
+                Input(
                     "resize_method",
                     TypeExpr.concrete(CORE_COMBO),
                     default="upper_bound_resize",
                     widget=ComboWidget(("upper_bound_resize", "lower_bound_resize")),
-                    doc="Scale the longest side (upper) or shortest side (lower) to resolution.",
+                    tooltip="Scale the longest side (upper) or shortest side (lower) to resolution.",
                 ),
-            ),
-            combos=(
-                DynamicComboSpec(
+                Choice(
                     "mode",
-                    (
-                        DynamicComboOption("mono"),
-                        DynamicComboOption(
+                    options=(
+                        Option("mono"),
+                        Option(
                             "multiview",
-                            (
-                                InputSpec(
+                            rows=(
+                                Input(
                                     "ref_view_strategy",
                                     TypeExpr.concrete(CORE_COMBO),
                                     default="saddle_balanced",
@@ -136,7 +134,7 @@ class DA3Inference(Node):
                                         ("saddle_balanced", "saddle_sim_range", "first", "middle")
                                     ),
                                 ),
-                                InputSpec(
+                                Input(
                                     "pose_method",
                                     TypeExpr.concrete(CORE_COMBO),
                                     default="cam_dec",
@@ -146,9 +144,8 @@ class DA3Inference(Node):
                         ),
                     ),
                 ),
+                Output("da3_geometry", TypeExpr.concrete(DA3_GEOMETRY_TYPE)),
             ),
-            input_order=("da3_model", "image", "resolution", "resize_method", "mode"),
-            outputs=(OutputSpec("da3_geometry", TypeExpr.concrete(DA3_GEOMETRY_TYPE)),),
         )
         return with_identity_replacement(schema, "DA3Inference")
 
@@ -258,35 +255,34 @@ class DA3Render(Node):
     @classmethod
     def define_schema(cls) -> NodeSchema:
         depth_inputs = (
-            InputSpec(
+            Input(
                 "normalization",
                 TypeExpr.concrete(CORE_COMBO),
                 default="v2_style",
                 widget=ComboWidget(("v2_style", "min_max", "raw")),
             ),
-            InputSpec("apply_sky_clip", TypeExpr.concrete(CORE_BOOLEAN), default=False),
+            Input("apply_sky_clip", TypeExpr.concrete(CORE_BOOLEAN), default=False),
         )
-        colored = (InputSpec("colored", TypeExpr.concrete(CORE_BOOLEAN), default=False),)
+        colored = (Input("colored", TypeExpr.concrete(CORE_BOOLEAN), default=False),)
         schema = NodeSchema(
             node_type="dinkster.vision.depth.anything.3.da3_render",
             display_name="Render Depth Anything 3",
             category="image/geometry estimation",
             description="Render a depth map, confidence map, or sky mask from "
             "Depth Anything 3 geometry data.",
-            inputs=(InputSpec("da3_geometry", TypeExpr.concrete(DA3_GEOMETRY_TYPE)),),
-            combos=(
-                DynamicComboSpec(
+            body=(
+                Input("da3_geometry", TypeExpr.concrete(DA3_GEOMETRY_TYPE)),
+                Choice(
                     "output",
-                    (
-                        DynamicComboOption("depth", depth_inputs),
-                        DynamicComboOption("depth_colored", depth_inputs),
-                        DynamicComboOption("sky_mask", colored),
-                        DynamicComboOption("confidence", colored),
+                    options=(
+                        Option("depth", rows=depth_inputs),
+                        Option("depth_colored", rows=depth_inputs),
+                        Option("sky_mask", rows=colored),
+                        Option("confidence", rows=colored),
                     ),
                 ),
+                Output("IMAGE", TypeExpr.concrete(IMAGE_TYPE)),
             ),
-            input_order=("da3_geometry", "output"),
-            outputs=(OutputSpec("IMAGE", TypeExpr.concrete(IMAGE_TYPE)),),
         )
         return with_identity_replacement(schema, "DA3Render")
 
@@ -356,36 +352,36 @@ class DA3GeometryToMesh(Node):
             description="Convert a depth map into a triangulated 3D mesh.",
             category="image/geometry estimation",
             search_terms=("da3", "depth anything", "mesh", "geometry", "3d", "triangulate"),
-            inputs=(
-                InputSpec("da3_geometry", TypeExpr.concrete(DA3_GEOMETRY_TYPE)),
-                InputSpec(
+            body=(
+                Input("da3_geometry", TypeExpr.concrete(DA3_GEOMETRY_TYPE)),
+                Input(
                     "batch_index",
                     TypeExpr.concrete(CORE_INT),
                     default=0,
                     widget=NumberWidget(min=0, max=4096),
                 ),
-                InputSpec(
+                Input(
                     "decimation",
                     TypeExpr.concrete(CORE_INT),
                     default=1,
                     widget=NumberWidget(min=1, max=8),
                 ),
-                InputSpec(
+                Input(
                     "discontinuity_threshold",
                     TypeExpr.concrete(CORE_FLOAT),
                     default=0.04,
                     widget=NumberWidget(min=0.0, max=1.0, step=0.01),
                 ),
-                InputSpec(
+                Input(
                     "confidence_threshold",
                     TypeExpr.concrete(CORE_FLOAT),
                     default=0.1,
                     widget=NumberWidget(min=0.0, max=1.0, step=0.01),
                 ),
-                InputSpec("use_sky_mask", TypeExpr.concrete(CORE_BOOLEAN), default=True),
-                InputSpec("texture", TypeExpr.concrete(CORE_BOOLEAN), default=True),
+                Input("use_sky_mask", TypeExpr.concrete(CORE_BOOLEAN), default=True),
+                Input("texture", TypeExpr.concrete(CORE_BOOLEAN), default=True),
+                Output("MESH", TypeExpr.concrete(MESH_TYPE)),
             ),
-            outputs=(OutputSpec("MESH", TypeExpr.concrete(MESH_TYPE)),),
         )
         return with_identity_replacement(schema, "DA3GeometryToMesh")
 

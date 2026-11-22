@@ -9,18 +9,18 @@ from dinkster_api.v1 import (
     CLIP_TYPE,
     CORE_FLOAT,
     MODEL_TYPE,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
     TypeExpr,
     with_identity_replacement,
 )
 
 
-def _coefficient(name: str, *, subtract: bool = False) -> InputSpec:
-    return InputSpec(
+def _coefficient(name: str, *, subtract: bool = False) -> Input:
+    return Input(
         name,
         TypeExpr.concrete(CORE_FLOAT),
         default=1.0,
@@ -34,16 +34,18 @@ def _merge_schema(node_type: str, *, clip: bool = False, coefficient: str = "") 
     type_id = CLIP_TYPE if clip else MODEL_TYPE
     prefix = "clip" if clip else "model"
     inputs = (
-        InputSpec(prefix + "1", TypeExpr.concrete(type_id)),
-        InputSpec(prefix + "2", TypeExpr.concrete(type_id)),
+        Input(prefix + "1", TypeExpr.concrete(type_id)),
+        Input(prefix + "2", TypeExpr.concrete(type_id)),
     )
     if coefficient:
         inputs += (_coefficient(coefficient, subtract=coefficient == "multiplier"),)
     return NodeSchema(
         node_type=node_type,
         category="model/merging",
-        inputs=inputs,
-        outputs=(OutputSpec("CLIP" if clip else "MODEL", TypeExpr.concrete(type_id)),),
+        body=(
+            *inputs,
+            Output("CLIP" if clip else "MODEL", TypeExpr.concrete(type_id)),
+        ),
     )
 
 
@@ -148,12 +150,12 @@ def block_merge_schema(
         node_type=node_type,
         category=category,
         description=description,
-        inputs=(
-            InputSpec("model1", TypeExpr.concrete(MODEL_TYPE)),
-            InputSpec("model2", TypeExpr.concrete(MODEL_TYPE)),
+        body=(
+            Input("model1", TypeExpr.concrete(MODEL_TYPE)),
+            Input("model2", TypeExpr.concrete(MODEL_TYPE)),
             *(_coefficient(name) for name in block_names),
+            Output("MODEL", TypeExpr.concrete(MODEL_TYPE)),
         ),
-        outputs=(OutputSpec("MODEL", TypeExpr.concrete(MODEL_TYPE)),),
     )
 
 

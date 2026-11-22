@@ -9,10 +9,11 @@ from dinkster_api.v1 import (
     CORE_INT,
     MODEL_TYPE,
     ComboWidget,
-    InputSpec,
+    Input,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
+    Section,
     TypeExpr,
     with_identity_replacement,
 )
@@ -39,33 +40,48 @@ class LTXVContextWindows(ContextWindowsManual):
             display_name="LTXV Context Windows",
             category="model/patch/ltxv",
             description="Set context windows for LTXV-like models.",
-            inputs=(
-                InputSpec("model", _MODEL),
-                InputSpec(
+            body=(
+                Input("model", _MODEL),
+                Input(
                     "context_length",
                     _INT,
                     default=145,
                     widget=NumberWidget(min=1, max=16384, step=8),
                 ),
-                InputSpec("context_overlap", _INT, default=40, widget=NumberWidget(min=0, step=8)),
-                InputSpec(
+                Input("context_overlap", _INT, default=40, widget=NumberWidget(min=0, step=8)),
+                Input(
                     "context_schedule",
                     _COMBO,
                     default="standard_uniform",
                     widget=ComboWidget(_SCHEDULES),
                 ),
-                InputSpec(
-                    "context_stride", _INT, default=1, advanced=True, widget=NumberWidget(min=1)
+                Input("fuse_method", _COMBO, default="pyramid", widget=ComboWidget(_FUSE_METHODS)),
+                Input("retain_first_frame", _BOOLEAN, default=False),
+                Section(
+                    "advanced",
+                    label="Advanced",
+                    collapsed=True,
+                    rows=(
+                        Input("context_stride", _INT, default=1, widget=NumberWidget(min=1)),
+                        Input(
+                            "closed_loop",
+                            _BOOLEAN,
+                            default=False,
+                        ),
+                        Input(
+                            "freenoise",
+                            _BOOLEAN,
+                            default=True,
+                        ),
+                        Input(
+                            "split_conds_to_windows",
+                            _BOOLEAN,
+                            default=False,
+                        ),
+                    ),
                 ),
-                InputSpec("closed_loop", _BOOLEAN, default=False, advanced=True),
-                InputSpec(
-                    "fuse_method", _COMBO, default="pyramid", widget=ComboWidget(_FUSE_METHODS)
-                ),
-                InputSpec("freenoise", _BOOLEAN, default=True, advanced=True),
-                InputSpec("retain_first_frame", _BOOLEAN, default=False),
-                InputSpec("split_conds_to_windows", _BOOLEAN, default=False, advanced=True),
+                Output("MODEL", _MODEL),
             ),
-            outputs=(OutputSpec("MODEL", _MODEL),),
         )
         return with_identity_replacement(schema, "LTXVContextWindows")
 

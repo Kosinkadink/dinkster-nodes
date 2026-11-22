@@ -13,10 +13,10 @@ from dinkster_api.v1 import (
     CORE_STRING,
     SVG_TYPE,
     ExportSnapshot,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
-    OutputSpec,
+    Output,
     TypeExpr,
     materialize_svg,
 )
@@ -35,7 +35,7 @@ class SVGSource(Node):
     def define_schema(cls) -> NodeSchema:
         return NodeSchema(
             node_type="svg-save-fixture.source",
-            outputs=(OutputSpec("svg", TypeExpr.concrete(SVG_TYPE)),),
+            body=(Output("svg", TypeExpr.concrete(SVG_TYPE)),),
         )
 
     @classmethod
@@ -48,8 +48,10 @@ class SVGInspect(Node):
     def define_schema(cls) -> NodeSchema:
         return NodeSchema(
             node_type="svg-save-fixture.inspect",
-            inputs=(InputSpec("svg", TypeExpr.concrete(SVG_TYPE)),),
-            outputs=(OutputSpec("result", TypeExpr.concrete(CORE_STRING)),),
+            body=(
+                Input("svg", TypeExpr.concrete(SVG_TYPE)),
+                Output("result", TypeExpr.concrete(CORE_STRING)),
+            ),
             idempotent=False,
         )
 

@@ -10,11 +10,11 @@ from typing import Any
 from dinkster_api.v1 import (
     CORE_INT,
     IMAGE_TYPE,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
     TypeExpr,
     materialize_image,
     with_identity_replacement,
@@ -26,8 +26,8 @@ _INT = TypeExpr.concrete(CORE_INT)
 _MAX_RESOLUTION = 16_384
 
 
-def _integer(name: str, default: int, minimum: int, maximum: int) -> InputSpec:
-    return InputSpec(name, _INT, default=default, widget=NumberWidget(min=minimum, max=maximum))
+def _integer(name: str, default: int, minimum: int, maximum: int) -> Input:
+    return Input(name, _INT, default=default, widget=NumberWidget(min=minimum, max=maximum))
 
 
 def _grid_coords(
@@ -63,13 +63,13 @@ class SplitImageToTileList(Node):
             description="Splits an image into a batched list of tiles with a specified overlap.",
             category="image/batch",
             search_terms=("split image", "tile image", "slice image"),
-            inputs=(
-                InputSpec("image", _IMAGE),
+            body=(
+                Input("image", _IMAGE),
                 _integer("tile_width", 1024, 64, _MAX_RESOLUTION),
                 _integer("tile_height", 1024, 64, _MAX_RESOLUTION),
                 _integer("overlap", 128, 0, 4096),
+                Output("IMAGE", _IMAGE_LIST),
             ),
-            outputs=(OutputSpec("IMAGE", _IMAGE_LIST),),
         )
         return with_identity_replacement(schema, "SplitImageToTileList")
 
@@ -102,13 +102,13 @@ class ImageMergeTileList(Node):
             display_name="Merge List of Tiles to Image",
             category="image/batch",
             search_terms=("split image", "tile image", "slice image"),
-            inputs=(
-                InputSpec("image_list", _IMAGE_LIST),
+            body=(
+                Input("image_list", _IMAGE_LIST),
                 _integer("final_width", 1024, 64, 32_768),
                 _integer("final_height", 1024, 64, 32_768),
                 _integer("overlap", 128, 0, 4096),
+                Output("IMAGE", _IMAGE),
             ),
-            outputs=(OutputSpec("IMAGE", _IMAGE),),
         )
         return with_identity_replacement(schema, "ImageMergeTileList")
 

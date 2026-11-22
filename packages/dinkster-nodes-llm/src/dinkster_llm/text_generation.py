@@ -14,14 +14,15 @@ from dinkster_api.v1 import (
     CORE_INT,
     CORE_STRING,
     IMAGE_TYPE,
+    Choice,
     ComboWidget,
-    DynamicComboOption,
-    DynamicComboSpec,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Option,
+    Output,
+    Section,
     StringWidget,
     TypeExpr,
     materialize_audio,
@@ -40,47 +41,94 @@ class TextGenerate(Node):
             display_name="Generate Text",
             category="text",
             search_terms=("LLM", "gemma"),
-            inputs=(
-                InputSpec("clip", TypeExpr.concrete(CLIP_TYPE)),
-                InputSpec(
+            body=(
+                Input("clip", TypeExpr.concrete(CLIP_TYPE)),
+                Input(
                     "prompt",
                     _STRING,
                     default="",
                     widget=StringWidget(multiline=True, dynamic_prompts=True),
                 ),
-                InputSpec("image", TypeExpr.concrete(IMAGE_TYPE), required=False),
-                InputSpec(
+                Input("image", TypeExpr.concrete(IMAGE_TYPE), required=False),
+                Input(
                     "video",
                     TypeExpr.concrete(IMAGE_TYPE),
                     required=False,
-                    doc=(
+                    tooltip=(
                         "Video frames as image batch. Assumed to be 24 FPS; "
                         "subsampled to 1 FPS internally."
                     ),
                 ),
-                InputSpec("audio", TypeExpr.concrete(AUDIO_TYPE), required=False),
-                InputSpec(
+                Input("audio", TypeExpr.concrete(AUDIO_TYPE), required=False),
+                Input(
                     "max_length",
                     TypeExpr.concrete(CORE_INT),
                     default=512,
                     widget=NumberWidget(min=1, max=32768),
                 ),
-                InputSpec(
+                Choice(
+                    "sampling_mode",
+                    options=(
+                        Option(
+                            "on",
+                            rows=(
+                                Input(
+                                    "temperature",
+                                    TypeExpr.concrete(CORE_FLOAT),
+                                    default=0.7,
+                                    widget=NumberWidget(min=0.01, max=2.0, step=0.000001),
+                                ),
+                                Input(
+                                    "top_k",
+                                    TypeExpr.concrete(CORE_INT),
+                                    default=64,
+                                    widget=NumberWidget(min=0, max=1000),
+                                ),
+                                Input(
+                                    "top_p",
+                                    TypeExpr.concrete(CORE_FLOAT),
+                                    default=0.95,
+                                    widget=NumberWidget(min=0.0, max=1.0, step=0.01),
+                                ),
+                                Input(
+                                    "min_p",
+                                    TypeExpr.concrete(CORE_FLOAT),
+                                    default=0.05,
+                                    widget=NumberWidget(min=0.0, max=1.0, step=0.01),
+                                ),
+                                Input(
+                                    "repetition_penalty",
+                                    TypeExpr.concrete(CORE_FLOAT),
+                                    default=1.05,
+                                    widget=NumberWidget(min=0.0, max=5.0, step=0.01),
+                                ),
+                                Input(
+                                    "seed",
+                                    TypeExpr.concrete(CORE_INT),
+                                    default=0,
+                                    widget=NumberWidget(min=0, max=0xFFFFFFFFFFFFFFFF),
+                                ),
+                                Input(
+                                    "presence_penalty",
+                                    TypeExpr.concrete(CORE_FLOAT),
+                                    required=False,
+                                    default=0.0,
+                                    widget=NumberWidget(min=0.0, max=5.0, step=0.01),
+                                ),
+                            ),
+                        ),
+                        Option("off"),
+                    ),
+                    label="Sampling Mode",
+                ),
+                Input(
                     "thinking",
                     TypeExpr.concrete(CORE_BOOLEAN),
                     required=False,
                     default=False,
-                    doc="Operate in thinking mode if the model supports it.",
+                    tooltip="Operate in thinking mode if the model supports it.",
                 ),
-                InputSpec(
-                    "use_default_template",
-                    TypeExpr.concrete(CORE_BOOLEAN),
-                    required=False,
-                    default=True,
-                    advanced=True,
-                    doc="Use the built in system prompt/template if the model has one.",
-                ),
-                InputSpec(
+                Input(
                     "mtp",
                     TypeExpr.concrete(CORE_COMBO),
                     required=False,
@@ -99,7 +147,7 @@ class TextGenerate(Node):
                             "tree4s1m8",
                         )
                     ),
-                    doc=(
+                    tooltip=(
                         "Speculative decoding with the checkpoint's multi-token-prediction head. "
                         "No effect without MTP weights. auto adapts the draft depth and breadth "
                         "to observed token matches and execution cost; 2-5 pins a constant draft "
@@ -107,91 +155,33 @@ class TextGenerate(Node):
                         "correctly distributed but differs from non-MTP output for the same seed."
                     ),
                 ),
-                InputSpec(
+                Input(
                     "system_prompt",
                     _STRING,
                     required=False,
-                    force_input=True,
+                    pin_first=True,
                     widget=StringWidget(multiline=False),
-                    doc=(
+                    tooltip=(
                         "Replaces the system prompt in the model's chat template. "
                         "Ignored when the default template is not used."
                     ),
                 ),
-            ),
-            combos=(
-                DynamicComboSpec(
-                    "sampling_mode",
-                    (
-                        DynamicComboOption(
-                            "on",
-                            (
-                                InputSpec(
-                                    "temperature",
-                                    TypeExpr.concrete(CORE_FLOAT),
-                                    default=0.7,
-                                    widget=NumberWidget(min=0.01, max=2.0, step=0.000001),
-                                ),
-                                InputSpec(
-                                    "top_k",
-                                    TypeExpr.concrete(CORE_INT),
-                                    default=64,
-                                    widget=NumberWidget(min=0, max=1000),
-                                ),
-                                InputSpec(
-                                    "top_p",
-                                    TypeExpr.concrete(CORE_FLOAT),
-                                    default=0.95,
-                                    widget=NumberWidget(min=0.0, max=1.0, step=0.01),
-                                ),
-                                InputSpec(
-                                    "min_p",
-                                    TypeExpr.concrete(CORE_FLOAT),
-                                    default=0.05,
-                                    widget=NumberWidget(min=0.0, max=1.0, step=0.01),
-                                ),
-                                InputSpec(
-                                    "repetition_penalty",
-                                    TypeExpr.concrete(CORE_FLOAT),
-                                    default=1.05,
-                                    widget=NumberWidget(min=0.0, max=5.0, step=0.01),
-                                ),
-                                InputSpec(
-                                    "seed",
-                                    TypeExpr.concrete(CORE_INT),
-                                    default=0,
-                                    widget=NumberWidget(min=0, max=0xFFFFFFFFFFFFFFFF),
-                                ),
-                                InputSpec(
-                                    "presence_penalty",
-                                    TypeExpr.concrete(CORE_FLOAT),
-                                    required=False,
-                                    default=0.0,
-                                    widget=NumberWidget(min=0.0, max=5.0, step=0.01),
-                                ),
-                            ),
+                Section(
+                    "advanced",
+                    label="Advanced",
+                    collapsed=True,
+                    rows=(
+                        Input(
+                            "use_default_template",
+                            TypeExpr.concrete(CORE_BOOLEAN),
+                            required=False,
+                            default=True,
+                            tooltip="Use the built in system prompt/template if the model has one.",
                         ),
-                        DynamicComboOption("off"),
                     ),
-                    display_name="Sampling Mode",
                 ),
-            ),
-            input_order=(
-                "clip",
-                "prompt",
-                "image",
-                "video",
-                "audio",
-                "max_length",
-                "sampling_mode",
-                "thinking",
-                "use_default_template",
-                "mtp",
-                "system_prompt",
-            ),
-            outputs=(
-                OutputSpec("generated_text", _STRING, display_name="generated_text"),
-                OutputSpec("thinking", _STRING, display_name="thinking"),
+                Output("generated_text", _STRING, label="generated_text"),
+                Output("thinking", _STRING, label="thinking"),
             ),
         )
         return with_identity_replacement(schema, "TextGenerate")

@@ -11,11 +11,11 @@ from dinkster_api.v1 import (
     LATENT_UPSCALE_MODEL_TYPE,
     ComboOption,
     ComboWidget,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
     TypeExpr,
     initialize_inference_process,
     materialize_latent,
@@ -33,8 +33,8 @@ _LATENT_UPSCALE_MODEL = TypeExpr.concrete(LATENT_UPSCALE_MODEL_TYPE)
 _UPSCALE_METHODS = ("nearest-exact", "bilinear", "area", "bicubic", "bislerp")
 
 
-def _combo(name: str, options: tuple[str, ...], default: str | None = None) -> InputSpec:
-    return InputSpec(
+def _combo(name: str, options: tuple[str, ...], default: str | None = None) -> Input:
+    return Input(
         name,
         _COMBO,
         default=default,
@@ -49,19 +49,15 @@ class HunyuanVideo15LatentUpscaleWithModel(Node):
             node_type="dinkster.hunyuan.hunyuan_video15_latent_upscale_with_model",
             display_name="Hunyuan Video 1.5 Latent Upscale With Model",
             category="model/latent/hunyuan video",
-            inputs=(
-                InputSpec("model", _LATENT_UPSCALE_MODEL),
-                InputSpec("samples", _LATENT),
+            body=(
+                Input("model", _LATENT_UPSCALE_MODEL),
+                Input("samples", _LATENT),
                 _combo("upscale_method", _UPSCALE_METHODS, "bilinear"),
-                InputSpec(
-                    "width", _INT, default=1280, widget=NumberWidget(min=0, max=16384, step=8)
-                ),
-                InputSpec(
-                    "height", _INT, default=720, widget=NumberWidget(min=0, max=16384, step=8)
-                ),
+                Input("width", _INT, default=1280, widget=NumberWidget(min=0, max=16384, step=8)),
+                Input("height", _INT, default=720, widget=NumberWidget(min=0, max=16384, step=8)),
                 _combo("crop", ("disabled", "center")),
+                Output("LATENT", _LATENT),
             ),
-            outputs=(OutputSpec("LATENT", _LATENT),),
         )
         return with_identity_replacement(schema, "HunyuanVideo15LatentUpscaleWithModel")
 

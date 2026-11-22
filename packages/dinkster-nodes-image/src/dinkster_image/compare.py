@@ -9,10 +9,10 @@ from dinkster_api.v1 import (
     ABSENT,
     IMAGECOMPARE_TYPE,
     CustomWidgetDescriptor,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
-    OutputSpec,
+    Output,
     TypeExpr,
     copy_media_semantics,
     report_preview,
@@ -30,13 +30,15 @@ class ImageCompare(Node):
             node_type="dinkster.image.compare",
             display_name="Compare Images",
             category="image",
-            inputs=tuple(
-                InputSpec(name, IMAGE, required=False, default=None)
-                for name in ("image_a", "image_b")
-            ),
-            outputs=tuple(
-                OutputSpec(name, IMAGE, optional=True, preview=True)
-                for name in ("image_a", "image_b")
+            body=(
+                *tuple(
+                    Input(name, IMAGE, required=False, default=None)
+                    for name in ("image_a", "image_b")
+                ),
+                *tuple(
+                    Output(name, IMAGE, optional=True, preview=True)
+                    for name in ("image_a", "image_b")
+                ),
             ),
             output_node=True,
             search_terms=("compare images", "before after"),
@@ -65,13 +67,13 @@ class NativeImageCompare(Node):
             node_type="ImageCompare",
             display_name="Compare Images",
             category="image",
-            inputs=(
+            body=(
                 *ImageCompare.schema().inputs,
-                InputSpec(
+                Input(
                     "compare_view",
                     TypeExpr.concrete(IMAGECOMPARE_TYPE),
                     default=None,
-                    socketless=True,
+                    pin=False,
                     widget=CustomWidgetDescriptor("IMAGECOMPARE"),
                 ),
             ),

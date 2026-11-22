@@ -13,10 +13,10 @@ from dinkster_api.v1 import (
     CORE_STRING,
     GUIDER_TYPE,
     MODEL_TYPE,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
-    OutputSpec,
+    Output,
     TypeExpr,
     initialize_inference_process,
 )
@@ -122,9 +122,9 @@ class Source(Node):
     def define_schema(cls) -> NodeSchema:
         return NodeSchema(
             node_type="perpneg-fixture.source",
-            outputs=(
-                OutputSpec("model", TypeExpr.concrete(MODEL_TYPE)),
-                OutputSpec("conditioning", TypeExpr.concrete(CONDITIONING_TYPE)),
+            body=(
+                Output("model", TypeExpr.concrete(MODEL_TYPE)),
+                Output("conditioning", TypeExpr.concrete(CONDITIONING_TYPE)),
             ),
         )
 
@@ -138,11 +138,11 @@ class Consumer(Node):
     def define_schema(cls) -> NodeSchema:
         return NodeSchema(
             node_type="perpneg-fixture.consumer",
-            inputs=(
-                InputSpec("model", TypeExpr.concrete(MODEL_TYPE)),
-                InputSpec("guider", TypeExpr.concrete(GUIDER_TYPE)),
+            body=(
+                Input("model", TypeExpr.concrete(MODEL_TYPE)),
+                Input("guider", TypeExpr.concrete(GUIDER_TYPE)),
+                Output("summary", TypeExpr.concrete(CORE_STRING)),
             ),
-            outputs=(OutputSpec("summary", TypeExpr.concrete(CORE_STRING)),),
         )
 
     @classmethod

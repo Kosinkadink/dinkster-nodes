@@ -12,11 +12,11 @@ from dinkster_api.v1 import (
     LATENT_TYPE,
     VAE_TYPE,
     WAN_CAMERA_EMBEDDING_TYPE,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
     TypeExpr,
     initialize_inference_process,
     materialize_clip_vision_output,
@@ -33,48 +33,46 @@ class WanCameraImageToVideo(Node):
         schema = NodeSchema(
             node_type="dinkster.wan.wan_camera_image_to_video",
             category="model/conditioning/wan/camera",
-            inputs=(
-                InputSpec("positive", TypeExpr.concrete(CONDITIONING_TYPE)),
-                InputSpec("negative", TypeExpr.concrete(CONDITIONING_TYPE)),
-                InputSpec("vae", TypeExpr.concrete(VAE_TYPE)),
-                InputSpec(
+            body=(
+                Input("positive", TypeExpr.concrete(CONDITIONING_TYPE)),
+                Input("negative", TypeExpr.concrete(CONDITIONING_TYPE)),
+                Input("vae", TypeExpr.concrete(VAE_TYPE)),
+                Input(
                     "width",
                     TypeExpr.concrete(CORE_INT),
                     default=832,
                     widget=NumberWidget(min=16, max=16384, step=16),
                 ),
-                InputSpec(
+                Input(
                     "height",
                     TypeExpr.concrete(CORE_INT),
                     default=480,
                     widget=NumberWidget(min=16, max=16384, step=16),
                 ),
-                InputSpec(
+                Input(
                     "length",
                     TypeExpr.concrete(CORE_INT),
                     default=81,
                     widget=NumberWidget(min=1, max=16384, step=4),
                 ),
-                InputSpec(
+                Input(
                     "batch_size",
                     TypeExpr.concrete(CORE_INT),
                     default=1,
                     widget=NumberWidget(min=1, max=4096),
                 ),
-                InputSpec(
+                Input(
                     "clip_vision_output", TypeExpr.concrete(CLIP_VISION_OUTPUT_TYPE), required=False
                 ),
-                InputSpec("start_image", TypeExpr.concrete(IMAGE_TYPE), required=False),
-                InputSpec(
+                Input("start_image", TypeExpr.concrete(IMAGE_TYPE), required=False),
+                Input(
                     "camera_conditions",
                     TypeExpr.concrete(WAN_CAMERA_EMBEDDING_TYPE),
                     required=False,
                 ),
-            ),
-            outputs=(
-                OutputSpec("positive", TypeExpr.concrete(CONDITIONING_TYPE)),
-                OutputSpec("negative", TypeExpr.concrete(CONDITIONING_TYPE)),
-                OutputSpec("latent", TypeExpr.concrete(LATENT_TYPE)),
+                Output("positive", TypeExpr.concrete(CONDITIONING_TYPE)),
+                Output("negative", TypeExpr.concrete(CONDITIONING_TYPE)),
+                Output("latent", TypeExpr.concrete(LATENT_TYPE)),
             ),
         )
         return with_identity_replacement(schema, "WanCameraImageToVideo")

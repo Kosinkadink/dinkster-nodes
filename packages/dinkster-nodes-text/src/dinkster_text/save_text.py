@@ -12,11 +12,11 @@ from dinkster_api.v1 import (
     AssetError,
     AssetWriter,
     ComboWidget,
-    InputSpec,
+    Input,
     MountSnapshotWriter,
     Node,
     NodeSchema,
-    OutputSpec,
+    Output,
     StringWidget,
     TypeExpr,
     attach_saved_artifact,
@@ -55,29 +55,29 @@ class SaveText(Node):
             category="text",
             description="Save text content to a file in the output directory.",
             search_terms=("save text", "write text", "export text"),
-            inputs=(
-                InputSpec("text", _STRING, force_input=True, widget=StringWidget(multiline=False)),
-                InputSpec(
+            body=(
+                Input("text", _STRING, pin_first=True, widget=StringWidget(multiline=False)),
+                Input(
                     "filename_prefix",
                     _STRING,
                     default="ComfyUI",
                     widget=StringWidget(multiline=False),
                 ),
-                InputSpec(
+                Input(
                     "format",
                     _COMBO,
                     default="txt",
                     widget=ComboWidget(options=_FORMATS),
                 ),
-                InputSpec(
+                Input(
                     "mount",
                     _STRING,
                     required=False,
                     default=None,
                     widget=StringWidget(multiline=False),
                 ),
+                Output("text", _STRING),
             ),
-            outputs=(OutputSpec("text", _STRING),),
             idempotent=False,
             output_node=True,
         )

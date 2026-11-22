@@ -12,12 +12,13 @@ from dinkster_api.v1 import (
     IMAGE_TYPE,
     LATENT_TYPE,
     VAE_TYPE,
-    InputFamilySpec,
-    InputSpec,
+    Group,
+    Input,
     Node,
     NodeSchema,
+    Numbered,
     NumberWidget,
-    OutputSpec,
+    Output,
     TypeExpr,
     initialize_inference_process,
     materialize_image,
@@ -36,8 +37,8 @@ _LATENT = TypeExpr.concrete(LATENT_TYPE)
 _VAE = TypeExpr.concrete(VAE_TYPE)
 
 
-def _integer(name: str, default: int, minimum: int, maximum: int, step: int | None) -> InputSpec:
-    return InputSpec(
+def _integer(name: str, default: int, minimum: int, maximum: int, step: int | None) -> Input:
+    return Input(
         name,
         _INT,
         default=default,
@@ -69,51 +70,33 @@ class BerniniConditioning(Node):
                 "for t2v, v2v, rv2v, r2v, and ads2v. Reference images are encoded at their own "
                 "native aspect ratio."
             ),
-            inputs=(
-                InputSpec("positive", _CONDITIONING),
-                InputSpec("negative", _CONDITIONING),
-                InputSpec("vae", _VAE),
+            body=(
+                Input("positive", _CONDITIONING),
+                Input("negative", _CONDITIONING),
+                Input("vae", _VAE),
                 _integer("width", 832, 16, 8192, 16),
                 _integer("height", 480, 16, 8192, 16),
                 _integer("length", 81, 1, 8192, 4),
                 _integer("batch_size", 1, 1, 4096, None),
-                InputSpec("source_video", _IMAGE, required=False),
-                InputSpec("reference_video", _IMAGE, required=False),
-                InputSpec(
+                Input("source_video", _IMAGE, required=False),
+                Input("reference_video", _IMAGE, required=False),
+                Group(
+                    "reference_images",
+                    value=Input("reference_image", _IMAGE, required=False),
+                    min_members=0,
+                    max_members=8,
+                    keys=Numbered("reference_image_", start=0),
+                ),
+                Input(
                     "ref_max_size",
                     _INT,
                     default=848,
                     required=False,
                     widget=NumberWidget(min=16, max=8192, step=16),
                 ),
-            ),
-            input_families=(
-                InputFamilySpec(
-                    "reference_images",
-                    (InputSpec("reference_image", _IMAGE, required=False),),
-                    min_members=0,
-                    max_members=8,
-                    required=False,
-                    member_prefix="reference_image_",
-                ),
-            ),
-            outputs=(
-                OutputSpec("positive", _CONDITIONING),
-                OutputSpec("negative", _CONDITIONING),
-                OutputSpec("latent", _LATENT),
-            ),
-            input_order=(
-                "positive",
-                "negative",
-                "vae",
-                "width",
-                "height",
-                "length",
-                "batch_size",
-                "source_video",
-                "reference_video",
-                "reference_images",
-                "ref_max_size",
+                Output("positive", _CONDITIONING),
+                Output("negative", _CONDITIONING),
+                Output("latent", _LATENT),
             ),
         )
         return with_identity_replacement(schema, "BerniniConditioning")

@@ -15,11 +15,12 @@ from dinkster_api.v1 import (
     IMAGE_TYPE,
     ComboOption,
     ComboWidget,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
+    Section,
     TypeExpr,
     initialize_inference_process,
     materialize_image,
@@ -43,20 +44,17 @@ def _number(
     minimum: float | int,
     maximum: float | int,
     step: float | int | None = None,
-    *,
-    advanced: bool = False,
-) -> InputSpec:
-    return InputSpec(
+) -> Input:
+    return Input(
         name,
         value_type,
         default=default,
-        advanced=advanced,
         widget=NumberWidget(min=minimum, max=maximum, step=step),
     )
 
 
-def _combo(name: str, options: tuple[str, ...]) -> InputSpec:
-    return InputSpec(
+def _combo(name: str, options: tuple[str, ...]) -> Input:
+    return Input(
         name,
         _COMBO,
         widget=ComboWidget(tuple(ComboOption(option) for option in options)),
@@ -64,14 +62,16 @@ def _combo(name: str, options: tuple[str, ...]) -> InputSpec:
 
 
 def _schema(
-    node_type: str, display_name: str, category: str, inputs: tuple[InputSpec, ...]
+    node_type: str, display_name: str, category: str, inputs: tuple[Input, ...]
 ) -> NodeSchema:
     return NodeSchema(
         node_type=node_type,
         display_name=display_name,
         category=category,
-        inputs=inputs,
-        outputs=(OutputSpec("IMAGE", _IMAGE),),
+        body=(
+            *inputs,
+            Output("IMAGE", _IMAGE),
+        ),
     )
 
 
@@ -106,8 +106,8 @@ class ImageBlend(Node):
                 "Blend Images",
                 "image/filters",
                 (
-                    InputSpec("image1", _IMAGE),
-                    InputSpec("image2", _IMAGE),
+                    Input("image1", _IMAGE),
+                    Input("image2", _IMAGE),
                     _number("blend_factor", _FLOAT, 0.5, 0.0, 1.0, 0.01),
                     _combo("blend_mode", _BLEND_MODES),
                 ),
@@ -175,7 +175,7 @@ class ImageBlur(Node):
                 "Blur Image",
                 "image/filters",
                 (
-                    InputSpec("image", _IMAGE),
+                    Input("image", _IMAGE),
                     _number("blur_radius", _INT, 1, 1, 31, 1),
                     _number("sigma", _FLOAT, 1.0, 0.1, 10.0, 0.1),
                 ),
@@ -213,7 +213,7 @@ class ImageQuantize(Node):
                 "Quantize Image",
                 "image/filters",
                 (
-                    InputSpec("image", _IMAGE),
+                    Input("image", _IMAGE),
                     _number("colors", _INT, 256, 1, 256, 1),
                     _combo("dither", _DITHER_MODES),
                 ),
@@ -279,10 +279,38 @@ class ImageSharpen(Node):
                 "Sharpen Image",
                 "image/filters",
                 (
-                    InputSpec("image", _IMAGE),
-                    _number("sharpen_radius", _INT, 1, 1, 31, 1, advanced=True),
-                    _number("sigma", _FLOAT, 1.0, 0.1, 10.0, 0.01, advanced=True),
-                    _number("alpha", _FLOAT, 1.0, 0.0, 5.0, 0.01, advanced=True),
+                    Input("image", _IMAGE),
+                    Section(
+                        "advanced",
+                        label="Advanced",
+                        collapsed=True,
+                        rows=(
+                            _number(
+                                "sharpen_radius",
+                                _INT,
+                                1,
+                                1,
+                                31,
+                                1,
+                            ),
+                            _number(
+                                "sigma",
+                                _FLOAT,
+                                1.0,
+                                0.1,
+                                10.0,
+                                0.01,
+                            ),
+                            _number(
+                                "alpha",
+                                _FLOAT,
+                                1.0,
+                                0.0,
+                                5.0,
+                                0.01,
+                            ),
+                        ),
+                    ),
                 ),
             ),
             "ImageSharpen",
@@ -326,10 +354,23 @@ class ImageScaleToTotalPixels(Node):
                 "Scale Image to Total Pixels",
                 "image/upscaling",
                 (
-                    InputSpec("image", _IMAGE),
+                    Input("image", _IMAGE),
                     _combo("upscale_method", _UPSCALE_METHODS),
                     _number("megapixels", _FLOAT, 1.0, 0.01, 16.0, 0.01),
-                    _number("resolution_steps", _INT, 1, 1, 256, advanced=True),
+                    Section(
+                        "advanced",
+                        label="Advanced",
+                        collapsed=True,
+                        rows=(
+                            _number(
+                                "resolution_steps",
+                                _INT,
+                                1,
+                                1,
+                                256,
+                            ),
+                        ),
+                    ),
                 ),
             ),
             "ImageScaleToTotalPixels",
@@ -356,12 +397,12 @@ class Canny(Node):
             display_name="Detect Edges (Canny)",
             category="image/filters",
             search_terms=("edge detection", "outline", "contour detection", "line art"),
-            inputs=(
-                InputSpec("image", _IMAGE),
+            body=(
+                Input("image", _IMAGE),
                 _number("low_threshold", _FLOAT, 0.4, 0.01, 0.99, 0.01),
                 _number("high_threshold", _FLOAT, 0.8, 0.01, 0.99, 0.01),
+                Output("IMAGE", _IMAGE),
             ),
-            outputs=(OutputSpec("IMAGE", _IMAGE),),
         )
         return with_identity_replacement(schema, "Canny")
 

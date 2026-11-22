@@ -15,11 +15,11 @@ from dinkster_api.v1 import (
     MASK_TYPE,
     ComboOption,
     ComboWidget,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
     TypeExpr,
     initialize_inference_process,
     materialize_image,
@@ -30,16 +30,14 @@ from dinkster_api.v1 import (
 _LATENT = TypeExpr.concrete(LATENT_TYPE)
 
 
-_SAMPLES = InputSpec("samples", _LATENT)
+_SAMPLES = Input("samples", _LATENT)
 
 
 _UPSCALE_METHODS = ("nearest-exact", "bilinear", "area", "bicubic", "bislerp")
 
 
-def _integer(
-    name: str, default: int, minimum: int, maximum: int, step: int | None = None
-) -> InputSpec:
-    return InputSpec(
+def _integer(name: str, default: int, minimum: int, maximum: int, step: int | None = None) -> Input:
+    return Input(
         name,
         TypeExpr.concrete(CORE_INT),
         default=default,
@@ -47,8 +45,8 @@ def _integer(
     )
 
 
-def _combo(name: str, options: tuple[str, ...]) -> InputSpec:
-    return InputSpec(
+def _combo(name: str, options: tuple[str, ...]) -> Input:
+    return Input(
         name,
         TypeExpr.concrete(CORE_COMBO),
         widget=ComboWidget(tuple(ComboOption(value) for value in options)),
@@ -56,14 +54,16 @@ def _combo(name: str, options: tuple[str, ...]) -> InputSpec:
 
 
 def _schema(
-    node_type: str, display_name: str, inputs: tuple[InputSpec, ...], category: str = "model/latent"
+    node_type: str, display_name: str, inputs: tuple[Input, ...], category: str = "model/latent"
 ) -> NodeSchema:
     return NodeSchema(
         node_type=node_type,
         display_name=display_name,
         category=category,
-        inputs=inputs,
-        outputs=(OutputSpec("LATENT", _LATENT),),
+        body=(
+            *inputs,
+            Output("LATENT", _LATENT),
+        ),
     )
 
 
@@ -221,7 +221,7 @@ class LatentUpscaleBy(Node):
                 (
                     _SAMPLES,
                     _combo("upscale_method", _UPSCALE_METHODS),
-                    InputSpec(
+                    Input(
                         "scale_by",
                         TypeExpr.concrete(CORE_FLOAT),
                         default=1.5,
@@ -312,7 +312,7 @@ class SetLatentNoiseMask(Node):
             _schema(
                 "dinkster.latent.set_latent_noise_mask",
                 "Set Latent Noise Mask",
-                (_SAMPLES, InputSpec("mask", TypeExpr.concrete(MASK_TYPE))),
+                (_SAMPLES, Input("mask", TypeExpr.concrete(MASK_TYPE))),
             ),
             "SetLatentNoiseMask",
         )
@@ -333,8 +333,8 @@ class LatentComposite(Node):
                 "dinkster.latent.latent_composite",
                 "Latent Composite",
                 (
-                    InputSpec("samples_to", _LATENT),
-                    InputSpec("samples_from", _LATENT),
+                    Input("samples_to", _LATENT),
+                    Input("samples_from", _LATENT),
                     _integer("x", 0, 0, 16384, 8),
                     _integer("y", 0, 0, 16384, 8),
                     _integer("feather", 0, 0, 16384, 8),
@@ -392,9 +392,9 @@ class LatentBlend(Node):
                 "dinkster.latent.latent_blend",
                 "Latent Blend",
                 (
-                    InputSpec("samples1", _LATENT),
-                    InputSpec("samples2", _LATENT),
-                    InputSpec(
+                    Input("samples1", _LATENT),
+                    Input("samples2", _LATENT),
+                    Input(
                         "blend_factor",
                         TypeExpr.concrete(CORE_FLOAT),
                         default=0.5,

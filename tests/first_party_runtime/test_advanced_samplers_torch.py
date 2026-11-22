@@ -12,10 +12,10 @@ import torch
 from dinkster_api.v1 import (
     CORE_STRING,
     SAMPLER_TYPE,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
-    OutputSpec,
+    Output,
     TypeExpr,
 )
 from dinkster_graph import Graph, GraphNode, Link
@@ -240,13 +240,13 @@ class AdvancedSamplerConsumer(Node):
         sampler = TypeExpr.concrete(SAMPLER_TYPE)
         return NodeSchema(
             node_type="advanced-sampler.consumer",
-            inputs=(
-                InputSpec("upscale", sampler),
-                InputSpec("lcm", sampler),
-                InputSpec("regular", sampler),
-                InputSpec("alternative", sampler),
+            body=(
+                Input("upscale", sampler),
+                Input("lcm", sampler),
+                Input("regular", sampler),
+                Input("alternative", sampler),
+                Output("summary", TypeExpr.concrete(CORE_STRING)),
             ),
-            outputs=(OutputSpec("summary", TypeExpr.concrete(CORE_STRING)),),
         )
 
     @classmethod

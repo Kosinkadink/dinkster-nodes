@@ -10,10 +10,11 @@ from dinkster_api.v1 import (
     CORE_COMBO,
     MODEL_TYPE,
     ComboWidget,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
-    OutputSpec,
+    Output,
+    Section,
     TypeExpr,
     initialize_inference_process,
     with_identity_replacement,
@@ -51,16 +52,22 @@ class TorchCompileModel(Node):
             NodeSchema(
                 node_type="dinkster.models.torch_compile_model",
                 category="experimental",
-                inputs=(
-                    InputSpec("model", _MODEL),
-                    InputSpec(
-                        "backend",
-                        TypeExpr.concrete(CORE_COMBO),
-                        advanced=True,
-                        widget=ComboWidget(("inductor", "cudagraphs")),
+                body=(
+                    Input("model", _MODEL),
+                    Section(
+                        "advanced",
+                        label="Advanced",
+                        collapsed=True,
+                        rows=(
+                            Input(
+                                "backend",
+                                TypeExpr.concrete(CORE_COMBO),
+                                widget=ComboWidget(("inductor", "cudagraphs")),
+                            ),
+                        ),
                     ),
+                    Output("MODEL", _MODEL),
                 ),
-                outputs=(OutputSpec("MODEL", _MODEL),),
             ),
             "TorchCompileModel",
         )

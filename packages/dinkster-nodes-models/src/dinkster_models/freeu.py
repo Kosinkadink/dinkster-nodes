@@ -10,11 +10,12 @@ from typing import Any
 from dinkster_api.v1 import (
     CORE_FLOAT,
     MODEL_TYPE,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
+    Section,
     TypeExpr,
     with_identity_replacement,
 )
@@ -25,12 +26,11 @@ _MODEL = TypeExpr.concrete(MODEL_TYPE)
 _CATEGORY = "model/patch/unet"
 
 
-def _float(name: str, default: float) -> InputSpec:
-    return InputSpec(
+def _float(name: str, default: float) -> Input:
+    return Input(
         name,
         TypeExpr.concrete(CORE_FLOAT),
         default=default,
-        advanced=True,
         widget=NumberWidget(min=0.0, max=10.0, step=0.01),
     )
 
@@ -75,16 +75,23 @@ class _FreeU(Node):
             NodeSchema(
                 node_type=cls.node_type,
                 category=_CATEGORY,
-                inputs=(
-                    InputSpec("model", _MODEL),
-                    *(
-                        _float(name, default)
-                        for name, default in zip(
-                            ("b1", "b2", "s1", "s2"), cls.defaults, strict=True
-                        )
+                body=(
+                    Input("model", _MODEL),
+                    Section(
+                        "advanced",
+                        label="Advanced",
+                        collapsed=True,
+                        rows=(
+                            *(
+                                _float(name, default)
+                                for name, default in zip(
+                                    ("b1", "b2", "s1", "s2"), cls.defaults, strict=True
+                                )
+                            ),
+                        ),
                     ),
+                    Output("MODEL", _MODEL),
                 ),
-                outputs=(OutputSpec("MODEL", _MODEL),),
             ),
             cls.source_type,
         )

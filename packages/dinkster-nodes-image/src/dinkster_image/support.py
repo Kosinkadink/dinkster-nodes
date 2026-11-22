@@ -12,7 +12,7 @@ from dinkster_api.v1 import (
     CORE_COMBO,
     IMAGE_WORKING_SET_LIMIT_BYTES,
     ComboWidget,
-    InputSpec,
+    Input,
     NumberWidget,
     SlotValue,
     TypeExpr,
@@ -53,18 +53,16 @@ def combo_input(
     options: tuple[str, ...],
     default: str,
     *,
-    advanced: bool = False,
     display_name: str = "",
     hidden: bool = False,
-) -> InputSpec:
-    return InputSpec(
+) -> Input:
+    return Input(
         id,
         COMBO,
         required=False,
         default=default,
         widget=ComboWidget(options=options),
-        advanced=advanced,
-        display_name=display_name,
+        label=display_name,
         hidden=hidden,
     )
 
@@ -102,16 +100,14 @@ def number_input(
     minimum: int | float | None = None,
     maximum: int | float | None = None,
     step: int | float | None = None,
-    advanced: bool = False,
     hidden: bool = False,
-) -> InputSpec:
-    return InputSpec(
+) -> Input:
+    return Input(
         id,
         type_expr,
         required=False,
         default=default,
         widget=NumberWidget(min=minimum, max=maximum, step=step),
-        advanced=advanced,
         hidden=hidden,
     )
 

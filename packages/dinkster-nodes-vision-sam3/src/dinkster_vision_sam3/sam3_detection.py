@@ -17,11 +17,11 @@ from dinkster_api.v1 import (
     IMAGE_TYPE,
     MASK_TYPE,
     MODEL_TYPE,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
     StringWidget,
     TypeExpr,
     initialize_inference_process,
@@ -111,34 +111,34 @@ class SAM3_Detect(Node):
                 "text detection",
                 "segment",
             ),
-            inputs=(
-                InputSpec("model", TypeExpr.concrete(MODEL_TYPE), display_name="model"),
-                InputSpec("image", TypeExpr.concrete(IMAGE_TYPE), display_name="image"),
-                InputSpec(
+            body=(
+                Input("model", TypeExpr.concrete(MODEL_TYPE), label="model"),
+                Input("image", TypeExpr.concrete(IMAGE_TYPE), label="image"),
+                Input(
                     "conditioning",
                     TypeExpr.concrete(CONDITIONING_TYPE),
-                    display_name="conditioning",
+                    label="conditioning",
                     required=False,
-                    doc="Text conditioning from CLIPTextEncode",
+                    tooltip="Text conditioning from CLIPTextEncode",
                 ),
-                InputSpec(
+                Input(
                     "bboxes",
                     TypeExpr.concrete(BOUNDING_BOX_TYPE),
-                    display_name="bboxes",
+                    label="bboxes",
                     required=False,
-                    force_input=True,
+                    pin_first=True,
                     default={"x": 0, "y": 0, "width": 512, "height": 512},
-                    doc="Bounding boxes to segment within",
+                    tooltip="Bounding boxes to segment within",
                 ),
                 *(
-                    InputSpec(
+                    Input(
                         name,
                         TypeExpr.concrete(CORE_STRING),
-                        display_name=name,
+                        label=name,
                         required=False,
-                        force_input=True,
+                        pin_first=True,
                         widget=StringWidget(multiline=False),
-                        doc=(
+                        tooltip=(
                             f'{label} point prompts as JSON [{{"x": int, "y": int}}, ...] '
                             "(pixel coords)"
                         ),
@@ -148,32 +148,30 @@ class SAM3_Detect(Node):
                         ("negative_coords", "Negative"),
                     )
                 ),
-                InputSpec(
+                Input(
                     "threshold",
                     TypeExpr.concrete(CORE_FLOAT),
-                    display_name="threshold",
+                    label="threshold",
                     default=0.5,
                     widget=NumberWidget(min=0.0, max=1.0, step=0.01),
                 ),
-                InputSpec(
+                Input(
                     "refine_iterations",
                     TypeExpr.concrete(CORE_INT),
-                    display_name="refine_iterations",
+                    label="refine_iterations",
                     default=2,
                     widget=NumberWidget(min=0, max=5),
-                    doc="SAM decoder refinement passes (0=use raw detector masks)",
+                    tooltip="SAM decoder refinement passes (0=use raw detector masks)",
                 ),
-                InputSpec(
+                Input(
                     "individual_masks",
                     TypeExpr.concrete(CORE_BOOLEAN),
-                    display_name="individual_masks",
+                    label="individual_masks",
                     default=False,
-                    doc="Output per-object masks instead of union",
+                    tooltip="Output per-object masks instead of union",
                 ),
-            ),
-            outputs=(
-                OutputSpec("masks", TypeExpr.concrete(MASK_TYPE)),
-                OutputSpec("bboxes", TypeExpr.concrete(BOUNDING_BOX_TYPE)),
+                Output("masks", TypeExpr.concrete(MASK_TYPE)),
+                Output("bboxes", TypeExpr.concrete(BOUNDING_BOX_TYPE)),
             ),
         )
         return with_identity_replacement(schema, "SAM3_Detect")

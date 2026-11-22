@@ -14,12 +14,13 @@ from dinkster_api.v1 import (
     SVG_TYPE,
     AssetError,
     AssetWriter,
-    InputSpec,
+    Input,
     MountSnapshotWriter,
     MountWidget,
     Node,
     NodeSchema,
-    OutputSpec,
+    Output,
+    Row,
     StringWidget,
     TypeExpr,
     attach_saved_artifact,
@@ -38,29 +39,32 @@ class SaveSVGNode(Node):
             description="Save SVG files on disk.",
             category="image",
             search_terms=("export vector", "save vector graphics"),
-            inputs=(
-                InputSpec("svg", TypeExpr.concrete(SVG_TYPE)),
-                InputSpec(
-                    "filename_prefix",
-                    TypeExpr.concrete(CORE_STRING),
-                    default="svg/ComfyUI",
-                    widget=StringWidget(multiline=False),
-                    doc=(
-                        "The prefix for the file to save. This may include formatting information "
-                        "such as %date:yyyy-MM-dd% or %Empty Latent Image.width% to include values "
-                        "from nodes."
-                    ),
+            body=(
+                Input("svg", TypeExpr.concrete(SVG_TYPE)),
+                Row(
+                    rows=(
+                        Input(
+                            "filename_prefix",
+                            TypeExpr.concrete(CORE_STRING),
+                            default="svg/ComfyUI",
+                            widget=StringWidget(multiline=False),
+                            tooltip=(
+                                "The prefix for the file to save. This may include formatting information "
+                                "such as %date:yyyy-MM-dd% or %Empty Latent Image.width% to include values "
+                                "from nodes."
+                            ),
+                        ),
+                        Input(
+                            "mount",
+                            TypeExpr.concrete(CORE_STRING),
+                            required=False,
+                            default=None,
+                            widget=MountWidget(),
+                        ),
+                    )
                 ),
-                InputSpec(
-                    "mount",
-                    TypeExpr.concrete(CORE_STRING),
-                    required=False,
-                    default=None,
-                    widget=MountWidget(),
-                    adjacent_to="filename_prefix",
-                ),
+                Output("svg", TypeExpr.concrete(SVG_TYPE)),
             ),
-            outputs=(OutputSpec("svg", TypeExpr.concrete(SVG_TYPE)),),
             output_node=True,
             idempotent=False,
         )

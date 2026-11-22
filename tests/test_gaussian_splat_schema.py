@@ -11,9 +11,9 @@ from dinkster_api.v1 import (
     CORE_FLOAT,
     CORE_INT,
     SPLAT_TYPE,
-    InputSpec,
+    Input,
     NodeSchema,
-    OutputSpec,
+    Output,
     TypeExpr,
     schema_from_wire,
     schema_to_wire,
@@ -99,7 +99,7 @@ def test_merge_splat_required_initial_slots_and_optional_authored_tail(
         32,
         "splat",
     )
-    assert isinstance(family.template[0], InputSpec)
+    assert isinstance(family.template[0], Input)
     assert family.required and family.template[0].required and family.optional_after_minimum
     assert family.template[0].type == TypeExpr.concrete(SPLAT_TYPE)
     assert [(port.id, port.type.types) for port in schema.outputs] == [("splat", (SPLAT_TYPE,))]
@@ -110,9 +110,7 @@ def test_merge_splat_required_initial_slots_and_optional_authored_tail(
     assert [(port.id, port.required) for port in effective.inputs] == [
         (f"splats.{member}", member in ("splat0", "splat1")) for member in expected_order
     ]
-    source = NodeSchema(
-        "test.source", outputs=(OutputSpec("splat", TypeExpr.concrete(SPLAT_TYPE)),)
-    )
+    source = NodeSchema("test.source", body=(Output("splat", TypeExpr.concrete(SPLAT_TYPE)),))
     inputs = {f"splats.splat{index}": Link("source", "splat") for index in range(2)}
     graph = Graph(
         {

@@ -6,12 +6,12 @@ from typing import Any, cast
 
 from dinkster_api.v1 import (
     LATENT_TYPE,
-    InputSpec,
+    Input,
     LatentStream,
     MultiStreamLatent,
     Node,
     NodeSchema,
-    OutputSpec,
+    Output,
     TypeExpr,
     initialize_inference_process,
     materialize_latent,
@@ -46,11 +46,11 @@ class LTXVConcatAVLatent(Node):
                 "(any AV model, e.g. LTXV or MiniMax H3)."
             ),
             category="model/latent/ltxv",
-            inputs=(
-                InputSpec("video_latent", _LATENT),
-                InputSpec("audio_latent", _LATENT),
+            body=(
+                Input("video_latent", _LATENT),
+                Input("audio_latent", _LATENT),
+                Output("LATENT", _LATENT, label="latent"),
             ),
-            outputs=(OutputSpec("LATENT", _LATENT, display_name="latent"),),
         )
         return with_identity_replacement(schema, "LTXVConcatAVLatent")
 
@@ -131,10 +131,10 @@ class LTXVSeparateAVLatent(Node):
                 "(any AV model, e.g. LTXV or MiniMax H3)."
             ),
             category="model/latent/ltxv",
-            inputs=(InputSpec("av_latent", _LATENT),),
-            outputs=(
-                OutputSpec("VIDEO_LATENT", _LATENT, display_name="video_latent"),
-                OutputSpec("AUDIO_LATENT", _LATENT, display_name="audio_latent"),
+            body=(
+                Input("av_latent", _LATENT),
+                Output("VIDEO_LATENT", _LATENT, label="video_latent"),
+                Output("AUDIO_LATENT", _LATENT, label="audio_latent"),
             ),
         )
         return with_identity_replacement(schema, "LTXVSeparateAVLatent")

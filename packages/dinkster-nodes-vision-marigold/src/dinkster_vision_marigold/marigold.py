@@ -10,10 +10,10 @@ from dinkster_api.v1 import (
     IMAGE_TYPE,
     ComboOption,
     ComboWidget,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
-    OutputSpec,
+    Output,
     TypeExpr,
     materialize_image,
     with_identity_replacement,
@@ -31,17 +31,17 @@ class MarigoldV2PostProcess(Node):
                 "Turns a decoded Marigold V2 prediction into an image: normalized depth "
                 "with near as bright, unit surface normals, or sRGB albedo."
             ),
-            inputs=(
-                InputSpec("image", TypeExpr.concrete(IMAGE_TYPE)),
-                InputSpec(
+            body=(
+                Input("image", TypeExpr.concrete(IMAGE_TYPE)),
+                Input(
                     "prediction",
                     TypeExpr.concrete(CORE_COMBO),
                     widget=ComboWidget(
                         tuple(ComboOption(name) for name in ("depth", "normals", "albedo"))
                     ),
                 ),
+                Output("IMAGE", TypeExpr.concrete(IMAGE_TYPE)),
             ),
-            outputs=(OutputSpec("IMAGE", TypeExpr.concrete(IMAGE_TYPE)),),
         )
         return with_identity_replacement(schema, "MarigoldV2PostProcess")
 

@@ -14,10 +14,10 @@ from dinkster_api.v1 import (
     MASK_TYPE,
     REGION_TYPE,
     ImageDocument,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
-    OutputSpec,
+    Output,
     StringWidget,
     TypeExpr,
     apply_commands,
@@ -104,15 +104,13 @@ class FlattenLayers(Node):
             editor_role="layers-flatten",
             display_name="Flatten Layers",
             category="image/compositor",
-            inputs=(
-                InputSpec("layers", LAYERS),
-                InputSpec(
+            body=(
+                Input("layers", LAYERS),
+                Input(
                     "selector", STRING, required=False, default="composite", widget=StringWidget()
                 ),
-            ),
-            outputs=(
-                OutputSpec("image", IMAGE, preview=True),
-                OutputSpec(
+                Output("image", IMAGE, preview=True),
+                Output(
                     "transparency_mask", MASK, mask_polarity="transparency", mask_semantic="alpha"
                 ),
             ),
@@ -136,11 +134,11 @@ class EditLayers(Node):
                 "Apply remove, reorder, group, layer, mask, transform, "
                 "add_mask or remove_mask commands."
             ),
-            inputs=(
-                InputSpec("layers", LAYERS),
-                InputSpec("commands", STRING, widget=StringWidget(multiline=True)),
+            body=(
+                Input("layers", LAYERS),
+                Input("commands", STRING, widget=StringWidget(multiline=True)),
+                Output("layers", LAYERS),
             ),
-            outputs=(OutputSpec("layers", LAYERS),),
         )
 
     @classmethod
@@ -160,16 +158,16 @@ class SplitLayers(Node):
             node_type="dinkster.layers.split",
             display_name="Split Layers",
             category="image/compositor",
-            inputs=(InputSpec("layers", LAYERS),),
-            outputs=(
-                OutputSpec("images", TypeExpr.list_of(IMAGE)),
-                OutputSpec(
+            body=(
+                Input("layers", LAYERS),
+                Output("images", TypeExpr.list_of(IMAGE)),
+                Output(
                     "masks",
                     TypeExpr.list_of(MASK),
                     mask_polarity="transparency",
                     mask_semantic="alpha",
                 ),
-                OutputSpec("regions", TypeExpr.list_of(TypeExpr.concrete(REGION_TYPE))),
+                Output("regions", TypeExpr.list_of(TypeExpr.concrete(REGION_TYPE))),
             ),
         )
 

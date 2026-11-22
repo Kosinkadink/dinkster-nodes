@@ -11,11 +11,11 @@ from dinkster_api.v1 import (
     CORE_INT,
     LATENT_TYPE,
     MASK_TYPE,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
     TypeExpr,
     materialize_image,
     materialize_latent,
@@ -37,8 +37,8 @@ _MASK = TypeExpr.concrete(MASK_TYPE)
 _MAX_RESOLUTION = 16384
 
 
-def _integer(name: str, default: int, minimum: int, maximum: int, step: int) -> InputSpec:
-    return InputSpec(
+def _integer(name: str, default: int, minimum: int, maximum: int, step: int) -> Input:
+    return Input(
         name,
         _INT,
         default=default,
@@ -107,15 +107,15 @@ class LatentCompositeMasked(Node):
                 node_type="dinkster.latent.latent_composite_masked",
                 display_name="Latent Composite Masked",
                 category="model/latent",
-                inputs=(
-                    InputSpec("destination", _LATENT),
-                    InputSpec("source", _LATENT),
+                body=(
+                    Input("destination", _LATENT),
+                    Input("source", _LATENT),
                     _integer("x", 0, 0, _MAX_RESOLUTION, 8),
                     _integer("y", 0, 0, _MAX_RESOLUTION, 8),
-                    InputSpec("resize_source", _BOOLEAN, default=False),
-                    InputSpec("mask", _MASK, required=False),
+                    Input("resize_source", _BOOLEAN, default=False),
+                    Input("mask", _MASK, required=False),
+                    Output("LATENT", _LATENT),
                 ),
-                outputs=(OutputSpec("LATENT", _LATENT),),
             ),
             "LatentCompositeMasked",
         )

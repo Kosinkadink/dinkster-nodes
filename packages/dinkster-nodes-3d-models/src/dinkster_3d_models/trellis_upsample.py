@@ -11,11 +11,11 @@ from dinkster_api.v1 import (
     CORE_INT,
     LATENT_TYPE,
     VAE_TYPE,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
     TypeExpr,
     initialize_inference_process,
     materialize_latent,
@@ -31,30 +31,28 @@ class Trellis2UpsampleStage(Node):
             node_type="dinkster.3d.models.trellis2_upsample_stage",
             display_name="Trellis2 Upsample Stage",
             category="model/conditioning/trellis",
-            inputs=(
-                InputSpec("positive", conditioning),
-                InputSpec("negative", conditioning),
-                InputSpec(
+            body=(
+                Input("positive", conditioning),
+                Input("negative", conditioning),
+                Input(
                     "shape_latent",
                     TypeExpr.concrete(LATENT_TYPE),
-                    doc=(
+                    tooltip=(
                         "The 512-resolution shape latent output from the first "
                         "shape-stage KSampler."
                     ),
                 ),
-                InputSpec("vae", TypeExpr.concrete(VAE_TYPE)),
-                InputSpec(
+                Input("vae", TypeExpr.concrete(VAE_TYPE)),
+                Input(
                     "target_resolution",
                     TypeExpr.concrete(CORE_INT),
                     default=1024,
                     widget=NumberWidget(min=1024, max=2048, step=128),
-                    doc="Voxel resolution of the upsampled shape. Higher = more detail, more VRAM.",
+                    tooltip="Voxel resolution of the upsampled shape. Higher = more detail, more VRAM.",
                 ),
-            ),
-            outputs=(
-                OutputSpec("positive", conditioning),
-                OutputSpec("negative", conditioning),
-                OutputSpec("LATENT", TypeExpr.concrete(LATENT_TYPE)),
+                Output("positive", conditioning),
+                Output("negative", conditioning),
+                Output("LATENT", TypeExpr.concrete(LATENT_TYPE)),
             ),
         )
         return with_identity_replacement(schema, "Trellis2UpsampleStage")
