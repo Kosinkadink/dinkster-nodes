@@ -25,7 +25,10 @@ each scope in one order by id, so the order a person sees is the order of
     python tools/node_interface.py compare BEFORE_JSON AFTER_JSON DIFFERENCES_JSON
 
 ``compare`` prints each difference not on the written list, and each listed
-difference that did not happen, and exits 1 when there is either.
+difference that did not happen, and exits 1 when there is either. The list
+(``tools/data/node_interface_differences.json``) gives each difference its
+reason; its ``notes`` hold intended differences a snapshot cannot see, such as
+ids the editor makes up or text it formats, and are not compared.
 """
 
 from __future__ import annotations
@@ -147,7 +150,8 @@ def row(entry: Any) -> dict[str, Any]:
         fields = {
             f.name: plain(getattr(entry, f.name))
             for f in dataclasses.fields(entry)
-            if f.name != "template" and getattr(entry, f.name) != f.default
+            # A group's required mark is not part of the flattened interface.
+            if f.name not in ("template", "required") and getattr(entry, f.name) != f.default
         }
         return {"row": "group", **fields, "rows": [row(e) for e in shown_order(entry.template)]}
     if name == "DynamicComboSpec":
@@ -226,11 +230,37 @@ def _members(schema: Any) -> list[str]:
     return stored
 
 
+def _sorted_predicate(predicate: Any) -> Any:
+    """A predicate with the operands of each "all" and "any" in one order."""
+    if not isinstance(predicate, dict) or "of" not in predicate:
+        return predicate
+    operands = [_sorted_predicate(item) for item in predicate["of"]]
+    if predicate.get("kind") in ("all", "any"):
+        operands.sort(key=lambda item: json.dumps(item, sort_keys=True))
+    return {**predicate, "of": operands}
+
+
 def sort_cases(node: dict[str, Any]) -> None:
+    """List replacement mappings in one order.
+
+    A case's input mappings and chosen variants are mappings, so their order
+    means nothing, and neither does the order of an "all" or "any" predicate's
+    operands. An identity rule makes one case per combination of choices,
+    so its conditional cases are disjoint and are compared as a set."""
     for rule in node.get("replacements", ()):
         for case in rule.get("cases", ()):
-            if "inputs" in case:
-                case["inputs"] = sorted(case["inputs"], key=json.dumps)
+            for key in ("inputs", "slot_variants"):
+                if key in case:
+                    case[key] = sorted(case[key], key=json.dumps)
+            if "when" in case:
+                case["when"] = _sorted_predicate(case["when"])
+        cases = rule.get("cases", [])
+        # Conditional cases before one closing fallback cannot overlap in an
+        # identity rule; the fallback stays last, where its position matters.
+        if rule.get("migration") is None and cases and "when" not in cases[-1]:
+            if all("when" in case for case in cases[:-1]):
+                ordered = sorted(cases[:-1], key=lambda case: json.dumps(case, sort_keys=True))
+                rule["cases"] = [*ordered, cases[-1]]
 
 
 def snapshot_node(schema: Any) -> dict[str, Any]:
