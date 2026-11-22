@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import tomllib
 from pathlib import Path
+from typing import cast
 
 import dinkster_conditioning
 import dinkster_hunyuan
@@ -16,7 +17,9 @@ from dinkster_api.v1 import (
     LATENT_TYPE,
     VAE_TYPE,
     Input,
+    Named,
     NodeSchema,
+    Numbered,
     NumberWidget,
     Output,
     TypeExpr,
@@ -40,6 +43,8 @@ from dinkster_misc_models.moss_image import TextEncodeMOSSImageEdit
 from dinkster_misc_models.reference_conditioning import InstructPixToPixConditioning
 from dinkster_qwen.qwen_image_encoders import TextEncodeQwenImage21
 from dinkster_schema import ElaborationError, elaborate
+
+from tests.body_rows import choices, groups, option_rows
 
 
 def test_reference_conditioning_interfaces_and_manifest() -> None:
@@ -134,20 +139,25 @@ def test_reference_multi_latent_exposes_resize_and_optional_ordered_images() -> 
         ("negative", TypeExpr.concrete(CONDITIONING_TYPE)),
         ("empty_latent", TypeExpr.concrete(LATENT_TYPE)),
     ]
-    combo = schema.combos[0]
+    combo = choices(schema)[0]
     assert combo.id == "resolution" and combo.default is None
     assert [option.key for option in combo.options] == ["keep resolution", "resize"]
-    megapixels = combo.options[1].inputs[0]
+    megapixels = option_rows(combo, combo.options[1])[0]
     assert isinstance(megapixels, Input)
     assert megapixels.id == "megapixels" and megapixels.default == 1.0
     assert isinstance(megapixels.widget, NumberWidget)
     assert megapixels.widget.min == 0.01
     assert megapixels.widget.max == 16.0
-    family = schema.input_families[0]
-    assert family.id == "images" and not family.required
-    assert (family.min_members, family.max_members, family.member_prefix) == (1, 100, "image")
-    assert isinstance(family.template[0], Input)
-    assert family.template[0].type == TypeExpr.concrete(IMAGE_TYPE)
+    family = groups(schema)[0]
+    value = cast(Input, family.value)
+    assert family.id == "images"
+    assert (family.min_members, family.max_members, cast(Numbered, family.keys).prefix) == (
+        1,
+        100,
+        "image",
+    )
+    assert isinstance(family.value, Input)
+    assert value.type == TypeExpr.concrete(IMAGE_TYPE)
 
 
 @pytest.mark.parametrize("node_type", ["TextEncodeMOSSImageEdit", "ReferenceMultiLatent"])
@@ -158,16 +168,16 @@ def test_reference_image_families_keep_required_initial_positions(
     moss = node_type == "TextEncodeMOSSImageEdit"
     node = TextEncodeMOSSImageEdit if moss else ReferenceMultiLatent
     schema = schema_from_wire(schema_to_wire(node.schema()))
-    family = schema.input_families[0]
+    family = groups(schema)[0]
+    value = cast(Input, family.value)
     prefix = "image_" if moss else "image"
-    assert (family.min_members, family.max_members, family.member_prefix) == (
+    assert (family.min_members, family.max_members, cast(Numbered, family.keys).prefix) == (
         1,
         10 if moss else 100,
         prefix,
     )
-    assert family.required is moss
-    assert isinstance(family.template[0], Input)
-    assert family.template[0].required is moss
+    assert isinstance(family.value, Input)
+    assert value.required is moss
     member_indices = (9, 2, 0) if moss else (10, 9, 2, 0)
     members = tuple(f"images.{prefix}{index}" for index in member_indices)
     stored: dict[str, object] = (
@@ -182,16 +192,24 @@ def test_reference_image_families_keep_required_initial_positions(
     )
     choices = {} if moss else {"resolution": "keep resolution"}
     effective = elaborate(schema, (*stored, *members), slot_variants=choices)
-    assert [(port.id, port.required) for port in effective.inputs if port.id in members] == [
-        (f"images.{prefix}{index}", moss and index == 0) for index in member_indices
-    ]
-    absent = elaborate(schema, stored, slot_variants=choices)
-    assert [
-        (port.id, port.required) for port in absent.inputs if port.id.startswith("images.")
-    ] == ([("images.image_0", True)] if moss else [])
+    # The initial required member is the first position, whatever its key.
+    assert sorted(
+        (port.id, port.required) for port in effective.inputs if port.id in members
+    ) == sorted(
+        (f"images.{prefix}{index}", moss and position == 0)
+        for position, index in enumerate(member_indices)
+    )
     if moss:
-        with pytest.raises(ElaborationError, match="member 'image_10' exceeds its maximum"):
-            elaborate(schema, (*stored, *members, "images.image_10"))
+        with pytest.raises(ElaborationError, match="needs at least 1 members"):
+            elaborate(schema, stored, slot_variants=choices)
+    else:
+        absent = elaborate(schema, stored, slot_variants=choices)
+        assert not [port.id for port in absent.inputs if port.id.startswith("images.")]
+    if moss:
+        # The limit counts members; a key's number is not a position.
+        elaborate(schema, (*stored, *members, "images.image_10"))
+        with pytest.raises(ElaborationError, match="more than 10 members"):
+            elaborate(schema, (*stored, *(f"images.image_{index}" for index in range(11))))
     assert family.optional_after_minimum
     source = NodeSchema(
         "test.source",
@@ -226,7 +244,9 @@ def test_reference_image_families_keep_required_initial_positions(
     schemas = {item.node_type: item for item in (source, effective, sink)}
     diagnostics = validate(graph, schemas, ("sink",))
     assert [(item.code, item.node_id, item.input_id) for item in diagnostics] == (
-        [("missing-input", "encode", "images.image_0")] if moss and 0 not in connected else []
+        [("missing-input", "encode", f"images.{prefix}{member_indices[0]}")]
+        if moss and member_indices[0] not in connected
+        else []
     )
     if diagnostics:
         return
@@ -261,9 +281,9 @@ def test_joy_authored_image_members_are_optional_in_native_graphs(
     connected: tuple[int, ...],
 ) -> None:
     schema = schema_from_wire(schema_to_wire(TextEncodeJoyImageEdit.schema()))
-    family = schema.input_families[0]
-    assert (family.min_members, family.max_members, family.required) == (0, 6, False)
-    members = tuple(f"images.m{index}" for index in range(6))
+    family = groups(schema)[0]
+    assert (family.min_members, family.max_members) == (0, 6)
+    members = tuple(f"images.image{index}" for index in range(6))
     effective = elaborate(schema, ("clip", "prompt", *members))
     source = NodeSchema(
         "test.source",
@@ -312,9 +332,9 @@ def test_joy_authored_image_members_are_optional_in_native_graphs(
     )
     assert graph_to_wire(admitted.graph) == before
     assert graph_to_wire(graph) == before
-    assert [(port.id, port.type, port.required) for port in effective.inputs[3:]] == [
-        (member, TypeExpr.concrete(IMAGE_TYPE), False) for member in members
-    ]
+    assert sorted(
+        (port.id, port.type, port.required) for port in effective.inputs if port.id in members
+    ) == sorted((member, TypeExpr.concrete(IMAGE_TYPE), False) for member in members)
     missing_clip = Graph(
         {**graph.nodes, "positive": GraphNode(schema.node_type, {"prompt": "edit"})}
     )
@@ -329,14 +349,14 @@ def test_boogu_authored_image_members_are_optional_in_native_graphs(
     member_count: int, connected: tuple[int, ...]
 ) -> None:
     schema = schema_from_wire(schema_to_wire(TextEncodeBooguEdit.schema()))
-    family = schema.input_families[0]
-    assert family.required and family.min_members == 0
-    assert family.member_names == tuple(f"image_{index}" for index in range(1, 17))
+    family = groups(schema)[0]
+    assert family.min_members == 0
+    assert cast(Named, family.keys).names == tuple(f"image_{index}" for index in range(1, 17))
     members = tuple(f"images.image_{index}" for index in range(1, member_count + 1))
     required = ("clip", "prompt", "negative_prompt", "vae")
     effective = elaborate(schema, (*required, *members))
     absent = elaborate(schema, required)
-    assert [port.id for port in absent.inputs] == list(required)
+    assert sorted(port.id for port in absent.inputs) == sorted(required)
     source = NodeSchema(
         "test.source",
         body=(
@@ -382,9 +402,9 @@ def test_boogu_authored_image_members_are_optional_in_native_graphs(
         schemas=schemas,
     )
     assert graph_to_wire(admitted.graph) == graph_to_wire(graph) == before
-    assert [(port.id, port.type, port.required) for port in effective.inputs[4:]] == [
-        (member, TypeExpr.concrete(IMAGE_TYPE), False) for member in members
-    ]
+    assert sorted(
+        (port.id, port.type, port.required) for port in effective.inputs if port.id in members
+    ) == sorted((member, TypeExpr.concrete(IMAGE_TYPE), False) for member in members)
     for missing in ("clip", "vae"):
         incomplete = Graph(
             {
@@ -410,10 +430,10 @@ def test_vision_reference_image_members_are_optional_in_native_graphs(
         "HiDreamO1ReferenceImages": HiDreamO1ReferenceImages,
     }[node_type]
     schema = schema_from_wire(schema_to_wire(node.schema()))
-    family = schema.input_families[0]
-    assert family.min_members == 0 and not family.required
+    family = groups(schema)[0]
+    assert family.min_members == 0
     if node_type == "BerniniConditioning":
-        assert (family.id, family.max_members, family.member_prefix) == (
+        assert (family.id, family.max_members, cast(Numbered, family.keys).prefix) == (
             "reference_images",
             8,
             "reference_image_",
@@ -421,7 +441,7 @@ def test_vision_reference_image_members_are_optional_in_native_graphs(
         names = ("reference_image_0", "reference_image_7")
     else:
         assert family.id == "images"
-        assert family.member_names == tuple(f"image_{index}" for index in range(1, 101))
+        assert cast(Named, family.keys).names == tuple(f"image_{index}" for index in range(1, 101))
         names = ("image_1", "image_100")
     members = () if state == "absent" else tuple(f"{family.id}.{name}" for name in names)
     effective = elaborate(schema, (*[port.id for port in schema.inputs], *members))
@@ -514,10 +534,12 @@ def test_model_encoder_authored_images_are_optional_in_native_graphs(
         "TextEncodeFibo2": TextEncodeFibo2,
     }[node_type]
     schema = schema_from_wire(schema_to_wire(node.schema()))
-    family = schema.input_families[0]
+    family = groups(schema)[0]
     limit = 8 if node_type == "TextEncodeMingImageEdit" else 16
-    assert (family.id, family.min_members, family.required) == ("images", 0, True)
-    assert family.member_names == tuple(f"image_{index}" for index in range(1, limit + 1))
+    assert (family.id, family.min_members) == ("images", 0)
+    assert cast(Named, family.keys).names == tuple(
+        f"image_{index}" for index in range(1, limit + 1)
+    )
     assert not next(port for port in schema.inputs if port.id == "vae").required
     members = (
         () if state == "absent" else tuple(f"images.image_{index}" for index in range(1, limit + 1))
