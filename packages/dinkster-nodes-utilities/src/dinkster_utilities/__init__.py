@@ -41,7 +41,9 @@ from .math import (
     ComfyMathExpression,
 )
 from .primitive import (
+    Primitive,
     PrimitiveBoolean,
+    PrimitiveChoice,
     PrimitiveFloat,
     PrimitiveInt,
     PrimitiveString,
@@ -77,6 +79,8 @@ NODES = (
     PrimitiveInt,
     PrimitiveFloat,
     PrimitiveBoolean,
+    PrimitiveChoice,
+    Primitive,
     ComfySwitchNode,
     Switch,
     ComfyNumberConvert,

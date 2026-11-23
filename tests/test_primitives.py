@@ -11,7 +11,7 @@ import dinkster_api.v1 as api
 import pytest
 from dinkster_caches import MemoryLRUCache
 from dinkster_engine import Engine, Invocation
-from dinkster_graph import Graph, GraphNode, Link
+from dinkster_graph import Graph, GraphNode, Link, TypedLiteral
 from dinkster_schema import build_node_types, build_schemas
 from dinkster_utilities import NODES, register_types
 from dinkster_utilities.utilities import PreviewAny
@@ -164,21 +164,27 @@ def test_first_party_primitives_execute_and_feed_preview() -> None:
             cache=MemoryLRUCache(),
         )
         cases = (
-            ("i", "primitive_int", "INT", 7),
-            ("f", "primitive_float", "FLOAT", 0.25),
-            ("s", "primitive_string", "STRING", "hello"),
-            ("m", "primitive_string", "STRING", "a\nb"),
-            ("b", "primitive_boolean", "BOOLEAN", True),
+            ("i", "primitive_int", "INT", "INT", 7),
+            ("f", "primitive_float", "FLOAT", "FLOAT", 0.25),
+            ("s", "primitive_string", "STRING", "STRING", "hello"),
+            ("m", "primitive_string", "STRING", "STRING", "a\nb"),
+            ("b", "primitive_boolean", "BOOLEAN", "BOOLEAN", True),
+            ("c", "primitive_choice", "COMBO", "COMBO", "Detailed"),
+            ("g", "primitive", "value", "FLOAT", 0.5),
+            ("k", "primitive", "value", api.COLOR_TYPE, "#3366cc80"),
         )
         nodes = {
-            key: GraphNode(f"dinkster.utilities.{leaf}", {"value": value})
-            for key, leaf, _output, value in cases
+            key: GraphNode(
+                f"dinkster.utilities.{leaf}",
+                {"value": TypedLiteral(type_id, value) if leaf == "primitive" else value},
+            )
+            for key, leaf, _output, type_id, value in cases
         }
         nodes["p"] = GraphNode("dinkster.utilities.preview_any", {"source": Link("i", "INT")})
         result = await engine.run(Graph(nodes=nodes), list(nodes))
-        for key, _leaf, output, value in cases:
+        for key, _leaf, output, type_id, value in cases:
             actual = result.outputs[key][output]
-            assert actual.type_id == output
+            assert actual.type_id == type_id
             assert actual.resolve() == value
         assert result.outputs["p"]["STRING"].resolve() == "7"
 

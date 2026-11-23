@@ -66,6 +66,12 @@
     "dinkster.utilities.primitive_boolean": {
       "displayName": "Boolean"
     },
+    "dinkster.utilities.primitive_choice": {
+      "displayName": "Choice"
+    },
+    "dinkster.utilities.primitive": {
+      "displayName": "Primitive"
+    },
     "dinkster.utilities.comfy_switch_node": {
       "displayName": "If/Else Switch"
     },
@@ -166,6 +172,16 @@
       "bool",
       "toggle",
       "PrimitiveBoolean"
+    ],
+    "dinkster.utilities.primitive_choice": [
+      "dropdown",
+      "combo",
+      "select",
+      "options"
+    ],
+    "dinkster.utilities.primitive": [
+      "value",
+      "constant"
     ],
     "dinkster.utilities.comfy_switch_node": [
       "ComfySwitchNode"
