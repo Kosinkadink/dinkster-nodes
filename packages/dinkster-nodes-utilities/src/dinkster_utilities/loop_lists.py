@@ -27,7 +27,7 @@ class MakeList(Node):
     def define_schema(cls) -> NodeSchema:
         return NodeSchema(
             node_type="dinkster.utilities.make_list",
-            display_name="Create List",
+            display_name="Create Nested List",
             category="list",
             body=(
                 Group("items", value=Input("value", T), min_members=1, keys=Numbered("", start=0)),

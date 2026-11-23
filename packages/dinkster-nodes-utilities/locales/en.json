@@ -1,7 +1,7 @@
 {
   "nodes": {
     "dinkster.utilities.make_list": {
-      "displayName": "Create List"
+      "displayName": "Create Nested List"
     },
     "dinkster.utilities.list_element": {
       "displayName": "List Element"
@@ -108,6 +108,10 @@
       "Image Iterator",
       "Text Iterator",
       "Iterator",
+      "flatten",
+      "combine",
+      "merge",
+      "concat",
       "CreateList"
     ],
     "dinkster.utilities.get_item_from_list": [
