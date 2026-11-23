@@ -47,6 +47,7 @@ from .primitive import (
 )
 from .switch import (
     ComfySwitchNode,
+    Switch,
 )
 from .utilities import (
     ComfyNumberConvert,
@@ -76,6 +77,7 @@ NODES = (
     PrimitiveFloat,
     PrimitiveBoolean,
     ComfySwitchNode,
+    Switch,
     ComfyNumberConvert,
     SeedNode,
     PreviewAny,

@@ -69,6 +69,9 @@
     "dinkster.utilities.comfy_switch_node": {
       "displayName": "If/Else Switch"
     },
+    "dinkster.utilities.switch": {
+      "displayName": "Switch"
+    },
     "dinkster.utilities.comfy_number_convert": {
       "displayName": "Convert Number"
     },
@@ -153,6 +156,13 @@
     ],
     "dinkster.utilities.comfy_switch_node": [
       "ComfySwitchNode"
+    ],
+    "dinkster.utilities.switch": [
+      "If/Else Switch",
+      "If",
+      "Else",
+      "Select",
+      "Route"
     ],
     "dinkster.utilities.comfy_number_convert": [
       "ComfyNumberConvert"

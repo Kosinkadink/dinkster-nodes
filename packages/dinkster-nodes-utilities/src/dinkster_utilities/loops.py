@@ -254,13 +254,15 @@ class StartLoop(Node):
                     **{member_id("items", "0"): results[-1]},
                 )
                 selection = builder.node(
-                    "dinkster.utilities.comfy_switch_node",
+                    "dinkster.utilities.switch",
                     "accumulation",
-                    switch=external(accumulate),
-                    on_false=final.out("list"),
-                    on_true=result_value,
+                    pick=external(accumulate),
+                    **{
+                        member_id("branch", "branch1"): final.out("list"),
+                        member_id("branch", "branch2"): result_value,
+                    },
                 )
-                result_value = selection.out("output")
+                result_value = selection.out("value")
         else:
             result_type = document["outputTypes"][end_id]["outputs"]
             if result_type is None:
