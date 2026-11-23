@@ -48,7 +48,8 @@ class Trellis2UpsampleStage(Node):
                     TypeExpr.concrete(CORE_INT),
                     default=1024,
                     widget=NumberWidget(min=1024, max=2048, step=128),
-                    tooltip="Voxel resolution of the upsampled shape. Higher = more detail, more VRAM.",
+                    tooltip="Voxel resolution of the upsampled shape. Higher = more detail, more "
+                    "VRAM.",
                 ),
                 Output("positive", conditioning),
                 Output("negative", conditioning),

@@ -140,8 +140,10 @@ class SAM3DBody_Smooth(Node):
                             TypeExpr.concrete(CORE_FLOAT),
                             default=30.0,
                             widget=NumberWidget(min=0.0, max=90.0, step=1.0),
-                            tooltip="Disables smoothing for this root rotation rate (degree/frame) to preserve "
-                            "fast spins. 30 degrees suits most content, low values might disable smoothing "
+                            tooltip="Disables smoothing for this root rotation rate (degree/frame) "
+                            "to preserve "
+                            "fast spins. 30 degrees suits most content, low values might disable "
+                            "smoothing "
                             "on ordinary jitter and silently impacts quality. 0 = disable.",
                         ),
                     ),

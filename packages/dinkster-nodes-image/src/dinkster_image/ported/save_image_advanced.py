@@ -69,7 +69,8 @@ class SaveImageAdvanced(Node):
                             default="ComfyUI",
                             widget=StringWidget(multiline=False),
                             tooltip=(
-                                "The prefix for the file to save. May include formatting tokens such as "
+                                "The prefix for the file to save. May include formatting tokens "
+                                "such as "
                                 "%date:yyyy-MM-dd% or %Empty Latent Image.width%."
                             ),
                         ),

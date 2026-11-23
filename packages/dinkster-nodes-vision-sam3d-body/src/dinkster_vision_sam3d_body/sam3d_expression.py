@@ -104,7 +104,8 @@ class SAM3DBody_FaceExpression(Node):
                             TypeExpr.concrete(CORE_FLOAT),
                             default=1.0,
                             widget=NumberWidget(min=0.0, max=4.0, step=0.05),
-                            tooltip="Multiplier on mouth/jaw shapes. MediaPipe's jawOpen saturates near 1.0.",
+                            tooltip="Multiplier on mouth/jaw shapes. MediaPipe's jawOpen saturates "
+                            "near 1.0.",
                         ),
                         Input(
                             "eye_strength",
@@ -119,21 +120,24 @@ class SAM3DBody_FaceExpression(Node):
                             TypeExpr.concrete(CORE_FLOAT),
                             default=2.0,
                             widget=NumberWidget(min=0.0, max=4.0, step=0.05),
-                            tooltip="Multiplier on brow/cheek/sneer shapes. MediaPipe outputs ~0.1-0.3; 2-3x.",
+                            tooltip="Multiplier on brow/cheek/sneer shapes. MediaPipe outputs "
+                            "~0.1-0.3; 2-3x.",
                         ),
                         Input(
                             "input_threshold",
                             TypeExpr.concrete(CORE_FLOAT),
                             default=0.02,
                             widget=NumberWidget(min=0.0, max=0.5, step=0.01),
-                            tooltip="Deadzone on MediaPipe's raw output (below = zero, above = linear remap). ",
+                            tooltip="Deadzone on MediaPipe's raw output (below = zero, above = "
+                            "linear remap). ",
                         ),
                         Input(
                             "blendshape_smooth_window",
                             TypeExpr.concrete(CORE_INT),
                             default=7,
                             widget=NumberWidget(min=1, max=31, step=2),
-                            tooltip="Gaussian window on MediaPipe's per-frame signal before MHR mapping. "
+                            tooltip="Gaussian window on MediaPipe's per-frame signal before MHR "
+                            "mapping. "
                             "MediaPipe's raw output swings 30-70% frame-to-frame on static faces. "
                             "1 = disabled. Use odd values.",
                         ),

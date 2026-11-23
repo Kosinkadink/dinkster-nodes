@@ -64,7 +64,8 @@ class CropByBBoxes(Node):
                     TypeExpr.concrete(CORE_INT),
                     default=0,
                     widget=NumberWidget(min=0, max=1024, step=1),
-                    tooltip="Extra padding in pixels added on each side of the bbox before cropping.",
+                    tooltip="Extra padding in pixels added on each side of the bbox before "
+                    "cropping.",
                 ),
                 Input(
                     "keep_aspect",

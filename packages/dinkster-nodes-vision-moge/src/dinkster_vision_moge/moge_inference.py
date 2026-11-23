@@ -49,7 +49,8 @@ class MoGeInference(Node):
                     TypeExpr.concrete(CORE_INT),
                     default=4,
                     widget=NumberWidget(min=1, max=64),
-                    tooltip="Images per inference call. Lower if you OOM on a long video / image set.",
+                    tooltip="Images per inference call. Lower if you OOM on a long video / image "
+                    "set.",
                 ),
                 Section(
                     "advanced",
@@ -62,8 +63,10 @@ class MoGeInference(Node):
                             default=0.0,
                             widget=NumberWidget(min=0.0, max=170.0, step=0.1),
                             tooltip=(
-                                "Horizontal field of view of the source camera. Sets the focal length "
-                                "used to unproject the depth map into 3D. 0 = auto-recover from the "
+                                "Horizontal field of view of the source camera. Sets the focal "
+                                "length "
+                                "used to unproject the depth map into 3D. 0 = auto-recover from "
+                                "the "
                                 "predicted points."
                             ),
                         ),
@@ -77,7 +80,8 @@ class MoGeInference(Node):
                             TypeExpr.concrete(CORE_BOOLEAN),
                             default=True,
                             tooltip=(
-                                "Set masked-out (sky / invalid) pixels to inf in points and depth so "
+                                "Set masked-out (sky / invalid) pixels to inf in points and depth "
+                                "so "
                                 "meshing culls them. Disable to keep the raw predicted geometry "
                                 "everywhere; the mask is still returned separately."
                             ),
@@ -88,9 +92,11 @@ class MoGeInference(Node):
                             default=3,
                             widget=NumberWidget(min=0, max=8),
                             tooltip=(
-                                "MoGe-3 only: sparse volumetric refinement passes over the predicted "
+                                "MoGe-3 only: sparse volumetric refinement passes over the "
+                                "predicted "
                                 "depth. "
-                                "More passes sharpen fine detail and edges at a roughly linear cost. "
+                                "More passes sharpen fine detail and edges at a roughly linear "
+                                "cost. "
                                 "0 disables refinement. Ignored by MoGe-1 / MoGe-2."
                             ),
                         ),

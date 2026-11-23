@@ -116,7 +116,8 @@ class WanDancerPadKeyframes(Node):
                 Input(
                     "audio",
                     _AUDIO,
-                    tooltip="Audio to calculate total output frames from and extract segment audio.",
+                    tooltip="Audio to calculate total output frames from and extract segment "
+                    "audio.",
                 ),
                 Output("keyframes_sequence", _IMAGE, tooltip="Padded keyframe sequence"),
                 Output("keyframes_mask", _MASK, tooltip="Mask indicating valid frames"),

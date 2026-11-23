@@ -71,7 +71,8 @@ class SDPoseFaceBBoxes(Node):
                 Output(
                     "bboxes",
                     TypeExpr.concrete(BOUNDING_BOX_TYPE),
-                    tooltip="Face bounding boxes per frame, compatible with SDPoseKeypointExtractor "
+                    tooltip="Face bounding boxes per frame, compatible with "
+                    "SDPoseKeypointExtractor "
                     "bboxes input.",
                 ),
             ),

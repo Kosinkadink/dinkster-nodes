@@ -113,7 +113,8 @@ class SAM3_VideoTrack(Node):
                     label="detect_interval",
                     default=1,
                     widget=NumberWidget(min=1),
-                    tooltip="Run detection every N frames (1=every frame). Higher values save compute.",
+                    tooltip="Run detection every N frames (1=every frame). Higher values save "
+                    "compute.",
                 ),
                 Output("track_data", TypeExpr.concrete(SAM3_TRACK_DATA_TYPE), label="track_data"),
             ),

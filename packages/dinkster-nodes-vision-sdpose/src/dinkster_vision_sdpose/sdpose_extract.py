@@ -95,7 +95,8 @@ class SDPoseKeypointExtractor(Node):
                 Output(
                     "keypoints",
                     TypeExpr.concrete(POSE_KEYPOINT_TYPE),
-                    tooltip="Keypoints in OpenPose frame format (canvas_width, canvas_height, people)",
+                    tooltip="Keypoints in OpenPose frame format (canvas_width, canvas_height, "
+                    "people)",
                 ),
             ),
         )

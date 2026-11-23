@@ -136,7 +136,8 @@ class RenderSplat(Node):
                             default=1.0,
                             widget=NumberWidget(min=0.1, max=5.0, step=0.05),
                             tooltip=(
-                                "Multiplier on each splat's projected footprint (lower = crisper points, "
+                                "Multiplier on each splat's projected footprint (lower = crisper "
+                                "points, "
                                 "higher = softer/fuller surface)."
                             ),
                         ),
@@ -146,8 +147,10 @@ class RenderSplat(Node):
                             default=0.0,
                             widget=NumberWidget(min=0.0, max=3.0, step=0.05),
                             tooltip=(
-                                "Diffuse shading from a light at the camera (headlight), using the splat "
-                                "surfel normals: darkens surfaces that turn away from view to reveal "
+                                "Diffuse shading from a light at the camera (headlight), using the "
+                                "splat "
+                                "surfel normals: darkens surfaces that turn away from view to "
+                                "reveal "
                                 "form/curvature. 0 = flat albedo, 1 = strongest shading."
                             ),
                         ),
@@ -156,7 +159,8 @@ class RenderSplat(Node):
                             TypeExpr.concrete(CORE_FLOAT),
                             default=0.0,
                             widget=NumberWidget(min=0.0, max=1.0, step=0.01),
-                            tooltip="Cull gaussians with opacity below this (removes faint floaters).",
+                            tooltip="Cull gaussians with opacity below this (removes faint "
+                            "floaters).",
                         ),
                     ),
                 ),

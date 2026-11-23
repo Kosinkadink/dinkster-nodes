@@ -239,7 +239,8 @@ class YuE2GenerateMusic(Node):
                             widget=NumberWidget(min=0.0, max=100.0, step=0.01),
                             tooltip=(
                                 "Autoregressive guidance for style and lyrics. 1.0 disables CFG, "
-                                "matching the ABC workflow. Use 1.01 to match the original off-mode "
+                                "matching the ABC workflow. Use 1.01 to match the original "
+                                "off-mode "
                                 "guidance."
                             ),
                         ),

@@ -45,7 +45,8 @@ class SAM3DBody_Predict(Node):
                     "track_data",
                     TypeExpr.concrete(SAM3_TRACK_DATA_TYPE),
                     required=False,
-                    tooltip="Tracking data from SAM3 Video Track, required for multi-person detection",
+                    tooltip="Tracking data from SAM3 Video Track, required for multi-person "
+                    "detection",
                 ),
                 Input(
                     "bboxes",
@@ -70,7 +71,8 @@ class SAM3DBody_Predict(Node):
                         Input(
                             "fov",
                             TypeExpr.concrete(CORE_FLOAT),
-                            tooltip="Vertical FoV in degrees. Affects predicted depth and absolute scale. "
+                            tooltip="Vertical FoV in degrees. Affects predicted depth and absolute "
+                            "scale. "
                             "0 = fall back to ~53 degrees (16:9).",
                         ),
                         Input(
@@ -78,7 +80,8 @@ class SAM3DBody_Predict(Node):
                             TypeExpr.concrete(CORE_INT),
                             default=64,
                             widget=NumberWidget(min=1, max=512, step=1),
-                            tooltip="Max person crops to process as a batch. Larger values use more VRAM "
+                            tooltip="Max person crops to process as a batch. Larger values use "
+                            "more VRAM "
                             "for faster inference.",
                         ),
                     ),

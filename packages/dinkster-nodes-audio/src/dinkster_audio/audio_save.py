@@ -325,7 +325,8 @@ class SaveAudioAdvanced(Node):
                             _STRING,
                             default="audio/ComfyUI",
                             tooltip=(
-                                "The prefix for the file to save. May include formatting tokens such as "
+                                "The prefix for the file to save. May include formatting tokens "
+                                "such as "
                                 "%date:yyyy-MM-dd%."
                             ),
                             widget=StringWidget(multiline=False),

@@ -230,7 +230,8 @@ class VAEDecodeTripoSplat(Node):
                     TypeExpr.concrete(CORE_INT),
                     default=0,
                     widget=NumberWidget(min=0, max=0xFFFFFFFFFFFFFFFF),
-                    tooltip="Seeds the octree point sampler (global RNG) for deterministic decodes.",
+                    tooltip="Seeds the octree point sampler (global RNG) for deterministic "
+                    "decodes.",
                 ),
                 Output("splat", TypeExpr.concrete(SPLAT_TYPE)),
             ),
@@ -321,7 +322,8 @@ class TripoSplatSamplingPreview(Node):
                             TypeExpr.concrete(CORE_INT),
                             default=5,
                             widget=NumberWidget(min=2, max=8),
-                            tooltip="Octree depth for the preview decode (lower = cheaper/coarser).",
+                            tooltip="Octree depth for the preview decode (lower = "
+                            "cheaper/coarser).",
                         ),
                         Input(
                             "yaw",

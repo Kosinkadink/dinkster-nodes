@@ -122,7 +122,8 @@ class _Save3D(Node):
                             TypeExpr.concrete(LOAD3D_MODEL_INFO_TYPE),
                             required=False,
                             tooltip=(
-                                "Placement of each model in the scene: position, rotation, and scale "
+                                "Placement of each model in the scene: position, rotation, and "
+                                "scale "
                                 "(Y-up world space)."
                                 if detailed
                                 else ""
@@ -133,7 +134,8 @@ class _Save3D(Node):
                             TypeExpr.concrete(LOAD3D_CAMERA_TYPE),
                             required=False,
                             tooltip=(
-                                "Viewport camera information: position, look-at target, zoom, and type."
+                                "Viewport camera information: position, look-at target, zoom, and "
+                                "type."
                                 if detailed
                                 else ""
                             ),

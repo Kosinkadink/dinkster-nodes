@@ -76,7 +76,8 @@ class WanDancerVideo(Node):
                     "mask",
                     TypeExpr.concrete(MASK_TYPE),
                     required=False,
-                    tooltip="Image conditioning mask for the start image(s). White is kept, black is "
+                    tooltip="Image conditioning mask for the start image(s). White is kept, black "
+                    "is "
                     "generated. Used for the local generations.",
                 ),
                 Input(

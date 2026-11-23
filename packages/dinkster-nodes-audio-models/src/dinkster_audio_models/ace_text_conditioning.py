@@ -203,8 +203,10 @@ class TextEncodeAceStepAudio15(Node):
                             _BOOLEAN,
                             default=True,
                             tooltip=(
-                                "Enable the LLM that generates audio codes. This can be slow but will "
-                                "increase the quality of the generated audio. Turn this off if you are "
+                                "Enable the LLM that generates audio codes. This can be slow but "
+                                "will "
+                                "increase the quality of the generated audio. Turn this off if you "
+                                "are "
                                 "giving the model an audio reference."
                             ),
                         ),

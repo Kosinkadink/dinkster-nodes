@@ -228,7 +228,8 @@ class UnwrapMesh(Node):
                     TypeExpr.concrete(CORE_COMBO),
                     default="pec",
                     widget=ComboWidget(("pec", "adaptive")),
-                    tooltip="pec: fast parallel-edge-collapse charting on GPU. adaptive: CPU, slower.",
+                    tooltip="pec: fast parallel-edge-collapse charting on GPU. adaptive: CPU, "
+                    "slower.",
                 ),
                 Input(
                     "resolution",

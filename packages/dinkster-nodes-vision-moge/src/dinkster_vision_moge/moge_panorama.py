@@ -90,9 +90,11 @@ class MoGePanoramaInference(Node):
                             default=3,
                             widget=NumberWidget(min=0, max=8),
                             tooltip=(
-                                "MoGe-3 only: sparse volumetric refinement passes over the predicted "
+                                "MoGe-3 only: sparse volumetric refinement passes over the "
+                                "predicted "
                                 "depth. "
-                                "More passes sharpen fine detail and edges at a roughly linear cost. "
+                                "More passes sharpen fine detail and edges at a roughly linear "
+                                "cost. "
                                 "0 disables refinement. Ignored by MoGe-1 / MoGe-2."
                             ),
                         ),

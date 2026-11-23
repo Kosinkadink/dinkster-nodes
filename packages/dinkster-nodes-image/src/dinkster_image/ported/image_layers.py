@@ -77,7 +77,8 @@ class AddLayer(Node):
                 Input(
                     "image",
                     TypeExpr.concrete(IMAGE_TYPE),
-                    tooltip="Layer content at its native size. A batch expands to consecutive layers.",
+                    tooltip="Layer content at its native size. A batch expands to consecutive "
+                    "layers.",
                 ),
                 Input(
                     "mask",

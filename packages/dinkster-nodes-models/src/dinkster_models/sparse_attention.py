@@ -642,7 +642,8 @@ class BlockSparseAttention(Node):
                                 _STRING,
                                 default="",
                                 widget=StringWidget(multiline=False),
-                                tooltip="Transformer blocks that always run dense, e.g. '0, 1, 47-49'.",
+                                tooltip="Transformer blocks that always run dense, e.g. '0, 1, "
+                                "47-49'.",
                             ),
                             Input(
                                 "min_tokens",
@@ -655,7 +656,8 @@ class BlockSparseAttention(Node):
                                 "extra_tokens",
                                 _INT,
                                 default=256,
-                                tooltip="Extra top-scoring tokens beyond selected blocks. Ignored for VSA.",
+                                tooltip="Extra top-scoring tokens beyond selected blocks. Ignored "
+                                "for VSA.",
                                 widget=NumberWidget(min=0, max=256, step=64),
                             ),
                             Input(

@@ -119,7 +119,8 @@ class DA3Inference(Node):
                     TypeExpr.concrete(CORE_COMBO),
                     default="upper_bound_resize",
                     widget=ComboWidget(("upper_bound_resize", "lower_bound_resize")),
-                    tooltip="Scale the longest side (upper) or shortest side (lower) to resolution.",
+                    tooltip="Scale the longest side (upper) or shortest side (lower) to "
+                    "resolution.",
                 ),
                 Choice(
                     "mode",

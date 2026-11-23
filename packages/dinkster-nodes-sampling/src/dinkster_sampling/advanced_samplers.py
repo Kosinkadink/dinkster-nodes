@@ -233,7 +233,8 @@ class SamplerLCM(Node):
                         "s_noise",
                         _FLOAT,
                         default=1.0,
-                        tooltip="Per-step noise multiplier at the first step (1.0 = match training).",
+                        tooltip="Per-step noise multiplier at the first step (1.0 = match "
+                        "training).",
                         widget=NumberWidget(min=0.0, max=64.0, step=0.01),
                     ),
                     Input(

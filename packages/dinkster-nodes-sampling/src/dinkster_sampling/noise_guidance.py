@@ -210,7 +210,8 @@ class FreSca(Node):
                                 TypeExpr.concrete(CORE_INT),
                                 default=20,
                                 tooltip=(
-                                    "Number of frequency indices around center to consider as low-frequency"
+                                    "Number of frequency indices around center to consider as "
+                                    "low-frequency"
                                 ),
                                 widget=NumberWidget(min=1, max=10000, step=1),
                             ),

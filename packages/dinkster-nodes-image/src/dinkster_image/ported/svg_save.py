@@ -49,8 +49,10 @@ class SaveSVGNode(Node):
                             default="svg/ComfyUI",
                             widget=StringWidget(multiline=False),
                             tooltip=(
-                                "The prefix for the file to save. This may include formatting information "
-                                "such as %date:yyyy-MM-dd% or %Empty Latent Image.width% to include values "
+                                "The prefix for the file to save. This may include formatting "
+                                "information "
+                                "such as %date:yyyy-MM-dd% or %Empty Latent Image.width% to "
+                                "include values "
                                 "from nodes."
                             ),
                         ),

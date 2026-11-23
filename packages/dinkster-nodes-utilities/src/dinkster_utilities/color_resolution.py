@@ -112,7 +112,8 @@ class ResolutionSelector(Node):
                     "megapixels",
                     _FLOAT,
                     default=1.0,
-                    tooltip="Target total megapixels. 1.0 MP is approximately 1024x1024 for square.",
+                    tooltip="Target total megapixels. 1.0 MP is approximately 1024x1024 for "
+                    "square.",
                     widget=NumberWidget(min=0.1, max=16.0, step=0.1),
                 ),
                 Note(
@@ -129,7 +130,8 @@ class ResolutionSelector(Node):
                             "multiple",
                             _INT,
                             default=8,
-                            tooltip="Nearest multiple of the result to set the selected resolution to.",
+                            tooltip="Nearest multiple of the result to set the selected resolution "
+                            "to.",
                             widget=NumberWidget(min=8, max=128, step=4),
                         ),
                     ),

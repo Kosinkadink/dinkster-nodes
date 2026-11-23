@@ -283,8 +283,10 @@ class SaveImage(Node):
                             _STRING,
                             default="ComfyUI",
                             tooltip=(
-                                "The prefix for the file to save. This may include formatting information "
-                                "such as %date:yyyy-MM-dd% or %Empty Latent Image.width% to include values "
+                                "The prefix for the file to save. This may include formatting "
+                                "information "
+                                "such as %date:yyyy-MM-dd% or %Empty Latent Image.width% to "
+                                "include values "
                                 "from nodes."
                             ),
                         ),

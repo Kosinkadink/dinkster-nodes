@@ -83,8 +83,10 @@ class ChromaRadianceOptions(Node):
                             _BOOLEAN,
                             default=False,
                             tooltip=(
-                                "Force usage of sequential text token IDs instead of zeroes. Should be "
-                                "used for checkpoints from 2026-05-22 to 2026-06-01 that are trained "
+                                "Force usage of sequential text token IDs instead of zeroes. "
+                                "Should be "
+                                "used for checkpoints from 2026-05-22 to 2026-06-01 that are "
+                                "trained "
                                 "in this way but do "
                                 "not contain the __sequential__ key in the state dict."
                             ),

@@ -34,7 +34,8 @@ class Trellis2Conditioning(Node):
                 Input(
                     "image",
                     TypeExpr.concrete(IMAGE_TYPE),
-                    tooltip="Preprocessed image from ImageCropToMask (pad_factor=1.0 for TRELLIS.2).",
+                    tooltip="Preprocessed image from ImageCropToMask (pad_factor=1.0 for "
+                    "TRELLIS.2).",
                 ),
                 Output("positive", conditioning),
                 Output("negative", conditioning),
