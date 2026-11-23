@@ -376,10 +376,11 @@ def test_cli_training_exclusion_keeps_deletion_errors(
     "output_node,prefix_type", [(True, "STRING"), (False, "STRING"), (True, "INT")]
 )
 @pytest.mark.parametrize("input_is_list", [False, True])
+@pytest.mark.parametrize("beside_prefix", [False, True])
 def test_save_mount_admission_uses_source_output_contract(
-    name: str, output_node: bool, prefix_type: str, input_is_list: bool
+    name: str, output_node: bool, prefix_type: str, input_is_list: bool, beside_prefix: bool
 ) -> None:
-    from dinkster_schema import Input, MountWidget, NodeSchema, TypeExpr, schema_to_wire
+    from dinkster_schema import Input, MountWidget, NodeSchema, Row, TypeExpr, schema_to_wire
 
     from tools.compare_nodes import compare_registry
 
@@ -389,30 +390,27 @@ def test_save_mount_admission_uses_source_output_contract(
                 "class_name": name,
                 "output_node": output_node,
                 "input_is_list": input_is_list,
-                "input_types": {"required": {"filename_prefix": [prefix_type]}},
+                "input_types": {"required": {"filename_prefix": [prefix_type], "quality": ["INT"]}},
                 "return_types": [],
             }
         ]
     }
+    prefix = Input(
+        "filename_prefix",
+        TypeExpr.list_of(TypeExpr.concrete(prefix_type))
+        if input_is_list
+        else TypeExpr.concrete(prefix_type),
+    )
+    mount = Input(
+        "mount", TypeExpr.concrete("STRING"), required=False, default=None, widget=MountWidget()
+    )
+    quality = Input("quality", TypeExpr.concrete("INT"))
     native = schema_to_wire(
         NodeSchema(
             node_type=name,
             output_node=output_node,
-            body=(
-                Input(
-                    "filename_prefix",
-                    TypeExpr.list_of(TypeExpr.concrete(prefix_type))
-                    if input_is_list
-                    else TypeExpr.concrete(prefix_type),
-                ),
-                Input(
-                    "mount",
-                    TypeExpr.concrete("STRING"),
-                    required=False,
-                    default=None,
-                    widget=MountWidget(),
-                ),
-            ),
+            # A body places mount beside filename_prefix, ahead of later rows.
+            body=(Row((prefix, mount)), quality) if beside_prefix else (prefix, quality, mount),
         )
     )
     result = compare_registry(reference, _pack_registry(name, native))
@@ -985,6 +983,66 @@ def test_advanced_section_rows_match_the_reference_position_only() -> None:
     native["body"][:2] = reversed(native["body"][:2])
     native["body"][2]["id"] = "more"
     assert compare(reference, native)
+
+
+def test_inner_use_overrides_a_row_inside_a_shared_choice_option() -> None:
+    from dinkster_schema import (
+        Choice,
+        Input,
+        NodeSchema,
+        NumberWidget,
+        Option,
+        TypeExpr,
+        Use,
+        schema_to_wire,
+    )
+
+    from tools.compare_nodes import compare
+
+    def encoding(default: float, maximum: float) -> list[Any]:
+        crf = ["FLOAT", {"default": default, "min": 0.0, "max": maximum, "step": 1.0}]
+        options = [{"key": "re-encode", "inputs": {"required": {"crf": crf}}}]
+        return ["COMFY_DYNAMICCOMBO_V3", {"options": options}]
+
+    reference = {
+        "class_name": "Example",
+        "input_types": {
+            "required": {
+                "codec": [
+                    "COMFY_DYNAMICCOMBO_V3",
+                    {
+                        "options": [
+                            {"key": key, "inputs": {"required": {"encoding": encoding(*limits)}}}
+                            for key, limits in (("h264", (18.0, 51.0)), ("av1", (24.0, 63.0)))
+                        ]
+                    },
+                ]
+            }
+        },
+    }
+
+    def native(av1_default: float) -> dict[str, Any]:
+        crf = Input(
+            "crf",
+            TypeExpr.concrete("FLOAT"),
+            default=18.0,
+            widget=NumberWidget(min=0, max=51, step=1),
+        )
+        av1_crf = Use("crf", default=av1_default, widget=NumberWidget(min=0, max=63, step=1))
+        shared = Choice("encoding", options=(Option("re-encode", rows=(crf,)),))
+        codec = Choice(
+            "codec",
+            options=(
+                Option("h264", rows=(Use("encoding"),)),
+                Option("av1", rows=(Use("encoding", inside=(av1_crf,)),)),
+            ),
+            shared=(shared,),
+        )
+        return schema_to_wire(NodeSchema(node_type="Example", body=(codec,)))
+
+    # The av1 place reaches into the shared encoding's option to change crf's limits.
+    assert compare(reference, native(24.0)) == []
+    assert any("24.0 vs 25.0" in item for item in compare(reference, native(25.0)))
 
 
 @pytest.mark.parametrize("order", [None, [], [{"id": "other"}], [{"id": "value"}] * 2])

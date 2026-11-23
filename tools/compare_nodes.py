@@ -181,11 +181,15 @@ def _used(entry: dict[str, Any], use: dict[str, Any]) -> dict[str, Any]:
         ]
         inner = {item["id"]: item for item in use.get("inside", [])}
         if inner:
-            shared = [
-                _used(item, inner[item["id"]]) if item.get("id") in inner else item
-                for item in entry.get("shared", [])
-            ]
-            placed["shared"] = shared
+            # An inner Use reaches a row in the choice's shared rows or in an option.
+            def place(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+                return [
+                    _used(item, inner[item["id"]]) if item.get("id") in inner else item
+                    for item in rows
+                ]
+
+            placed["shared"] = place(entry.get("shared", []))
+            options = [{**option, "rows": place(option["rows"])} for option in options]
         placed["options"] = options
     return placed
 
@@ -639,8 +643,18 @@ def compare(
         and not item.get("_list_flag")
         for item in expected
     )
-    if actual and actual[-1]["name"] == "mount" and save_node:
-        mount = actual.pop()
+    actual_names = [entry["name"] for entry in actual]
+    # A body places mount beside filename_prefix; an interface appends it.
+    mount_at = actual_names.index("mount") if "mount" in actual_names else -1
+    if (
+        save_node
+        and mount_at >= 0
+        and (
+            mount_at == len(actual) - 1
+            or (mount_at > 0 and actual_names[mount_at - 1] == "filename_prefix")
+        )
+    ):
+        mount = actual.pop(mount_at)
         if mount.get("multiline") is False:
             mount.pop("multiline")
         # The production serializer omits the configured-output None sentinel.
