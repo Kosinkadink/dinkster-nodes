@@ -1455,7 +1455,7 @@ class ImageToMask(Node):
             STRING,
             required=False,
             default="#000000",
-            widget=ColorWidget(),
+            widget=ColorWidget(alpha=True),
         )
         color_value = _number("color_value", INT, 0, minimum=0, maximum=0xFFFFFF, step=1)
         red = _number("red", INT, 0, minimum=0, maximum=255, step=1)

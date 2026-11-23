@@ -66,7 +66,7 @@ class TextOverlay(Node):
                     TypeExpr.concrete(COLOR_TYPE),
                     default="#ffffff",
                     tooltip="Color of the text.",
-                    widget=ColorWidget(),
+                    widget=ColorWidget(alpha=True),
                     pin=False,
                 ),
                 Input(

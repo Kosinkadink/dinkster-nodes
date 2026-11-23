@@ -161,9 +161,27 @@ def test_save_webm_uses_default_or_explicit_writable_mount(
     assert not list(untouched.rglob("*"))
 
 
-@pytest.mark.parametrize("mount", ("outside", "readonly"))
-def test_save_webm_refuses_unknown_or_readonly_mount_without_publishing(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, mount: str
+def test_save_webm_lands_a_missing_mount_in_the_default_output(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    default, alternate, readonly = _mounts(tmp_path, monkeypatch)
+    with caplog.at_level("WARNING"):
+        SaveWEBM.execute(
+            images=_images(),
+            filename_prefix="video/clip",
+            codec="vp9",
+            fps=24.0,
+            crf=32.0,
+            mount="outside",
+        )
+    assert len(list(default.glob("video/clip_*.webm"))) == 1
+    assert "mount 'outside' is not on this machine" in caplog.text
+    assert not list(alternate.rglob("*"))
+    assert not list(readonly.rglob("*"))
+
+
+def test_save_webm_refuses_a_readonly_mount_without_publishing(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     default, alternate, readonly = _mounts(tmp_path, monkeypatch)
     with pytest.raises(Exception, match="mount"):
@@ -173,7 +191,7 @@ def test_save_webm_refuses_unknown_or_readonly_mount_without_publishing(
             codec="vp9",
             fps=24.0,
             crf=32.0,
-            mount=mount,
+            mount="readonly",
         )
     assert not list(default.rglob("*"))
     assert not list(alternate.rglob("*"))

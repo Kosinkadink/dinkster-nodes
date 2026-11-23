@@ -5,6 +5,7 @@ import hashlib
 import json
 import zlib
 from collections.abc import Sequence
+from dataclasses import replace
 from functools import cache
 from pathlib import Path
 from typing import Any, cast
@@ -12,6 +13,7 @@ from typing import Any, cast
 from dinkster_image._draft_initialization import IMAGE_NODES
 from dinkster_schema import (
     Choice,
+    ColorWidget,
     ComboWidget,
     Group,
     Input,
@@ -466,10 +468,19 @@ def test_dynamic_inputs_preserve_v1_types_defaults_and_options() -> None:
                     if old.type == TypeExpr.concrete("dinkster.region")
                     else old.type
                 )
+                expected_widget = old.widget
+                # These fields use opacity, so they declare it (comfy-vibe-station#1233).
+                if (node_type, entry.id) in {
+                    ("dinkster.image.to_mask", "color"),
+                    ("dinkster.image.generate", "color_a"),
+                    ("dinkster.image.generate", "color_b"),
+                }:
+                    assert isinstance(expected_widget, ColorWidget)
+                    expected_widget = replace(expected_widget, alpha=True)
                 assert (entry.type, entry.default, entry.widget) == (
                     expected_type,
                     old.default,
-                    old.widget,
+                    expected_widget,
                 )
             elif isinstance(entry, Choice):
                 assert entry.default == old.default
