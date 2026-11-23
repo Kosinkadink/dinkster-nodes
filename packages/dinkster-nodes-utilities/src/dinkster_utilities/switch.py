@@ -7,7 +7,9 @@ from collections.abc import Mapping
 from dinkster_api.v1 import (
     ABSENT,
     CORE_BOOLEAN,
+    CORE_COMBO,
     CORE_INT,
+    CORE_STRING,
     Group,
     Input,
     Node,
@@ -26,7 +28,10 @@ class Switch(Node):
     The engine passes on the branch the pick names without running the node.
     A stored pick is a branch's key, so renaming or moving a branch never
     changes it. A wired whole number is a position from 0, and a yes or no
-    picks between exactly two branches, no first."""
+    picks between exactly two branches, no first. Wired text or a choice
+    picks the branch with exactly that name, then the branch with that key;
+    the editor sends the branch names to the hidden ``names`` input only when
+    that text is not known before the run."""
 
     @classmethod
     def define_schema(cls) -> NodeSchema:
@@ -36,7 +41,18 @@ class Switch(Node):
             display_name="Switch",
             category="utilities/logic",
             body=(
-                Input("pick", TypeExpr.union(CORE_INT, CORE_BOOLEAN), label="Pick", required=False),
+                Input(
+                    "pick",
+                    TypeExpr.union(CORE_INT, CORE_BOOLEAN, CORE_STRING, CORE_COMBO),
+                    label="Pick",
+                    required=False,
+                ),
+                Input(
+                    "names",
+                    TypeExpr.list_of(TypeExpr.concrete(CORE_STRING)),
+                    required=False,
+                    hidden=True,
+                ),
                 Group(
                     "branch",
                     value=Input("branch", value_type, required=False, lazy=True),
@@ -47,7 +63,7 @@ class Switch(Node):
                 ),
                 Output("value", value_type, label="Value"),
             ),
-            selector=SelectorSpec("pick", "branch"),
+            selector=SelectorSpec("pick", "branch", names="names"),
             search_terms=("If/Else Switch", "If", "Else", "Select", "Route"),
         )
 
