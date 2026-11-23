@@ -1,12 +1,13 @@
 """Primitive value nodes: Primitive, Int, Float, Text, Boolean and Choice.
 
 They are one implementation found under several names in the add-node
-search. Each holds one value field. Int, Float, Text and Boolean also have a
-Limits section whose minimum, maximum, step and default are ordinary optional
-fields of their own; an empty limit is derived by the editor from the fields
-the primitive feeds. Choice takes its options, and Primitive its type, label
-and field, from the fields they feed. The value is known before the run, so
-the editor writes it into the fields it feeds instead of running the node.
+search. Each holds one value field and a Limits section of ordinary optional
+fields of its own: minimum, maximum, step and default for Int and Float, and
+default for the others. An empty limit is derived by the editor from the
+fields the primitive feeds. Choice takes its options, and Primitive its type,
+label and field, from the fields they feed. The value is known before the
+run, so the editor writes it into the fields it feeds instead of running the
+node.
 """
 
 from __future__ import annotations
@@ -48,8 +49,11 @@ _TEXT_REPRESENTATIONS = WidgetRepresentations(
 )
 
 
-def _limit(id: str, label: str, type_id: str, widget: NumberWidget | StringWidget | None) -> Input:
-    return Input(id, TypeExpr.concrete(type_id), required=False, widget=widget, label=label)
+def _limit(
+    id: str, label: str, type_id: str | TypeExpr, widget: NumberWidget | StringWidget | None
+) -> Input:
+    value_type = TypeExpr.concrete(type_id) if isinstance(type_id, str) else type_id
+    return Input(id, value_type, required=False, widget=widget, label=label)
 
 
 def _primitive_schema(
@@ -164,7 +168,7 @@ class PrimitiveChoice(_Primitive):
             "Choice",
             Output(CORE_COMBO, TypeExpr.concrete(CORE_COMBO)),
             Input("value", TypeExpr.concrete(CORE_COMBO)),
-            (),
+            (_limit("default", "Default", CORE_COMBO, None),),
             ("dropdown", "combo"),
         )
 
@@ -182,6 +186,6 @@ class Primitive(_Primitive):
             "Primitive",
             Output("value", value_type, label="Value"),
             Input("value", value_type, label="Value"),
-            (),
+            (_limit("default", "Default", value_type, None),),
             ("value", "constant"),
         )
