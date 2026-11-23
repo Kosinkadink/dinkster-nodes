@@ -13,17 +13,58 @@ from dinkster_utilities.primitive import (
     PrimitiveFloat,
     PrimitiveInt,
     PrimitiveString,
-    PrimitiveStringMultiline,
 )
 
 
 @pytest.mark.parametrize("value", ["", "  text\r\nnext\t", "\U0001f600e\u0301"])
 def test_text_preserves_whitespace_and_codepoints(value: str) -> None:
     assert PrimitiveString.execute(value=value) == {"STRING": value}
-    assert PrimitiveStringMultiline.execute(value=value) == {"STRING": value}
-    for node, multiline in ((PrimitiveString, False), (PrimitiveStringMultiline, True)):
-        body = cast(list[dict[str, object]], schema_to_wire(node.schema())["body"])
-        assert body[0]["widget"] == {"type": "STRING", "multiline": multiline}
+
+
+def test_text_is_one_line_or_multiline_and_opens_comfy_multiline_text() -> None:
+    body = cast(list[dict[str, object]], schema_to_wire(PrimitiveString.schema())["body"])
+    widget = cast(dict[str, object], body[0]["widget"])
+    assert widget["default"] == "single_line"
+    assert widget["userSwitchable"] is True
+    assert [
+        (r["id"], r["widget"]) for r in cast(list[dict[str, object]], widget["representations"])
+    ] == [
+        ("single_line", {"type": "STRING", "multiline": False}),
+        ("multiline", {"type": "STRING", "multiline": True}),
+    ]
+    sources = {rule.from_type for rule in PrimitiveString.schema().replacements}
+    assert sources == {"PrimitiveString", "PrimitiveStringMultiline"}
+
+
+@pytest.mark.parametrize(
+    ("node", "terms", "limits"),
+    [
+        (PrimitiveInt, ("integer", "number"), ["minimum", "maximum", "step", "default"]),
+        (PrimitiveFloat, ("number", "decimal"), ["minimum", "maximum", "step", "default"]),
+        (PrimitiveString, ("string",), ["default"]),
+        (PrimitiveBoolean, ("bool", "toggle"), ["default"]),
+    ],
+)
+def test_typed_primitive_is_found_by_its_words_and_declares_its_limits(
+    node: type[PrimitiveInt], terms: tuple[str, ...], limits: list[str]
+) -> None:
+    schema = node.schema()
+    assert schema.search_terms[: len(terms)] == terms
+    wire = schema_to_wire(schema)
+    body = cast(list[dict[str, object]], wire["body"])
+    value_type = cast(dict[str, object], body[0]["type"])
+    section = body[1]
+    assert (section["kind"], section["label"], section["collapsed"]) == ("section", "Limits", True)
+    rows = cast(list[dict[str, object]], section["rows"])
+    assert [row["id"] for row in rows] == limits
+    assert all(row["required"] is False and row["type"] == value_type for row in rows)
+    output = body[2]
+    assert output["knownValue"] == {"input": "value"}
+    assert output["type"] == value_type
+
+
+def test_limits_do_not_change_the_value() -> None:
+    assert PrimitiveInt.execute(value=20, minimum=0, maximum=8, step=1, default=4) == {"INT": 20}
 
 
 @pytest.mark.parametrize("value", [-sys.maxsize, -17, 0, 2**53 + 1, sys.maxsize])

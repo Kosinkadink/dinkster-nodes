@@ -57,9 +57,6 @@
     "dinkster.utilities.primitive_string": {
       "displayName": "Text"
     },
-    "dinkster.utilities.primitive_string_multiline": {
-      "displayName": "Text (Multiline)"
-    },
     "dinkster.utilities.primitive_int": {
       "displayName": "Int"
     },
@@ -135,18 +132,23 @@
       "ComfyMathExpression"
     ],
     "dinkster.utilities.primitive_string": [
-      "PrimitiveString"
-    ],
-    "dinkster.utilities.primitive_string_multiline": [
+      "string",
+      "PrimitiveString",
       "PrimitiveStringMultiline"
     ],
     "dinkster.utilities.primitive_int": [
+      "integer",
+      "number",
       "PrimitiveInt"
     ],
     "dinkster.utilities.primitive_float": [
+      "number",
+      "decimal",
       "PrimitiveFloat"
     ],
     "dinkster.utilities.primitive_boolean": [
+      "bool",
+      "toggle",
       "PrimitiveBoolean"
     ],
     "dinkster.utilities.comfy_switch_node": [

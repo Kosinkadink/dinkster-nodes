@@ -1613,6 +1613,66 @@
    "node_type": "dinkster.3d.camera_angle",
    "difference": "inputs: length 5 vs 4",
    "reason": "view: Removed: no widget writes it and execute does not read it, so with its editor on an Editor row it has no job left, and nothing is kept for backwards compatibility; the ComfyUI importer skips its saved value (comfy-vibe-station#1101 comment 7077499482)."
+  },
+  {
+   "class_name": "PrimitiveInt",
+   "node_type": "dinkster.utilities.primitive_int",
+   "difference": "inputs: length 1 vs 5",
+   "reason": "Int is the Primitive with its type fixed, with a Limits section of optional minimum, maximum, step and default fields that the editor derives from the fields it feeds (comfy-vibe-station#1234 comment 7094085698)."
+  },
+  {
+   "class_name": "PrimitiveFloat",
+   "node_type": "dinkster.utilities.primitive_float",
+   "difference": "inputs: length 1 vs 5",
+   "reason": "Float is the Primitive with its type fixed, with a Limits section of optional minimum, maximum, step and default fields that the editor derives from the fields it feeds (comfy-vibe-station#1234 comment 7094085698)."
+  },
+  {
+   "class_name": "PrimitiveString",
+   "node_type": "dinkster.utilities.primitive_string",
+   "difference": "inputs: length 1 vs 2",
+   "reason": "Text is the Primitive with its type fixed: its value is shown one-line or multiline by a representation choice, and its Limits section holds an optional default (comfy-vibe-station#1234 comment 7094085698)."
+  },
+  {
+   "class_name": "PrimitiveString",
+   "node_type": "dinkster.utilities.primitive_string",
+   "difference": "inputs[0].default: missing reference field",
+   "reason": "Text is the Primitive with its type fixed: its value is shown one-line or multiline by a representation choice, and its Limits section holds an optional default (comfy-vibe-station#1234 comment 7094085698)."
+  },
+  {
+   "class_name": "PrimitiveString",
+   "node_type": "dinkster.utilities.primitive_string",
+   "difference": "inputs[0].multiline: missing native field",
+   "reason": "Text is the Primitive with its type fixed: its value is shown one-line or multiline by a representation choice, and its Limits section holds an optional default (comfy-vibe-station#1234 comment 7094085698)."
+  },
+  {
+   "class_name": "PrimitiveStringMultiline",
+   "node_type": "dinkster.utilities.primitive_string",
+   "difference": "inputs: length 1 vs 2",
+   "reason": "Text (Multiline) is no longer its own node: it opens as Text, whose value is shown one-line or multiline by a representation choice, with a Limits section holding an optional default (comfy-vibe-station#1234 comment 7094085698)."
+  },
+  {
+   "class_name": "PrimitiveStringMultiline",
+   "node_type": "dinkster.utilities.primitive_string",
+   "difference": "inputs[0].default: missing reference field",
+   "reason": "Text (Multiline) is no longer its own node: it opens as Text, whose value is shown one-line or multiline by a representation choice, with a Limits section holding an optional default (comfy-vibe-station#1234 comment 7094085698)."
+  },
+  {
+   "class_name": "PrimitiveStringMultiline",
+   "node_type": "dinkster.utilities.primitive_string",
+   "difference": "inputs[0].multiline: missing native field",
+   "reason": "Text (Multiline) is no longer its own node: it opens as Text, whose value is shown one-line or multiline by a representation choice, with a Limits section holding an optional default (comfy-vibe-station#1234 comment 7094085698)."
+  },
+  {
+   "class_name": "PrimitiveStringMultiline",
+   "node_type": "dinkster.utilities.primitive_string",
+   "difference": "display name: 'Text (Multiline)' vs 'Text'",
+   "reason": "Text (Multiline) is no longer its own node: it opens as Text, whose value is shown one-line or multiline by a representation choice, with a Limits section holding an optional default (comfy-vibe-station#1234 comment 7094085698)."
+  },
+  {
+   "class_name": "PrimitiveBoolean",
+   "node_type": "dinkster.utilities.primitive_boolean",
+   "difference": "inputs: length 1 vs 2",
+   "reason": "Boolean is the Primitive with its type fixed, with a Limits section holding an optional default (comfy-vibe-station#1234 comment 7094085698)."
   }
  ],
  "known": [

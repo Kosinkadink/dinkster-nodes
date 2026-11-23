@@ -44,7 +44,6 @@ from .primitive import (
     PrimitiveFloat,
     PrimitiveInt,
     PrimitiveString,
-    PrimitiveStringMultiline,
 )
 from .switch import (
     ComfySwitchNode,
@@ -73,7 +72,6 @@ NODES = (
     EndLoop,
     ComfyMathExpression,
     PrimitiveString,
-    PrimitiveStringMultiline,
     PrimitiveInt,
     PrimitiveFloat,
     PrimitiveBoolean,
