@@ -400,7 +400,6 @@ void main() { fragColor0 = texture(u_image0, v_texCoord); }
                         {
                             "image_a": Link("load", "IMAGE"),
                             "image_b": Link("shader", "IMAGE0"),
-                            "compare_view": {},
                         },
                     ),
                 }

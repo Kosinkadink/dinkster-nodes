@@ -29,10 +29,8 @@ def _execute(mode: dict[str, Any], **overrides: Any) -> dict[str, Any]:
 def test_orbit_translation_and_roll_preserve_source_inputs() -> None:
     mode = {"mode": "orbit", "yaw": 90.0, "pitch": 30.0, "distance": 6.0}
     original = copy.deepcopy(mode)
-    state = {"position": {"x": 90, "y": 80, "z": 70}, "other": [1, 2]}
-    old_state = copy.deepcopy(state)
-    camera = _execute(mode, roll=37.0, camera_info_state=state)
-    assert mode == original and state == old_state
+    camera = _execute(mode, roll=37.0)
+    assert mode == original
     assert camera["position"] == pytest.approx({"x": 1 + 3 * math.sqrt(3), "y": 1, "z": 3})
     assert camera["target"] == {"x": 1, "y": -2, "z": 3}
     assert camera["fov"] == 47 and camera["zoom"] == 1.7
@@ -77,7 +75,7 @@ def test_look_at_half_turn_and_vertical_fallback(
     assert "useCustomUp" not in camera
 
 
-def test_quaternion_normalization_ignores_target_roll_and_state() -> None:
+def test_quaternion_normalization_ignores_target_and_roll() -> None:
     mode = dict(
         mode="quaternion",
         position_x=2.0,
@@ -94,7 +92,6 @@ def test_quaternion_normalization_ignores_target_roll_and_state() -> None:
         target_y=-800,
         target_z=700,
         roll=123,
-        camera_info_state={"unconsumed": True},
     )
     assert camera["position"] == {"x": 2, "y": -4, "z": 7}
     assert camera["target"] == pytest.approx({"x": 1, "y": -4, "z": 7}, abs=1e-6)
