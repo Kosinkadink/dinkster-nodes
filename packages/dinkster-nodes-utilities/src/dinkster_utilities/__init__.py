@@ -15,6 +15,7 @@ from .color_resolution import (
 from .curve_editor import (
     CurveEditor,
 )
+from .flow import HasValue, OnlyIf, OrElse
 from .image_crop import (
     PrimitiveBoundingBox,
 )
@@ -83,6 +84,9 @@ NODES = (
     PreviewAny,
     MakeList,
     ListElement,
+    OrElse,
+    HasValue,
+    OnlyIf,
 )
 
 
