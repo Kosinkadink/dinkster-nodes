@@ -1,11 +1,12 @@
-"""Primitive value nodes: Int, Float, Text and Boolean.
+"""Primitive value nodes: Primitive, Int, Float, Text, Boolean and Choice.
 
 They are one implementation found under several names in the add-node
-search. Each holds one value field and a Limits section whose minimum,
-maximum, step and default are ordinary optional fields of its own; an empty
-limit is derived by the editor from the fields the primitive feeds. The value
-is known before the run, so the editor writes it into the fields it feeds
-instead of running the node.
+search. Each holds one value field. Int, Float, Text and Boolean also have a
+Limits section whose minimum, maximum, step and default are ordinary optional
+fields of their own; an empty limit is derived by the editor from the fields
+the primitive feeds. Choice takes its options, and Primitive its type, label
+and field, from the fields they feed. The value is known before the run, so
+the editor writes it into the fields it feeds instead of running the node.
 """
 
 from __future__ import annotations
@@ -16,6 +17,7 @@ from dataclasses import replace
 
 from dinkster_api.v1 import (
     CORE_BOOLEAN,
+    CORE_COMBO,
     CORE_FLOAT,
     CORE_INT,
     CORE_STRING,
@@ -53,23 +55,22 @@ def _limit(id: str, label: str, type_id: str, widget: NumberWidget | StringWidge
 def _primitive_schema(
     node_type: str,
     display_name: str,
-    type_id: str,
+    output: Output,
     value: Input,
     limits: tuple[Input, ...],
     search_terms: tuple[str, ...],
-    comfy_types: tuple[str, ...],
+    comfy_types: tuple[str, ...] = (),
 ) -> NodeSchema:
+    section = (Section("limits", limits, label="Limits", collapsed=True),) if limits else ()
     schema = NodeSchema(
         node_type=node_type,
         display_name=display_name,
         category="utilities/primitive",
         search_terms=search_terms,
-        body=(
-            value,
-            Section("limits", limits, label="Limits", collapsed=True),
-            Output(type_id, TypeExpr.concrete(type_id), known_value=OutputKnownValue("value")),
-        ),
+        body=(value, *section, replace(output, known_value=OutputKnownValue("value"))),
     )
+    if not comfy_types:
+        return schema
     declared = [with_identity_replacement(schema, comfy_type) for comfy_type in comfy_types]
     return replace(
         declared[-1],
@@ -102,7 +103,7 @@ class PrimitiveInt(_Primitive):
         return _primitive_schema(
             "dinkster.utilities.primitive_int",
             "Int",
-            CORE_INT,
+            Output(CORE_INT, TypeExpr.concrete(CORE_INT)),
             Input("value", TypeExpr.concrete(CORE_INT), widget=_INT_WIDGET, after_run="fixed"),
             _number_limits(CORE_INT, _INT_WIDGET),
             ("integer", "number"),
@@ -116,7 +117,7 @@ class PrimitiveFloat(_Primitive):
         return _primitive_schema(
             "dinkster.utilities.primitive_float",
             "Float",
-            CORE_FLOAT,
+            Output(CORE_FLOAT, TypeExpr.concrete(CORE_FLOAT)),
             Input("value", TypeExpr.concrete(CORE_FLOAT), widget=_FLOAT_WIDGET),
             _number_limits(CORE_FLOAT, _FLOAT_WIDGET),
             ("number", "decimal"),
@@ -131,7 +132,7 @@ class PrimitiveString(_Primitive):
         return _primitive_schema(
             "dinkster.utilities.primitive_string",
             "Text",
-            CORE_STRING,
+            Output(CORE_STRING, TypeExpr.concrete(CORE_STRING)),
             Input("value", TypeExpr.concrete(CORE_STRING), widget=_TEXT_REPRESENTATIONS),
             (_limit("default", "Default", CORE_STRING, _TEXT_WIDGET),),
             ("string",),
@@ -145,9 +146,42 @@ class PrimitiveBoolean(_Primitive):
         return _primitive_schema(
             "dinkster.utilities.primitive_boolean",
             "Boolean",
-            CORE_BOOLEAN,
+            Output(CORE_BOOLEAN, TypeExpr.concrete(CORE_BOOLEAN)),
             Input("value", TypeExpr.concrete(CORE_BOOLEAN)),
             (_limit("default", "Default", CORE_BOOLEAN, None),),
             ("bool", "toggle"),
             ("PrimitiveBoolean",),
+        )
+
+
+class PrimitiveChoice(_Primitive):
+    """A choice whose options are those of the dropdown fields it feeds."""
+
+    @classmethod
+    def define_schema(cls) -> NodeSchema:
+        return _primitive_schema(
+            "dinkster.utilities.primitive_choice",
+            "Choice",
+            Output(CORE_COMBO, TypeExpr.concrete(CORE_COMBO)),
+            Input("value", TypeExpr.concrete(CORE_COMBO)),
+            (),
+            ("dropdown", "combo"),
+        )
+
+
+class Primitive(_Primitive):
+    """A value of the type of the first field it feeds, shown with that
+    field's label and widget; a color or an asset as well as a number or a
+    text. The stored value carries its type."""
+
+    @classmethod
+    def define_schema(cls) -> NodeSchema:
+        value_type = TypeExpr.variable("value")
+        return _primitive_schema(
+            "dinkster.utilities.primitive",
+            "Primitive",
+            Output("value", value_type, label="Value"),
+            Input("value", value_type, label="Value"),
+            (),
+            ("value", "constant"),
         )
