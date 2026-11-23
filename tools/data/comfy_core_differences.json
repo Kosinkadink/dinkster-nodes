@@ -1673,6 +1673,12 @@
    "node_type": "dinkster.utilities.primitive_boolean",
    "difference": "inputs: length 1 vs 2",
    "reason": "Boolean is the Primitive with its type fixed, with a Limits section holding an optional default (comfy-vibe-station#1234 comment 7094085698)."
+  },
+  {
+   "class_name": "CreateList",
+   "node_type": "dinkster.utilities.create_list",
+   "difference": "inputs[0].max: 10 vs None",
+   "reason": "Create List grows by plugging in, with no limit of 10, and every input takes one value or a list of one matched type, so an INT beside a STRING is refused where ComfyUI joins them; the user wants the types matched (comfy-vibe-station#1092 comments 7096077527 and 7096204259)."
   }
  ],
  "known": [

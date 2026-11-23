@@ -23,7 +23,7 @@ from dinkster_api.v1 import (
 )
 
 _ITEM = TypeExpr.wildcard()
-_ITEMS = TypeExpr.list_of(_ITEM)
+_JOINED = TypeExpr.variable("T")
 
 
 def _execution_items(value: Value) -> tuple[Value, ...]:
@@ -35,6 +35,13 @@ def _execution_items(value: Value) -> tuple[Value, ...]:
 
 
 class CreateList(Node):
+    """Join values and lists of one type into one flat list.
+
+    A single value adds one item; a list adds its items in order. ComfyUI's
+    CreateList joins the same way, so its family names are kept and it imports
+    as this node.
+    """
+
     @classmethod
     def define_schema(cls) -> NodeSchema:
         schema = NodeSchema(
@@ -44,15 +51,22 @@ class CreateList(Node):
             body=(
                 Group(
                     "inputs",
-                    value=Input("input", _ITEM),
+                    value=Input("input", _JOINED, accepts_list=True),
                     min_members=1,
-                    max_members=10,
                     optional_after_minimum=True,
                     keys=Numbered("input", start=0),
                 ),
-                Output("list", _ITEMS),
+                Output("list", TypeExpr.list_of(_JOINED)),
             ),
-            search_terms=("Image Iterator", "Text Iterator", "Iterator"),
+            search_terms=(
+                "Image Iterator",
+                "Text Iterator",
+                "Iterator",
+                "flatten",
+                "combine",
+                "merge",
+                "concat",
+            ),
             input_values=True,
         )
         return with_identity_replacement(schema, "CreateList")

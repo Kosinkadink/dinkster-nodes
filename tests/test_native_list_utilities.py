@@ -83,14 +83,15 @@ def test_list_schemas_roundtrip_without_collapsing_list_types() -> None:
         "inputs",
         Numbered("input", start=0),
         1,
-        10,
+        None,
     )
     assert group.optional_after_minimum
+    assert isinstance(group.value, Input) and group.value.accepts_list
     _, index, item_output = GetItemFromList.schema().body
     assert isinstance(index, Input) and isinstance(item_output, Output)
     assert index.default == 0
     assert index.accepts_list
-    assert create_output.type == TypeExpr.list_of(TypeExpr.wildcard())
+    assert create_output.type == TypeExpr.list_of(TypeExpr.variable("T"))
     assert item_output.type == TypeExpr.wildcard()
 
 
@@ -111,9 +112,9 @@ def test_native_list_nodes_execute_scalar_and_list_envelopes_without_wrappers() 
                 "items": GraphNode(
                     "dinkster.utilities.create_list",
                     {
-                        "inputs.input2": TypedLiteral("STRING", "first"),
+                        "inputs.input2": TypedLiteral("INT", 5),
                         "inputs.input0": TypedLiteral("list<INT>", [7, 13]),
-                        "inputs.input1": TypedLiteral("list<STRING>", []),
+                        "inputs.input1": TypedLiteral("list<INT>", []),
                     },
                 ),
                 "selected": GraphNode(
@@ -141,7 +142,8 @@ def test_native_list_nodes_execute_scalar_and_list_envelopes_without_wrappers() 
             }
         )
         result = await engine.run(graph, ["items", "selected", "linked", "scalar"])
-        assert result.outputs["items"]["list"].resolve() == ["first", 7, 13]
+        assert result.outputs["items"]["list"].type_id == "list<INT>"
+        assert result.outputs["items"]["list"].resolve() == [5, 7, 13]
         assert result.outputs["selected"]["item"].type_id == "INT"
         assert result.outputs["selected"]["item"].resolve() == 13
         assert result.outputs["linked"]["item"].resolve() == 7
