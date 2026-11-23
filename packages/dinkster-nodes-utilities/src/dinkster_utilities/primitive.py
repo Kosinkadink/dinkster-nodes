@@ -169,7 +169,7 @@ class PrimitiveChoice(_Primitive):
             Output(CORE_COMBO, TypeExpr.concrete(CORE_COMBO)),
             Input("value", TypeExpr.concrete(CORE_COMBO)),
             (_limit("default", "Default", CORE_COMBO, None),),
-            ("dropdown", "combo"),
+            ("dropdown", "combo", "select", "options"),
         )
 
 
