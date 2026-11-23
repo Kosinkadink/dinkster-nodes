@@ -60,7 +60,7 @@ class ColorToRGBInt(Node):
             category="utilities",
             description="Return a color RGB integer value and hexadecimal representation.",
             body=(
-                Input("color", _COLOR, default="#ffffff", widget=ColorWidget()),
+                Input("color", _COLOR, default="#ffffff", widget=ColorWidget(alpha=True)),
                 Output("rgb_int", _INT),
                 Output("hex", _COLOR),
                 Output("alpha", _FLOAT),
@@ -78,13 +78,15 @@ class ColorToRGBInt(Node):
         except ValueError:
             raise ValueError(message) from None
         alpha = int(color[7:9], 16) / 255.0 if len(color) == 9 else 1.0
+        # The field always arrives with its opacity digits; hex keeps them only when not full.
+        hex_color = color[:7] if alpha == 1.0 else color
         color = color[:7]
         try:
             red, green, blue = (int(color[index : index + 2], 16) for index in (1, 3, 5))
         except ValueError:
             # The reference color helper falls back to white after whole-string validation.
             red, green, blue = 255, 255, 255
-        return cls.outputs(rgb_int=red * 256 * 256 + green * 256 + blue, hex=color, alpha=alpha)
+        return cls.outputs(rgb_int=red * 256 * 256 + green * 256 + blue, hex=hex_color, alpha=alpha)
 
 
 class ResolutionSelector(Node):

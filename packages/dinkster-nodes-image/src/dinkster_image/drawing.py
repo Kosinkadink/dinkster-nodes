@@ -83,7 +83,7 @@ def _color_input(
         STRING,
         required=False,
         default=default,
-        widget=ColorWidget(),
+        widget=ColorWidget(alpha=True),
     )
 
 
