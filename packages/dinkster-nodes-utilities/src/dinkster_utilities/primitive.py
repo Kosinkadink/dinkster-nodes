@@ -1,9 +1,18 @@
-"""Primitive value nodes with the interfaces of ComfyUI core nodes."""
+"""Primitive value nodes: Int, Float, Text and Boolean.
+
+They are one implementation found under several names in the add-node
+search. Each holds one value field and a Limits section whose minimum,
+maximum, step and default are ordinary optional fields of its own; an empty
+limit is derived by the editor from the fields the primitive feeds. The value
+is known before the run, so the editor writes it into the fields it feeds
+instead of running the node.
+"""
 
 from __future__ import annotations
 
 import sys
 from collections.abc import Mapping
+from dataclasses import replace
 
 from dinkster_api.v1 import (
     CORE_BOOLEAN,
@@ -15,115 +24,130 @@ from dinkster_api.v1 import (
     NodeSchema,
     NumberWidget,
     Output,
+    OutputKnownValue,
+    Section,
     StringWidget,
     TypeExpr,
+    WidgetRepresentation,
+    WidgetRepresentations,
     with_identity_replacement,
 )
 
+_INT_WIDGET = NumberWidget(min=-sys.maxsize, max=sys.maxsize)
+_FLOAT_WIDGET = NumberWidget(min=-float(sys.maxsize), max=float(sys.maxsize), step=0.1)
+_TEXT_WIDGET = StringWidget(multiline=False)
+_TEXT_REPRESENTATIONS = WidgetRepresentations(
+    representations=(
+        WidgetRepresentation("single_line", _TEXT_WIDGET, "Single line"),
+        WidgetRepresentation("multiline", StringWidget(multiline=True), "Multiline"),
+    ),
+    default="single_line",
+    user_switchable=True,
+)
 
-class PrimitiveString(Node):
+
+def _limit(id: str, label: str, type_id: str, widget: NumberWidget | StringWidget | None) -> Input:
+    return Input(id, TypeExpr.concrete(type_id), required=False, widget=widget, label=label)
+
+
+def _primitive_schema(
+    node_type: str,
+    display_name: str,
+    type_id: str,
+    value: Input,
+    limits: tuple[Input, ...],
+    search_terms: tuple[str, ...],
+    comfy_types: tuple[str, ...],
+) -> NodeSchema:
+    schema = NodeSchema(
+        node_type=node_type,
+        display_name=display_name,
+        category="utilities/primitive",
+        search_terms=search_terms,
+        body=(
+            value,
+            Section("limits", limits, label="Limits", collapsed=True),
+            Output(type_id, TypeExpr.concrete(type_id), known_value=OutputKnownValue("value")),
+        ),
+    )
+    declared = [with_identity_replacement(schema, comfy_type) for comfy_type in comfy_types]
+    return replace(
+        declared[-1],
+        search_terms=tuple(dict.fromkeys(t for d in declared for t in d.search_terms)),
+        replacements=tuple(rule for d in declared for rule in d.replacements),
+    )
+
+
+class _Primitive(Node):
+    """The one implementation: the output is the value field."""
+
+    @classmethod
+    def execute(cls, *, value: object, **_limits: object) -> Mapping[str, object]:
+        return cls.outputs(**{cls.schema().outputs[0].id: value})
+
+
+def _number_limits(type_id: str, widget: NumberWidget) -> tuple[Input, ...]:
+    step = NumberWidget(min=1, max=sys.maxsize) if type_id == CORE_INT else NumberWidget(min=0.0)
+    return (
+        _limit("minimum", "Minimum", type_id, widget),
+        _limit("maximum", "Maximum", type_id, widget),
+        _limit("step", "Step", type_id, step),
+        _limit("default", "Default", type_id, widget),
+    )
+
+
+class PrimitiveInt(_Primitive):
     @classmethod
     def define_schema(cls) -> NodeSchema:
-        schema = NodeSchema(
-            node_type="dinkster.utilities.primitive_string",
-            display_name="Text",
-            category="utilities/primitive",
-            body=(
-                Input(
-                    "value",
-                    TypeExpr.concrete(CORE_STRING),
-                    widget=StringWidget(multiline=False),
-                ),
-                Output("STRING", TypeExpr.concrete(CORE_STRING)),
-            ),
+        return _primitive_schema(
+            "dinkster.utilities.primitive_int",
+            "Int",
+            CORE_INT,
+            Input("value", TypeExpr.concrete(CORE_INT), widget=_INT_WIDGET, after_run="fixed"),
+            _number_limits(CORE_INT, _INT_WIDGET),
+            ("integer", "number"),
+            ("PrimitiveInt",),
         )
-        return with_identity_replacement(schema, "PrimitiveString")
-
-    @classmethod
-    def execute(cls, *, value: str) -> Mapping[str, object]:
-        return cls.outputs(STRING=value)
 
 
-class PrimitiveStringMultiline(Node):
+class PrimitiveFloat(_Primitive):
     @classmethod
     def define_schema(cls) -> NodeSchema:
-        schema = NodeSchema(
-            node_type="dinkster.utilities.primitive_string_multiline",
-            display_name="Text (Multiline)",
-            category="utilities/primitive",
-            body=(
-                Input("value", TypeExpr.concrete(CORE_STRING), widget=StringWidget(multiline=True)),
-                Output("STRING", TypeExpr.concrete(CORE_STRING)),
-            ),
+        return _primitive_schema(
+            "dinkster.utilities.primitive_float",
+            "Float",
+            CORE_FLOAT,
+            Input("value", TypeExpr.concrete(CORE_FLOAT), widget=_FLOAT_WIDGET),
+            _number_limits(CORE_FLOAT, _FLOAT_WIDGET),
+            ("number", "decimal"),
+            ("PrimitiveFloat",),
         )
-        return with_identity_replacement(schema, "PrimitiveStringMultiline")
-
-    @classmethod
-    def execute(cls, *, value: str) -> Mapping[str, object]:
-        return cls.outputs(STRING=value)
 
 
-class PrimitiveInt(Node):
+class PrimitiveString(_Primitive):
     @classmethod
     def define_schema(cls) -> NodeSchema:
-        schema = NodeSchema(
-            node_type="dinkster.utilities.primitive_int",
-            display_name="Int",
-            category="utilities/primitive",
-            body=(
-                Input(
-                    "value",
-                    TypeExpr.concrete(CORE_INT),
-                    widget=NumberWidget(min=-sys.maxsize, max=sys.maxsize),
-                    after_run="fixed",
-                ),
-                Output("INT", TypeExpr.concrete(CORE_INT)),
-            ),
+        # ComfyUI's multiline text node is this node with the multiline representation.
+        return _primitive_schema(
+            "dinkster.utilities.primitive_string",
+            "Text",
+            CORE_STRING,
+            Input("value", TypeExpr.concrete(CORE_STRING), widget=_TEXT_REPRESENTATIONS),
+            (_limit("default", "Default", CORE_STRING, _TEXT_WIDGET),),
+            ("string",),
+            ("PrimitiveString", "PrimitiveStringMultiline"),
         )
-        return with_identity_replacement(schema, "PrimitiveInt")
-
-    @classmethod
-    def execute(cls, *, value: int) -> Mapping[str, object]:
-        return cls.outputs(INT=value)
 
 
-class PrimitiveFloat(Node):
+class PrimitiveBoolean(_Primitive):
     @classmethod
     def define_schema(cls) -> NodeSchema:
-        schema = NodeSchema(
-            node_type="dinkster.utilities.primitive_float",
-            display_name="Float",
-            category="utilities/primitive",
-            body=(
-                Input(
-                    "value",
-                    TypeExpr.concrete(CORE_FLOAT),
-                    widget=NumberWidget(min=-float(sys.maxsize), max=float(sys.maxsize), step=0.1),
-                ),
-                Output("FLOAT", TypeExpr.concrete(CORE_FLOAT)),
-            ),
+        return _primitive_schema(
+            "dinkster.utilities.primitive_boolean",
+            "Boolean",
+            CORE_BOOLEAN,
+            Input("value", TypeExpr.concrete(CORE_BOOLEAN)),
+            (_limit("default", "Default", CORE_BOOLEAN, None),),
+            ("bool", "toggle"),
+            ("PrimitiveBoolean",),
         )
-        return with_identity_replacement(schema, "PrimitiveFloat")
-
-    @classmethod
-    def execute(cls, *, value: float) -> Mapping[str, object]:
-        return cls.outputs(FLOAT=value)
-
-
-class PrimitiveBoolean(Node):
-    @classmethod
-    def define_schema(cls) -> NodeSchema:
-        schema = NodeSchema(
-            node_type="dinkster.utilities.primitive_boolean",
-            display_name="Boolean",
-            category="utilities/primitive",
-            body=(
-                Input("value", TypeExpr.concrete(CORE_BOOLEAN)),
-                Output("BOOLEAN", TypeExpr.concrete(CORE_BOOLEAN)),
-            ),
-        )
-        return with_identity_replacement(schema, "PrimitiveBoolean")
-
-    @classmethod
-    def execute(cls, *, value: bool) -> Mapping[str, object]:
-        return cls.outputs(BOOLEAN=value)

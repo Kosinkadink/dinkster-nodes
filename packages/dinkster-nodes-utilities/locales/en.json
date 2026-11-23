@@ -57,9 +57,6 @@
     "dinkster.utilities.primitive_string": {
       "displayName": "Text"
     },
-    "dinkster.utilities.primitive_string_multiline": {
-      "displayName": "Text (Multiline)"
-    },
     "dinkster.utilities.primitive_int": {
       "displayName": "Int"
     },
@@ -71,6 +68,9 @@
     },
     "dinkster.utilities.comfy_switch_node": {
       "displayName": "If/Else Switch"
+    },
+    "dinkster.utilities.switch": {
+      "displayName": "Switch"
     },
     "dinkster.utilities.comfy_number_convert": {
       "displayName": "Convert Number"
@@ -144,22 +144,34 @@
       "ComfyMathExpression"
     ],
     "dinkster.utilities.primitive_string": [
-      "PrimitiveString"
-    ],
-    "dinkster.utilities.primitive_string_multiline": [
+      "string",
+      "PrimitiveString",
       "PrimitiveStringMultiline"
     ],
     "dinkster.utilities.primitive_int": [
+      "integer",
+      "number",
       "PrimitiveInt"
     ],
     "dinkster.utilities.primitive_float": [
+      "number",
+      "decimal",
       "PrimitiveFloat"
     ],
     "dinkster.utilities.primitive_boolean": [
+      "bool",
+      "toggle",
       "PrimitiveBoolean"
     ],
     "dinkster.utilities.comfy_switch_node": [
       "ComfySwitchNode"
+    ],
+    "dinkster.utilities.switch": [
+      "If/Else Switch",
+      "If",
+      "Else",
+      "Select",
+      "Route"
     ],
     "dinkster.utilities.comfy_number_convert": [
       "ComfyNumberConvert"

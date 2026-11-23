@@ -45,10 +45,10 @@ from .primitive import (
     PrimitiveFloat,
     PrimitiveInt,
     PrimitiveString,
-    PrimitiveStringMultiline,
 )
 from .switch import (
     ComfySwitchNode,
+    Switch,
 )
 from .utilities import (
     ComfyNumberConvert,
@@ -74,11 +74,11 @@ NODES = (
     EndLoop,
     ComfyMathExpression,
     PrimitiveString,
-    PrimitiveStringMultiline,
     PrimitiveInt,
     PrimitiveFloat,
     PrimitiveBoolean,
     ComfySwitchNode,
+    Switch,
     ComfyNumberConvert,
     SeedNode,
     PreviewAny,

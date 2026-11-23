@@ -26,7 +26,7 @@ from dinkster_utilities.loops import (
 )
 from dinkster_utilities.math import ComfyMathExpression
 from dinkster_utilities.primitive import PrimitiveBoolean, PrimitiveInt
-from dinkster_utilities.switch import ComfySwitchNode
+from dinkster_utilities.switch import Switch
 from dinkster_values import TypeRegistry, is_absent, register_core_types
 from dinkster_workers import InProcessWorker
 
@@ -41,7 +41,7 @@ NODES = (
     ComfyMathExpression,
     PrimitiveInt,
     PrimitiveBoolean,
-    ComfySwitchNode,
+    Switch,
     MakeList,
     ListElement,
 )

@@ -167,7 +167,7 @@ def test_first_party_primitives_execute_and_feed_preview() -> None:
             ("i", "primitive_int", "INT", 7),
             ("f", "primitive_float", "FLOAT", 0.25),
             ("s", "primitive_string", "STRING", "hello"),
-            ("m", "primitive_string_multiline", "STRING", "a\nb"),
+            ("m", "primitive_string", "STRING", "a\nb"),
             ("b", "primitive_boolean", "BOOLEAN", True),
         )
         nodes = {
