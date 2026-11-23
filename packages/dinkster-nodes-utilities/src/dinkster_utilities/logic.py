@@ -18,6 +18,7 @@ from dinkster_api.v1 import (
     NodeSchema,
     Numbered,
     Output,
+    OutputKnownValue,
     TypeExpr,
     with_identity_replacement,
 )
@@ -109,7 +110,8 @@ class ComfyOrNode(Node):
 class CustomCombo(Node):
     """A choice among options the author types. The editor sends those options,
     in order, to ``options``; INDEX is the choice's position among them,
-    counting from 0."""
+    counting from 0. STRING is the stored choice, so the editor knows it
+    before the run, as it knows a primitive's value."""
 
     @classmethod
     def define_schema(cls) -> NodeSchema:
@@ -129,7 +131,11 @@ class CustomCombo(Node):
                     required=False,
                     hidden=True,
                 ),
-                Output("STRING", TypeExpr.concrete(CORE_STRING)),
+                Output(
+                    "STRING",
+                    TypeExpr.concrete(CORE_STRING),
+                    known_value=OutputKnownValue("choice"),
+                ),
                 Output("INDEX", TypeExpr.concrete(CORE_INT)),
             ),
             additional_inputs=TypeExpr.wildcard(),
