@@ -11,7 +11,7 @@ from dinkster_engine import Engine
 from dinkster_graph import Graph, GraphNode, Link, TypedLiteral
 from dinkster_schema import build_node_types, build_schemas
 from dinkster_utilities.logic import ComfyAndNode, ComfyNotNode, ComfyOrNode, CustomCombo
-from dinkster_utilities.primitive import PrimitiveInt
+from dinkster_utilities.primitive import PrimitiveInt, PrimitiveString
 from dinkster_utilities.switch import ComfySwitchNode, Switch
 from dinkster_values import TypeRegistry, is_absent, register_core_types
 from dinkster_workers import InProcessWorker
@@ -151,5 +151,45 @@ def test_switch_routes_a_yes_or_no_to_the_second_or_first_branch(
                 assert is_absent(value)
             assert "unused" not in result.executed
             assert "selected" not in result.executed or connected
+
+    run_scenario(scenario())
+
+
+@pytest.mark.parametrize(("text", "expected"), [("Detailed", 37), ("branch2", 5), ("Quick", 11)])
+def test_switch_picks_the_branch_a_text_wire_names(text: str, expected: int) -> None:
+    async def scenario() -> None:
+        nodes = [Switch, PrimitiveInt, PrimitiveString]
+        registry = TypeRegistry()
+        register_core_types(registry)
+        engine = Engine(
+            schemas=build_schemas(nodes),
+            registry=registry,
+            worker=InProcessWorker(build_node_types(nodes), registry),
+            cache=MemoryLRUCache(),
+        )
+        values = {"branch3": 11, "branch1": 37, "branch2": 5}
+        graph = Graph(
+            {
+                **{
+                    key: GraphNode("dinkster.utilities.primitive_int", {"value": value})
+                    for key, value in values.items()
+                },
+                "text": GraphNode("dinkster.utilities.primitive_string", {"value": text}),
+                "switch": GraphNode(
+                    "dinkster.utilities.switch",
+                    {
+                        "pick": Link("text", "STRING"),
+                        "names": TypedLiteral("list<STRING>", ["Quick", "Detailed", "Final"]),
+                        **{f"branch.{key}": Link(key, "INT") for key in values},
+                    },
+                    output_members={"branch": tuple(values)},
+                ),
+            }
+        )
+        result = await engine.run(graph, ["switch"])
+        assert result.outputs["switch"]["value"].resolve() == expected
+        assert [key for key in values if key in result.executed] == [
+            key for key, value in values.items() if value == expected
+        ]
 
     run_scenario(scenario())
