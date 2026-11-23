@@ -13,6 +13,13 @@ from typing import Any
 import pytest
 
 
+def _no_differences(tmp_path: Path) -> Path:
+    """An empty written list, for a reference that lacks the listed ComfyUI classes."""
+    path = tmp_path / "differences.json"
+    path.write_text(json.dumps({"differences": [], "known": []}))
+    return path
+
+
 def _pack_registry(source: str, schema: dict[str, Any]) -> dict[str, Any]:
     from dinkster_schema import schema_to_wire
     from dinkster_workers import load_manifest
@@ -344,6 +351,8 @@ def test_cli_training_exclusion_keeps_deletion_errors(
                 str(registry),
                 str(csv_output),
                 str(summary_output),
+                "--differences",
+                str(_no_differences(tmp_path)),
             ],
             capture_output=True,
             text=True,
@@ -577,6 +586,8 @@ def test_comparison_cli(tmp_path: Path) -> None:
                 str(registry),
                 str(csv_path),
                 str(summary_path),
+                "--differences",
+                str(_no_differences(tmp_path)),
             ],
             capture_output=True,
             text=True,
@@ -1334,6 +1345,56 @@ def test_list_flags_do_not_hide_element_type_or_unflagged_output_drift(
     assert compare(reference, native)
 
 
+def test_written_list_holds_exactly_the_intended_differences() -> None:
+    from tools.compare_nodes import compare_registry
+
+    def node(name: str, default: int) -> dict[str, Any]:
+        field = {"role": "input", "id": "steps", "required": True, "default": default}
+        field["type"] = {"kind": "concrete", "types": ["INT"]}
+        return {"nodeType": name, "interface": [field]}
+
+    reference = {
+        "nodes": [
+            {"class_name": name, "input_types": {"required": {"steps": ["INT", {"default": 1}]}}}
+            for name in ("Listed", "Known", "Plain")
+        ]
+    }
+    served = {"Listed": node("Listed", 2), "Known": node("Known", 3), "Plain": node("Plain", 1)}
+    intended = {
+        "differences": [
+            {"class_name": "Listed", "difference": "inputs[0].default: 1 vs 2", "reason": "why"}
+        ],
+        "known": [{"class_name": "Known", "reason": "differed before"}],
+    }
+
+    def run() -> dict[str, Any]:
+        return compare_registry(reference, {"nodes": served}, intended=intended)
+
+    summary = run()
+    assert summary["passed"], summary["difference_errors"]
+    assert {row["class_name"]: row["status"] for row in summary["rows"]} == {
+        "Listed": "differs as intended",
+        "Known": "differs",
+        "Plain": "identical",
+    }
+    for name, default, error in (
+        ("Listed", 4, "differences are not exactly the listed ones: Listed"),
+        ("Listed", 1, "listed as an intended difference but identical: Listed"),
+        ("Known", 1, "listed as differing before the written list but identical: Known"),
+        ("Plain", 5, "differs and is not on the written list: Plain"),
+    ):
+        before = served[name]
+        served[name] = node(name, default)
+        summary = run()
+        assert not summary["passed"]
+        assert summary["difference_errors"] == [error]
+        served[name] = before
+    intended["known"].append({"class_name": "Retired", "reason": "gone"})
+    assert run()["difference_errors"] == [
+        "listed difference names a class the reference lacks: Retired"
+    ]
+
+
 @pytest.mark.parametrize("named", (False, True))
 @pytest.mark.parametrize("minimum", (0, 1))
 @pytest.mark.parametrize("template_required", (False, True))
@@ -1393,8 +1454,10 @@ def test_autogrow_member_requiredness_matches_expanded_reference(
     leaf["required"] = not leaf["required"]
     assert not compare_registry(reference, registry)["passed"]
     leaf["required"] = not leaf["required"]
+    # Where ComfyUI lists the group is not compared (comfy-vibe-station#1101
+    # comment 7093935921); its least member count and member marks are.
     family["required"] = False
-    assert not compare_registry(reference, registry)["passed"]
+    assert compare_registry(reference, registry)["passed"]
     family["required"] = True
     family["minMembers"] = minimum + 1
     assert not compare_registry(reference, registry)["passed"]

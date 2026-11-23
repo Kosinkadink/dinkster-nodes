@@ -27,6 +27,12 @@ round sentinels are not numeric precision values.
 API nodes and nodes originating in nodes_train.py or nodes_dataset.py are
 excluded from required coverage. Training-origin nodes must also be absent
 from the served registry; their exclusion does not hide pending deletions.
+Where ComfyUI lists a growing group (required or optional) is not compared;
+the group's least member count and each member's required mark are.
+Differences from ComfyUI that are meant are written in
+data/comfy_core_differences.json, each exact difference with its reason; a
+class whose differences are exactly its listed ones "differs as intended", and
+the list's "known" classes are those that differed before it was written.
 
 Usage: python tools/compare_nodes.py COMFY_JSON REGISTRY_JSON OUT_CSV OUT_JSON
 """
@@ -43,6 +49,7 @@ from typing import Any, cast
 
 FORBIDDEN_PREFIXES = ("dinkster.", "comfy.")
 SCOPE_RULES = Path(__file__).with_name("node_comparison_scope.json")
+INTENDED_DIFFERENCES = Path(__file__).with_name("data") / "comfy_core_differences.json"
 INPUT_ROLES = {"input", "inputFamily", "dynamicCombo", "dynamicSlot"}
 VALUE_OPTIONS = (
     "default",
@@ -155,8 +162,12 @@ def _reference_inputs(groups: dict[str, Any], list_inputs: bool = False) -> list
                 entry["asset_selection_kind"] = options["asset_selection_kind"]
             if "options" in entry and entry["type"] == "COMBO" and entry["options"]:
                 entry.setdefault("default", entry["options"][0])
-            if entry["type"] == "inputFamily" and not entry["template"]:
-                continue
+            if entry["type"] == "inputFamily":
+                if not entry["template"]:
+                    continue
+                # Where ComfyUI lists a growing group is not compared; its least
+                # member count and each member's required mark are.
+                del entry["group"]
             if list_inputs and entry["type"] not in ("inputFamily", "dynamicCombo"):
                 entry["_list_flag"] = True
             result.append(entry)
@@ -386,8 +397,10 @@ def _native_inputs(
                 entry["max"] = item.get("maxMembers")
         else:
             entry.update(type=role, dynamic=item)
-        if entry["type"] == "inputFamily" and not entry["template"]:
-            continue
+        if entry["type"] == "inputFamily":
+            if not entry["template"]:
+                continue
+            del entry["group"]
         result.append(entry)
     return result
 
@@ -717,7 +730,14 @@ def compare_registry(
     registry: dict[str, Any],
     *,
     scope: dict[str, Any] | None = None,
+    intended: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
+    """Compare every reference class with the registry.
+
+    ``intended`` is the written list of differences from ComfyUI: each entry
+    names a class, one exact difference and its reason, and ``known`` names the
+    classes that differed before it was written. A listed class whose
+    differences are exactly its listed ones "differs as intended"."""
     if scope is None:
         scope = cast(
             "dict[str, Any]", json.loads(SCOPE_RULES.read_text(), object_pairs_hook=_unique_object)
@@ -732,8 +752,16 @@ def compare_registry(
     if len(classes) != len(set(classes)):
         raise ValueError("duplicate reference class id")
     served = registry["nodes"]
+    intended = intended or {"differences": [], "known": []}
+    listed: dict[str, list[str]] = {}
+    for item in intended["differences"]:
+        listed.setdefault(item["class_name"], []).append(item["difference"])
+    known = {item["class_name"] for item in intended["known"]}
     results = []
     errors = []
+    difference_errors = []
+    for name in sorted((listed.keys() | known) - set(classes)):
+        difference_errors.append(f"listed difference names a class the reference lacks: {name}")
     identities: dict[str, tuple[str, str]] = {}
     # A nested official namespace belongs to the most specific selected pack.
     moved_owners = {
@@ -842,6 +870,22 @@ def compare_registry(
             status = (
                 "differs" if differences else "conditional" if row_conditionals else "identical"
             )
+            if name in listed:
+                if status != "differs":
+                    difference_errors.append(
+                        f"listed as an intended difference but {status}: {name}"
+                    )
+                elif differences == listed[name]:
+                    status = "differs as intended"
+                else:
+                    difference_errors.append(f"differences are not exactly the listed ones: {name}")
+            elif name in known:
+                if status != "differs":
+                    difference_errors.append(
+                        f"listed as differing before the written list but {status}: {name}"
+                    )
+            elif status == "differs":
+                difference_errors.append(f"differs and is not on the written list: {name}")
         results.append(
             {
                 "class_name": name,
@@ -870,7 +914,9 @@ def compare_registry(
         "reference_commit": reference.get("source_commit"),
         "reference_environment": reference.get("environment"),
         "eligible_node_count": sum(
-            row["status"] in ("identical", "conditional", "differs", "absent") for row in results
+            row["status"]
+            in ("identical", "conditional", "differs as intended", "differs", "absent")
+            for row in results
         ),
         "counts": counts,
         "pack_counts": {
@@ -880,8 +926,9 @@ def compare_registry(
         "engine_exclusions": {},
         "conditional_options": conditional_options,
         "registry_errors": sorted(set(errors)),
+        "difference_errors": difference_errors,
         "rows": results,
-        "passed": not errors and not counts.get("differs") and not counts.get("absent"),
+        "passed": not errors and not difference_errors and not counts.get("absent"),
     }
 
 
@@ -913,6 +960,7 @@ def main() -> int:
     for name in ("reference", "registry", "csv_output", "summary_output"):
         parser.add_argument(name, type=Path)
     parser.add_argument("--scope", type=Path, default=SCOPE_RULES)
+    parser.add_argument("--differences", type=Path, default=INTENDED_DIFFERENCES)
     args = parser.parse_args()
     reference = json.loads(args.reference.read_text(), object_pairs_hook=_unique_object)
     registry = json.loads(args.registry.read_text(), object_pairs_hook=_unique_object)
@@ -920,6 +968,7 @@ def main() -> int:
         reference,
         registry,
         scope=json.loads(args.scope.read_text(), object_pairs_hook=_unique_object),
+        intended=json.loads(args.differences.read_text(), object_pairs_hook=_unique_object),
     )
     with args.csv_output.open("w", newline="") as handle:
         writer = csv.DictWriter(
