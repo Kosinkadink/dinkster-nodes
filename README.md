@@ -52,14 +52,6 @@ This repository is the only publisher of these packs. The engine does not
 publish them; the two repositories must never publish the same pack name
 concurrently.
 
-## Model memory reports
-
-The models pack reports measured memory for every visible CUDA or XPU card
-through the host's existing telemetry probe. Reports include capacity, free
-memory and supported allocator/device counters in the worker's own device
-namespace. A missing backend or unavailable counter stays absent, including
-CPU-only and MPS environments; these reports do not change admission budgets.
-
 ## Installed environment receipts
 
 `tools/macos_workflow_receipt.py` reads the active snapshot from
