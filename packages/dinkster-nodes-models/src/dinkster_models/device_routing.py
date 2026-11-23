@@ -27,6 +27,7 @@ from dinkster_api.v1 import (
     initialize_inference_process,
     with_identity_replacement,
 )
+from dinkster_workers.device_memory import vram_telemetry_snapshot as vram_telemetry_snapshot
 
 _MODEL = TypeExpr.concrete(MODEL_TYPE)
 
