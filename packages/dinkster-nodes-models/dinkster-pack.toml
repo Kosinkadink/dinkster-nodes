@@ -1,6 +1,6 @@
 [pack]
 name = "dinkster-models"
-version = "0.0.9"
+version = "0.0.10"
 engine = ">=0.0.3,<0.1"
 publisher = "dinkster"
 namespaces = ["dinkster.models", "devices"]
@@ -17,3 +17,4 @@ api = "dinkster-api/v1"
 nodes = "dinkster_models:NODES"
 types = "dinkster_models.types:register_types"
 choices = "dinkster_models.device_routing:device_choices"
+telemetry = "dinkster_models.memory_telemetry:vram_telemetry_snapshot"
