@@ -372,6 +372,7 @@ def test_pack_namespace_compose_reload_execute_and_reject_second_owner(
             assert repeated.outputs["combo"]["INDEX"].resolve() == 2
             reordered = TypedLiteral("list<STRING>", ["Final", "Quick", "Detailed"])
             combo = graph.nodes["combo"]
+            assert isinstance(combo, GraphNode)
             changed = Graph(
                 nodes={
                     **graph.nodes,
