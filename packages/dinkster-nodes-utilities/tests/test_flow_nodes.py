@@ -19,7 +19,7 @@ from dinkster_api.v1 import (
     TypeExpr,
 )
 from dinkster_caches import MemoryLRUCache
-from dinkster_engine import Engine, ExecutionError, RunResult
+from dinkster_engine import Engine, ExecutionError, GraphValidationError, RunResult
 from dinkster_graph import Graph, GraphNode, Link
 from dinkster_schema import build_node_types, build_schemas
 from dinkster_utilities.flow import HasValue, OnlyIf, OrElse
@@ -410,6 +410,51 @@ def test_a_stage_that_can_be_left_out(mask: str, expected: int, inpainted: list[
     )
     assert result.outputs["or_else"]["value"].resolve() == expected
     assert Inpaint.ran == inpainted
+
+
+@pytest.mark.parametrize(
+    ("condition", "expected", "skipped"), [(False, 5, ("inpaint",)), (True, 5009, ())]
+)
+def test_a_mask_behind_only_if_saves_the_original_when_condition_is_no(
+    condition: bool, expected: int, skipped: tuple[str, ...]
+) -> None:
+    result = _run(
+        {
+            "load": _produce("load", 5),
+            "mask": _produce("mask", 9),
+            "only_if": GraphNode(
+                "dinkster.utilities.only_if",
+                {"value": Link("mask", "value"), "condition": condition},
+            ),
+            "inpaint": GraphNode(
+                "test.inpaint", {"image": Link("load", "value"), "mask": Link("only_if", "value")}
+            ),
+            "or_else": GraphNode(
+                "dinkster.utilities.or_else",
+                {"values.1": Link("inpaint", "image"), "values.2": Link("load", "value")},
+            ),
+        },
+        ["or_else"],
+    )
+    assert result.outputs["or_else"]["value"].resolve() == expected
+    assert result.skipped == skipped
+
+
+def test_an_unplugged_mask_still_refuses_the_run() -> None:
+    # A muted producer compiles as no wire, so this also covers a muted mask.
+    with pytest.raises(GraphValidationError, match="missing-input"):
+        _run(
+            {
+                "load": _produce("load", 5),
+                "inpaint": GraphNode("test.inpaint", {"image": Link("load", "value")}),
+                "or_else": GraphNode(
+                    "dinkster.utilities.or_else",
+                    {"values.1": Link("inpaint", "image"), "values.2": Link("load", "value")},
+                ),
+            },
+            ["or_else"],
+        )
+    assert Produce.ran == []
 
 
 @pytest.mark.parametrize(("condition", "expected", "upscaled"), [(False, 3, []), (True, 3000, [3])])
