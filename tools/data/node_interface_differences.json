@@ -26431,6 +26431,7 @@
   },
   {
    "after": {
+    "capture_on_queue": "capture_on_queue",
     "height": "height",
     "width": "width"
    },
