@@ -191,6 +191,20 @@ def test_first_party_primitives_execute_and_feed_preview() -> None:
     run_scenario(scenario())
 
 
+def test_primitives_name_their_limit_fields_for_the_editor() -> None:
+    schemas = {schema.node_type: schema for schema in build_schemas(NODES)}
+
+    def limits(leaf: str) -> dict[str, str]:
+        known = schemas[f"dinkster.utilities.{leaf}"].outputs[0].known_value
+        assert known is not None
+        return dict(known.limits)
+
+    numeric = {"min": "minimum", "max": "maximum", "step": "step", "default": "default"}
+    assert limits("primitive_int") == limits("primitive_float") == numeric
+    for leaf in ("primitive_string", "primitive_boolean", "primitive_choice", "primitive"):
+        assert limits(leaf) == {"default": "default"}
+
+
 def test_preview_text_formats_like_comfy_preview_any() -> None:
     for source, text in (
         (None, "None"),
