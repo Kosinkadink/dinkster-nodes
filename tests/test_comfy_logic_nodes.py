@@ -23,14 +23,22 @@ def _members(values: Mapping[str, object]) -> Members[Item]:
     return Members(Item(key, value) for key, value in values.items())
 
 
-@pytest.mark.parametrize("index", [0, -7, 205])
-def test_custom_combo_passes_through_choice_and_index(index: int) -> None:
-    choice = "authored outside the empty menu"
-    assert CustomCombo.execute(choice=choice, index=index, **{"2": "unused", "label": 5}) == {
+@pytest.mark.parametrize(("choice", "index"), [("Final", 2), ("Quick", 0), ("Detailed", 1)])
+def test_custom_combo_index_is_the_choice_position_among_its_options(
+    choice: str, index: int
+) -> None:
+    options = ["Quick", "Detailed", "Final", "Detailed"]
+    extras = {"index": 7, "2": "unused", "label": 5}
+    assert CustomCombo.execute(choice=choice, options=options, **extras) == {
         "STRING": choice,
         "INDEX": index,
     }
-    assert CustomCombo.execute(choice="") == {"STRING": "", "INDEX": 0}
+
+
+@pytest.mark.parametrize("options", [["Quick", "Detailed"], []])
+def test_custom_combo_refuses_a_choice_that_is_not_one_of_its_options(options: list[str]) -> None:
+    with pytest.raises(ValueError, match=r'^Custom Combo\'s choice "Fast" is not one of its'):
+        CustomCombo.execute(choice="Fast", options=options, index=0)
 
 
 @pytest.mark.parametrize(

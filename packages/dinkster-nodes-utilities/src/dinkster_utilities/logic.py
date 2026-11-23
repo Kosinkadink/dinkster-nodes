@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 
 from dinkster_api.v1 import (
     CORE_BOOLEAN,
@@ -107,6 +107,10 @@ class ComfyOrNode(Node):
 
 
 class CustomCombo(Node):
+    """A choice among options the author types. The editor sends those options,
+    in order, to ``options``; INDEX is the choice's position among them,
+    counting from 0."""
+
     @classmethod
     def define_schema(cls) -> NodeSchema:
         schema = NodeSchema(
@@ -117,7 +121,13 @@ class CustomCombo(Node):
                 Input(
                     "choice",
                     TypeExpr.concrete(CORE_COMBO),
-                    widget=ComboWidget(options=(), editable_options=True),
+                    widget=ComboWidget(options=(), editable_options=True, options_input="options"),
+                ),
+                Input(
+                    "options",
+                    TypeExpr.list_of(TypeExpr.concrete(CORE_STRING)),
+                    required=False,
+                    hidden=True,
                 ),
                 Output("STRING", TypeExpr.concrete(CORE_STRING)),
                 Output("INDEX", TypeExpr.concrete(CORE_INT)),
@@ -127,5 +137,9 @@ class CustomCombo(Node):
         return with_identity_replacement(schema, "CustomCombo")
 
     @classmethod
-    def execute(cls, *, choice: str, index: int = 0, **kwargs: object) -> Mapping[str, object]:
-        return cls.outputs(STRING=choice, INDEX=index)
+    def execute(
+        cls, *, choice: str, options: Sequence[str] = (), **_: object
+    ) -> Mapping[str, object]:
+        if choice not in options:
+            raise ValueError(f'Custom Combo\'s choice "{choice}" is not one of its options.')
+        return cls.outputs(STRING=choice, INDEX=list(options).index(choice))
