@@ -20,12 +20,12 @@ from dinkster_api.v1 import (
     AssetRef,
     AssetWidget,
     CustomWidgetDescriptor,
-    InputSpec,
+    Input,
     LocalAssetRef,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
     SourceFilenameSpec,
     TypeExpr,
     admit_video_source,
@@ -42,21 +42,24 @@ class Load3D(Node):
             node_type="dinkster.3d.load3_d",
             display_name="Load 3D & Animation",
             category="3d",
-            inputs=(
-                InputSpec(
+            body=(
+                Input(
                     "model_file",
                     TypeExpr.concrete(ASSET_TYPE),
                     default="none",
                     widget=AssetWidget(kind="media/model3d", allow_upload=True),
                     source_filename=SourceFilenameSpec("media/model3d", "input"),
                 ),
-                InputSpec(
+                Input(
                     "image",
                     TypeExpr.concrete(LOAD_3D_TYPE),
-                    widget=CustomWidgetDescriptor("LOAD_3D"),
+                    widget=CustomWidgetDescriptor(
+                        "LOAD_3D",
+                        reads={"model_file": "model_file", "width": "width", "height": "height"},
+                    ),
                 ),
                 *(
-                    InputSpec(
+                    Input(
                         axis,
                         TypeExpr.concrete(CORE_INT),
                         default=1024,
@@ -64,24 +67,24 @@ class Load3D(Node):
                     )
                     for axis in ("width", "height")
                 ),
-            ),
-            outputs=tuple(
-                OutputSpec(
-                    name,
-                    TypeExpr.concrete(type_id),
-                    preview=name == "model_3d",
-                    optional=name == "recording_video",
-                )
-                for name, type_id in (
-                    ("image", IMAGE_TYPE),
-                    ("mask", MASK_TYPE),
-                    ("mesh_path", CORE_STRING),
-                    ("normal", IMAGE_TYPE),
-                    ("camera_info", LOAD3D_CAMERA_TYPE),
-                    ("recording_video", VIDEO_TYPE),
-                    ("model_3d", FILE_3D_TYPE),
-                    ("model_3d_info", LOAD3D_MODEL_INFO_TYPE),
-                )
+                *tuple(
+                    Output(
+                        name,
+                        TypeExpr.concrete(type_id),
+                        preview=name == "model_3d",
+                        optional=name == "recording_video",
+                    )
+                    for name, type_id in (
+                        ("image", IMAGE_TYPE),
+                        ("mask", MASK_TYPE),
+                        ("mesh_path", CORE_STRING),
+                        ("normal", IMAGE_TYPE),
+                        ("camera_info", LOAD3D_CAMERA_TYPE),
+                        ("recording_video", VIDEO_TYPE),
+                        ("model_3d", FILE_3D_TYPE),
+                        ("model_3d_info", LOAD3D_MODEL_INFO_TYPE),
+                    )
+                ),
             ),
         )
         return with_identity_replacement(schema, "Load3D")

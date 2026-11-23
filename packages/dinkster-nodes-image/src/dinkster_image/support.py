@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import math
 from collections.abc import Callable, Mapping
+from dataclasses import replace
 from functools import wraps
 from typing import Literal, ParamSpec, TypeVar, cast
 
@@ -11,11 +12,14 @@ import numpy as np
 from dinkster_api.v1 import (
     CORE_COMBO,
     IMAGE_WORKING_SET_LIMIT_BYTES,
+    Choice,
     ComboWidget,
-    InputSpec,
+    Input,
     NumberWidget,
+    Record,
     SlotValue,
     TypeExpr,
+    Use,
     parse_color,
 )
 from PIL import Image
@@ -53,24 +57,26 @@ def combo_input(
     options: tuple[str, ...],
     default: str,
     *,
-    advanced: bool = False,
     display_name: str = "",
     hidden: bool = False,
-) -> InputSpec:
-    return InputSpec(
+) -> Input:
+    return Input(
         id,
         COMBO,
         required=False,
         default=default,
         widget=ComboWidget(options=options),
-        advanced=advanced,
-        display_name=display_name,
+        label=display_name,
         hidden=hidden,
     )
 
 
 def materialized_inputs(function: Callable[P, R]) -> Callable[P, R]:
-    """Let an explicit execute signature consume materialized dynamic paths."""
+    """Let an explicit execute signature take each chosen option's rows by their own ids.
+
+    A choice becomes its chosen key under the choice's id, and the option's rows
+    (and the choices inside it) follow under their own ids; a type choice becomes
+    its value and its rows."""
 
     @wraps(function)
     def wrapped(*args: object, **inputs: object) -> R:
@@ -79,16 +85,19 @@ def materialized_inputs(function: Callable[P, R]) -> Callable[P, R]:
         def add(input_id: str, value: object) -> None:
             if input_id in projected:
                 raise ValueError(f"dynamic inputs project duplicate id {input_id!r}")
-            projected[input_id] = value
-
-        for path, value in inputs.items():
-            input_id = path.rsplit(".", 1)[-1]
-            if isinstance(value, SlotValue):
-                add(input_id, value.value)
+            if isinstance(value, Record):
+                projected[input_id] = value.key
+                for row, row_value in value.items():
+                    add(row, row_value)
+            elif isinstance(value, SlotValue):
+                projected[input_id] = value.value
                 for option, option_value in value.options.items():
                     add(option, option_value)
             else:
-                add(input_id, value)
+                projected[input_id] = value
+
+        for input_id, value in inputs.items():
+            add(input_id, value)
         return cast("Callable[..., R]", function)(*args, **projected)
 
     return cast("Callable[P, R]", wrapped)
@@ -102,16 +111,14 @@ def number_input(
     minimum: int | float | None = None,
     maximum: int | float | None = None,
     step: int | float | None = None,
-    advanced: bool = False,
     hidden: bool = False,
-) -> InputSpec:
-    return InputSpec(
+) -> Input:
+    return Input(
         id,
         type_expr,
         required=False,
         default=default,
         widget=NumberWidget(min=minimum, max=maximum, step=step),
-        advanced=advanced,
         hidden=hidden,
     )
 
@@ -383,7 +390,14 @@ def color_from_int(value: int) -> np.ndarray:
     )
 
 
+def with_shared(choice: Choice, pool: Mapping[str, Input | Choice]) -> Choice:
+    """``choice`` with the pool rows its options name with ``Use`` as its shared rows."""
+    named = {row.id for option in choice.options for row in option.rows if isinstance(row, Use)}
+    return replace(choice, shared=tuple(row for key, row in pool.items() if key in named))
+
+
 __all__ = [
+    "with_shared",
     "INTERPOLATION_OPTIONS",
     "MAX_DIMENSION",
     "Interpolation",

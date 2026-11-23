@@ -13,10 +13,10 @@ from dinkster_api.v1 import (
     CONDITIONING_TYPE,
     CORE_STRING,
     LATENT_TYPE,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
-    OutputSpec,
+    Output,
     TypeExpr,
     materialize_latent,
 )
@@ -105,7 +105,7 @@ class Source(Node):
     def define_schema(cls) -> NodeSchema:
         return NodeSchema(
             node_type="pid-conditioning-fixture.source",
-            outputs=(OutputSpec("positive", _CONDITIONING), OutputSpec("latent", _LATENT)),
+            body=(Output("positive", _CONDITIONING), Output("latent", _LATENT)),
         )
 
     @classmethod
@@ -118,8 +118,10 @@ class Inspect(Node):
     def define_schema(cls) -> NodeSchema:
         return NodeSchema(
             node_type="pid-conditioning-fixture.inspect",
-            inputs=(InputSpec("conditioning", _CONDITIONING),),
-            outputs=(OutputSpec("summary", TypeExpr.concrete(CORE_STRING)),),
+            body=(
+                Input("conditioning", _CONDITIONING),
+                Output("summary", TypeExpr.concrete(CORE_STRING)),
+            ),
         )
 
     @classmethod

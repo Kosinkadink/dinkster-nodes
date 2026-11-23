@@ -8,10 +8,10 @@ from importlib import import_module
 from pathlib import Path
 
 import pytest
-from dinkster_api.v1 import with_identity_replacement
-from dinkster_graph import Graph, GraphNode, migrate_pure_node_type_replacements
+from dinkster_api.v1 import Group, Input, with_identity_replacement
+from dinkster_graph import Graph, GraphNode, migrate_node_replacements
 from dinkster_schema import Node, NodeSchema
-from dinkster_schema.replace import ReplacementRule, rule_to_wire, validate_replacement_references
+from dinkster_schema.replace import rule_to_wire, validate_replacement_references
 from dinkster_schema.wire import schema_from_wire, schema_to_wire
 from dinkster_text.text import StringConcatenate, StringFormat
 from dinkster_workers import load_manifest
@@ -61,7 +61,6 @@ def test_retained_image_classes_have_ordinary_identity_rules() -> None:
     ):
         renamed = node.schema()
         assert renamed.node_type == expected
-        assert renamed.aliases == ()
         assert len(renamed.replacements) == 1
         assert renamed.replacements[0].from_type == source
         assert renamed.replacements[0].migration is None
@@ -72,7 +71,7 @@ def test_retained_image_classes_have_ordinary_identity_rules() -> None:
     }
 
 
-def test_first_party_rules_preserve_flat_graphs_and_leave_families_frontend_owned() -> None:
+def test_first_party_rules_preserve_flat_and_group_values() -> None:
     schema = StringConcatenate.schema()
     original = replace(schema, node_type="StringConcatenate", replacements=(), search_terms=())
     family = StringFormat.schema()
@@ -84,33 +83,25 @@ def test_first_party_rules_preserve_flat_graphs_and_leave_families_frontend_owne
             "dynamic": GraphNode("StringFormat", {"values.z": "last", "f_string": "{z}"}),
         }
     )
-    migrated = migrate_pure_node_type_replacements(
+    migrated = migrate_node_replacements(
         graph, {schema.node_type: schema, family.node_type: family}
     )
-    assert migrated.nodes["flat"] == GraphNode(
+    flat = migrated.nodes["flat"]
+    assert isinstance(flat, GraphNode)
+    assert (flat.node_type, dict(flat.inputs)) == (
         "dinkster.text.string_concatenate",
         {"string_a": "left", "string_b": "RIGHT", "delimiter": "/"},
     )
-    assert migrated.nodes["dynamic"] == graph.nodes["dynamic"]
+    dynamic = migrated.nodes["dynamic"]
+    assert isinstance(dynamic, GraphNode)
+    assert (dynamic.node_type, dict(dynamic.inputs)) == (
+        "dinkster.text.string_format",
+        {"values.z": "last", "f_string": "{z}"},
+    )
     assert schema.inputs == original.inputs
     assert schema.outputs == original.outputs
-    assert schema.aliases == ()
     assert schema.search_terms == (*original.search_terms, "StringConcatenate")
     assert family.replacements[0].cases[0].input_families[0][1].source_template == ("value",)
-    duplicate = replace(schema, node_type="other.node")
-    duplicate = replace(
-        duplicate,
-        replacements=(
-            ReplacementRule(
-                "StringConcatenate",
-                (replace(schema.replacements[0].cases[0], to="other.node"),),
-            ),
-        ),
-    )
-    with pytest.raises(ValueError, match="conflicting pure replacements"):
-        migrate_pure_node_type_replacements(
-            graph, {schema.node_type: schema, duplicate.node_type: duplicate}
-        )
 
 
 def test_translation_interfaces_retain_positional_order_after_json_round_trip() -> None:
@@ -127,24 +118,27 @@ def test_translation_interfaces_retain_positional_order_after_json_round_trip() 
         "StringFormat",
     ]
     assert flat["schema"]["nodeType"] == "dinkster.text.string_concatenate"
-    assert [entry["id"] for entry in flat["schema"]["interface"]] == [
+    assert [entry["id"] for entry in flat["schema"]["body"]] == [
         "string_a",
         "string_b",
         "delimiter",
         "STRING",
     ]
-    assert [entry["id"] for entry in family["schema"]["interface"]] == [
+    assert [entry["id"] for entry in family["schema"]["body"]] == [
         "values",
         "f_string",
         "STRING",
     ]
-    assert family["schema"]["interface"][0]["memberNames"] == list("abcdefghijklmnopqrstuvwxyz")
-    assert family["schema"]["interface"][0]["template"][0]["id"] == "value"
-    assert family["schema"]["interface"][1]["default"] == "{a}"
-    assert family["schema"]["interface"][1]["widget"] == {"type": "STRING", "multiline": True}
+    assert family["schema"]["body"][0]["keys"] == {"named": list("abcdefghijklmnopqrstuvwxyz")}
+    assert family["schema"]["body"][0]["value"]["id"] == "value"
+    assert family["schema"]["body"][1]["default"] == "{a}"
+    assert family["schema"]["body"][1]["widget"] == {"type": "STRING", "multiline": True}
     decoded = schema_from_wire(family["schema"])
     assert decoded.node_type == "dinkster.text.string_format"
-    assert tuple(entry.id for entry in decoded.input_entries) == ("values", "f_string")
+    assert tuple(row.id for row in decoded.body if isinstance(row, (Group, Input))) == (
+        "values",
+        "f_string",
+    )
     assert decoded.replacements[0].from_type == "StringFormat"
 
 
@@ -170,7 +164,7 @@ def test_renamed_prefixed_families_validate_without_serving_the_source(source: s
     original = replace(schema, replacements=())
     assert with_identity_replacement(original, source) == schema
     assert validate_replacement_references({schema.node_type: schema}) == ()
-    assert schema.input_families == original.input_families
+    assert schema.body == original.body
     assert len(schema.replacements) == 1
     assert schema.replacements[0].from_type == source
     assert schema.replacements[0].migration is None

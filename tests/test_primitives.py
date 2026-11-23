@@ -27,10 +27,10 @@ class ColorSource(api.Node):
     def define_schema(cls) -> api.NodeSchema:
         return api.NodeSchema(
             node_type="color-fixture.source",
-            outputs=(
-                api.OutputSpec("color", api.TypeExpr.concrete(api.COLOR_TYPE)),
-                api.OutputSpec("palette", api.TypeExpr.concrete(api.COLORS_TYPE)),
-                api.OutputSpec("preview", api.TypeExpr.concrete(api.RESOLUTION_PREVIEW_TYPE)),
+            body=(
+                api.Output("color", api.TypeExpr.concrete(api.COLOR_TYPE)),
+                api.Output("palette", api.TypeExpr.concrete(api.COLORS_TYPE)),
+                api.Output("preview", api.TypeExpr.concrete(api.RESOLUTION_PREVIEW_TYPE)),
             ),
         )
 
@@ -48,14 +48,14 @@ class ColorInspect(api.Node):
     def define_schema(cls) -> api.NodeSchema:
         return api.NodeSchema(
             node_type="color-fixture.inspect",
-            inputs=(
-                api.InputSpec("color", api.TypeExpr.concrete(api.COLOR_TYPE)),
-                api.InputSpec("palette", api.TypeExpr.concrete(api.COLORS_TYPE)),
-                api.InputSpec(
+            body=(
+                api.Input("color", api.TypeExpr.concrete(api.COLOR_TYPE)),
+                api.Input("palette", api.TypeExpr.concrete(api.COLORS_TYPE)),
+                api.Input(
                     "preview", api.TypeExpr.concrete(api.RESOLUTION_PREVIEW_TYPE), required=False
                 ),
+                api.Output("text", api.TypeExpr.concrete(api.CORE_STRING)),
             ),
-            outputs=(api.OutputSpec("text", api.TypeExpr.concrete(api.CORE_STRING)),),
         )
 
     @classmethod

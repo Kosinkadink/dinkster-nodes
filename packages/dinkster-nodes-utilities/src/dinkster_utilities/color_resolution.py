@@ -10,16 +10,17 @@ from dinkster_api.v1 import (
     CORE_COMBO,
     CORE_FLOAT,
     CORE_INT,
-    RESOLUTION_PREVIEW_TYPE,
     ColorWidget,
     ComboOption,
     ComboWidget,
-    CustomWidgetDescriptor,
-    InputSpec,
+    Formula,
+    Input,
     Node,
     NodeSchema,
+    Note,
     NumberWidget,
-    OutputSpec,
+    Output,
+    Section,
     TypeExpr,
     with_identity_replacement,
 )
@@ -34,6 +35,17 @@ _ASPECT_RATIOS = {
     "16:9 (Widescreen)": (16, 9),
     "21:9 (Ultrawide)": (21, 9),
 }
+
+
+def _side_formula(side: int) -> Formula:
+    """The width (0) or height (1) execute gives, for the Note that shows it."""
+    return Formula(
+        f"round(aspect_ratios[aspect_ratio][{side}] * sqrt(megapixels * 1024 * 1024"
+        " / (aspect_ratios[aspect_ratio][0] * aspect_ratios[aspect_ratio][1]))"
+        " / multiple) * multiple"
+    )
+
+
 _INT = TypeExpr.concrete(CORE_INT)
 _FLOAT = TypeExpr.concrete(CORE_FLOAT)
 _COLOR = TypeExpr.concrete(COLOR_TYPE)
@@ -47,11 +59,11 @@ class ColorToRGBInt(Node):
             display_name="Color Picker",
             category="utilities",
             description="Return a color RGB integer value and hexadecimal representation.",
-            inputs=(InputSpec("color", _COLOR, default="#ffffff", widget=ColorWidget()),),
-            outputs=(
-                OutputSpec("rgb_int", _INT),
-                OutputSpec("hex", _COLOR),
-                OutputSpec("alpha", _FLOAT),
+            body=(
+                Input("color", _COLOR, default="#ffffff", widget=ColorWidget()),
+                Output("rgb_int", _INT),
+                Output("hex", _COLOR),
+                Output("alpha", _FLOAT),
             ),
         )
         return with_identity_replacement(schema, "ColorToRGBInt")
@@ -86,55 +98,53 @@ class ResolutionSelector(Node):
                 "Calculate width and height from aspect ratio and megapixel target. Useful for "
                 "setting up Empty Latent Image dimensions."
             ),
-            inputs=(
-                InputSpec(
+            tables={"aspect_ratios": {name: list(sides) for name, sides in _ASPECT_RATIOS.items()}},
+            derived={"width": _side_formula(0), "height": _side_formula(1)},
+            body=(
+                Input(
                     "aspect_ratio",
                     TypeExpr.concrete(CORE_COMBO),
                     default="1:1 (Square)",
-                    doc="The aspect ratio for the output dimensions.",
+                    tooltip="The aspect ratio for the output dimensions.",
                     widget=ComboWidget(tuple(ComboOption(value) for value in _ASPECT_RATIOS)),
                 ),
-                InputSpec(
+                Input(
                     "megapixels",
                     _FLOAT,
                     default=1.0,
-                    doc="Target total megapixels. 1.0 MP is approximately 1024x1024 for square.",
+                    tooltip="Target total megapixels. 1.0 MP is approximately 1024x1024 for "
+                    "square.",
                     widget=NumberWidget(min=0.1, max=16.0, step=0.1),
                 ),
-                InputSpec(
+                Note(
                     "preview",
-                    TypeExpr.concrete(RESOLUTION_PREVIEW_TYPE),
-                    required=False,
-                    default=None,
-                    doc="Live preview of the calculated output resolution.",
-                    widget=CustomWidgetDescriptor(
-                        "RESOLUTION_PREVIEW",
-                        {
-                            "ratio_widget": "aspect_ratio",
-                            "megapixels_widget": "megapixels",
-                            "multiple_widget": "multiple",
-                        },
+                    text=Formula('str(width) + " x " + str(height) + " pixels"'),
+                    unknown="Not known until a run",
+                ),
+                Section(
+                    "advanced",
+                    label="Advanced",
+                    collapsed=True,
+                    rows=(
+                        Input(
+                            "multiple",
+                            _INT,
+                            default=8,
+                            tooltip="Nearest multiple of the result to set the selected resolution "
+                            "to.",
+                            widget=NumberWidget(min=8, max=128, step=4),
+                        ),
                     ),
                 ),
-                InputSpec(
-                    "multiple",
-                    _INT,
-                    default=8,
-                    advanced=True,
-                    doc="Nearest multiple of the result to set the selected resolution to.",
-                    widget=NumberWidget(min=8, max=128, step=4),
-                ),
-            ),
-            outputs=(
-                OutputSpec(
+                Output(
                     "width",
                     _INT,
-                    doc="Calculated width in pixels multiplied by the selected multiple.",
+                    tooltip="Calculated width in pixels multiplied by the selected multiple.",
                 ),
-                OutputSpec(
+                Output(
                     "height",
                     _INT,
-                    doc="Calculated height in pixels multiplied by the selected multiple.",
+                    tooltip="Calculated height in pixels multiplied by the selected multiple.",
                 ),
             ),
         )
@@ -142,7 +152,7 @@ class ResolutionSelector(Node):
 
     @classmethod
     def execute(
-        cls, *, aspect_ratio: str, megapixels: float, multiple: int, preview: object = None
+        cls, *, aspect_ratio: str, megapixels: float, multiple: int
     ) -> Mapping[str, object]:
         width_ratio, height_ratio = _ASPECT_RATIOS[aspect_ratio]
         scale = math.sqrt(megapixels * 1024.0 * 1024.0 / (width_ratio * height_ratio))

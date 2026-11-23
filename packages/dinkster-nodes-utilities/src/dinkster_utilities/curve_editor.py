@@ -9,10 +9,10 @@ from dinkster_api.v1 import (
     HISTOGRAM_TYPE,
     Curve,
     CurveWidget,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
-    OutputSpec,
+    Output,
     TypeExpr,
     report_event,
     with_identity_replacement,
@@ -27,8 +27,8 @@ class CurveEditor(Node):
             display_name="Curve Editor",
             category="utilities",
             editor_role="curve",
-            inputs=(
-                InputSpec(
+            body=(
+                Input(
                     "curve",
                     TypeExpr.concrete(CURVE_TYPE),
                     default={
@@ -37,9 +37,9 @@ class CurveEditor(Node):
                     },
                     widget=CurveWidget(),
                 ),
-                InputSpec("histogram", TypeExpr.concrete(HISTOGRAM_TYPE), required=False),
+                Input("histogram", TypeExpr.concrete(HISTOGRAM_TYPE), required=False),
+                Output("curve", TypeExpr.concrete(CURVE_TYPE)),
             ),
-            outputs=(OutputSpec("curve", TypeExpr.concrete(CURVE_TYPE)),),
             emits_previews=True,
         )
         return with_identity_replacement(schema, "CurveEditor")

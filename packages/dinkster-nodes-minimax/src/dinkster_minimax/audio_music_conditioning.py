@@ -11,11 +11,12 @@ from dinkster_api.v1 import (
     CORE_INT,
     CORE_STRING,
     LATENT_TYPE,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
+    Section,
     StringWidget,
     TypeExpr,
     initialize_inference_process,
@@ -36,51 +37,53 @@ class MiniMaxMusic3TextEncode(Node):
             description=(
                 "Uses a MiniMax Music3 CLIP model to generate the acoustic conditioning sequence."
             ),
-            inputs=(
-                InputSpec("clip", TypeExpr.concrete(CLIP_TYPE)),
-                InputSpec(
+            body=(
+                Input("clip", TypeExpr.concrete(CLIP_TYPE)),
+                Input(
                     "caption",
                     TypeExpr.concrete(CORE_STRING),
                     widget=StringWidget(multiline=True, dynamic_prompts=True),
                 ),
-                InputSpec(
+                Input(
                     "lyrics",
                     TypeExpr.concrete(CORE_STRING),
                     widget=StringWidget(multiline=True, dynamic_prompts=True),
                 ),
-                InputSpec(
+                Input(
                     "seed",
                     TypeExpr.concrete(CORE_INT),
                     default=0,
-                    widget=NumberWidget(
-                        min=0, max=0xFFFFFFFFFFFFFFFF, control_after_generate="fixed"
-                    ),
+                    widget=NumberWidget(min=0, max=0xFFFFFFFFFFFFFFFF),
+                    after_run="fixed",
                 ),
-                InputSpec(
+                Input(
                     "max_duration",
                     TypeExpr.concrete(CORE_FLOAT),
                     default=120.0,
                     widget=NumberWidget(min=0.04, max=360.0, step=0.04),
-                    doc="Maximum duration in seconds; the model can end the song earlier.",
+                    tooltip="Maximum duration in seconds; the model can end the song earlier.",
                 ),
-                InputSpec(
-                    "cfg_scale",
-                    TypeExpr.concrete(CORE_FLOAT),
-                    default=1.5,
-                    widget=NumberWidget(min=0.0, max=100.0, step=0.1, round=0.01),
-                    advanced=True,
+                Section(
+                    "advanced",
+                    label="Advanced",
+                    collapsed=True,
+                    rows=(
+                        Input(
+                            "cfg_scale",
+                            TypeExpr.concrete(CORE_FLOAT),
+                            default=1.5,
+                            widget=NumberWidget(min=0.0, max=100.0, step=0.1, round=0.01),
+                        ),
+                        Input(
+                            "top_k",
+                            TypeExpr.concrete(CORE_INT),
+                            default=50,
+                            widget=NumberWidget(min=1, max=16384),
+                        ),
+                    ),
                 ),
-                InputSpec(
-                    "top_k",
-                    TypeExpr.concrete(CORE_INT),
-                    default=50,
-                    widget=NumberWidget(min=1, max=16384),
-                    advanced=True,
-                ),
-            ),
-            outputs=(
-                OutputSpec("CONDITIONING", _CONDITIONING),
-                OutputSpec("seconds", TypeExpr.concrete(CORE_FLOAT), display_name="seconds"),
+                Output("CONDITIONING", _CONDITIONING),
+                Output("seconds", TypeExpr.concrete(CORE_FLOAT), label="seconds"),
             ),
         )
         return with_identity_replacement(schema, "MiniMaxMusic3TextEncode")
@@ -128,11 +131,11 @@ class ReferenceTimbreAudio(Node):
             display_name="Set Reference Audio",
             category="model/conditioning",
             description="This node sets the reference audio for ace step 1.5",
-            inputs=(
-                InputSpec("conditioning", _CONDITIONING),
-                InputSpec("latent", TypeExpr.concrete(LATENT_TYPE), required=False),
+            body=(
+                Input("conditioning", _CONDITIONING),
+                Input("latent", TypeExpr.concrete(LATENT_TYPE), required=False),
+                Output("CONDITIONING", _CONDITIONING),
             ),
-            outputs=(OutputSpec("CONDITIONING", _CONDITIONING),),
         )
         return with_identity_replacement(schema, "ReferenceTimbreAudio")
 

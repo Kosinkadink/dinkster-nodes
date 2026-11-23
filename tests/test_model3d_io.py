@@ -25,10 +25,10 @@ from dinkster_api.v1 import (
     FILE_3D_GLTF_TYPE,
     FILE_3D_TYPE,
     LOAD_3D_TYPE,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
-    OutputSpec,
+    Output,
     TypeExpr,
 )
 from dinkster_assets import (
@@ -352,7 +352,7 @@ def test_file3d_source_preflight_grants_declared_unindexed_resources(
     selection: object = source.to_wire() if bound_identity else "nested/scene.gltf"
     if preview_union:
         schema = NodeSchema(
-            "preview-file", inputs=(InputSpec("model", TypeExpr.union(CORE_STRING, FILE_3D_TYPE)),)
+            "preview-file", body=(Input("model", TypeExpr.union(CORE_STRING, FILE_3D_TYPE)),)
         )
         if bound_identity:
             packet = load_file3d(source)
@@ -417,7 +417,7 @@ def test_file3d_source_preflight_normalizes_empty_before_asset_wrapping(
     input_name = "model" if preview_union else "model_file"
     if preview_union:
         schema = NodeSchema(
-            "preview-file", inputs=(InputSpec("model", TypeExpr.union(CORE_STRING, FILE_3D_TYPE)),)
+            "preview-file", body=(Input("model", TypeExpr.union(CORE_STRING, FILE_3D_TYPE)),)
         )
     graph = Graph({"load": GraphNode(schema.node_type, {input_name: selection})})
     prepared, missing = bind_model_names(graph, {schema.node_type: schema}, None)
@@ -436,8 +436,10 @@ def test_file3d_source_preflight_normalizes_empty_before_asset_wrapping(
         def define_schema(cls) -> NodeSchema:
             return NodeSchema(
                 schema.node_type,
-                inputs=tuple(spec for spec in schema.inputs if spec.id == input_name),
-                outputs=(OutputSpec("file", TypeExpr.concrete(FILE_3D_TYPE)),),
+                body=(
+                    *tuple(spec for spec in schema.inputs if spec.id == input_name),
+                    Output("file", TypeExpr.concrete(FILE_3D_TYPE)),
+                ),
             )
 
         @classmethod
@@ -473,8 +475,8 @@ def test_file3d_source_preflight_distinguishes_empty_default_from_missing_requir
     ):
         schema = NodeSchema(
             "preview-file",
-            inputs=(
-                InputSpec(
+            body=(
+                Input(
                     "model",
                     TypeExpr.union(CORE_STRING, FILE_3D_TYPE),
                     default=default,
@@ -509,7 +511,7 @@ def test_file3d_submission_rejects_missing_companions_as_client_error(
     input_name = "model" if preview_union else "model_file"
     if preview_union:
         schema = NodeSchema(
-            "preview-file", inputs=(InputSpec("model", TypeExpr.union(CORE_STRING, FILE_3D_TYPE)),)
+            "preview-file", body=(Input("model", TypeExpr.union(CORE_STRING, FILE_3D_TYPE)),)
         )
     schemas = {schema.node_type: schema}
     library = ServerLibrary(
@@ -808,11 +810,13 @@ class Preview3DFileSource(Node):
     def define_schema(cls) -> NodeSchema:
         return NodeSchema(
             "preview-3d-source.make",
-            outputs=tuple(
-                OutputSpec(node.__name__, TypeExpr.concrete(node.output_type))
-                for node in (Preview3DAdvanced, PreviewGaussianSplat, PreviewPointCloud)
-            )
-            + (OutputSpec("viewport", TypeExpr.concrete(LOAD_3D_TYPE)),),
+            body=(
+                *tuple(
+                    Output(node.__name__, TypeExpr.concrete(node.output_type))
+                    for node in (Preview3DAdvanced, PreviewGaussianSplat, PreviewPointCloud)
+                )
+                + (Output("viewport", TypeExpr.concrete(LOAD_3D_TYPE)),),
+            ),
         )
 
     @classmethod
@@ -1114,10 +1118,10 @@ class Advanced3DFileSource(Node):
     def define_schema(cls) -> NodeSchema:
         return NodeSchema(
             "advanced-3d-source.make",
-            inputs=(InputSpec("case", TypeExpr.concrete(CORE_STRING), default="viewport"),),
-            outputs=(
-                OutputSpec("file", TypeExpr.concrete(FILE_3D_TYPE)),
-                OutputSpec("viewport", TypeExpr.concrete(LOAD_3D_TYPE)),
+            body=(
+                Input("case", TypeExpr.concrete(CORE_STRING), default="viewport"),
+                Output("file", TypeExpr.concrete(FILE_3D_TYPE)),
+                Output("viewport", TypeExpr.concrete(LOAD_3D_TYPE)),
             ),
         )
 
@@ -1573,8 +1577,10 @@ class File3DProducer(Node):
     def define_schema(cls) -> NodeSchema:
         return NodeSchema(
             node_type="file3d-source.make",
-            inputs=(InputSpec("empty", TypeExpr.concrete("BOOLEAN"), default=False),),
-            outputs=(OutputSpec("file", TypeExpr.concrete(FILE_3D_GLTF_TYPE)),),
+            body=(
+                Input("empty", TypeExpr.concrete("BOOLEAN"), default=False),
+                Output("file", TypeExpr.concrete(FILE_3D_GLTF_TYPE)),
+            ),
         )
 
     @classmethod
@@ -1600,8 +1606,10 @@ class File3DConsumer(Node):
     def define_schema(cls) -> NodeSchema:
         return NodeSchema(
             node_type="file3d-consumer.read",
-            inputs=(InputSpec("file", TypeExpr.concrete(FILE_3D_GLTF_TYPE)),),
-            outputs=(OutputSpec("file", TypeExpr.concrete(FILE_3D_GLTF_TYPE)),),
+            body=(
+                Input("file", TypeExpr.concrete(FILE_3D_GLTF_TYPE)),
+                Output("file", TypeExpr.concrete(FILE_3D_GLTF_TYPE)),
+            ),
         )
 
     @classmethod
@@ -1812,7 +1820,7 @@ class ViewportCaptureProducer(Node):
     def define_schema(cls) -> NodeSchema:
         return NodeSchema(
             node_type="viewport-source.make",
-            outputs=(OutputSpec("viewport", TypeExpr.concrete(LOAD_3D_TYPE)),),
+            body=(Output("viewport", TypeExpr.concrete(LOAD_3D_TYPE)),),
         )
 
     @classmethod
@@ -1837,8 +1845,10 @@ class ViewportCaptureConsumer(Node):
     def define_schema(cls) -> NodeSchema:
         return NodeSchema(
             node_type="viewport-consumer.read",
-            inputs=(InputSpec("viewport", TypeExpr.concrete(LOAD_3D_TYPE)),),
-            outputs=(OutputSpec("viewport", TypeExpr.concrete(LOAD_3D_TYPE)),),
+            body=(
+                Input("viewport", TypeExpr.concrete(LOAD_3D_TYPE)),
+                Output("viewport", TypeExpr.concrete(LOAD_3D_TYPE)),
+            ),
         )
 
     @classmethod

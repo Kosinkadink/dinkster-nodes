@@ -13,11 +13,11 @@ from dinkster_api.v1 import (
     MODEL_TYPE,
     POSE_KEYPOINT_TYPE,
     VAE_TYPE,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
     TypeExpr,
     initialize_inference_process,
     materialize_image,
@@ -73,31 +73,30 @@ class SDPoseKeypointExtractor(Node):
                 "Extract pose keypoints from images using the SDPose model: "
                 "https://huggingface.co/Comfy-Org/SDPose/tree/main/checkpoints"
             ),
-            inputs=(
-                InputSpec("model", TypeExpr.concrete(MODEL_TYPE)),
-                InputSpec("vae", TypeExpr.concrete(VAE_TYPE)),
-                InputSpec("image", TypeExpr.concrete(IMAGE_TYPE)),
-                InputSpec(
+            body=(
+                Input("model", TypeExpr.concrete(MODEL_TYPE)),
+                Input("vae", TypeExpr.concrete(VAE_TYPE)),
+                Input("image", TypeExpr.concrete(IMAGE_TYPE)),
+                Input(
                     "batch_size",
                     TypeExpr.concrete(CORE_INT),
                     default=16,
                     widget=NumberWidget(min=1, max=10000, step=1),
                 ),
-                InputSpec(
+                Input(
                     "bboxes",
                     TypeExpr.concrete(BOUNDING_BOX_TYPE),
                     required=False,
                     default={"x": 0, "y": 0, "width": 512, "height": 512},
-                    force_input=True,
-                    doc="Optional bounding boxes for more accurate detections. "
+                    pin_first=True,
+                    tooltip="Optional bounding boxes for more accurate detections. "
                     "Required for multi-person detection.",
                 ),
-            ),
-            outputs=(
-                OutputSpec(
+                Output(
                     "keypoints",
                     TypeExpr.concrete(POSE_KEYPOINT_TYPE),
-                    doc="Keypoints in OpenPose frame format (canvas_width, canvas_height, people)",
+                    tooltip="Keypoints in OpenPose frame format (canvas_width, canvas_height, "
+                    "people)",
                 ),
             ),
         )

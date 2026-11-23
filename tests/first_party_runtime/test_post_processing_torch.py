@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
@@ -19,10 +20,13 @@ from dinkster_api.v1 import (  # noqa: E402
     IMAGE_TYPE,
     LATENT_TYPE,
     MASK_TYPE,
-    InputSpec,
+    Input,
+    Item,
+    Members,
     Node,
     NodeSchema,
-    OutputSpec,
+    Output,
+    Record,
     TypeExpr,
     materialize_image,
     materialize_latent,
@@ -44,6 +48,10 @@ _LATENT = TypeExpr.concrete(LATENT_TYPE)
 _MASK = TypeExpr.concrete(MASK_TYPE)
 
 
+def _members(values: Mapping[str, object]) -> Members[Item]:
+    return Members(Item(key, value) for key, value in values.items())
+
+
 def test_post_processing_uses_real_cpu_inference_utilities_at_asymmetric_boundaries() -> None:
     image = torch.arange(45, dtype=torch.float32).reshape(1, 3, 5, 3) / 45
     mask = torch.arange(15, dtype=torch.float32).reshape(1, 3, 5) / 15
@@ -52,12 +60,12 @@ def test_post_processing_uses_real_cpu_inference_utilities_at_asymmetric_boundar
     resized_image = ResizeImageMaskNode.execute(
         input=image,
         scale_method="nearest-exact",
-        resize_type={"resize_type": "scale width", "width": 4},
+        resize_type=Record("scale width", {"width": 4}),
     )["resized"]
     resized_mask = ResizeImageMaskNode.execute(
         input=mask,
         scale_method="nearest-exact",
-        resize_type={"resize_type": "scale shorter dimension", "shorter_size": 4},
+        resize_type=Record("scale shorter dimension", {"shorter_size": 4}),
     )["resized"]
     assert resized_image.shape == (1, 2, 4, 3)
     assert resized_mask.shape == (1, 4, 7)
@@ -66,21 +74,23 @@ def test_post_processing_uses_real_cpu_inference_utilities_at_asymmetric_boundar
     total_pixels = ResizeImageMaskNode.execute(
         input=torch.zeros((1, 7, 11, 3)),
         scale_method="nearest-exact",
-        resize_type={"resize_type": "scale total pixels", "megapixels": 0.013746166229248047},
+        resize_type=Record("scale total pixels", {"megapixels": 0.013746166229248047}),
     )["resized"]
     assert total_pixels.shape == (1, 96, 150, 3)
 
     images = BatchImagesNode.execute(
-        images={"image0": torch.zeros((1, 2, 3, 3)), "image1": torch.ones((2, 4, 5, 4))}
+        images=_members({"image0": torch.zeros((1, 2, 3, 3)), "image1": torch.ones((2, 4, 5, 4))})
     )["IMAGE"]
     masks = BatchMasksNode.execute(
-        masks={"mask0": torch.zeros((1, 2, 3)), "mask1": torch.ones((2, 4, 5))}
+        masks=_members({"mask0": torch.zeros((1, 2, 3)), "mask1": torch.ones((2, 4, 5))})
     )["MASK"]
     latents = BatchLatentsNode.execute(
-        latents={
-            "latent0": {"samples": torch.ones((1, 4, 2, 3)), "batch_index": [7]},
-            "latent1": {"samples": torch.zeros((2, 4, 4, 5))},
-        }
+        latents=_members(
+            {
+                "latent0": {"samples": torch.ones((1, 4, 2, 3)), "batch_index": [7]},
+                "latent1": {"samples": torch.zeros((2, 4, 4, 5))},
+            }
+        )
     )["LATENT"]
     assert images.shape == (3, 2, 3, 4)
     assert torch.equal(images[0, ..., 3], torch.ones((2, 3)))
@@ -97,7 +107,7 @@ def test_post_processing_uses_real_cpu_inference_utilities_at_asymmetric_boundar
         image_target=target,
         image_ref=reference,
         method="histogram",
-        source_stats={"source_stats": "per_frame"},
+        source_stats=Record("per_frame", {}),
         strength=1.0,
     )["image"]
     assert torch.count_nonzero(transfer - target) > 0
@@ -184,7 +194,7 @@ def test_mkl_lab_shared_statistics_preserve_reference_operation_order(
         image_target=target,
         image_ref=reference,
         method="mkl_lab",
-        source_stats={"source_stats": stats, "target_index": target_index},
+        source_stats=Record(stats, {"target_index": target_index}),
         strength=1.0,
     )["image"]
 
@@ -198,12 +208,12 @@ class PostProcessingSource(Node):
     def define_schema(cls) -> NodeSchema:
         return NodeSchema(
             node_type="post-processing-fixture.source",
-            outputs=(
-                OutputSpec("target", _IMAGE),
-                OutputSpec("reference", _IMAGE),
-                OutputSpec("image", _IMAGE),
-                OutputSpec("mask", _MASK),
-                OutputSpec("latent", _LATENT),
+            body=(
+                Output("target", _IMAGE),
+                Output("reference", _IMAGE),
+                Output("image", _IMAGE),
+                Output("mask", _MASK),
+                Output("latent", _LATENT),
             ),
         )
 
@@ -224,21 +234,19 @@ class PostProcessingInspect(Node):
     def define_schema(cls) -> NodeSchema:
         return NodeSchema(
             node_type="post-processing-fixture.inspect",
-            inputs=(
-                InputSpec("source", _IMAGE),
-                InputSpec("resized", _IMAGE),
-                InputSpec("images", _IMAGE),
-                InputSpec("masks", _MASK),
-                InputSpec("latents", _LATENT),
-                InputSpec("transfer", _IMAGE),
-            ),
-            outputs=(
-                OutputSpec("source_pixel", _FLOAT),
-                OutputSpec("resized_width", _FLOAT),
-                OutputSpec("image_batch", _FLOAT),
-                OutputSpec("mask_batch", _FLOAT),
-                OutputSpec("latent_batch", _FLOAT),
-                OutputSpec("transfer_delta", _FLOAT),
+            body=(
+                Input("source", _IMAGE),
+                Input("resized", _IMAGE),
+                Input("images", _IMAGE),
+                Input("masks", _MASK),
+                Input("latents", _LATENT),
+                Input("transfer", _IMAGE),
+                Output("source_pixel", _FLOAT),
+                Output("resized_width", _FLOAT),
+                Output("image_batch", _FLOAT),
+                Output("mask_batch", _FLOAT),
+                Output("latent_batch", _FLOAT),
+                Output("transfer_delta", _FLOAT),
             ),
         )
 

@@ -9,7 +9,7 @@ from typing import Any, cast
 
 import numpy as np
 import pytest
-from dinkster_api.v1 import Node, NodeSchema, OutputSpec, TypeExpr, register_media_types
+from dinkster_api.v1 import Node, NodeSchema, Output, TypeExpr, register_media_types
 from dinkster_caches import MemoryLRUCache
 from dinkster_engine import Engine, ExecutionRuntime
 from dinkster_graph import Graph, GraphNode, Link, TypedLiteral
@@ -272,9 +272,9 @@ class LayerNodeSource(Node):
     def define_schema(cls) -> NodeSchema:
         return NodeSchema(
             node_type="test.layer-node-source",
-            outputs=(
-                OutputSpec("image", TypeExpr.concrete("IMAGE")),
-                OutputSpec(
+            body=(
+                Output("image", TypeExpr.concrete("IMAGE")),
+                Output(
                     "mask",
                     TypeExpr.concrete("MASK"),
                     mask_polarity="transparency",

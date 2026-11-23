@@ -13,10 +13,10 @@ import torch
 from dinkster_api.v1 import (
     CORE_STRING,
     MODEL_TYPE,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
-    OutputSpec,
+    Output,
     TypeExpr,
     initialize_inference_process,
 )
@@ -113,7 +113,7 @@ class ContextWindowSource(Node):
     def define_schema(cls) -> NodeSchema:
         return NodeSchema(
             node_type="context-window-fixture.source",
-            outputs=(OutputSpec("model", TypeExpr.concrete(MODEL_TYPE)),),
+            body=(Output("model", TypeExpr.concrete(MODEL_TYPE)),),
         )
 
     @classmethod
@@ -126,12 +126,12 @@ class ContextWindowConsumer(Node):
     def define_schema(cls) -> NodeSchema:
         return NodeSchema(
             node_type="context-window-fixture.consumer",
-            inputs=(
-                InputSpec("manual", TypeExpr.concrete(MODEL_TYPE)),
-                InputSpec("wan", TypeExpr.concrete(MODEL_TYPE)),
-                InputSpec("ltxv", TypeExpr.concrete(MODEL_TYPE)),
+            body=(
+                Input("manual", TypeExpr.concrete(MODEL_TYPE)),
+                Input("wan", TypeExpr.concrete(MODEL_TYPE)),
+                Input("ltxv", TypeExpr.concrete(MODEL_TYPE)),
+                Output("summary", TypeExpr.concrete(CORE_STRING)),
             ),
-            outputs=(OutputSpec("summary", TypeExpr.concrete(CORE_STRING)),),
         )
 
     @classmethod

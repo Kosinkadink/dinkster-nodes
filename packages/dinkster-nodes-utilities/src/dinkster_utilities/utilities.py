@@ -13,11 +13,11 @@ from dinkster_api.v1 import (
     CORE_FLOAT,
     CORE_INT,
     CORE_STRING,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
     TypeExpr,
     report_progress,
     with_identity_replacement,
@@ -31,17 +31,15 @@ class ComfyNumberConvert(Node):
             node_type="dinkster.utilities.comfy_number_convert",
             display_name="Convert Number",
             category="utilities",
-            inputs=(
-                InputSpec(
+            body=(
+                Input(
                     "value",
                     TypeExpr.union(CORE_INT, CORE_FLOAT, CORE_STRING, CORE_BOOLEAN),
-                    display_name="value",
-                    force_input=True,
+                    label="value",
+                    pin_first=True,
                 ),
-            ),
-            outputs=(
-                OutputSpec("FLOAT", TypeExpr.concrete(CORE_FLOAT)),
-                OutputSpec("INT", TypeExpr.concrete(CORE_INT)),
+                Output("FLOAT", TypeExpr.concrete(CORE_FLOAT)),
+                Output("INT", TypeExpr.concrete(CORE_INT)),
             ),
         )
         return with_identity_replacement(schema, "ComfyNumberConvert")
@@ -86,14 +84,15 @@ class SeedNode(Node):
             node_type="dinkster.utilities.seed_node",
             display_name="Seed",
             category="utilities",
-            inputs=(
-                InputSpec(
+            body=(
+                Input(
                     "seed",
                     TypeExpr.concrete(CORE_INT),
-                    widget=NumberWidget(min=0, max=sys.maxsize, control_after_generate="fixed"),
+                    widget=NumberWidget(min=0, max=sys.maxsize),
+                    after_run="fixed",
                 ),
+                Output("seed", TypeExpr.concrete(CORE_INT)),
             ),
-            outputs=(OutputSpec("seed", TypeExpr.concrete(CORE_INT)),),
         )
         return with_identity_replacement(schema, "SeedNode")
 
@@ -110,8 +109,10 @@ class PreviewAny(Node):
             display_name="Preview as Text",
             category="utilities",
             description="Preview any input value as text.",
-            inputs=(InputSpec("source", TypeExpr.wildcard()),),
-            outputs=(OutputSpec("STRING", TypeExpr.concrete(CORE_STRING), preview=True),),
+            body=(
+                Input("source", TypeExpr.wildcard()),
+                Output("STRING", TypeExpr.concrete(CORE_STRING), preview=True),
+            ),
             output_node=True,
             search_terms=(
                 "preview",

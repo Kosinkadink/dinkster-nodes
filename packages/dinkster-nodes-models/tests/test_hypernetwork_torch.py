@@ -11,11 +11,11 @@ from dinkster_api.v1 import (
     CORE_STRING,
     MODEL_TYPE,
     AssetRef,
-    InputSpec,
+    Input,
     LocalAssetRef,
     Node,
     NodeSchema,
-    OutputSpec,
+    Output,
     TypeExpr,
     initialize_inference_process,
 )
@@ -119,7 +119,7 @@ class HypernetworkSource(Node):
     def define_schema(cls) -> NodeSchema:
         return NodeSchema(
             node_type="hypernetwork-fixture.source",
-            outputs=(OutputSpec("model", TypeExpr.concrete(MODEL_TYPE)),),
+            body=(Output("model", TypeExpr.concrete(MODEL_TYPE)),),
         )
 
     @classmethod
@@ -132,11 +132,11 @@ class HypernetworkInspect(Node):
     def define_schema(cls) -> NodeSchema:
         return NodeSchema(
             node_type="hypernetwork-fixture.inspect",
-            inputs=(
-                InputSpec("source", TypeExpr.concrete(MODEL_TYPE)),
-                InputSpec("patched", TypeExpr.concrete(MODEL_TYPE)),
+            body=(
+                Input("source", TypeExpr.concrete(MODEL_TYPE)),
+                Input("patched", TypeExpr.concrete(MODEL_TYPE)),
+                Output("summary", TypeExpr.concrete(CORE_STRING)),
             ),
-            outputs=(OutputSpec("summary", TypeExpr.concrete(CORE_STRING)),),
         )
 
     @classmethod

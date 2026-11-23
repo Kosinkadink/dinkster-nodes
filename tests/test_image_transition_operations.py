@@ -4,7 +4,10 @@ from typing import Any, cast
 
 import numpy as np
 import pytest
+from dinkster_api.v1 import Record
 from dinkster_image.transition import ImageTransition, _ease, _transition_mask
+
+from tests.body_rows import choices
 
 
 def _image(values: list[float], *, height: int = 1, width: int = 1) -> np.ndarray:
@@ -174,10 +177,10 @@ def test_transition_modes_validate_dynamic_family_counts() -> None:
 def test_transition_dynamic_constructs_and_materialized_execution() -> None:
     schema = ImageTransition.define_schema()
     assert schema.version == 2
-    assert tuple(combo.id for combo in schema.combos) == ("mode", "shape_policy")
+    assert tuple(choice.id for choice in choices(schema)) == ("mode", "shape_policy")
     images = {"a": _image([0]), "b": _image([1])}
     actual = cast("Any", ImageTransition.execute)(
-        images=images, mode="join_batches", **{"mode.start_index": 0}
+        images=images, mode=Record("join_batches", {"start_index": 0})
     )
     expected = ImageTransition.execute(images=images, mode="join_batches", start_index=0)
     np.testing.assert_array_equal(actual["image"], expected["image"])

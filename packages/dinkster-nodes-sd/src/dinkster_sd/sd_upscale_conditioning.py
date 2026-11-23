@@ -11,11 +11,12 @@ from dinkster_api.v1 import (
     CORE_FLOAT,
     IMAGE_TYPE,
     LATENT_TYPE,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
+    Section,
     TypeExpr,
     initialize_inference_process,
     materialize_image,
@@ -38,14 +39,11 @@ def _float(
     minimum: float,
     maximum: float,
     step: float,
-    *,
-    advanced: bool = False,
-) -> InputSpec:
-    return InputSpec(
+) -> Input:
+    return Input(
         name,
         _FLOAT,
         default=default,
-        advanced=advanced,
         widget=NumberWidget(min=minimum, max=maximum, step=step),
     )
 
@@ -57,17 +55,28 @@ class SD_4XUpscale_Conditioning(Node):
             node_type="dinkster.sd.sd_4_x_upscale_conditioning",
             display_name="SD_4XUpscale_Conditioning",
             category="model/conditioning/stable diffusion upscaler",
-            inputs=(
-                InputSpec("images", _IMAGE),
-                InputSpec("positive", _CONDITIONING),
-                InputSpec("negative", _CONDITIONING),
+            body=(
+                Input("images", _IMAGE),
+                Input("positive", _CONDITIONING),
+                Input("negative", _CONDITIONING),
                 _float("scale_ratio", 4.0, 0.0, 10.0, 0.01),
-                _float("noise_augmentation", 0.0, 0.0, 1.0, 0.001, advanced=True),
-            ),
-            outputs=(
-                OutputSpec("positive", _CONDITIONING, display_name="positive"),
-                OutputSpec("negative", _CONDITIONING, display_name="negative"),
-                OutputSpec("latent", _LATENT, display_name="latent"),
+                Section(
+                    "advanced",
+                    label="Advanced",
+                    collapsed=True,
+                    rows=(
+                        _float(
+                            "noise_augmentation",
+                            0.0,
+                            0.0,
+                            1.0,
+                            0.001,
+                        ),
+                    ),
+                ),
+                Output("positive", _CONDITIONING, label="positive"),
+                Output("negative", _CONDITIONING, label="negative"),
+                Output("latent", _LATENT, label="latent"),
             ),
         )
         return with_identity_replacement(schema, "SD_4XUpscale_Conditioning")

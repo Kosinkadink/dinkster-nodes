@@ -11,10 +11,10 @@ from dinkster_api.v1 import (
     IMAGE_TYPE,
     MOGE_GEOMETRY_TYPE,
     ComboWidget,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
-    OutputSpec,
+    Output,
     TypeExpr,
     initialize_inference_process,
     materialize_latent,
@@ -60,9 +60,9 @@ class MoGeRender(Node):
             description="Render a depth map or normal map from geometry data",
             category="image/geometry estimation",
             search_terms=("moge", "render", "geometry", "depth", "normal"),
-            inputs=(
-                InputSpec("moge_geometry", TypeExpr.concrete(MOGE_GEOMETRY_TYPE)),
-                InputSpec(
+            body=(
+                Input("moge_geometry", TypeExpr.concrete(MOGE_GEOMETRY_TYPE)),
+                Input(
                     "output",
                     TypeExpr.concrete(CORE_COMBO),
                     default="depth",
@@ -75,14 +75,14 @@ class MoGeRender(Node):
                             "mask",
                         )
                     ),
-                    doc=(
+                    tooltip=(
                         "DirectX vs OpenGL controls the normal-map green-channel convention. "
                         "DirectX: green = -Y down (Unreal). OpenGL: green = +Y up "
                         "(Blender, Substance, Unity, glTF)."
                     ),
                 ),
+                Output("IMAGE", TypeExpr.concrete(IMAGE_TYPE)),
             ),
-            outputs=(OutputSpec("IMAGE", TypeExpr.concrete(IMAGE_TYPE)),),
         )
         return with_identity_replacement(schema, "MoGeRender")
 

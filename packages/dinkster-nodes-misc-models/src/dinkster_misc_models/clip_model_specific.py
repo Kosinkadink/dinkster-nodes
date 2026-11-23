@@ -13,11 +13,11 @@ from dinkster_api.v1 import (
     CORE_STRING,
     ComboOption,
     ComboWidget,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
     StringWidget,
     TypeExpr,
     with_identity_replacement,
@@ -36,27 +36,27 @@ class CLIPTextEncodePixArtAlpha(Node):
                 "Encodes text and sets the resolution conditioning for PixArt Alpha. "
                 "Does not apply to PixArt Sigma."
             ),
-            inputs=(
-                InputSpec(
+            body=(
+                Input(
                     "width",
                     TypeExpr.concrete(CORE_INT),
                     default=1024,
                     widget=NumberWidget(min=0, max=16384),
                 ),
-                InputSpec(
+                Input(
                     "height",
                     TypeExpr.concrete(CORE_INT),
                     default=1024,
                     widget=NumberWidget(min=0, max=16384),
                 ),
-                InputSpec(
+                Input(
                     "text",
                     TypeExpr.concrete(CORE_STRING),
                     widget=StringWidget(multiline=True, dynamic_prompts=True),
                 ),
-                InputSpec("clip", TypeExpr.concrete(CLIP_TYPE)),
+                Input("clip", TypeExpr.concrete(CLIP_TYPE)),
+                Output("CONDITIONING", TypeExpr.concrete(CONDITIONING_TYPE)),
             ),
-            outputs=(OutputSpec("CONDITIONING", TypeExpr.concrete(CONDITIONING_TYPE)),),
         )
         return with_identity_replacement(schema, "CLIPTextEncodePixArtAlpha")
 
@@ -89,20 +89,20 @@ class CLIPTextEncodeLumina2(Node):
                 "Encodes a system prompt and a user prompt using a CLIP model into an embedding "
                 "that can be used to guide the diffusion model towards generating specific images."
             ),
-            inputs=(
-                InputSpec(
+            body=(
+                Input(
                     "system_prompt",
                     TypeExpr.concrete(CORE_COMBO),
                     widget=ComboWidget(tuple(ComboOption(key) for key in cls.SYSTEM_PROMPT)),
                 ),
-                InputSpec(
+                Input(
                     "user_prompt",
                     TypeExpr.concrete(CORE_STRING),
                     widget=StringWidget(multiline=True, dynamic_prompts=True),
                 ),
-                InputSpec("clip", TypeExpr.concrete(CLIP_TYPE)),
+                Input("clip", TypeExpr.concrete(CLIP_TYPE)),
+                Output("CONDITIONING", TypeExpr.concrete(CONDITIONING_TYPE)),
             ),
-            outputs=(OutputSpec("CONDITIONING", TypeExpr.concrete(CONDITIONING_TYPE)),),
         )
         return with_identity_replacement(schema, "CLIPTextEncodeLumina2")
 
@@ -126,18 +126,18 @@ class CLIPTextEncodeKandinsky5(Node):
             display_name="CLIP Text Encode (Kandinsky 5)",
             category="model/conditioning/kandinsky",
             search_terms=("kandinsky prompt",),
-            inputs=(
-                InputSpec("clip", TypeExpr.concrete(CLIP_TYPE)),
+            body=(
+                Input("clip", TypeExpr.concrete(CLIP_TYPE)),
                 *(
-                    InputSpec(
+                    Input(
                         name,
                         TypeExpr.concrete(CORE_STRING),
                         widget=StringWidget(multiline=True, dynamic_prompts=True),
                     )
                     for name in ("clip_l", "qwen25_7b")
                 ),
+                Output("CONDITIONING", TypeExpr.concrete(CONDITIONING_TYPE)),
             ),
-            outputs=(OutputSpec("CONDITIONING", TypeExpr.concrete(CONDITIONING_TYPE)),),
         )
         return with_identity_replacement(schema, "CLIPTextEncodeKandinsky5")
 

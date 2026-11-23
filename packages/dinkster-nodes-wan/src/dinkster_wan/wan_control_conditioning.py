@@ -13,11 +13,11 @@ from dinkster_api.v1 import (
     LATENT_TYPE,
     MASK_TYPE,
     VAE_TYPE,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
     TypeExpr,
     initialize_inference_process,
     materialize_clip_vision_output,
@@ -43,10 +43,8 @@ _MASK = TypeExpr.concrete(MASK_TYPE)
 _VAE = TypeExpr.concrete(VAE_TYPE)
 
 
-def _integer(
-    name: str, default: int, minimum: int, maximum: int, step: int | None = None
-) -> InputSpec:
-    return InputSpec(
+def _integer(name: str, default: int, minimum: int, maximum: int, step: int | None = None) -> Input:
+    return Input(
         name,
         _INT,
         default=default,
@@ -77,22 +75,20 @@ class WanFunControlToVideo(Node):
         schema = NodeSchema(
             node_type="dinkster.wan.wan_fun_control_to_video",
             category="model/conditioning/wan/fun control",
-            inputs=(
-                InputSpec("positive", _CONDITIONING),
-                InputSpec("negative", _CONDITIONING),
-                InputSpec("vae", _VAE),
+            body=(
+                Input("positive", _CONDITIONING),
+                Input("negative", _CONDITIONING),
+                Input("vae", _VAE),
                 _integer("width", 832, 16, 16384, 16),
                 _integer("height", 480, 16, 16384, 16),
                 _integer("length", 81, 1, 16384, 4),
                 _integer("batch_size", 1, 1, 4096),
-                InputSpec("clip_vision_output", _CLIP_VISION_OUTPUT, required=False),
-                InputSpec("start_image", _IMAGE, required=False),
-                InputSpec("control_video", _IMAGE, required=False),
-            ),
-            outputs=(
-                OutputSpec("positive", _CONDITIONING, display_name="positive"),
-                OutputSpec("negative", _CONDITIONING, display_name="negative"),
-                OutputSpec("latent", _LATENT, display_name="latent"),
+                Input("clip_vision_output", _CLIP_VISION_OUTPUT, required=False),
+                Input("start_image", _IMAGE, required=False),
+                Input("control_video", _IMAGE, required=False),
+                Output("positive", _CONDITIONING, label="positive"),
+                Output("negative", _CONDITIONING, label="negative"),
+                Output("latent", _LATENT, label="latent"),
             ),
         )
         return with_identity_replacement(schema, "WanFunControlToVideo")
@@ -147,21 +143,19 @@ class Wan22FunControlToVideo(Node):
         schema = NodeSchema(
             node_type="dinkster.wan.wan22_fun_control_to_video",
             category="model/conditioning/wan/fun control",
-            inputs=(
-                InputSpec("positive", _CONDITIONING),
-                InputSpec("negative", _CONDITIONING),
-                InputSpec("vae", _VAE),
+            body=(
+                Input("positive", _CONDITIONING),
+                Input("negative", _CONDITIONING),
+                Input("vae", _VAE),
                 _integer("width", 832, 16, 16384, 16),
                 _integer("height", 480, 16, 16384, 16),
                 _integer("length", 81, 1, 16384, 4),
                 _integer("batch_size", 1, 1, 4096),
-                InputSpec("ref_image", _IMAGE, required=False),
-                InputSpec("control_video", _IMAGE, required=False),
-            ),
-            outputs=(
-                OutputSpec("positive", _CONDITIONING, display_name="positive"),
-                OutputSpec("negative", _CONDITIONING, display_name="negative"),
-                OutputSpec("latent", _LATENT, display_name="latent"),
+                Input("ref_image", _IMAGE, required=False),
+                Input("control_video", _IMAGE, required=False),
+                Output("positive", _CONDITIONING, label="positive"),
+                Output("negative", _CONDITIONING, label="negative"),
+                Output("latent", _LATENT, label="latent"),
             ),
         )
         return with_identity_replacement(schema, "Wan22FunControlToVideo")
@@ -238,29 +232,27 @@ class WanVaceToVideo(Node):
             node_type="dinkster.wan.wan_vace_to_video",
             search_terms=("video conditioning", "video control"),
             category="model/conditioning/wan/vace",
-            inputs=(
-                InputSpec("positive", _CONDITIONING),
-                InputSpec("negative", _CONDITIONING),
-                InputSpec("vae", _VAE),
+            body=(
+                Input("positive", _CONDITIONING),
+                Input("negative", _CONDITIONING),
+                Input("vae", _VAE),
                 _integer("width", 832, 16, 16384, 16),
                 _integer("height", 480, 16, 16384, 16),
                 _integer("length", 81, 1, 16384, 4),
                 _integer("batch_size", 1, 1, 4096),
-                InputSpec(
+                Input(
                     "strength",
                     _FLOAT,
                     default=1.0,
                     widget=NumberWidget(min=0.0, max=1000.0, step=0.01),
                 ),
-                InputSpec("control_video", _IMAGE, required=False),
-                InputSpec("control_masks", _MASK, required=False),
-                InputSpec("reference_image", _IMAGE, required=False),
-            ),
-            outputs=(
-                OutputSpec("positive", _CONDITIONING, display_name="positive"),
-                OutputSpec("negative", _CONDITIONING, display_name="negative"),
-                OutputSpec("latent", _LATENT, display_name="latent"),
-                OutputSpec("trim_latent", _INT, display_name="trim_latent"),
+                Input("control_video", _IMAGE, required=False),
+                Input("control_masks", _MASK, required=False),
+                Input("reference_image", _IMAGE, required=False),
+                Output("positive", _CONDITIONING, label="positive"),
+                Output("negative", _CONDITIONING, label="negative"),
+                Output("latent", _LATENT, label="latent"),
+                Output("trim_latent", _INT, label="trim_latent"),
             ),
         )
         return with_identity_replacement(schema, "WanVaceToVideo")
@@ -359,21 +351,19 @@ class WanPhantomSubjectToVideo(Node):
         schema = NodeSchema(
             node_type="dinkster.wan.wan_phantom_subject_to_video",
             category="model/conditioning/wan/phantom subject",
-            inputs=(
-                InputSpec("positive", _CONDITIONING),
-                InputSpec("negative", _CONDITIONING),
-                InputSpec("vae", _VAE),
+            body=(
+                Input("positive", _CONDITIONING),
+                Input("negative", _CONDITIONING),
+                Input("vae", _VAE),
                 _integer("width", 832, 16, 16384, 16),
                 _integer("height", 480, 16, 16384, 16),
                 _integer("length", 81, 1, 16384, 4),
                 _integer("batch_size", 1, 1, 4096),
-                InputSpec("images", _IMAGE, required=False),
-            ),
-            outputs=(
-                OutputSpec("positive", _CONDITIONING, display_name="positive"),
-                OutputSpec("negative_text", _CONDITIONING, display_name="negative_text"),
-                OutputSpec("negative_img_text", _CONDITIONING, display_name="negative_img_text"),
-                OutputSpec("latent", _LATENT, display_name="latent"),
+                Input("images", _IMAGE, required=False),
+                Output("positive", _CONDITIONING, label="positive"),
+                Output("negative_text", _CONDITIONING, label="negative_text"),
+                Output("negative_img_text", _CONDITIONING, label="negative_img_text"),
+                Output("latent", _LATENT, label="latent"),
             ),
         )
         return with_identity_replacement(schema, "WanPhantomSubjectToVideo")

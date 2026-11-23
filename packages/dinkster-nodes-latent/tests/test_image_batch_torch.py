@@ -10,10 +10,10 @@ from dinkster_api.v1 import (
     CORE_INT,
     IMAGE_TYPE,
     LATENT_TYPE,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
-    OutputSpec,
+    Output,
     TypeExpr,
 )
 from dinkster_latent.rebatch import RebatchImages, RebatchLatents
@@ -49,10 +49,10 @@ class DimensionSource(Node):
     def define_schema(cls) -> NodeSchema:
         return NodeSchema(
             "image-dimension-fixture.source",
-            inputs=(InputSpec("video", TypeExpr.concrete(CORE_BOOLEAN)),),
-            outputs=(
-                OutputSpec("image", TypeExpr.concrete(IMAGE_TYPE)),
-                OutputSpec("latent", TypeExpr.concrete(LATENT_TYPE)),
+            body=(
+                Input("video", TypeExpr.concrete(CORE_BOOLEAN)),
+                Output("image", TypeExpr.concrete(IMAGE_TYPE)),
+                Output("latent", TypeExpr.concrete(LATENT_TYPE)),
             ),
         )
 
@@ -69,10 +69,10 @@ class RebatchSource(Node):
     def define_schema(cls) -> NodeSchema:
         return NodeSchema(
             "rebatch-fixture.source",
-            outputs=(
-                OutputSpec("images", TypeExpr.list_of(TypeExpr.concrete(IMAGE_TYPE))),
-                OutputSpec("latents", TypeExpr.list_of(TypeExpr.concrete(LATENT_TYPE))),
-                OutputSpec("sizes", TypeExpr.list_of(TypeExpr.concrete(CORE_INT))),
+            body=(
+                Output("images", TypeExpr.list_of(TypeExpr.concrete(IMAGE_TYPE))),
+                Output("latents", TypeExpr.list_of(TypeExpr.concrete(LATENT_TYPE))),
+                Output("sizes", TypeExpr.list_of(TypeExpr.concrete(CORE_INT))),
             ),
         )
 

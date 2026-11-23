@@ -9,7 +9,7 @@ from typing import Any, cast
 
 import numpy as np
 import pytest
-from dinkster_api.v1 import InputSpec, Node, NodeSchema, OutputSpec, TypeExpr, schema_to_wire
+from dinkster_api.v1 import Input, Node, NodeSchema, Output, TypeExpr, schema_to_wire
 from dinkster_audio_models import NODES as AUDIO_MODEL_NODES
 from dinkster_audio_models.conditioning import ConditioningStableAudio
 from dinkster_conditioning import NODES
@@ -35,6 +35,7 @@ from dinkster_server import PackInfo
 
 from dinkster.compose import PackSpec, ServingComposer
 from tests.async_scenarios import run_scenario
+from tests.body_rows import wire_entry
 
 
 def test_conditioning_metadata_append_preserves_sources_and_default_overwrite() -> None:
@@ -344,8 +345,7 @@ def test_registered_classes_have_exact_ids_atoms_and_ordered_interfaces() -> Non
             ("positive", "negative") if node is ConditioningStableAudio else ("CONDITIONING",)
         )
     mask_wire = schema_to_wire(ConditioningSetMask.schema())
-    interface = cast(list[dict[str, object]], mask_wire["interface"])
-    mask_input = next(item for item in interface if item["id"] == "set_cond_area")
+    mask_input = wire_entry(mask_wire, "set_cond_area")
     assert mask_input["widget"] == {"type": "COMBO", "options": ["default", "mask bounds"]}
 
 
@@ -517,7 +517,7 @@ class ConditioningScalarSource(Node):
     def define_schema(cls) -> NodeSchema:
         return NodeSchema(
             node_type="conditioning-fixture.source",
-            outputs=(OutputSpec("conditioning", TypeExpr.concrete("CONDITIONING")),),
+            body=(Output("conditioning", TypeExpr.concrete("CONDITIONING")),),
         )
 
     @classmethod
@@ -537,10 +537,10 @@ class ConditioningScalarInspector(Node):
     def define_schema(cls) -> NodeSchema:
         return NodeSchema(
             node_type="conditioning-fixture.inspect",
-            inputs=(InputSpec("conditioning", TypeExpr.concrete("CONDITIONING")),),
-            outputs=(
-                OutputSpec("payload", TypeExpr.concrete("FLOAT")),
-                OutputSpec("strength", TypeExpr.concrete("FLOAT")),
+            body=(
+                Input("conditioning", TypeExpr.concrete("CONDITIONING")),
+                Output("payload", TypeExpr.concrete("FLOAT")),
+                Output("strength", TypeExpr.concrete("FLOAT")),
             ),
         )
 

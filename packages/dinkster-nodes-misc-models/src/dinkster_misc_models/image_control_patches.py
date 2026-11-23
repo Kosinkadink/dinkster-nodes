@@ -9,10 +9,11 @@ from dinkster_api.v1 import (
     MODEL_PATCH_TYPE,
     MODEL_TYPE,
     VAE_TYPE,
-    InputSpec,
+    Input,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
+    Section,
     TypeExpr,
     with_identity_replacement,
 )
@@ -31,22 +32,20 @@ _MASK = TypeExpr.concrete(MASK_TYPE)
 _FLOAT = TypeExpr.concrete(CORE_FLOAT)
 
 
-def _range() -> tuple[InputSpec, InputSpec]:
+def _range() -> tuple[Input, Input]:
     return (
-        InputSpec(
+        Input(
             "start_percent",
             _FLOAT,
             default=0.0,
             required=False,
-            advanced=True,
             widget=NumberWidget(min=0.0, max=1.0, step=0.001),
         ),
-        InputSpec(
+        Input(
             "end_percent",
             _FLOAT,
             default=1.0,
             required=False,
-            advanced=True,
             widget=NumberWidget(min=0.0, max=1.0, step=0.001),
         ),
     )
@@ -65,21 +64,21 @@ class ZImageFunControlnet(QwenImageDiffsynthControlnet):
                 "controlnet union",
                 "fun controlnet",
             ),
-            inputs=(
-                InputSpec("model", _MODEL),
-                InputSpec("model_patch", _MODEL_PATCH),
-                InputSpec("vae", _VAE),
-                InputSpec(
+            body=(
+                Input("model", _MODEL),
+                Input("model_patch", _MODEL_PATCH),
+                Input("vae", _VAE),
+                Input(
                     "strength",
                     _FLOAT,
                     default=1.0,
                     widget=NumberWidget(min=-10.0, max=10.0, step=0.01),
                 ),
-                InputSpec("image", _IMAGE, required=False),
-                InputSpec("inpaint_image", _IMAGE, required=False),
-                InputSpec("mask", _MASK, required=False),
-                *_range(),
+                Input("image", _IMAGE, required=False),
+                Input("inpaint_image", _IMAGE, required=False),
+                Input("mask", _MASK, required=False),
+                Section("advanced", label="Advanced", collapsed=True, rows=(*_range(),)),
+                Output("MODEL", _MODEL),
             ),
-            outputs=(OutputSpec("MODEL", _MODEL),),
         )
         return with_identity_replacement(schema, "ZImageFunControlnet")

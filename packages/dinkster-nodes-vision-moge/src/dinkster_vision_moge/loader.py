@@ -11,12 +11,12 @@ from dinkster_api.v1 import (
     MOGE_MODEL_TYPE,
     AssetRef,
     AssetWidget,
-    InputSpec,
+    Input,
     LocalAssetRef,
     MappingSource,
     Node,
     NodeSchema,
-    OutputSpec,
+    Output,
     ReplacementCase,
     ReplacementRule,
     TypeExpr,
@@ -32,16 +32,16 @@ class LoadMoGeModel(Node):
             display_name="Load MoGe Model",
             category="model/loaders",
             search_terms=("LoadMoGeModel",),
-            inputs=(
-                InputSpec(
+            body=(
+                Input(
                     "model_name",
                     TypeExpr.concrete(ASSET_TYPE),
                     widget=AssetWidget(
                         kind="model/geometry-estimation", accept=("application/octet-stream",)
                     ),
                 ),
+                Output("MOGE_MODEL", TypeExpr.concrete(MOGE_MODEL_TYPE)),
             ),
-            outputs=(OutputSpec("MOGE_MODEL", TypeExpr.concrete(MOGE_MODEL_TYPE)),),
         )
         return replace(
             schema,

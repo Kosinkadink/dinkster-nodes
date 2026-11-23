@@ -14,11 +14,12 @@ from dinkster_api.v1 import (
     MODEL_TYPE,
     SAMPLER_TYPE,
     ComboWidget,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
+    Section,
     TypeExpr,
     initialize_inference_process,
     with_identity_replacement,
@@ -110,23 +111,21 @@ def _float(
     *,
     minimum: float = 0.0,
     step: float = 0.01,
-    advanced: bool = False,
     doc: str = "",
     round_: bool | float | None = False,
-) -> InputSpec:
-    return InputSpec(
+) -> Input:
+    return Input(
         name,
         _FLOAT,
         default=default,
-        advanced=advanced,
-        doc=doc,
+        tooltip=doc,
         widget=NumberWidget(min=minimum, max=maximum, step=step, round=round_),
     )
 
 
 def _schema(
     node_type: str,
-    inputs: tuple[InputSpec, ...],
+    inputs: tuple[Input | Section, ...],
     *,
     display_name: str = "",
     search_terms: tuple[str, ...] = (),
@@ -136,8 +135,10 @@ def _schema(
         node_type=node_type,
         display_name=display_name,
         category=_CATEGORY,
-        inputs=inputs,
-        outputs=(OutputSpec("SAMPLER", _SAMPLER),),
+        body=(
+            *inputs,
+            Output("SAMPLER", _SAMPLER),
+        ),
         search_terms=search_terms,
         description=description,
     )
@@ -149,7 +150,7 @@ class KSamplerSelect(Node):
         return with_identity_replacement(
             _schema(
                 "dinkster.sampling.k_sampler_select",
-                (InputSpec("sampler_name", _COMBO, widget=ComboWidget(options=SAMPLER_NAMES)),),
+                (Input("sampler_name", _COMBO, widget=ComboWidget(options=SAMPLER_NAMES)),),
             ),
             "KSamplerSelect",
         )
@@ -166,8 +167,23 @@ class SamplerEulerAncestral(Node):
             _schema(
                 "dinkster.sampling.sampler_euler_ancestral",
                 (
-                    _float("eta", 1.0, 100.0, advanced=True),
-                    _float("s_noise", 1.0, 100.0, advanced=True),
+                    Section(
+                        "advanced",
+                        label="Advanced",
+                        collapsed=True,
+                        rows=(
+                            _float(
+                                "eta",
+                                1.0,
+                                100.0,
+                            ),
+                            _float(
+                                "s_noise",
+                                1.0,
+                                100.0,
+                            ),
+                        ),
+                    ),
                 ),
             ),
             "SamplerEulerAncestral",
@@ -206,8 +222,13 @@ class SamplerLMS(Node):
             _schema(
                 "dinkster.sampling.sampler_lms",
                 (
-                    InputSpec(
-                        "order", _INT, default=4, advanced=True, widget=NumberWidget(min=1, max=100)
+                    Section(
+                        "advanced",
+                        label="Advanced",
+                        collapsed=True,
+                        rows=(
+                            Input("order", _INT, default=4, widget=NumberWidget(min=1, max=100)),
+                        ),
                     ),
                 ),
             ),
@@ -226,13 +247,27 @@ class SamplerDPMPP_3M_SDE(Node):
             _schema(
                 "dinkster.sampling.sampler_dpmpp_3_m_sde",
                 (
-                    _float("eta", 1.0, 100.0, advanced=True),
-                    _float("s_noise", 1.0, 100.0, advanced=True),
-                    InputSpec(
-                        "noise_device",
-                        _COMBO,
-                        advanced=True,
-                        widget=ComboWidget(options=("gpu", "cpu")),
+                    Section(
+                        "advanced",
+                        label="Advanced",
+                        collapsed=True,
+                        rows=(
+                            _float(
+                                "eta",
+                                1.0,
+                                100.0,
+                            ),
+                            _float(
+                                "s_noise",
+                                1.0,
+                                100.0,
+                            ),
+                            Input(
+                                "noise_device",
+                                _COMBO,
+                                widget=ComboWidget(options=("gpu", "cpu")),
+                            ),
+                        ),
                     ),
                 ),
             ),
@@ -252,16 +287,28 @@ class SamplerDPMPP_2M_SDE(Node):
             _schema(
                 "dinkster.sampling.sampler_dpmpp_2_m_sde",
                 (
-                    InputSpec(
-                        "solver_type", _COMBO, widget=ComboWidget(options=("midpoint", "heun"))
-                    ),
-                    _float("eta", 1.0, 100.0, advanced=True),
-                    _float("s_noise", 1.0, 100.0, advanced=True),
-                    InputSpec(
-                        "noise_device",
-                        _COMBO,
-                        advanced=True,
-                        widget=ComboWidget(options=("gpu", "cpu")),
+                    Input("solver_type", _COMBO, widget=ComboWidget(options=("midpoint", "heun"))),
+                    Section(
+                        "advanced",
+                        label="Advanced",
+                        collapsed=True,
+                        rows=(
+                            _float(
+                                "eta",
+                                1.0,
+                                100.0,
+                            ),
+                            _float(
+                                "s_noise",
+                                1.0,
+                                100.0,
+                            ),
+                            Input(
+                                "noise_device",
+                                _COMBO,
+                                widget=ComboWidget(options=("gpu", "cpu")),
+                            ),
+                        ),
                     ),
                 ),
             ),
@@ -287,14 +334,32 @@ class SamplerDPMPP_SDE(Node):
             _schema(
                 "dinkster.sampling.sampler_dpmpp_sde",
                 (
-                    _float("eta", 1.0, 100.0, advanced=True),
-                    _float("s_noise", 1.0, 100.0, advanced=True),
-                    _float("r", 0.5, 100.0, advanced=True),
-                    InputSpec(
-                        "noise_device",
-                        _COMBO,
-                        advanced=True,
-                        widget=ComboWidget(options=("gpu", "cpu")),
+                    Section(
+                        "advanced",
+                        label="Advanced",
+                        collapsed=True,
+                        rows=(
+                            _float(
+                                "eta",
+                                1.0,
+                                100.0,
+                            ),
+                            _float(
+                                "s_noise",
+                                1.0,
+                                100.0,
+                            ),
+                            _float(
+                                "r",
+                                0.5,
+                                100.0,
+                            ),
+                            Input(
+                                "noise_device",
+                                _COMBO,
+                                widget=ComboWidget(options=("gpu", "cpu")),
+                            ),
+                        ),
                     ),
                 ),
             ),
@@ -336,18 +401,59 @@ class SamplerDPMAdaptative(Node):
             _schema(
                 "dinkster.sampling.sampler_dpm_adaptative",
                 (
-                    InputSpec(
-                        "order", _INT, default=3, advanced=True, widget=NumberWidget(min=2, max=3)
+                    Section(
+                        "advanced",
+                        label="Advanced",
+                        collapsed=True,
+                        rows=(
+                            Input("order", _INT, default=3, widget=NumberWidget(min=2, max=3)),
+                            _float(
+                                "rtol",
+                                0.05,
+                                100.0,
+                            ),
+                            _float(
+                                "atol",
+                                0.0078,
+                                100.0,
+                            ),
+                            _float(
+                                "h_init",
+                                0.05,
+                                100.0,
+                            ),
+                            _float(
+                                "pcoeff",
+                                0.0,
+                                100.0,
+                            ),
+                            _float(
+                                "icoeff",
+                                1.0,
+                                100.0,
+                            ),
+                            _float(
+                                "dcoeff",
+                                0.0,
+                                100.0,
+                            ),
+                            _float(
+                                "accept_safety",
+                                0.81,
+                                100.0,
+                            ),
+                            _float(
+                                "eta",
+                                0.0,
+                                100.0,
+                            ),
+                            _float(
+                                "s_noise",
+                                1.0,
+                                100.0,
+                            ),
+                        ),
                     ),
-                    _float("rtol", 0.05, 100.0, advanced=True),
-                    _float("atol", 0.0078, 100.0, advanced=True),
-                    _float("h_init", 0.05, 100.0, advanced=True),
-                    _float("pcoeff", 0.0, 100.0, advanced=True),
-                    _float("icoeff", 1.0, 100.0, advanced=True),
-                    _float("dcoeff", 0.0, 100.0, advanced=True),
-                    _float("accept_safety", 0.81, 100.0, advanced=True),
-                    _float("eta", 0.0, 100.0, advanced=True),
-                    _float("s_noise", 1.0, 100.0, advanced=True),
                 ),
             ),
             "SamplerDPMAdaptative",
@@ -394,31 +500,40 @@ class SamplerER_SDE(Node):
             _schema(
                 "dinkster.sampling.sampler_er_sde",
                 (
-                    InputSpec(
+                    Input(
                         "solver_type",
                         _COMBO,
                         widget=ComboWidget(options=("ER-SDE", "Reverse-time SDE", "ODE")),
                     ),
-                    InputSpec(
-                        "max_stage",
-                        _INT,
-                        default=3,
-                        advanced=True,
-                        widget=NumberWidget(min=1, max=3),
-                    ),
-                    _float(
-                        "eta",
-                        1.0,
-                        10.0,
-                        advanced=True,
-                        doc=(
-                            "Stochastic strength of SDEs.\n"
-                            "When eta=0, they reduce to deterministic ODE.\n"
-                            "Large eta may cause invalid outputs.\n"
-                            "If this occurs, try decreasing this value."
+                    Section(
+                        "advanced",
+                        label="Advanced",
+                        collapsed=True,
+                        rows=(
+                            Input(
+                                "max_stage",
+                                _INT,
+                                default=3,
+                                widget=NumberWidget(min=1, max=3),
+                            ),
+                            _float(
+                                "eta",
+                                1.0,
+                                10.0,
+                                doc=(
+                                    "Stochastic strength of SDEs.\n"
+                                    "When eta=0, they reduce to deterministic ODE.\n"
+                                    "Large eta may cause invalid outputs.\n"
+                                    "If this occurs, try decreasing this value."
+                                ),
+                            ),
+                            _float(
+                                "s_noise",
+                                1.0,
+                                100.0,
+                            ),
                         ),
                     ),
-                    _float("s_noise", 1.0, 100.0, advanced=True),
                 ),
             ),
             "SamplerER_SDE",
@@ -466,27 +581,46 @@ class SamplerSASolver(Node):
             _schema(
                 "dinkster.sampling.sampler_sa_solver",
                 (
-                    InputSpec("model", _MODEL),
-                    _float("eta", 1.0, 10.0, advanced=True),
-                    _float("sde_start_percent", 0.2, 1.0, advanced=True, step=0.001, round_=None),
-                    _float("sde_end_percent", 0.8, 1.0, advanced=True, step=0.001, round_=None),
-                    _float("s_noise", 1.0, 100.0, advanced=True),
-                    InputSpec(
-                        "predictor_order",
-                        _INT,
-                        default=3,
-                        advanced=True,
-                        widget=NumberWidget(min=1, max=6),
+                    Input("model", _MODEL),
+                    Section(
+                        "advanced",
+                        label="Advanced",
+                        collapsed=True,
+                        rows=(
+                            _float(
+                                "eta",
+                                1.0,
+                                10.0,
+                            ),
+                            _float("sde_start_percent", 0.2, 1.0, step=0.001, round_=None),
+                            _float("sde_end_percent", 0.8, 1.0, step=0.001, round_=None),
+                            _float(
+                                "s_noise",
+                                1.0,
+                                100.0,
+                            ),
+                            Input(
+                                "predictor_order",
+                                _INT,
+                                default=3,
+                                widget=NumberWidget(min=1, max=6),
+                            ),
+                            Input(
+                                "corrector_order",
+                                _INT,
+                                default=4,
+                                widget=NumberWidget(min=0, max=6),
+                            ),
+                            Input(
+                                "use_pece",
+                                _BOOLEAN,
+                            ),
+                            Input(
+                                "simple_order_2",
+                                _BOOLEAN,
+                            ),
+                        ),
                     ),
-                    InputSpec(
-                        "corrector_order",
-                        _INT,
-                        default=4,
-                        advanced=True,
-                        widget=NumberWidget(min=0, max=6),
-                    ),
-                    InputSpec("use_pece", _BOOLEAN, advanced=True),
-                    InputSpec("simple_order_2", _BOOLEAN, advanced=True),
                 ),
                 search_terms=("sde",),
             ),
@@ -535,18 +669,22 @@ class SamplerSEEDS2(Node):
             _schema(
                 "dinkster.sampling.sampler_seeds2",
                 (
-                    InputSpec(
-                        "solver_type", _COMBO, widget=ComboWidget(options=("phi_1", "phi_2"))
-                    ),
-                    _float("eta", 1.0, 100.0, advanced=True, doc="Stochastic strength"),
-                    _float("s_noise", 1.0, 100.0, advanced=True, doc="SDE noise multiplier"),
-                    _float(
-                        "r",
-                        0.5,
-                        1.0,
-                        minimum=0.01,
-                        advanced=True,
-                        doc="Relative step size for the intermediate stage (c2 node)",
+                    Input("solver_type", _COMBO, widget=ComboWidget(options=("phi_1", "phi_2"))),
+                    Section(
+                        "advanced",
+                        label="Advanced",
+                        collapsed=True,
+                        rows=(
+                            _float("eta", 1.0, 100.0, doc="Stochastic strength"),
+                            _float("s_noise", 1.0, 100.0, doc="SDE noise multiplier"),
+                            _float(
+                                "r",
+                                0.5,
+                                1.0,
+                                minimum=0.01,
+                                doc="Relative step size for the intermediate stage (c2 node)",
+                            ),
+                        ),
                     ),
                 ),
                 search_terms=("sde", "exp heun"),

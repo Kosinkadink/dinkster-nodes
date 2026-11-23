@@ -7,14 +7,18 @@ from typing import cast
 
 from dinkster_api.v1 import (
     CORE_INT,
-    InputFamilySpec,
-    InputSpec,
+    Group,
+    Input,
+    Item,
+    Members,
     Node,
     NodeSchema,
-    OutputSpec,
+    Numbered,
+    Output,
     TypeExpr,
     Value,
     list_children,
+    member_id,
     with_identity_replacement,
 )
 
@@ -37,17 +41,17 @@ class CreateList(Node):
             node_type="dinkster.utilities.create_list",
             display_name="Create List",
             category="utilities",
-            input_families=(
-                InputFamilySpec(
+            body=(
+                Group(
                     "inputs",
-                    (InputSpec("input", _ITEM),),
+                    value=Input("input", _ITEM),
                     min_members=1,
                     max_members=10,
-                    member_prefix="input",
                     optional_after_minimum=True,
+                    keys=Numbered("input", start=0),
                 ),
+                Output("list", _ITEMS),
             ),
-            outputs=(OutputSpec("list", _ITEMS),),
             search_terms=("Image Iterator", "Text Iterator", "Iterator"),
             input_values=True,
         )
@@ -55,11 +59,11 @@ class CreateList(Node):
 
     @classmethod
     def execute(
-        cls, *, inputs: Mapping[str, object], input_values: Mapping[str, Value]
+        cls, *, inputs: Members[Item], input_values: Mapping[str, Value]
     ) -> Mapping[str, object]:
         items: list[Value] = []
-        for name in inputs:
-            items.extend(_execution_items(input_values[f"inputs.{name}"]))
+        for member in inputs:
+            items.extend(_execution_items(input_values[member_id("inputs", member.key)]))
         return cls.outputs(list=items)
 
 
@@ -70,16 +74,16 @@ class GetItemFromList(Node):
             node_type="dinkster.utilities.get_item_from_list",
             display_name="Get Item From List",
             category="utilities",
-            inputs=(
-                InputSpec("list", _ITEM),
-                InputSpec(
+            body=(
+                Input("list", _ITEM),
+                Input(
                     "index",
                     TypeExpr.concrete(CORE_INT),
                     default=0,
                     accepts_list=True,
                 ),
+                Output("item", _ITEM, label="*"),
             ),
-            outputs=(OutputSpec("item", _ITEM, display_name="*"),),
             input_values=True,
         )
         return with_identity_replacement(schema, "GetItemFromList")

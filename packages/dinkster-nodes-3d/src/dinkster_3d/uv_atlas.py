@@ -10,11 +10,11 @@ from dinkster_api.v1 import (
     CORE_INT,
     IMAGE_TYPE,
     MESH_TYPE,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
     TypeExpr,
     initialize_inference_process,
     materialize_mesh,
@@ -178,16 +178,16 @@ class RenderUVAtlas(Node):
             display_name="Render UV Atlas",
             category="3d/texturing",
             description="Renders a mesh's UV layout as an image.",
-            inputs=(
-                InputSpec("mesh", TypeExpr.concrete(MESH_TYPE)),
-                InputSpec(
+            body=(
+                Input("mesh", TypeExpr.concrete(MESH_TYPE)),
+                Input(
                     "resolution",
                     TypeExpr.concrete(CORE_INT),
                     default=1024,
                     widget=NumberWidget(min=64, max=4096, step=64),
                 ),
+                Output("image", TypeExpr.concrete(IMAGE_TYPE)),
             ),
-            outputs=(OutputSpec("image", TypeExpr.concrete(IMAGE_TYPE)),),
         )
         return with_identity_replacement(schema, "RenderUVAtlas")
 

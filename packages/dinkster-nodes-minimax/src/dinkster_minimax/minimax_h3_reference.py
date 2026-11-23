@@ -16,12 +16,15 @@ from dinkster_api.v1 import (
     LATENT_TYPE,
     VAE_TYPE,
     ComboWidget,
-    InputFamilySpec,
-    InputSpec,
+    Group,
+    Input,
+    Item,
+    Members,
     Node,
     NodeSchema,
+    Numbered,
     NumberWidget,
-    OutputSpec,
+    Output,
     StringWidget,
     TypeExpr,
     initialize_inference_process,
@@ -65,73 +68,56 @@ class MiniMaxH3ReferenceToVideo(Node):
                 "Use the same tags when prompting."
             ),
             category="model/conditioning/minimax",
-            inputs=(
-                InputSpec("clip", TypeExpr.concrete(CLIP_TYPE)),
-                InputSpec("vae", TypeExpr.concrete(VAE_TYPE), required=False),
-                InputSpec("audio_vae", TypeExpr.concrete(VAE_TYPE), required=False),
-                InputSpec(
+            body=(
+                Input("clip", TypeExpr.concrete(CLIP_TYPE)),
+                Input("vae", TypeExpr.concrete(VAE_TYPE), required=False),
+                Input("audio_vae", TypeExpr.concrete(VAE_TYPE), required=False),
+                Input(
                     "prompt",
                     TypeExpr.concrete(CORE_STRING),
                     widget=StringWidget(multiline=True, dynamic_prompts=True),
                 ),
-                InputSpec(
+                Input(
                     "width",
                     TypeExpr.concrete(CORE_INT),
                     default=1344,
                     widget=NumberWidget(min=32, max=16384, step=32),
                 ),
-                InputSpec(
+                Input(
                     "height",
                     TypeExpr.concrete(CORE_INT),
                     default=768,
                     widget=NumberWidget(min=32, max=16384, step=32),
                 ),
-                InputSpec(
+                Input(
                     "length",
                     TypeExpr.concrete(CORE_INT),
                     default=124,
                     widget=NumberWidget(min=5, max=3600, step=17),
                 ),
-                InputSpec(
+                Input(
                     "ref_image_size",
                     TypeExpr.concrete(CORE_COMBO),
                     default="match",
                     widget=ComboWidget(("match", "max")),
                 ),
-            ),
-            input_families=tuple(
-                InputFamilySpec(
-                    family,
-                    (InputSpec(member, TypeExpr.concrete(kind), required=False),),
-                    min_members=0,
-                    max_members=limit,
-                    member_prefix=member + "_",
-                    required=False,
-                )
-                for family, member, kind, limit in (
-                    ("ref_images", "ref_image", IMAGE_TYPE, 9),
-                    ("ref_videos", "ref_video", IMAGE_TYPE, 3),
-                    ("ref_video_audios", "ref_video_audio", AUDIO_TYPE, 3),
-                    ("ref_audios", "ref_audio", AUDIO_TYPE, 3),
-                )
-            ),
-            input_order=(
-                "clip",
-                "vae",
-                "audio_vae",
-                "prompt",
-                "width",
-                "height",
-                "length",
-                "ref_image_size",
-                "ref_images",
-                "ref_videos",
-                "ref_video_audios",
-                "ref_audios",
-            ),
-            outputs=(
-                OutputSpec("positive", TypeExpr.concrete(CONDITIONING_TYPE)),
-                OutputSpec("LATENT", TypeExpr.concrete(LATENT_TYPE)),
+                *tuple(
+                    Group(
+                        family,
+                        value=Input(member, TypeExpr.concrete(kind), required=False),
+                        min_members=0,
+                        max_members=limit,
+                        keys=Numbered(member + "_", start=0),
+                    )
+                    for family, member, kind, limit in (
+                        ("ref_images", "ref_image", IMAGE_TYPE, 9),
+                        ("ref_videos", "ref_video", IMAGE_TYPE, 3),
+                        ("ref_video_audios", "ref_video_audio", AUDIO_TYPE, 3),
+                        ("ref_audios", "ref_audio", AUDIO_TYPE, 3),
+                    )
+                ),
+                Output("positive", TypeExpr.concrete(CONDITIONING_TYPE)),
+                Output("LATENT", TypeExpr.concrete(LATENT_TYPE)),
             ),
         )
         return with_identity_replacement(schema, "MiniMaxH3ReferenceToVideo")
@@ -148,16 +134,17 @@ class MiniMaxH3ReferenceToVideo(Node):
         ref_image_size: str = "match",
         vae: Any = None,
         audio_vae: Any = None,
-        ref_images: Mapping[str, object] | None = None,
-        ref_videos: Mapping[str, object] | None = None,
-        ref_video_audios: Mapping[str, object] | None = None,
-        ref_audios: Mapping[str, object] | None = None,
+        ref_images: Members[Item],
+        ref_videos: Members[Item],
+        ref_video_audios: Members[Item],
+        ref_audios: Members[Item],
     ) -> Mapping[str, object]:
         initialize_inference_process()
         latent, frame_count = empty_av_latent(width, height, length)
         items: list[dict[str, Any]] = []
         blocks: list[dict[str, Any]] = []
-        for image in (ref_images or {}).values():
+        for member in ref_images:
+            image = member.value
             if image is None:
                 continue
             pixels = materialize_image(image)
@@ -179,11 +166,14 @@ class MiniMaxH3ReferenceToVideo(Node):
                         "latent": vae.encode(resized),
                     }
                 )
-        soundtracks = ref_video_audios or {}
-        for name, frames in (ref_videos or {}).items():
+        for position, member in enumerate(ref_videos):
+            frames = member.value
             if frames is None:
                 continue
-            soundtrack = soundtracks.get("ref_video_audio_" + name.rsplit("_", 1)[-1])
+            # A video pairs with the soundtrack at the same position.
+            soundtrack = (
+                ref_video_audios[position].value if position < len(ref_video_audios) else None
+            )
             pixels = materialize_image(frames)
             vh, vw = pixels.shape[1:3]
             ratio = vw / vh
@@ -231,7 +221,8 @@ class MiniMaxH3ReferenceToVideo(Node):
                     "audio_latent": audio_latent,
                 }
             )
-        for audio in (ref_audios or {}).values():
+        for member in ref_audios:
+            audio = member.value
             if audio is None:
                 continue
             items.append({"type": "audio"})

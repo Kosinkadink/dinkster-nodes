@@ -10,11 +10,11 @@ from dinkster_api.v1 import (
     CORE_INT,
     MODEL_PATCH_TYPE,
     MODEL_TYPE,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
     TypeExpr,
     initialize_inference_process,
     with_identity_replacement,
@@ -29,36 +29,34 @@ class LTXVDurationPredictor(Node):
             node_type="dinkster.ltx.ltxv_duration_predictor",
             display_name="LTXV Duration Predictor",
             category="model/conditioning/ltxv",
-            inputs=(
-                InputSpec("model", TypeExpr.concrete(MODEL_TYPE)),
-                InputSpec("positive", TypeExpr.concrete(CONDITIONING_TYPE)),
-                InputSpec(
+            body=(
+                Input("model", TypeExpr.concrete(MODEL_TYPE)),
+                Input("positive", TypeExpr.concrete(CONDITIONING_TYPE)),
+                Input(
                     "duration_head",
                     TypeExpr.concrete(MODEL_PATCH_TYPE),
-                    doc="LTX 2.4 duration head loaded with ModelPatchLoader.",
+                    tooltip="LTX 2.4 duration head loaded with ModelPatchLoader.",
                 ),
-                InputSpec(
+                Input(
                     "frame_rate",
                     floating,
                     default=24.0,
                     widget=NumberWidget(min=1.0, max=120.0, step=0.01),
                 ),
-                InputSpec(
+                Input(
                     "min_seconds",
                     floating,
                     default=1.0,
                     widget=NumberWidget(min=0.5, max=120.0, step=0.1),
                 ),
-                InputSpec(
+                Input(
                     "max_seconds",
                     floating,
                     default=20.0,
                     widget=NumberWidget(min=0.5, max=120.0, step=0.1),
                 ),
-            ),
-            outputs=(
-                OutputSpec("num_frames", TypeExpr.concrete(CORE_INT)),
-                OutputSpec("seconds", floating, doc="Raw (unclamped) predicted duration."),
+                Output("num_frames", TypeExpr.concrete(CORE_INT)),
+                Output("seconds", floating, tooltip="Raw (unclamped) predicted duration."),
             ),
         )
         return with_identity_replacement(schema, "LTXVDurationPredictor")

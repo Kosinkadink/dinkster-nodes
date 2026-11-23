@@ -2,14 +2,21 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from types import SimpleNamespace
 
 import pytest
 import torch
 from dinkster_3d.gaussian_splat import MergeSplat
 from dinkster_api.v1 import (
+    Item,
+    Members,
     materialize_splat,
 )
+
+
+def _members(values: Mapping[str, object]) -> Members[Item]:
+    return Members(Item(key, value) for key, value in values.items())
 
 
 def _sources() -> tuple[SimpleNamespace, SimpleNamespace]:
@@ -72,7 +79,9 @@ def test_merge_splat_truncates_real_counts_pads_sh_and_preserves_sources() -> No
         for value in (first, second)
     ]
     # The body consumes mapping order, not lexical slot order.
-    result = MergeSplat.execute(splats={"splat10": first, "splat2": second, "splat31": None})
+    result = MergeSplat.execute(
+        splats=_members({"splat10": first, "splat2": second, "splat31": None})
+    )
     _assert_merged(result["splat"])
     for value, snapshot in zip((first, second), snapshots, strict=True):
         for name, before in snapshot.items():
@@ -91,7 +100,7 @@ def test_merge_splat_preserves_each_float_dtype_and_cpu_device(dtype: torch.dtyp
         for name in names:
             setattr(value, name, getattr(value, name).to(dtype=dtype, device="cpu"))
     result = materialize_splat(
-        MergeSplat.execute(splats={"splat0": first, "splat1": second})["splat"]
+        MergeSplat.execute(splats=_members({"splat0": first, "splat1": second}))["splat"]
     )
     for name in names:
         tensor = getattr(result, name)
@@ -116,7 +125,7 @@ def test_merge_splat_uniform_lengths_omit_counts(case: str, size: int) -> None:
                 setattr(value, name, getattr(value, name)[:, :0])
     elif case == "zero-counts":
         first.counts = second.counts = torch.zeros(2, dtype=torch.int64)
-    merged = MergeSplat.execute(splats={"splat0": first, "splat1": second})["splat"]
+    merged = MergeSplat.execute(splats=_members({"splat0": first, "splat1": second}))["splat"]
     result = materialize_splat(merged)
     assert result.counts is None
     assert result.positions.shape == (2, size, 3)
@@ -128,9 +137,9 @@ def test_merge_splat_uniform_lengths_omit_counts(case: str, size: int) -> None:
 
 def test_merge_splat_rejects_missing_inputs_and_batch_mismatch() -> None:
     with pytest.raises(ValueError, match="connect at least one splat"):
-        MergeSplat.execute(splats={"splat0": None})
+        MergeSplat.execute(splats=_members({"splat0": None}))
     first, second = _sources()
     for name in ("positions", "scales", "rotations", "opacities", "sh"):
         setattr(second, name, getattr(second, name)[:1])
     with pytest.raises(ValueError, match=r"batch size mismatch \(2 vs 1\)"):
-        MergeSplat.execute(splats={"splat0": first, "splat1": second})
+        MergeSplat.execute(splats=_members({"splat0": first, "splat1": second}))

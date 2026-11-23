@@ -12,11 +12,11 @@ from dinkster_api.v1 import (
     IMAGE_TYPE,
     LATENT_TYPE,
     VAE_TYPE,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
     TypeExpr,
     initialize_inference_process,
     materialize_image,
@@ -37,30 +37,22 @@ class Kandinsky5ImageToVideo(Node):
         schema = NodeSchema(
             node_type="dinkster.misc.models.kandinsky5_image_to_video",
             category="model/conditioning/kandinsky",
-            inputs=(
-                InputSpec("positive", _CONDITIONING),
-                InputSpec("negative", _CONDITIONING),
-                InputSpec("vae", TypeExpr.concrete(VAE_TYPE)),
-                InputSpec(
-                    "width", _INT, default=768, widget=NumberWidget(min=16, max=16384, step=16)
-                ),
-                InputSpec(
-                    "height", _INT, default=512, widget=NumberWidget(min=16, max=16384, step=16)
-                ),
-                InputSpec(
-                    "length", _INT, default=121, widget=NumberWidget(min=1, max=16384, step=4)
-                ),
-                InputSpec("batch_size", _INT, default=1, widget=NumberWidget(min=1, max=4096)),
-                InputSpec("start_image", TypeExpr.concrete(IMAGE_TYPE), required=False),
-            ),
-            outputs=(
-                OutputSpec("positive", _CONDITIONING),
-                OutputSpec("negative", _CONDITIONING),
-                OutputSpec("latent", _LATENT, doc="Empty video latent"),
-                OutputSpec(
+            body=(
+                Input("positive", _CONDITIONING),
+                Input("negative", _CONDITIONING),
+                Input("vae", TypeExpr.concrete(VAE_TYPE)),
+                Input("width", _INT, default=768, widget=NumberWidget(min=16, max=16384, step=16)),
+                Input("height", _INT, default=512, widget=NumberWidget(min=16, max=16384, step=16)),
+                Input("length", _INT, default=121, widget=NumberWidget(min=1, max=16384, step=4)),
+                Input("batch_size", _INT, default=1, widget=NumberWidget(min=1, max=4096)),
+                Input("start_image", TypeExpr.concrete(IMAGE_TYPE), required=False),
+                Output("positive", _CONDITIONING),
+                Output("negative", _CONDITIONING),
+                Output("latent", _LATENT, tooltip="Empty video latent"),
+                Output(
                     "cond_latent",
                     _LATENT,
-                    doc=(
+                    tooltip=(
                         "Clean encoded start images, used to replace the noisy start "
                         "of the model output latents"
                     ),

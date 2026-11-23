@@ -10,11 +10,11 @@ from dinkster_api.v1 import (
     CORE_FLOAT,
     CORE_INT,
     CORE_STRING,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
     TypeExpr,
     initialize_inference_process,
     materialize_audio,
@@ -28,33 +28,31 @@ class WanDancerEncodeAudio(Node):
         schema = NodeSchema(
             node_type="dinkster.wan.wan_dancer_encode_audio",
             category="model/conditioning/wan/dancer",
-            inputs=(
-                InputSpec("audio", TypeExpr.concrete(AUDIO_TYPE)),
-                InputSpec(
+            body=(
+                Input("audio", TypeExpr.concrete(AUDIO_TYPE)),
+                Input(
                     "video_frames",
                     TypeExpr.concrete(CORE_INT),
                     default=149,
                     widget=NumberWidget(min=1, max=16384, step=4),
                 ),
-                InputSpec(
+                Input(
                     "audio_inject_scale",
                     TypeExpr.concrete(CORE_FLOAT),
                     default=1.0,
                     widget=NumberWidget(min=0.0, max=10.0, step=0.01),
-                    doc="The scale for the audio features when injected into the video model.",
+                    tooltip="The scale for the audio features when injected into the video model.",
                 ),
-            ),
-            outputs=(
-                OutputSpec(
+                Output(
                     "audio_encoder_output",
                     TypeExpr.concrete(AUDIO_ENCODER_OUTPUT_TYPE),
-                    display_name="audio_encoder_output",
+                    label="audio_encoder_output",
                 ),
-                OutputSpec(
+                Output(
                     "fps_string",
                     TypeExpr.concrete(CORE_STRING),
-                    display_name="fps_string",
-                    doc="The calculated fps based on the audio length and the number of video "
+                    label="fps_string",
+                    tooltip="The calculated fps based on the audio length and the number of video "
                     "frames. Used in the prompt.",
                 ),
             ),

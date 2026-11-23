@@ -16,11 +16,12 @@ from dinkster_api.v1 import (
     VAE_TYPE,
     ComboOption,
     ComboWidget,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
+    Section,
     TypeExpr,
     materialize_image,
     with_identity_replacement,
@@ -53,8 +54,8 @@ _UNION_CONTROLNET_TYPES = {
 }
 
 
-def _strength() -> InputSpec:
-    return InputSpec(
+def _strength() -> Input:
+    return Input(
         "strength",
         TypeExpr.concrete(CORE_FLOAT),
         default=1.0,
@@ -62,14 +63,13 @@ def _strength() -> InputSpec:
     )
 
 
-def _range(*, advanced: bool = False) -> tuple[InputSpec, ...]:
+def _range() -> tuple[Input, ...]:
     return tuple(
-        InputSpec(
+        Input(
             name,
             TypeExpr.concrete(CORE_FLOAT),
             default=default,
             widget=NumberWidget(min=0.0, max=1.0, step=0.001),
-            advanced=advanced,
         )
         for name, default in (("start_percent", 0.0), ("end_percent", 1.0))
     )
@@ -83,13 +83,13 @@ class ControlNetApply(Node):
                 node_type="dinkster.conditioning.control_net_apply",
                 display_name="Apply ControlNet (DEPRECATED)",
                 category=_CATEGORY,
-                inputs=(
-                    InputSpec("conditioning", _CONDITIONING),
-                    InputSpec("control_net", _CONTROL_NET),
-                    InputSpec("image", _IMAGE),
+                body=(
+                    Input("conditioning", _CONDITIONING),
+                    Input("control_net", _CONTROL_NET),
+                    Input("image", _IMAGE),
                     _strength(),
+                    Output("CONDITIONING", _CONDITIONING),
                 ),
-                outputs=(OutputSpec("CONDITIONING", _CONDITIONING),),
             ),
             "ControlNetApply",
         )
@@ -125,18 +125,16 @@ class ControlNetApplyAdvanced(Node):
                 display_name="Apply ControlNet",
                 category=_CATEGORY,
                 search_terms=("controlnet", "apply controlnet", "use controlnet", "control net"),
-                inputs=(
-                    InputSpec("positive", _CONDITIONING),
-                    InputSpec("negative", _CONDITIONING),
-                    InputSpec("control_net", _CONTROL_NET),
-                    InputSpec("image", _IMAGE),
+                body=(
+                    Input("positive", _CONDITIONING),
+                    Input("negative", _CONDITIONING),
+                    Input("control_net", _CONTROL_NET),
+                    Input("image", _IMAGE),
                     _strength(),
                     *_range(),
-                    InputSpec("vae", _VAE, required=False),
-                ),
-                outputs=(
-                    OutputSpec("positive", _CONDITIONING),
-                    OutputSpec("negative", _CONDITIONING),
+                    Input("vae", _VAE, required=False),
+                    Output("positive", _CONDITIONING),
+                    Output("negative", _CONDITIONING),
                 ),
             ),
             "ControlNetApplyAdvanced",
@@ -194,17 +192,17 @@ class SetUnionControlNetType(Node):
                 display_name="Set Union ControlNet Type",
                 category=_CATEGORY,
                 search_terms=("set controlnet type", "union controlnet type"),
-                inputs=(
-                    InputSpec("control_net", _CONTROL_NET),
-                    InputSpec(
+                body=(
+                    Input("control_net", _CONTROL_NET),
+                    Input(
                         "type",
                         TypeExpr.concrete(CORE_COMBO),
                         widget=ComboWidget(
                             tuple(ComboOption(name) for name in ("auto", *_UNION_CONTROLNET_TYPES))
                         ),
                     ),
+                    Output("CONTROL_NET", _CONTROL_NET),
                 ),
-                outputs=(OutputSpec("CONTROL_NET", _CONTROL_NET),),
             ),
             "SetUnionControlNetType",
         )
@@ -226,19 +224,17 @@ class ControlNetInpaintingAliMamaApply(Node):
                 display_name="Apply ControlNet Inpainting (AliMama)",
                 category=_CATEGORY,
                 search_terms=("masked controlnet",),
-                inputs=(
-                    InputSpec("positive", _CONDITIONING),
-                    InputSpec("negative", _CONDITIONING),
-                    InputSpec("control_net", _CONTROL_NET),
-                    InputSpec("vae", _VAE),
-                    InputSpec("image", _IMAGE),
-                    InputSpec("mask", TypeExpr.concrete(MASK_TYPE)),
+                body=(
+                    Input("positive", _CONDITIONING),
+                    Input("negative", _CONDITIONING),
+                    Input("control_net", _CONTROL_NET),
+                    Input("vae", _VAE),
+                    Input("image", _IMAGE),
+                    Input("mask", TypeExpr.concrete(MASK_TYPE)),
                     _strength(),
-                    *_range(advanced=True),
-                ),
-                outputs=(
-                    OutputSpec("positive", _CONDITIONING),
-                    OutputSpec("negative", _CONDITIONING),
+                    Section("advanced", label="Advanced", collapsed=True, rows=(*_range(),)),
+                    Output("positive", _CONDITIONING),
+                    Output("negative", _CONDITIONING),
                 ),
             ),
             "ControlNetInpaintingAliMamaApply",

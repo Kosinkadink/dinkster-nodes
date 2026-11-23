@@ -4,21 +4,24 @@ from __future__ import annotations
 
 import importlib
 from collections.abc import Mapping
-from typing import Any
+from typing import Any, cast
 
 from dinkster_api.v1 import (
     CORE_BOOLEAN,
     CORE_FLOAT,
     CORE_INT,
     MESH_TYPE,
-    DynamicComboOption,
-    DynamicComboSpec,
-    InputSpec,
+    Choice,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Option,
+    Output,
+    Record,
+    Section,
     TypeExpr,
+    Use,
     initialize_inference_process,
     materialize_mesh,
     report_progress,
@@ -41,120 +44,111 @@ class RemeshMesh(Node):
                 "self-intersecting topology; run before Decimate Mesh to hit an exact face count. "
                 "Output stays welded."
             ),
-            inputs=(
-                InputSpec("mesh", TypeExpr.concrete(MESH_TYPE)),
-                InputSpec(
+            body=(
+                Input("mesh", TypeExpr.concrete(MESH_TYPE)),
+                Input(
                     "resolution",
                     TypeExpr.concrete(CORE_INT),
                     default=512,
                     widget=NumberWidget(min=32, max=2048),
                 ),
-                InputSpec(
-                    "band",
-                    TypeExpr.concrete(CORE_FLOAT),
-                    default=1.0,
-                    widget=NumberWidget(min=0.5, max=4.0, step=0.1),
-                    advanced=True,
-                ),
-                InputSpec(
-                    "project_back",
-                    TypeExpr.concrete(CORE_FLOAT),
-                    default=0.0,
-                    widget=NumberWidget(min=0.0, max=1.0, step=0.05),
-                    advanced=True,
-                ),
-                InputSpec(
-                    "fix_poles", TypeExpr.concrete(CORE_BOOLEAN), default=False, advanced=True
-                ),
-                InputSpec(
-                    "smooth_iters",
-                    TypeExpr.concrete(CORE_INT),
-                    default=0,
-                    widget=NumberWidget(min=0, max=20),
-                ),
-                InputSpec(
-                    "drop_small_components",
-                    TypeExpr.concrete(CORE_FLOAT),
-                    default=0.01,
-                    widget=NumberWidget(min=0.0, max=0.5, step=0.005),
-                    advanced=True,
-                ),
-                InputSpec(
-                    "precluster_max_verts",
-                    TypeExpr.concrete(CORE_INT),
-                    default=20_000_000,
-                    widget=NumberWidget(min=0, max=100_000_000),
-                    advanced=True,
-                ),
-            ),
-            combos=(
-                DynamicComboSpec(
+                Choice(
                     "sign_mode",
-                    (
-                        DynamicComboOption(
+                    options=(
+                        Option(
                             "udf",
-                            (
-                                InputSpec(
-                                    "qef",
-                                    TypeExpr.concrete(CORE_BOOLEAN),
-                                    default=False,
-                                    advanced=True,
-                                ),
-                                InputSpec(
-                                    "drop_inverted_components",
-                                    TypeExpr.concrete(CORE_BOOLEAN),
-                                    default=False,
-                                    advanced=True,
-                                ),
-                                InputSpec(
-                                    "drop_enclosed_components",
-                                    TypeExpr.concrete(CORE_BOOLEAN),
-                                    default=False,
-                                    advanced=True,
+                            rows=(
+                                Section(
+                                    "advanced",
+                                    label="Advanced",
+                                    collapsed=True,
+                                    rows=(
+                                        Use("qef"),
+                                        Input(
+                                            "drop_inverted_components",
+                                            TypeExpr.concrete(CORE_BOOLEAN),
+                                            default=False,
+                                        ),
+                                        Input(
+                                            "drop_enclosed_components",
+                                            TypeExpr.concrete(CORE_BOOLEAN),
+                                            default=False,
+                                        ),
+                                    ),
                                 ),
                             ),
                         ),
-                        DynamicComboOption(
+                        Option(
                             "sdf",
-                            (
-                                InputSpec("qef", TypeExpr.concrete(CORE_BOOLEAN), default=True),
-                                InputSpec(
-                                    "manifold", TypeExpr.concrete(CORE_BOOLEAN), default=False
-                                ),
+                            rows=(
+                                Use("qef", default=True),
+                                Input("manifold", TypeExpr.concrete(CORE_BOOLEAN), default=False),
                             ),
                         ),
-                        DynamicComboOption(
+                        Option(
                             "solid",
-                            (
-                                InputSpec(
+                            rows=(
+                                Input(
                                     "fill",
                                     TypeExpr.concrete(CORE_FLOAT),
                                     default=20.0,
                                     widget=NumberWidget(min=0.0, max=1000.0, step=1.0),
                                 ),
-                                InputSpec(
-                                    "qef",
-                                    TypeExpr.concrete(CORE_BOOLEAN),
-                                    default=False,
-                                    advanced=True,
+                                Section(
+                                    "advanced",
+                                    label="Advanced",
+                                    collapsed=True,
+                                    rows=(Use("qef"),),
                                 ),
                             ),
                         ),
                     ),
+                    shared=(Input("qef", TypeExpr.concrete(CORE_BOOLEAN), default=False),),
                 ),
+                Input(
+                    "smooth_iters",
+                    TypeExpr.concrete(CORE_INT),
+                    default=0,
+                    widget=NumberWidget(min=0, max=20),
+                ),
+                Section(
+                    "advanced",
+                    label="Advanced",
+                    collapsed=True,
+                    rows=(
+                        Input(
+                            "band",
+                            TypeExpr.concrete(CORE_FLOAT),
+                            default=1.0,
+                            widget=NumberWidget(min=0.5, max=4.0, step=0.1),
+                        ),
+                        Input(
+                            "project_back",
+                            TypeExpr.concrete(CORE_FLOAT),
+                            default=0.0,
+                            widget=NumberWidget(min=0.0, max=1.0, step=0.05),
+                        ),
+                        Input(
+                            "fix_poles",
+                            TypeExpr.concrete(CORE_BOOLEAN),
+                            default=False,
+                        ),
+                        Input(
+                            "drop_small_components",
+                            TypeExpr.concrete(CORE_FLOAT),
+                            default=0.01,
+                            widget=NumberWidget(min=0.0, max=0.5, step=0.005),
+                        ),
+                        Input(
+                            "precluster_max_verts",
+                            TypeExpr.concrete(CORE_INT),
+                            default=20_000_000,
+                            widget=NumberWidget(min=0, max=100_000_000),
+                        ),
+                    ),
+                ),
+                Output("mesh", TypeExpr.concrete(MESH_TYPE)),
             ),
-            input_order=(
-                "mesh",
-                "resolution",
-                "sign_mode",
-                "band",
-                "project_back",
-                "fix_poles",
-                "smooth_iters",
-                "drop_small_components",
-                "precluster_max_verts",
-            ),
-            outputs=(OutputSpec("mesh", TypeExpr.concrete(MESH_TYPE)),),
         )
         return with_identity_replacement(schema, "RemeshMesh")
 
@@ -164,14 +158,13 @@ class RemeshMesh(Node):
         *,
         mesh: object,
         resolution: int,
-        sign_mode: str,
+        sign_mode: Record,
         band: float,
         project_back: float,
         fix_poles: bool,
         smooth_iters: int,
         drop_small_components: float,
         precluster_max_verts: int,
-        **inputs: Any,
     ) -> Mapping[str, object]:
         initialize_inference_process()
         torch = importlib.import_module("torch")
@@ -208,19 +201,15 @@ class RemeshMesh(Node):
                 resolution=resolution,
                 band=band,
                 project_back=project_back,
-                qef=bool(inputs.get("sign_mode.qef", sign_mode == "sdf")),
-                sign_mode=sign_mode,
-                manifold=bool(inputs.get("sign_mode.manifold", False)),
-                fill=float(inputs.get("sign_mode.fill", 20.0)),
+                qef=bool(sign_mode.get("qef", sign_mode.key == "sdf")),
+                sign_mode=sign_mode.key,
+                manifold=bool(sign_mode.get("manifold", False)),
+                fill=float(cast("float", sign_mode.get("fill", 20.0))),
                 fix_poles=fix_poles,
                 smooth_iters=smooth_iters,
                 drop_small_components=drop_small_components,
-                drop_inverted_components=bool(
-                    inputs.get("sign_mode.drop_inverted_components", False)
-                ),
-                drop_enclosed_components=bool(
-                    inputs.get("sign_mode.drop_enclosed_components", False)
-                ),
+                drop_inverted_components=bool(sign_mode.get("drop_inverted_components", False)),
+                drop_enclosed_components=bool(sign_mode.get("drop_enclosed_components", False)),
                 scale=(resolution + 3.0 * band) / resolution,
                 center=torch.zeros(3, dtype=vv.dtype, device=device),
                 colors=cc,

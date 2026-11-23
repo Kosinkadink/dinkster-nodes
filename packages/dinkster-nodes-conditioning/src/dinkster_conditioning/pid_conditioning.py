@@ -12,11 +12,11 @@ from dinkster_api.v1 import (
     CORE_FLOAT,
     LATENT_TYPE,
     ComboWidget,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
     TypeExpr,
     initialize_inference_process,
     materialize_latent,
@@ -48,33 +48,33 @@ class PiDConditioning(Node):
                     "Attaches a latent and a degrade_sigma scalar to a CONDITIONING for PiD "
                     "decoding/upscaling"
                 ),
-                inputs=(
-                    InputSpec("positive", _CONDITIONING),
-                    InputSpec(
+                body=(
+                    Input("positive", _CONDITIONING),
+                    Input(
                         "latent",
                         _LATENT,
-                        doc="latent (from VAEEncode or a KSampler).",
+                        tooltip="latent (from VAEEncode or a KSampler).",
                     ),
-                    InputSpec(
+                    Input(
                         "latent_format",
                         _COMBO,
                         default="flux",
                         widget=ComboWidget(("flux", "sd3", "sdxl", "qwenimage")),
-                        doc=(
+                        tooltip=(
                             "Flux1 (16-ch) and Flux2 (128-ch) latents are auto-detected from "
                             "channel dim under 'flux'. For SD3 (16-ch), SDXL (4-ch), or QwenImage "
                             "(16-ch), select manually."
                         ),
                     ),
-                    InputSpec(
+                    Input(
                         "degrade_sigma",
                         _FLOAT,
                         default=0.0,
                         widget=NumberWidget(min=0.0, max=1.0, step=0.01),
-                        doc="0 = clean latent. Increase to denoise corrupted latent outputs.",
+                        tooltip="0 = clean latent. Increase to denoise corrupted latent outputs.",
                     ),
+                    Output("CONDITIONING", _CONDITIONING),
                 ),
-                outputs=(OutputSpec("CONDITIONING", _CONDITIONING),),
             ),
             "PiDConditioning",
         )

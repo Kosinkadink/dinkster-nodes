@@ -11,11 +11,11 @@ from typing import Any
 from dinkster_api.v1 import (
     CORE_FLOAT,
     MESH_TYPE,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
     TypeExpr,
     materialize_mesh,
     with_identity_replacement,
@@ -105,19 +105,19 @@ class MeshSmoothNormals(Node):
                 "them shade smoothly. With crease_angle below 180, edges sharper than the "
                 "threshold are kept hard by splitting vertices along them."
             ),
-            inputs=(
-                InputSpec("mesh", TypeExpr.concrete(MESH_TYPE)),
-                InputSpec(
+            body=(
+                Input("mesh", TypeExpr.concrete(MESH_TYPE)),
+                Input(
                     "crease_angle",
                     TypeExpr.concrete(CORE_FLOAT),
                     default=180.0,
                     widget=NumberWidget(min=0.0, max=180.0, step=1.0),
-                    doc="Edges whose dihedral angle exceeds this value (degrees) stay "
+                    tooltip="Edges whose dihedral angle exceeds this value (degrees) stay "
                     "hard (vertices are split). 180 = fully smooth; lower "
                     "preserves sharp edges (e.g. ~30-60 for hard-surface).",
                 ),
+                Output("mesh", TypeExpr.concrete(MESH_TYPE)),
             ),
-            outputs=(OutputSpec("mesh", TypeExpr.concrete(MESH_TYPE)),),
         )
         return with_identity_replacement(schema, "MeshSmoothNormals")
 

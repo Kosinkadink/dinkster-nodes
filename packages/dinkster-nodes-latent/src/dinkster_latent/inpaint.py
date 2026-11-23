@@ -13,11 +13,11 @@ from dinkster_api.v1 import (
     LATENT_TYPE,
     MASK_TYPE,
     VAE_TYPE,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
     TypeExpr,
     materialize_image,
     with_identity_replacement,
@@ -78,18 +78,18 @@ class VAEEncodeForInpaint(Node):
                 node_type="dinkster.latent.vae_encode_for_inpaint",
                 display_name="VAE Encode (for Inpainting)",
                 category="model/latent",
-                inputs=(
-                    InputSpec("pixels", _IMAGE),
-                    InputSpec("vae", _VAE),
-                    InputSpec("mask", _MASK),
-                    InputSpec(
+                body=(
+                    Input("pixels", _IMAGE),
+                    Input("vae", _VAE),
+                    Input("mask", _MASK),
+                    Input(
                         "grow_mask_by",
                         _INT,
                         default=6,
                         widget=NumberWidget(min=0, max=64, step=1),
                     ),
+                    Output("LATENT", _LATENT),
                 ),
-                outputs=(OutputSpec("LATENT", _LATENT),),
             ),
             "VAEEncodeForInpaint",
         )

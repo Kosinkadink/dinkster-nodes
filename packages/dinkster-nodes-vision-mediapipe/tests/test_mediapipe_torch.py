@@ -8,6 +8,7 @@ from typing import Any
 import numpy as np
 import torch
 from dinkster_api.v1 import (
+    Record,
     materialize_image,
     materialize_latent,
 )
@@ -43,7 +44,7 @@ def _visualize(packet: Any, **options: Any) -> Any:
     return MediaPipeFaceMeshVisualize.execute(
         face_landmarks=packet,
         **{
-            "connections": {"connections": "fill"},
+            "connections": Record("fill", {}),
             "color": "#d02070",
             "thickness": 2,
             "point_size": 3,
@@ -66,23 +67,17 @@ def _assert_pixels(image: Any, mask: Any) -> None:
 def test_region_union_fill_and_source_preservation() -> None:
     packet = _packet()
     before = copy.deepcopy(packet)
-    mask = MediaPipeFaceMask.execute(face_landmarks=packet, regions={"regions": "all"})["MASK"]
+    mask = MediaPipeFaceMask.execute(face_landmarks=packet, regions=Record("all", {}))["MASK"]
     _assert_pixels(_visualize(packet), mask)
     lips = MediaPipeFaceMask.execute(
-        face_landmarks=packet, regions={"regions": "custom", "lips": True}
+        face_landmarks=packet, regions=Record("custom", {"lips": True})
     )["MASK"]
     expected = torch.zeros(3, 7, 11)
     expected[0, 2:4, 2:4] = expected[0, 2:4, 6:8] = expected[2, 2:4, 2:4] = 1
     assert torch.equal(lips, expected)
-    assert torch.equal(
-        MediaPipeFaceMask.execute(
-            face_landmarks=packet, regions="custom", **{"regions.lips": True}
-        )["MASK"],
-        expected,
-    )
     assert (
         torch.count_nonzero(
-            MediaPipeFaceMask.execute(face_landmarks=packet, regions={"regions": "custom"})["MASK"]
+            MediaPipeFaceMask.execute(face_landmarks=packet, regions=Record("custom", {}))["MASK"]
         )
         == 0
     )
@@ -100,7 +95,7 @@ def test_edges_points_background_and_empty_batches() -> None:
         image=background,
         thickness=0,
         point_size=0,
-        connections={"connections": "all"},
+        connections=Record("all", {}),
         color="invalid-color",
     )
     expected = before[..., :3].mul(255).add(0.5).clamp(0, 255).to(torch.uint8).float().div(255)
@@ -110,29 +105,27 @@ def test_edges_points_background_and_empty_batches() -> None:
         image=background,
         thickness=1,
         point_size=0,
-        connections={"connections": "custom", "left_eyebrow": True},
+        connections=Record("custom", {"left_eyebrow": True}),
         color="invalid-color",
     )
     expected[0, 2, 2:4] = expected[0, 2, 6:8] = expected[2, 2, 2:4] = torch.tensor([0.0, 1.0, 0.0])
     assert torch.equal(output, expected) and torch.equal(background, before)
     for size in (0, 1, 3):
-        output = _visualize(
-            packet, thickness=0, point_size=size, connections={"connections": "custom"}
-        )
+        output = _visualize(packet, thickness=0, point_size=size, connections=Record("custom", {}))
         assert torch.count_nonzero(output[1]) == 0
         if size:
             assert torch.equal(output[2, 1, 1], torch.tensor([208, 32, 112]) / 255)
         else:
             assert torch.count_nonzero(output) == 0
     # The out-of-range tessellation edge is ignored, not indexed.
-    assert _visualize(packet, connections={"connections": "custom", "tesselation": True}).shape == (
+    assert _visualize(packet, connections=Record("custom", {"tesselation": True})).shape == (
         3,
         7,
         11,
         3,
     )
     empty = {**packet, "frames": []}
-    assert MediaPipeFaceMask.execute(face_landmarks=empty, regions={"regions": "all"})[
+    assert MediaPipeFaceMask.execute(face_landmarks=empty, regions=Record("all", {}))[
         "MASK"
     ].shape == (0, 7, 11)
     assert _visualize(empty).shape == (0, 7, 11, 3)

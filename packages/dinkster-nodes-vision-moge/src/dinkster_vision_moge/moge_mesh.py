@@ -12,11 +12,11 @@ from dinkster_api.v1 import (
     CORE_INT,
     MESH_TYPE,
     MOGE_GEOMETRY_TYPE,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
     TriangleMeshBatch,
     TypeExpr,
     initialize_inference_process,
@@ -34,40 +34,40 @@ class MoGePointMapToMesh(Node):
             description="Convert a MoGe point map into a 3D mesh.",
             category="image/geometry estimation",
             search_terms=("moge", "mesh", "geometry", "point map"),
-            inputs=(
-                InputSpec("moge_geometry", TypeExpr.concrete(MOGE_GEOMETRY_TYPE)),
-                InputSpec(
+            body=(
+                Input("moge_geometry", TypeExpr.concrete(MOGE_GEOMETRY_TYPE)),
+                Input(
                     "batch_index",
                     TypeExpr.concrete(CORE_INT),
                     default=0,
                     widget=NumberWidget(min=0, max=4096),
-                    doc=(
+                    tooltip=(
                         "Which image of a batched MoGe geometry to mesh. Per-image vertex counts "
                         "differ, so batches can't be stacked into a single MESH."
                     ),
                 ),
-                InputSpec(
+                Input(
                     "decimation",
                     TypeExpr.concrete(CORE_INT),
                     default=1,
                     widget=NumberWidget(min=1, max=8),
-                    doc="Vertex stride; 1 = full resolution.",
+                    tooltip="Vertex stride; 1 = full resolution.",
                 ),
-                InputSpec(
+                Input(
                     "discontinuity_threshold",
                     TypeExpr.concrete(CORE_FLOAT),
                     default=0.04,
                     widget=NumberWidget(min=0.0, max=1.0, step=0.01),
-                    doc="Drop pixels whose 3x3 depth span exceeds this fraction. 0 = off.",
+                    tooltip="Drop pixels whose 3x3 depth span exceeds this fraction. 0 = off.",
                 ),
-                InputSpec(
+                Input(
                     "texture",
                     TypeExpr.concrete(CORE_BOOLEAN),
                     default=True,
-                    doc="Carry the source image through as the baseColor texture.",
+                    tooltip="Carry the source image through as the baseColor texture.",
                 ),
+                Output("MESH", TypeExpr.concrete(MESH_TYPE)),
             ),
-            outputs=(OutputSpec("MESH", TypeExpr.concrete(MESH_TYPE)),),
         )
         return with_identity_replacement(schema, "MoGePointMapToMesh")
 

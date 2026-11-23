@@ -8,11 +8,11 @@ from typing import Any
 from dinkster_api.v1 import (
     CORE_INT,
     IMAGE_TYPE,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
     TypeExpr,
     initialize_inference_process,
     materialize_image,
@@ -75,17 +75,17 @@ class LTXVPreprocess(Node):
             node_type="dinkster.ltx.ltxv_preprocess",
             display_name="LTXV Preprocess",
             category="video/preprocessors",
-            inputs=(
-                InputSpec("image", _IMAGE),
-                InputSpec(
+            body=(
+                Input("image", _IMAGE),
+                Input(
                     "img_compression",
                     _INT,
                     default=35,
                     widget=NumberWidget(min=0, max=100),
-                    doc="Amount of compression to apply on image.",
+                    tooltip="Amount of compression to apply on image.",
                 ),
+                Output("IMAGE", _IMAGE, label="output_image"),
             ),
-            outputs=(OutputSpec("IMAGE", _IMAGE, display_name="output_image"),),
         )
         return with_identity_replacement(schema, "LTXVPreprocess")
 

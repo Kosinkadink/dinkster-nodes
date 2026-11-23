@@ -74,16 +74,23 @@ def test_exact_image_compare_has_no_outputs_and_previews_each_nonempty_side() ->
     from io import BytesIO
 
     import numpy as np
+    from dinkster_api.v1 import CustomWidgetDescriptor, Editor
     from dinkster_image.compare import NativeImageCompare
     from dinkster_schema import schema_from_wire, schema_to_wire, use_reporter
     from PIL import Image
 
     schema = NativeImageCompare.schema()
     assert NativeImageCompare in IMAGE_NODES
-    assert schema.node_type == "ImageCompare" and not schema.aliases
-    assert [spec.id for spec in schema.inputs] == ["image_a", "image_b", "compare_view"]
-    compare_view = schema.input("compare_view")
-    assert compare_view is not None and compare_view.required
+    assert schema.node_type == "ImageCompare"
+    assert [spec.id for spec in schema.inputs] == ["image_a", "image_b"]
+    assert [row for row in schema.body if isinstance(row, Editor)] == [
+        Editor(
+            "comparison",
+            CustomWidgetDescriptor(
+                "IMAGECOMPARE", reads={"image_a": "image_a", "image_b": "image_b"}
+            ),
+        )
+    ]
     assert schema.outputs == () and schema.output_node and schema.emits_previews
     assert schema_from_wire(schema_to_wire(schema)) == schema
     a = np.zeros((2, 2, 3, 3), dtype=np.float32)

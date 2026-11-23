@@ -8,6 +8,7 @@ from typing import Any
 
 import numpy as np
 import pytest
+from dinkster_api.v1 import Record
 from dinkster_vision_sam3d_body.sam3d_bvh import build_bvh
 from dinkster_vision_sam3d_body.sam3d_export import BuildPoseFile
 from dinkster_vision_sam3d_body.sam3d_openpose_glb import build_glb_openpose
@@ -371,6 +372,41 @@ def _export_pose() -> dict[str, Any]:
     return pose
 
 
+def _pose_format(mode: str) -> Record:
+    """The format record a run passes for `mode` with every row at its default."""
+    if mode == "bvh":
+        return Record("bvh", {"units": "m"})
+    hands = {"include_hands": False, "face_style": "disabled", "hand_stick_radius_m": 0.003}
+    octahedrons = Record("octahedrons", {"bone_vis_color": "rainbow_y", "bone_vis_radius_m": 0.02})
+    style = {
+        "body_mesh": Record(
+            "body_mesh", {"bone_vis": Record("off", {}), "shader": Record("default", {})}
+        ),
+        "bones_only": Record("bones_only", {"bone_vis": octahedrons}),
+        "openpose": Record(
+            "openpose",
+            {
+                **hands,
+                "marker_radius_m": 0.010,
+                "stick_radius_m": 0.008,
+                "hand_marker_radius_m": 0.005,
+                "face_marker_radius_m": 0.0,
+            },
+        ),
+        "scail": Record(
+            "scail",
+            {
+                **hands,
+                "stick_radius_m": 0.022,
+                "marker_radius_m": 0.0,
+                "material_roughness": 0.3,
+                "hand_marker_radius_m": 0.005,
+            },
+        ),
+    }[mode]
+    return Record("glb", {"mesh_style": style, "bone_smooth_window": 0})
+
+
 @pytest.mark.parametrize("mode", ("body_mesh", "bones_only", "openpose", "scail", "bvh"))
 def test_pose_file_public_bytes_and_source(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, mode: str
@@ -378,13 +414,11 @@ def test_pose_file_public_bytes_and_source(
     monkeypatch.setenv("DINKSTER_ASSET_VAULT", str(tmp_path / "vault"))
     pose = _export_pose()
     original = copy.deepcopy(pose)
-    options = {"format.mesh_style": mode} if mode != "bvh" else {"format.units": "m"}
     value = BuildPoseFile.execute(
         pose_data=pose,
-        format="bvh" if mode == "bvh" else "glb",
+        format=_pose_format(mode),
         fps=20,
         camera_translation="centered",
-        **options,
     )["model_3d"]
     _assert_file(mode, value)
     np.testing.assert_equal(pose, original)
@@ -430,8 +464,4 @@ def _assert_file(mode: str, value: Any) -> None:
 @pytest.mark.parametrize("mode", ("body_mesh", "bones_only", "bvh"))
 def test_pose_file_requires_model_or_external_rig(mode: str) -> None:
     with pytest.raises(ValueError, match="sam3d_body_model.*_skeleton_override"):
-        BuildPoseFile.execute(
-            pose_data={"frames": []},
-            format="bvh" if mode == "bvh" else "glb",
-            **{"format.mesh_style": mode},
-        )
+        BuildPoseFile.execute(pose_data={"frames": []}, format=_pose_format(mode))

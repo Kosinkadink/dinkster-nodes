@@ -17,7 +17,7 @@ import dinkster_qwen
 import dinkster_sd
 import numpy as np
 import pytest
-from dinkster_api.v1 import Node, NodeSchema, OutputSpec, TypeExpr
+from dinkster_api.v1 import Node, NodeSchema, Output, TypeExpr
 from dinkster_graph import Graph, GraphNode, Link
 from dinkster_latent.latent import (
     LatentBlend,
@@ -328,9 +328,9 @@ class PortableLatentSource(Node):
     def define_schema(cls) -> NodeSchema:
         return NodeSchema(
             node_type="latent-fixture.source",
-            outputs=(
-                OutputSpec("samples", TypeExpr.concrete("LATENT")),
-                OutputSpec("mask", TypeExpr.concrete("MASK")),
+            body=(
+                Output("samples", TypeExpr.concrete("LATENT")),
+                Output("mask", TypeExpr.concrete("MASK")),
             ),
         )
 

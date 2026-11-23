@@ -13,11 +13,11 @@ from dinkster_api.v1 import (
     CORE_STRING,
     HOOKS_TYPE,
     AssetRef,
-    InputSpec,
+    Input,
     LocalAssetRef,
     Node,
     NodeSchema,
-    OutputSpec,
+    Output,
     TypeExpr,
     initialize_inference_process,
 )
@@ -139,8 +139,7 @@ class LoraHookSource(Node):
     def define_schema(cls) -> NodeSchema:
         return NodeSchema(
             node_type="lora-hooks-fixture.source",
-            inputs=(),
-            outputs=(OutputSpec("hooks", TypeExpr.concrete(HOOKS_TYPE)),),
+            body=(Output("hooks", TypeExpr.concrete(HOOKS_TYPE)),),
         )
 
     @classmethod
@@ -157,12 +156,12 @@ class LoraHookInspect(Node):
     def define_schema(cls) -> NodeSchema:
         return NodeSchema(
             node_type="lora-hooks-fixture.inspect",
-            inputs=(
-                InputSpec("source", TypeExpr.concrete(HOOKS_TYPE)),
-                InputSpec("full", TypeExpr.concrete(HOOKS_TYPE)),
-                InputSpec("model_only", TypeExpr.concrete(HOOKS_TYPE)),
+            body=(
+                Input("source", TypeExpr.concrete(HOOKS_TYPE)),
+                Input("full", TypeExpr.concrete(HOOKS_TYPE)),
+                Input("model_only", TypeExpr.concrete(HOOKS_TYPE)),
+                Output("summary", TypeExpr.concrete(CORE_STRING)),
             ),
-            outputs=(OutputSpec("summary", TypeExpr.concrete(CORE_STRING)),),
         )
 
     @classmethod

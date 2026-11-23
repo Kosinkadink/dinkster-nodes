@@ -3,10 +3,15 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Mapping
 from typing import Any, cast
 
 import pytest
-from dinkster_api.v1 import schema_to_wire
+from dinkster_api.v1 import (
+    Item,
+    Members,
+    schema_to_wire,
+)
 from dinkster_text.text import (
     CaseConverter,
     ConvertArrayToString,
@@ -26,35 +31,39 @@ from dinkster_text.text import (
 )
 
 
+def _members(values: Mapping[str, object]) -> Members[Item]:
+    return Members(Item(key, value) for key, value in values.items())
+
+
 def test_format_wire_preserves_optional_named_values() -> None:
-    interface = cast(
-        list[dict[str, Any]], schema_to_wire(StringFormat.define_schema())["interface"]
-    )
-    assert [item["id"] for item in interface] == ["values", "f_string", "STRING"]
-    family, text, output = interface
-    assert family["role"] == "inputFamily"
-    assert family["required"] is True
-    assert family["minMembers"] == 0
-    assert family["memberNames"] == list("abcdefghijklmnopqrstuvwxyz")
-    assert family["template"] == [
-        {"role": "input", "id": "value", "required": False, "type": {"kind": "wildcard"}}
-    ]
-    assert text["role"] == "input"
+    body = cast(list[dict[str, Any]], schema_to_wire(StringFormat.define_schema())["body"])
+    assert [item["id"] for item in body] == ["values", "f_string", "STRING"]
+    family, text, output = body
+    assert family["kind"] == "group"
+    assert family.get("minMembers", 0) == 0
+    assert family["keys"] == {"named": list("abcdefghijklmnopqrstuvwxyz")}
+    assert family["value"] == {
+        "kind": "input",
+        "id": "value",
+        "required": False,
+        "type": {"kind": "wildcard"},
+    }
+    assert text["kind"] == "input"
     assert text["required"] is True
     assert text["type"] == {"kind": "concrete", "types": ["STRING"]}
     assert text["default"] == "{a}"
-    assert output["role"] == "output"
+    assert output["kind"] == "output"
     assert output["type"] == {"kind": "concrete", "types": ["STRING"]}
 
 
 def test_format_uses_python_formatting() -> None:
     assert StringFormat.execute(
-        values={"a": {"name": "Ada"}, "b": 3.14159, "c": [7, 11]},
+        values=_members({"a": {"name": "Ada"}, "b": 3.14159, "c": [7, 11]}),
         f_string="{a[name]!r}: {b:.2f} / {c[1]:04d}",
     ) == {"STRING": "'Ada': 3.14 / 0011"}
-    assert StringFormat.execute(values={}, f_string="{{empty}}") == {"STRING": "{empty}"}
+    assert StringFormat.execute(values=_members({}), f_string="{{empty}}") == {"STRING": "{empty}"}
     with pytest.raises(KeyError):
-        StringFormat.execute(values={}, f_string="{a}")
+        StringFormat.execute(values=_members({}), f_string="{a}")
 
 
 def test_text_operations_preserve_order_and_python_slicing() -> None:

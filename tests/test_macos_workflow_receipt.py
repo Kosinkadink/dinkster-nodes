@@ -612,10 +612,10 @@ class MacWorkflowReceiptTests(unittest.TestCase):
                             del catalog["nodes"]["KSampler"]
                         elif alteration in ("catalog-input", "catalog-output"):
                             role = alteration.removeprefix("catalog-")
-                            catalog["nodes"]["KSampler"]["interface"] = [
-                                port
-                                for port in catalog["nodes"]["KSampler"]["interface"]
-                                if port["role"] != role
+                            catalog["nodes"]["KSampler"]["body"] = [
+                                row
+                                for row in catalog["nodes"]["KSampler"]["body"]
+                                if row["kind"] != role
                             ]
                         return io.BytesIO(json.dumps(catalog).encode())
                     raise ReachedEngine()

@@ -7,6 +7,8 @@ from dinkster_models.model_file_savers import CheckpointSave, CLIPSave, ModelSav
 from dinkster_schema import claim_covers
 from dinkster_workers import load_manifest
 
+from tests.body_rows import advanced_ids, beside
+
 
 def test_encoder_savers_keep_model_inputs_and_append_the_public_mount() -> None:
     for node, node_type, value_type, input_name, prefix in (
@@ -20,7 +22,7 @@ def test_encoder_savers_keep_model_inputs_and_append_the_public_mount() -> None:
         assert schema.inputs[0].type == TypeExpr.concrete(value_type)
         assert schema.inputs[1].default == prefix
         assert schema.inputs[2].widget == MountWidget()
-        assert schema.inputs[2].adjacent_to == "filename_prefix"
+        assert beside(schema.body) == {"mount": "filename_prefix"}
         assert schema.inputs[2].default is None and not schema.inputs[2].required
         assert schema.outputs == ()
         assert schema.output_node and not schema.idempotent
@@ -50,7 +52,7 @@ def test_checkpoint_savers_keep_core_inputs_and_pack_registration() -> None:
         assert all(item.required for item in schema.inputs[:-1])
         assert schema.inputs[-2].default == prefix
         assert schema.inputs[-1].widget == MountWidget()
-        assert schema.inputs[-1].adjacent_to == "filename_prefix"
+        assert beside(schema.body) == {"mount": "filename_prefix"}
         assert schema.inputs[-1].default is None and not schema.inputs[-1].required
         assert schema.outputs == () and schema.output_node and not schema.idempotent
     manifest = load_manifest("packages/dinkster-nodes-models/dinkster-pack.toml")
@@ -67,20 +69,22 @@ def test_lora_save_keeps_source_inputs_and_native_manifest_claim() -> None:
     assert schema.node_type == "dinkster.models.lora_save"
     assert [item.id for item in schema.inputs] == [
         "filename_prefix",
+        "mount",
+        "model_diff",
+        "text_encoder_diff",
         "rank",
         "lora_type",
         "bias_diff",
-        "model_diff",
-        "text_encoder_diff",
-        "mount",
     ]
-    assert schema.inputs[0].default == "loras/ComfyUI_extracted_lora"
-    assert schema.inputs[4].type == TypeExpr.concrete(MODEL_TYPE)
-    assert schema.inputs[5].type == TypeExpr.concrete(CLIP_TYPE)
-    assert not schema.inputs[4].required and not schema.inputs[5].required
-    assert schema.inputs[6].widget == MountWidget()
-    assert schema.inputs[6].adjacent_to == "filename_prefix"
-    assert not schema.inputs[6].required and schema.inputs[6].default is None
+    assert advanced_ids(schema.body) == ("rank", "lora_type", "bias_diff")
+    inputs = {item.id: item for item in schema.inputs}
+    assert inputs["filename_prefix"].default == "loras/ComfyUI_extracted_lora"
+    assert inputs["model_diff"].type == TypeExpr.concrete(MODEL_TYPE)
+    assert inputs["text_encoder_diff"].type == TypeExpr.concrete(CLIP_TYPE)
+    assert not inputs["model_diff"].required and not inputs["text_encoder_diff"].required
+    assert inputs["mount"].widget == MountWidget()
+    assert beside(schema.body) == {"mount": "filename_prefix"}
+    assert not inputs["mount"].required and inputs["mount"].default is None
     assert schema.outputs == () and schema.output_node and not schema.idempotent
     assert NODES.count(LoraSave) == 1
     manifest = load_manifest("packages/dinkster-nodes-models/dinkster-pack.toml")

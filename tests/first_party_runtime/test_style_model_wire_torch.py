@@ -13,10 +13,10 @@ from dinkster_api.v1 import (
     LATENT_UPSCALE_MODEL_TYPE,
     MODEL_PATCH_TYPE,
     STYLE_MODEL_TYPE,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
-    OutputSpec,
+    Output,
     TypeExpr,
     TypeRegistry,
     initialize_inference_process,
@@ -104,7 +104,7 @@ class StyleSource(Node):
     def define_schema(cls) -> NodeSchema:
         return NodeSchema(
             node_type="style-fixture.source",
-            outputs=(OutputSpec("style", TypeExpr.concrete(STYLE_MODEL_TYPE)),),
+            body=(Output("style", TypeExpr.concrete(STYLE_MODEL_TYPE)),),
         )
 
     @classmethod
@@ -117,8 +117,10 @@ class StyleConsumer(Node):
     def define_schema(cls) -> NodeSchema:
         return NodeSchema(
             node_type="style-fixture.consume",
-            inputs=(InputSpec("style", TypeExpr.concrete(STYLE_MODEL_TYPE)),),
-            outputs=(OutputSpec("summary", TypeExpr.concrete(CORE_STRING)),),
+            body=(
+                Input("style", TypeExpr.concrete(STYLE_MODEL_TYPE)),
+                Output("summary", TypeExpr.concrete(CORE_STRING)),
+            ),
         )
 
     @classmethod
@@ -263,7 +265,7 @@ class ModelPatchSource(Node):
     def define_schema(cls) -> NodeSchema:
         return NodeSchema(
             node_type="model-patch-fixture.source",
-            outputs=(OutputSpec("model_patch", TypeExpr.concrete(cls.value_type)),),
+            body=(Output("model_patch", TypeExpr.concrete(cls.value_type)),),
         )
 
     @classmethod
@@ -278,8 +280,10 @@ class ModelPatchConsumer(Node):
     def define_schema(cls) -> NodeSchema:
         return NodeSchema(
             node_type="model-patch-fixture.consume",
-            inputs=(InputSpec("model_patch", TypeExpr.concrete(cls.value_type)),),
-            outputs=(OutputSpec("summary", TypeExpr.concrete(CORE_STRING)),),
+            body=(
+                Input("model_patch", TypeExpr.concrete(cls.value_type)),
+                Output("summary", TypeExpr.concrete(CORE_STRING)),
+            ),
         )
 
     @classmethod

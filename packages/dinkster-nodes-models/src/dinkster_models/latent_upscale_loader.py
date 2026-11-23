@@ -12,11 +12,11 @@ from dinkster_api.v1 import (
     LATENT_UPSCALE_MODEL_TYPE,
     AssetRef,
     AssetWidget,
-    InputSpec,
+    Input,
     LocalAssetRef,
     Node,
     NodeSchema,
-    OutputSpec,
+    Output,
     TypeExpr,
     initialize_inference_process,
     with_identity_replacement,
@@ -77,16 +77,16 @@ class LatentUpscaleModelLoader(Node):
                 node_type="dinkster.models.latent_upscale_model_loader",
                 display_name="Load Latent Upscale Model",
                 category="model/loaders",
-                inputs=(
-                    InputSpec(
+                body=(
+                    Input(
                         "model_name",
                         _ASSET,
                         widget=AssetWidget(
                             accept=("application/octet-stream",), kind="model/latent-upscaler"
                         ),
                     ),
+                    Output("LATENT_UPSCALE_MODEL", _LATENT_UPSCALE_MODEL),
                 ),
-                outputs=(OutputSpec("LATENT_UPSCALE_MODEL", _LATENT_UPSCALE_MODEL),),
             ),
             "LatentUpscaleModelLoader",
         )

@@ -8,10 +8,10 @@ from dinkster_api.v1 import (
     CORE_COMBO,
     IMAGE_TYPE,
     ComboWidget,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
-    OutputSpec,
+    Output,
     TypeExpr,
     initialize_inference_process,
     materialize_image,
@@ -130,19 +130,19 @@ class SeedVR2PostProcessing(Node):
                 "and apply color correction."
             ),
             search_terms=("seedvr2", "upscale", "color correction", "color match", "postprocess"),
-            inputs=(
-                InputSpec("images", image, doc="The generated image to process."),
-                InputSpec(
+            body=(
+                Input("images", image, tooltip="The generated image to process."),
+                Input(
                     "original_resized_images",
                     image,
-                    doc="The original resized image before pre-processing, used as reference.",
+                    tooltip="The original resized image before pre-processing, used as reference.",
                 ),
-                InputSpec(
+                Input(
                     "color_correction_method",
                     TypeExpr.concrete(CORE_COMBO),
                     default="lab",
                     widget=ComboWidget(("lab", "wavelet", "adain", "none")),
-                    doc=(
+                    tooltip=(
                         "Method to match the generated image colors to the original image. "
                         "lab: transfer color in CIELAB space, preserving detail (most faithful). "
                         "wavelet: transfer low-frequency color, "
@@ -151,8 +151,8 @@ class SeedVR2PostProcessing(Node):
                         "none: skip color transfer (geometry alignment only)."
                     ),
                 ),
+                Output("images", image, tooltip="The aligned, color-corrected image."),
             ),
-            outputs=(OutputSpec("images", image, doc="The aligned, color-corrected image."),),
         )
         return with_identity_replacement(schema, "SeedVR2PostProcessing")
 

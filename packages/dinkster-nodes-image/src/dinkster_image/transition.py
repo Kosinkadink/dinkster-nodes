@@ -8,13 +8,14 @@ from typing import cast
 
 import numpy as np
 from dinkster_api.v1 import (
-    DynamicComboOption,
-    DynamicComboSpec,
-    InputFamilySpec,
-    InputSpec,
+    Choice,
+    Group,
+    Input,
     Node,
     NodeSchema,
-    OutputSpec,
+    Numbered,
+    Option,
+    Output,
     image_math,
 )
 
@@ -349,25 +350,30 @@ class ImageTransition(Node):
                 node_type="dinkster.image.transition",
                 display_name="Transition Images",
                 category="image/batch",
-                inputs=(
+                body=(
                     combo_input("transition", _TRANSITIONS, "fade"),
                     number_input("transitioning_frames", INT, 2, minimum=0, maximum=4096, step=1),
                     combo_input("easing", _EASINGS, "linear"),
                     number_input("blur_radius", FLOAT, 0.0, minimum=0.0, maximum=100.0, step=0.1),
-                    InputSpec("reverse", BOOLEAN, required=False, default=False),
+                    Input("reverse", BOOLEAN, required=False, default=False),
                     number_input(
-                        "input_count", INT, 0, minimum=0, maximum=1000, step=1, hidden=True
+                        "input_count", INT, 0, minimum=0, maximum=512, step=1, hidden=True
                     ),
-                ),
-                combos=(
-                    DynamicComboSpec(
+                    Group(
+                        "images",
+                        value=Input("value", IMAGE),
+                        min_members=1,
+                        max_members=512,
+                        keys=Numbered("image_", start=0),
+                    ),
+                    Choice(
                         "mode",
-                        (
-                            DynamicComboOption("between_inputs"),
-                            DynamicComboOption("within_batch"),
-                            DynamicComboOption(
+                        options=(
+                            Option("between_inputs"),
+                            Option("within_batch"),
+                            Option(
                                 "join_batches",
-                                (
+                                rows=(
                                     number_input(
                                         "start_index",
                                         INT,
@@ -381,31 +387,25 @@ class ImageTransition(Node):
                         ),
                         default="between_inputs",
                     ),
-                    DynamicComboSpec(
+                    Choice(
                         "shape_policy",
-                        (
-                            DynamicComboOption("strict"),
-                            DynamicComboOption(
+                        options=(
+                            Option("strict"),
+                            Option(
                                 "resize_to_first",
-                                (
+                                rows=(
                                     combo_input(
                                         "resize_interpolation",
                                         ("nearest-exact", "bilinear", "bicubic", "lanczos", "area"),
                                         "lanczos",
-                                        advanced=True,
                                     ),
                                 ),
                             ),
                         ),
                         default="strict",
                     ),
+                    Output("image", IMAGE, preview=True),
                 ),
-                input_families=(
-                    InputFamilySpec(
-                        "images", IMAGE, min_members=1, max_members=1000, member_prefix="image_"
-                    ),
-                ),
-                outputs=(OutputSpec("image", IMAGE, preview=True),),
                 search_terms=(
                     "ImageBatchJoinWithTransition",
                     "TransitionImagesMulti",

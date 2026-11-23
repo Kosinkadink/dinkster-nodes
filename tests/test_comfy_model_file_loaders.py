@@ -105,17 +105,17 @@ def test_model_file_loaders_use_bound_asset_inputs_and_expected_outputs() -> Non
         "CLIP_VISION",
         "VAE",
     )
-    assert schemas["LTXVAudioVAELoader"].outputs[0].display_name == "Audio VAE"
+    assert schemas["LTXVAudioVAELoader"].outputs[0].label == "Audio VAE"
     assert tuple(input.id for input in schemas["LTXAVTextEncoderLoader"].inputs) == (
         "text_encoder",
         "ckpt_name",
         "device",
     )
     assert schemas["LTXAVTextEncoderLoader"].inputs[2].required
-    assert schemas["CheckpointLoaderSimple"].inputs[0].doc == (
+    assert schemas["CheckpointLoaderSimple"].inputs[0].tooltip == (
         "The name of the checkpoint (model) to load."
     )
-    assert tuple(output.doc for output in schemas["CheckpointLoaderSimple"].outputs) == (
+    assert tuple(output.tooltip for output in schemas["CheckpointLoaderSimple"].outputs) == (
         "The model used for denoising latents.",
         "The CLIP model used for encoding text prompts.",
         "The VAE model used for encoding and decoding images to and from latent space.",
@@ -133,6 +133,7 @@ def test_model_file_loader_defaults_match_comfyui() -> None:
     assert schemas["CLIPLoader"].inputs[1].default == "stable_diffusion"
     clip_type_widget = schemas["CLIPLoader"].inputs[1].widget
     assert isinstance(clip_type_widget, ComboWidget)
+    assert isinstance(clip_type_widget.options, tuple)
     assert len(clip_type_widget.options) == 32
     assert schemas["CLIPLoader"].inputs[2].default == "default"
     assert schemas["DualCLIPLoader"].inputs[2].default == "sdxl"

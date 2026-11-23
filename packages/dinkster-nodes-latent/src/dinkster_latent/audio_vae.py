@@ -11,11 +11,11 @@ from dinkster_api.v1 import (
     CORE_INT,
     LATENT_TYPE,
     VAE_TYPE,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
     TypeExpr,
     initialize_inference_process,
     materialize_audio,
@@ -68,8 +68,11 @@ class VAEEncodeAudio(Node):
                 display_name="VAE Encode Audio",
                 category="model/latent",
                 search_terms=("audio to latent",),
-                inputs=(InputSpec("audio", _AUDIO), InputSpec("vae", _VAE)),
-                outputs=(OutputSpec("LATENT", _LATENT),),
+                body=(
+                    Input("audio", _AUDIO),
+                    Input("vae", _VAE),
+                    Output("LATENT", _LATENT),
+                ),
             ),
             "VAEEncodeAudio",
         )
@@ -100,8 +103,11 @@ class VAEDecodeAudio(Node):
                 display_name="VAE Decode Audio",
                 category="model/latent",
                 search_terms=("latent to audio",),
-                inputs=(InputSpec("samples", _LATENT), InputSpec("vae", _VAE)),
-                outputs=(OutputSpec("AUDIO", _AUDIO),),
+                body=(
+                    Input("samples", _LATENT),
+                    Input("vae", _VAE),
+                    Output("AUDIO", _AUDIO),
+                ),
             ),
             "VAEDecodeAudio",
         )
@@ -120,20 +126,20 @@ class VAEDecodeAudioTiled(Node):
                 display_name="VAE Decode Audio (Tiled)",
                 category="model/latent",
                 search_terms=("latent to audio",),
-                inputs=(
-                    InputSpec("samples", _LATENT),
-                    InputSpec("vae", _VAE),
-                    InputSpec(
+                body=(
+                    Input("samples", _LATENT),
+                    Input("vae", _VAE),
+                    Input(
                         "tile_size",
                         _INT,
                         default=512,
                         widget=NumberWidget(min=32, max=8192, step=8),
                     ),
-                    InputSpec(
+                    Input(
                         "overlap", _INT, default=64, widget=NumberWidget(min=0, max=1024, step=8)
                     ),
+                    Output("AUDIO", _AUDIO),
                 ),
-                outputs=(OutputSpec("AUDIO", _AUDIO),),
             ),
             "VAEDecodeAudioTiled",
         )

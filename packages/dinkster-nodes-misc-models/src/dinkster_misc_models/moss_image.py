@@ -20,12 +20,15 @@ from dinkster_api.v1 import (
     IMAGE_TYPE,
     VAE_TYPE,
     ComboWidget,
-    InputFamilySpec,
-    InputSpec,
+    Group,
+    Input,
+    Item,
+    Members,
     Node,
     NodeSchema,
+    Numbered,
     NumberWidget,
-    OutputSpec,
+    Output,
     StringWidget,
     TypeExpr,
     initialize_inference_process,
@@ -59,28 +62,24 @@ class MOSSImageLayoutPrompt(Node):
                 "Builds a MOSS-Image layout prompt from the prompt and the boxes from "
                 "Create Bounding Boxes."
             ),
-            inputs=(
-                InputSpec(
-                    "prompt", _STRING, widget=StringWidget(multiline=True, dynamic_prompts=True)
-                ),
-                InputSpec("element", TypeExpr.concrete(ARRAY_TYPE)),
-                InputSpec(
+            body=(
+                Input("prompt", _STRING, widget=StringWidget(multiline=True, dynamic_prompts=True)),
+                Input("element", TypeExpr.concrete(ARRAY_TYPE)),
+                Input(
                     "width",
                     TypeExpr.concrete(CORE_INT),
                     default=1024,
                     widget=NumberWidget(min=16, max=16384, step=16),
                 ),
-                InputSpec(
+                Input(
                     "height",
                     TypeExpr.concrete(CORE_INT),
                     default=1024,
                     widget=NumberWidget(min=16, max=16384, step=16),
                 ),
-                InputSpec(
-                    "character_boxes", _STRING, default="", widget=StringWidget(multiline=False)
-                ),
+                Input("character_boxes", _STRING, default="", widget=StringWidget(multiline=False)),
+                Output("prompt", _STRING, label="prompt"),
             ),
-            outputs=(OutputSpec("prompt", _STRING, display_name="prompt"),),
         )
         return with_identity_replacement(schema, "MOSSImageLayoutPrompt")
 
@@ -132,56 +131,54 @@ class MOSSImageControl(Node):
                 "Adds the color region and depth maps for a MOSS-Image color/depth control "
                 "adapter loaded with a LoRA loader."
             ),
-            inputs=(
-                InputSpec("positive", _CONDITIONING),
-                InputSpec("negative", _CONDITIONING),
-                InputSpec("vae", TypeExpr.concrete(VAE_TYPE)),
-                InputSpec(
+            body=(
+                Input("positive", _CONDITIONING),
+                Input("negative", _CONDITIONING),
+                Input("vae", TypeExpr.concrete(VAE_TYPE)),
+                Input(
                     "color_map",
                     TypeExpr.concrete(IMAGE_TYPE),
                     required=False,
-                    doc=(
+                    tooltip=(
                         "One flat color per region, at the output size. "
                         "The colors are only region IDs."
                     ),
                 ),
-                InputSpec(
+                Input(
                     "depth_map",
                     TypeExpr.concrete(IMAGE_TYPE),
                     required=False,
-                    doc="Depth map at the output size, near is white.",
+                    tooltip="Depth map at the output size, near is white.",
                 ),
-                InputSpec(
+                Input(
                     "strength",
                     TypeExpr.concrete(CORE_FLOAT),
                     default=1.0,
                     widget=NumberWidget(min=0.0, max=10.0, step=0.01),
-                    doc=(
+                    tooltip=(
                         "Scales the maps' contribution to the image tokens. 0.0 is the same "
                         "as no maps, 1.0 is the trained strength."
                     ),
                 ),
-                InputSpec(
+                Input(
                     "start_percent",
                     TypeExpr.concrete(CORE_FLOAT),
                     default=0.0,
                     widget=NumberWidget(min=0.0, max=1.0, step=0.001),
-                    doc="Sampling percent at which the control starts.",
+                    tooltip="Sampling percent at which the control starts.",
                 ),
-                InputSpec(
+                Input(
                     "end_percent",
                     TypeExpr.concrete(CORE_FLOAT),
                     default=1.0,
                     widget=NumberWidget(min=0.0, max=1.0, step=0.001),
-                    doc=(
+                    tooltip=(
                         "Sampling percent at which the control ends. Ending early keeps the "
                         "layout and depth while the rest of the steps loosen the shapes."
                     ),
                 ),
-            ),
-            outputs=(
-                OutputSpec("positive", _CONDITIONING, display_name="positive"),
-                OutputSpec("negative", _CONDITIONING, display_name="negative"),
+                Output("positive", _CONDITIONING, label="positive"),
+                Output("negative", _CONDITIONING, label="negative"),
             ),
         )
         return with_identity_replacement(schema, "MOSSImageControl")
@@ -247,29 +244,25 @@ class TextEncodeMOSSImageEdit(Node):
                 "use it for the negative prompt too. The references are used at the size they "
                 "come in, scale them first."
             ),
-            inputs=(
-                InputSpec("clip", TypeExpr.concrete(CLIP_TYPE)),
-                InputSpec(
-                    "prompt", _STRING, widget=StringWidget(multiline=True, dynamic_prompts=True)
-                ),
-                InputSpec("vae", TypeExpr.concrete(VAE_TYPE)),
-                InputSpec(
+            body=(
+                Input("clip", TypeExpr.concrete(CLIP_TYPE)),
+                Input("prompt", _STRING, widget=StringWidget(multiline=True, dynamic_prompts=True)),
+                Input("vae", TypeExpr.concrete(VAE_TYPE)),
+                Input(
                     "edit_format",
                     TypeExpr.concrete(CORE_COMBO),
                     widget=ComboWidget(tuple(_EDIT_FORMATS)),
                 ),
-            ),
-            input_families=(
-                InputFamilySpec(
+                Group(
                     "images",
-                    (InputSpec("image", TypeExpr.concrete(IMAGE_TYPE)),),
-                    member_prefix="image_",
+                    value=Input("image", TypeExpr.concrete(IMAGE_TYPE)),
                     min_members=1,
                     max_members=10,
                     optional_after_minimum=True,
+                    keys=Numbered("image_", start=0),
                 ),
+                Output("CONDITIONING", _CONDITIONING),
             ),
-            outputs=(OutputSpec("CONDITIONING", _CONDITIONING),),
         )
         return with_identity_replacement(schema, "TextEncodeMOSSImageEdit")
 
@@ -281,12 +274,10 @@ class TextEncodeMOSSImageEdit(Node):
         prompt: str,
         vae: Any,
         edit_format: str,
-        images: Mapping[str, object],
+        images: Members[Item],
     ) -> Mapping[str, object]:
         method, vision = _EDIT_FORMATS[edit_format]
-        pixels = [
-            materialize_image(images[name]) for name in sorted(images) if images[name] is not None
-        ]
+        pixels = [materialize_image(member.value) for member in images if member.value is not None]
         vl: list[Any] = []
         if vision:
             initialize_inference_process()

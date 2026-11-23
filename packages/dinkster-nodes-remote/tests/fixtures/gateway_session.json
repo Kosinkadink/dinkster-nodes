@@ -1,14 +1,13 @@
 {
   "assets": {
-    "output": "cmVjb3JkZWQgZ2F0ZXdheSBvdXRwdXQ=",
-    "preview": "cmVjb3JkZWQgZ2F0ZXdheSBwcmV2aWV3"
+    "output": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Y9ZPpAAAAAASUVORK5CYII="
   },
   "catalog": {
-    "catalogEpoch": 2,
+    "catalogEpoch": 12,
     "nodes": {
       "dinkster.remote.nanobanana.image": {
         "availability": "available",
-        "latestVersion": 1,
+        "latestVersion": 2,
         "listing": {
           "category": "image/generate",
           "displayName": "Nano Banana Image",
@@ -27,15 +26,11 @@
         "schemaVersions": {
           "1": {
             "schema": {
-              "category": "image/generate",
-              "description": "Generate or edit an image with Google's Gemini image model.",
-              "displayName": "Nano Banana Image",
-              "idempotent": false,
-              "interface": [
+              "body": [
                 {
                   "id": "prompt",
+                  "kind": "input",
                   "required": true,
-                  "role": "input",
                   "type": {
                     "kind": "concrete",
                     "types": [
@@ -50,13 +45,13 @@
                 },
                 {
                   "id": "image",
+                  "kind": "input",
                   "required": false,
-                  "role": "input",
                   "type": {
                     "element": {
                       "kind": "concrete",
                       "types": [
-                        "comfy.IMAGE"
+                        "IMAGE"
                       ]
                     },
                     "kind": "asset"
@@ -72,10 +67,10 @@
                 },
                 {
                   "default": "1:1",
-                  "displayName": "Aspect ratio",
                   "id": "aspect_ratio",
+                  "kind": "input",
+                  "label": "Aspect ratio",
                   "required": false,
-                  "role": "input",
                   "type": {
                     "kind": "concrete",
                     "types": [
@@ -98,8 +93,8 @@
                 {
                   "default": "1K",
                   "id": "resolution",
+                  "kind": "input",
                   "required": false,
-                  "role": "input",
                   "type": {
                     "kind": "concrete",
                     "types": [
@@ -117,22 +112,27 @@
                 },
                 {
                   "id": "image",
+                  "kind": "output",
                   "preview": true,
-                  "role": "output",
                   "type": {
                     "element": {
                       "kind": "concrete",
                       "types": [
-                        "comfy.IMAGE"
+                        "IMAGE"
                       ]
                     },
                     "kind": "asset"
                   }
                 }
               ],
+              "category": "image/generate",
+              "description": "Generate or edit an image with Google's Gemini image model.",
+              "displayName": "Nano Banana Image",
+              "idempotent": false,
+              "interface": [],
               "ioBound": true,
               "nodeType": "dinkster.remote.nanobanana.image",
-              "schemaVersion": 1,
+              "schemaVersion": 2,
               "searchTerms": [
                 "gemini image",
                 "nano banana",
@@ -141,19 +141,477 @@
               ],
               "version": 1
             },
-            "signature": "4c027efbe3db9c6f84887b38ee2cf56ddc6b27ca"
+            "signature": "8c79ca4f776c7ebc4c74dca8facdb1a1ac2f02bb"
+          },
+          "2": {
+            "schema": {
+              "body": [
+                {
+                  "id": "prompt",
+                  "kind": "input",
+                  "required": true,
+                  "type": {
+                    "kind": "concrete",
+                    "types": [
+                      "STRING"
+                    ]
+                  },
+                  "widget": {
+                    "multiline": true,
+                    "placeholder": "Describe the image to create",
+                    "type": "STRING"
+                  }
+                },
+                {
+                  "default": "gemini-3.1-flash-image",
+                  "id": "model",
+                  "kind": "input",
+                  "required": false,
+                  "type": {
+                    "kind": "concrete",
+                    "types": [
+                      "COMBO"
+                    ]
+                  },
+                  "widget": {
+                    "options": [
+                      "gemini-2.5-flash-image",
+                      "gemini-3-pro-image",
+                      "gemini-3.1-flash-image",
+                      "gemini-nano-banana-2.1",
+                      "gemini-3.1-flash-lite-image"
+                    ],
+                    "type": "COMBO"
+                  }
+                },
+                {
+                  "id": "image",
+                  "kind": "input",
+                  "required": false,
+                  "type": {
+                    "element": {
+                      "kind": "concrete",
+                      "types": [
+                        "IMAGE"
+                      ]
+                    },
+                    "kind": "asset"
+                  },
+                  "widget": {
+                    "accept": [
+                      "image/png",
+                      "image/jpeg",
+                      "image/webp"
+                    ],
+                    "type": "ASSET"
+                  }
+                },
+                {
+                  "id": "images",
+                  "kind": "input",
+                  "required": false,
+                  "type": {
+                    "element": {
+                      "element": {
+                        "kind": "concrete",
+                        "types": [
+                          "IMAGE"
+                        ]
+                      },
+                      "kind": "asset"
+                    },
+                    "kind": "list"
+                  }
+                },
+                {
+                  "id": "files",
+                  "kind": "input",
+                  "required": false,
+                  "tooltip": "Uploaded text/plain or application/pdf context assets, in order.",
+                  "type": {
+                    "element": {
+                      "kind": "concrete",
+                      "types": [
+                        "ASSET"
+                      ]
+                    },
+                    "kind": "list"
+                  }
+                },
+                {
+                  "default": "auto",
+                  "id": "aspect_ratio",
+                  "kind": "input",
+                  "label": "Aspect ratio",
+                  "required": false,
+                  "type": {
+                    "kind": "concrete",
+                    "types": [
+                      "COMBO"
+                    ]
+                  },
+                  "widget": {
+                    "options": [
+                      "auto",
+                      "1:1",
+                      "2:3",
+                      "3:2",
+                      "3:4",
+                      "4:3",
+                      "4:5",
+                      "5:4",
+                      "9:16",
+                      "16:9",
+                      "21:9",
+                      "1:4",
+                      "4:1",
+                      "1:8",
+                      "8:1"
+                    ],
+                    "type": "COMBO"
+                  }
+                },
+                {
+                  "default": "1K",
+                  "id": "resolution",
+                  "kind": "input",
+                  "required": false,
+                  "type": {
+                    "kind": "concrete",
+                    "types": [
+                      "COMBO"
+                    ]
+                  },
+                  "widget": {
+                    "options": [
+                      "1K",
+                      "2K",
+                      "4K"
+                    ],
+                    "type": "COMBO"
+                  }
+                },
+                {
+                  "default": "IMAGE+TEXT",
+                  "id": "response_modalities",
+                  "kind": "input",
+                  "required": false,
+                  "type": {
+                    "kind": "concrete",
+                    "types": [
+                      "COMBO"
+                    ]
+                  },
+                  "widget": {
+                    "options": [
+                      "IMAGE",
+                      "IMAGE+TEXT"
+                    ],
+                    "type": "COMBO"
+                  }
+                },
+                {
+                  "id": "system_prompt",
+                  "kind": "input",
+                  "required": false,
+                  "type": {
+                    "kind": "concrete",
+                    "types": [
+                      "STRING"
+                    ]
+                  },
+                  "widget": {
+                    "multiline": true,
+                    "type": "STRING"
+                  }
+                },
+                {
+                  "id": "thinking_level",
+                  "kind": "input",
+                  "required": false,
+                  "type": {
+                    "kind": "concrete",
+                    "types": [
+                      "COMBO"
+                    ]
+                  },
+                  "widget": {
+                    "options": [
+                      "MINIMAL",
+                      "MEDIUM",
+                      "HIGH"
+                    ],
+                    "type": "COMBO"
+                  }
+                },
+                {
+                  "id": "temperature",
+                  "kind": "input",
+                  "required": false,
+                  "type": {
+                    "kind": "concrete",
+                    "types": [
+                      "FLOAT"
+                    ]
+                  },
+                  "widget": {
+                    "max": 2,
+                    "min": 0,
+                    "step": 0.01,
+                    "type": "NUMBER"
+                  }
+                },
+                {
+                  "id": "top_p",
+                  "kind": "input",
+                  "required": false,
+                  "type": {
+                    "kind": "concrete",
+                    "types": [
+                      "FLOAT"
+                    ]
+                  },
+                  "widget": {
+                    "max": 1,
+                    "min": 0,
+                    "step": 0.01,
+                    "type": "NUMBER"
+                  }
+                },
+                {
+                  "id": "images",
+                  "kind": "output",
+                  "preview": true,
+                  "type": {
+                    "element": {
+                      "element": {
+                        "kind": "concrete",
+                        "types": [
+                          "IMAGE"
+                        ]
+                      },
+                      "kind": "asset"
+                    },
+                    "kind": "list"
+                  }
+                },
+                {
+                  "id": "text",
+                  "kind": "output",
+                  "type": {
+                    "kind": "concrete",
+                    "types": [
+                      "STRING"
+                    ]
+                  }
+                },
+                {
+                  "id": "thought_images",
+                  "kind": "output",
+                  "preview": true,
+                  "type": {
+                    "element": {
+                      "element": {
+                        "kind": "concrete",
+                        "types": [
+                          "IMAGE"
+                        ]
+                      },
+                      "kind": "asset"
+                    },
+                    "kind": "list"
+                  }
+                }
+              ],
+              "category": "image/generate",
+              "description": "Generate or edit an image with Google's Gemini image model.",
+              "displayName": "Nano Banana Image",
+              "idempotent": false,
+              "interface": [],
+              "ioBound": true,
+              "nodeType": "dinkster.remote.nanobanana.image",
+              "schemaVersion": 2,
+              "searchTerms": [
+                "gemini image",
+                "nano banana",
+                "text to image",
+                "image edit"
+              ],
+              "version": 2
+            },
+            "signature": "b3975e7aef4dec983399593d1a6cced5a3eebe13"
+          }
+        },
+        "sunset": null
+      },
+      "dinkster.remote.seedance.asset_group": {
+        "availability": "available",
+        "latestVersion": 1,
+        "listing": {
+          "category": "video/assets",
+          "displayName": "Seedance Asset Group",
+          "mediaUrl": null,
+          "pricingDisplay": "priced per asset operation",
+          "requiresPlan": null,
+          "shortDescription": "Create an owned AI-generated virtual portrait resource; not real-person verification.",
+          "tags": [
+            "seedance",
+            "assets"
+          ]
+        },
+        "nodeType": "dinkster.remote.seedance.asset_group",
+        "schemaVersions": {
+          "1": {
+            "schema": {
+              "body": [
+                {
+                  "id": "name",
+                  "kind": "input",
+                  "required": true,
+                  "type": {
+                    "kind": "concrete",
+                    "types": [
+                      "STRING"
+                    ]
+                  },
+                  "widget": {
+                    "multiline": true,
+                    "type": "STRING"
+                  }
+                },
+                {
+                  "id": "group_id",
+                  "kind": "output",
+                  "type": {
+                    "kind": "concrete",
+                    "types": [
+                      "STRING"
+                    ]
+                  }
+                }
+              ],
+              "category": "video/assets",
+              "description": "Create an owned AI-generated virtual portrait resource; not real-person verification.",
+              "displayName": "Seedance Asset Group",
+              "idempotent": false,
+              "interface": [],
+              "ioBound": true,
+              "nodeType": "dinkster.remote.seedance.asset_group",
+              "schemaVersion": 2,
+              "version": 1
+            },
+            "signature": "7cdfab1ae9b477d5f6bb9227ed959c3856a505a4"
+          }
+        },
+        "sunset": null
+      },
+      "dinkster.remote.seedance.image_asset": {
+        "availability": "available",
+        "latestVersion": 1,
+        "listing": {
+          "category": "video/assets",
+          "displayName": "Seedance Image Asset",
+          "mediaUrl": null,
+          "pricingDisplay": "priced per asset operation",
+          "requiresPlan": null,
+          "shortDescription": "Create an owned AI-generated virtual portrait resource; not real-person verification.",
+          "tags": [
+            "seedance",
+            "assets"
+          ]
+        },
+        "nodeType": "dinkster.remote.seedance.image_asset",
+        "schemaVersions": {
+          "1": {
+            "schema": {
+              "body": [
+                {
+                  "id": "media",
+                  "kind": "input",
+                  "required": true,
+                  "type": {
+                    "element": {
+                      "kind": "concrete",
+                      "types": [
+                        "IMAGE"
+                      ]
+                    },
+                    "kind": "asset"
+                  }
+                },
+                {
+                  "default": false,
+                  "id": "confirm_virtual_portrait_rights",
+                  "kind": "input",
+                  "required": true,
+                  "tooltip": "I own all rights; this virtual portrait does not resemble a real person.",
+                  "type": {
+                    "kind": "concrete",
+                    "types": [
+                      "BOOLEAN"
+                    ]
+                  }
+                },
+                {
+                  "id": "group_id",
+                  "kind": "input",
+                  "required": true,
+                  "tooltip": "Completed gateway asset-group job ID owned by this account and project.",
+                  "type": {
+                    "kind": "concrete",
+                    "types": [
+                      "STRING"
+                    ]
+                  },
+                  "widget": {
+                    "multiline": true,
+                    "type": "STRING"
+                  }
+                },
+                {
+                  "id": "asset_id",
+                  "kind": "output",
+                  "type": {
+                    "kind": "concrete",
+                    "types": [
+                      "STRING"
+                    ]
+                  }
+                },
+                {
+                  "id": "group_id",
+                  "kind": "output",
+                  "type": {
+                    "kind": "concrete",
+                    "types": [
+                      "STRING"
+                    ]
+                  }
+                }
+              ],
+              "category": "video/assets",
+              "description": "Create an owned AI-generated virtual portrait resource; not real-person verification.",
+              "displayName": "Seedance Image Asset",
+              "idempotent": false,
+              "interface": [],
+              "ioBound": true,
+              "nodeType": "dinkster.remote.seedance.image_asset",
+              "schemaVersion": 2,
+              "version": 1
+            },
+            "signature": "eb2317bbbe2f2499dc9d546934ed25f1586b8a74"
           }
         },
         "sunset": null
       },
       "dinkster.remote.seedance.video": {
         "availability": "available",
-        "latestVersion": 1,
+        "latestVersion": 2,
         "listing": {
           "category": "video/generate",
           "displayName": "Seedance Video",
           "mediaUrl": null,
-          "pricingDisplay": "priced per generated video second",
+          "pricingDisplay": "priced by model and task mode",
           "requiresPlan": null,
           "shortDescription": "Generate text or image guided video with Seedance 2.5.",
           "tags": [
@@ -166,15 +624,11 @@
         "schemaVersions": {
           "1": {
             "schema": {
-              "category": "video/generate",
-              "description": "Generate a video with BytePlus Dreamina Seedance 2.5.",
-              "displayName": "Seedance Video",
-              "idempotent": false,
-              "interface": [
+              "body": [
                 {
                   "id": "prompt",
+                  "kind": "input",
                   "required": true,
-                  "role": "input",
                   "type": {
                     "kind": "concrete",
                     "types": [
@@ -188,15 +642,15 @@
                   }
                 },
                 {
-                  "displayName": "First frame",
                   "id": "image",
+                  "kind": "input",
+                  "label": "First frame",
                   "required": false,
-                  "role": "input",
                   "type": {
                     "element": {
                       "kind": "concrete",
                       "types": [
-                        "comfy.IMAGE"
+                        "IMAGE"
                       ]
                     },
                     "kind": "asset"
@@ -213,10 +667,10 @@
                 },
                 {
                   "default": 5,
-                  "displayName": "Duration (seconds)",
                   "id": "duration",
+                  "kind": "input",
+                  "label": "Duration (seconds)",
                   "required": false,
-                  "role": "input",
                   "type": {
                     "kind": "concrete",
                     "types": [
@@ -233,8 +687,8 @@
                 {
                   "default": "720p",
                   "id": "resolution",
+                  "kind": "input",
                   "required": false,
-                  "role": "input",
                   "type": {
                     "kind": "concrete",
                     "types": [
@@ -252,10 +706,10 @@
                 },
                 {
                   "default": "16:9",
-                  "displayName": "Aspect ratio",
                   "id": "aspect_ratio",
+                  "kind": "input",
+                  "label": "Aspect ratio",
                   "required": false,
-                  "role": "input",
                   "type": {
                     "kind": "concrete",
                     "types": [
@@ -276,10 +730,10 @@
                 },
                 {
                   "default": true,
-                  "displayName": "Generate audio",
                   "id": "generate_audio",
+                  "kind": "input",
+                  "label": "Generate audio",
                   "required": false,
-                  "role": "input",
                   "type": {
                     "kind": "concrete",
                     "types": [
@@ -289,22 +743,27 @@
                 },
                 {
                   "id": "video",
+                  "kind": "output",
                   "preview": true,
-                  "role": "output",
                   "type": {
                     "element": {
                       "kind": "concrete",
                       "types": [
-                        "comfy.VIDEO"
+                        "VIDEO"
                       ]
                     },
                     "kind": "asset"
                   }
                 }
               ],
+              "category": "video/generate",
+              "description": "Generate a video with BytePlus Dreamina Seedance 2.5.",
+              "displayName": "Seedance Video",
+              "idempotent": false,
+              "interface": [],
               "ioBound": true,
               "nodeType": "dinkster.remote.seedance.video",
-              "schemaVersion": 1,
+              "schemaVersion": 2,
               "searchTerms": [
                 "seedance",
                 "text to video",
@@ -313,42 +772,650 @@
               ],
               "version": 1
             },
-            "signature": "e8cc2e7415a7d758702e3a4d4f08a5b628391985"
+            "signature": "8452d0791912be0b570d1fdd5220af2219694652"
+          },
+          "2": {
+            "schema": {
+              "body": [
+                {
+                  "default": "",
+                  "id": "prompt",
+                  "kind": "input",
+                  "required": false,
+                  "type": {
+                    "kind": "concrete",
+                    "types": [
+                      "STRING"
+                    ]
+                  },
+                  "widget": {
+                    "multiline": true,
+                    "placeholder": "Describe the video to create",
+                    "type": "STRING"
+                  }
+                },
+                {
+                  "default": false,
+                  "id": "draft",
+                  "kind": "input",
+                  "required": false,
+                  "type": {
+                    "kind": "concrete",
+                    "types": [
+                      "BOOLEAN"
+                    ]
+                  }
+                },
+                {
+                  "default": "",
+                  "id": "draft_job_id",
+                  "kind": "input",
+                  "required": false,
+                  "tooltip": "Completed gateway draft job ID owned by this account and project.",
+                  "type": {
+                    "kind": "concrete",
+                    "types": [
+                      "STRING"
+                    ]
+                  }
+                },
+                {
+                  "default": "dreamina-seedance-2-5-260628",
+                  "id": "model",
+                  "kind": "input",
+                  "required": false,
+                  "type": {
+                    "kind": "concrete",
+                    "types": [
+                      "COMBO"
+                    ]
+                  },
+                  "widget": {
+                    "options": [
+                      "dreamina-seedance-2-5-260628",
+                      "dreamina-seedance-2-0-260128",
+                      "dreamina-seedance-2-0-fast-260128",
+                      "dreamina-seedance-2-0-mini-260615",
+                      "dreamina-seedance-2-5-flash-261115",
+                      "seedance-1-0-pro-250528",
+                      "seedance-1-0-pro-fast-251015"
+                    ],
+                    "type": "COMBO"
+                  }
+                },
+                {
+                  "id": "image",
+                  "kind": "input",
+                  "label": "First frame",
+                  "required": false,
+                  "type": {
+                    "element": {
+                      "kind": "concrete",
+                      "types": [
+                        "IMAGE"
+                      ]
+                    },
+                    "kind": "asset"
+                  },
+                  "widget": {
+                    "accept": [
+                      "image/png",
+                      "image/jpeg",
+                      "image/webp",
+                      "image/heic"
+                    ],
+                    "type": "ASSET"
+                  }
+                },
+                {
+                  "id": "last_frame",
+                  "kind": "input",
+                  "label": "Last frame",
+                  "required": false,
+                  "type": {
+                    "element": {
+                      "kind": "concrete",
+                      "types": [
+                        "IMAGE"
+                      ]
+                    },
+                    "kind": "asset"
+                  },
+                  "widget": {
+                    "accept": [
+                      "image/png",
+                      "image/jpeg",
+                      "image/webp",
+                      "image/heic"
+                    ],
+                    "type": "ASSET"
+                  }
+                },
+                {
+                  "default": "",
+                  "id": "first_frame_asset_id",
+                  "kind": "input",
+                  "required": false,
+                  "tooltip": "Owned completed gateway image-asset job ID, not a native provider ID.",
+                  "type": {
+                    "kind": "concrete",
+                    "types": [
+                      "STRING"
+                    ]
+                  },
+                  "widget": {
+                    "multiline": true,
+                    "type": "STRING"
+                  }
+                },
+                {
+                  "default": "",
+                  "id": "last_frame_asset_id",
+                  "kind": "input",
+                  "required": false,
+                  "tooltip": "Owned completed gateway image-asset job ID, not a native provider ID.",
+                  "type": {
+                    "kind": "concrete",
+                    "types": [
+                      "STRING"
+                    ]
+                  },
+                  "widget": {
+                    "multiline": true,
+                    "type": "STRING"
+                  }
+                },
+                {
+                  "id": "reference_images",
+                  "kind": "input",
+                  "required": false,
+                  "type": {
+                    "element": {
+                      "element": {
+                        "kind": "concrete",
+                        "types": [
+                          "IMAGE"
+                        ]
+                      },
+                      "kind": "asset"
+                    },
+                    "kind": "list"
+                  }
+                },
+                {
+                  "id": "reference_assets",
+                  "kind": "input",
+                  "required": false,
+                  "tooltip": "Owned gateway asset IDs in slot order; use asset1, asset2, etc. in prompts.",
+                  "type": {
+                    "element": {
+                      "kind": "concrete",
+                      "types": [
+                        "STRING"
+                      ]
+                    },
+                    "kind": "list"
+                  }
+                },
+                {
+                  "id": "reference_videos",
+                  "kind": "input",
+                  "required": false,
+                  "type": {
+                    "element": {
+                      "element": {
+                        "kind": "concrete",
+                        "types": [
+                          "VIDEO"
+                        ]
+                      },
+                      "kind": "asset"
+                    },
+                    "kind": "list"
+                  }
+                },
+                {
+                  "id": "reference_audios",
+                  "kind": "input",
+                  "required": false,
+                  "type": {
+                    "element": {
+                      "element": {
+                        "kind": "concrete",
+                        "types": [
+                          "AUDIO"
+                        ]
+                      },
+                      "kind": "asset"
+                    },
+                    "kind": "list"
+                  }
+                },
+                {
+                  "default": true,
+                  "id": "auto_downscale",
+                  "kind": "input",
+                  "required": false,
+                  "type": {
+                    "kind": "concrete",
+                    "types": [
+                      "BOOLEAN"
+                    ]
+                  }
+                },
+                {
+                  "default": false,
+                  "id": "auto_upscale",
+                  "kind": "input",
+                  "required": false,
+                  "type": {
+                    "kind": "concrete",
+                    "types": [
+                      "BOOLEAN"
+                    ]
+                  }
+                },
+                {
+                  "default": "auto",
+                  "id": "task_type",
+                  "kind": "input",
+                  "required": false,
+                  "type": {
+                    "kind": "concrete",
+                    "types": [
+                      "COMBO"
+                    ]
+                  },
+                  "widget": {
+                    "options": [
+                      "auto",
+                      "reference",
+                      "edit",
+                      "extend"
+                    ],
+                    "type": "COMBO"
+                  }
+                },
+                {
+                  "default": 5,
+                  "id": "duration",
+                  "kind": "input",
+                  "label": "Duration (seconds)",
+                  "required": false,
+                  "type": {
+                    "kind": "concrete",
+                    "types": [
+                      "INT"
+                    ]
+                  },
+                  "widget": {
+                    "max": 30,
+                    "min": 3,
+                    "step": 1,
+                    "type": "NUMBER"
+                  }
+                },
+                {
+                  "default": "720p",
+                  "id": "resolution",
+                  "kind": "input",
+                  "required": false,
+                  "type": {
+                    "kind": "concrete",
+                    "types": [
+                      "COMBO"
+                    ]
+                  },
+                  "widget": {
+                    "options": [
+                      "480p",
+                      "720p",
+                      "1080p",
+                      "4k"
+                    ],
+                    "type": "COMBO"
+                  }
+                },
+                {
+                  "default": "16:9",
+                  "id": "aspect_ratio",
+                  "kind": "input",
+                  "label": "Aspect ratio",
+                  "required": false,
+                  "type": {
+                    "kind": "concrete",
+                    "types": [
+                      "COMBO"
+                    ]
+                  },
+                  "widget": {
+                    "options": [
+                      "16:9",
+                      "4:3",
+                      "1:1",
+                      "3:4",
+                      "9:16",
+                      "21:9",
+                      "adaptive"
+                    ],
+                    "type": "COMBO"
+                  }
+                },
+                {
+                  "default": true,
+                  "id": "generate_audio",
+                  "kind": "input",
+                  "label": "Generate audio",
+                  "required": false,
+                  "type": {
+                    "kind": "concrete",
+                    "types": [
+                      "BOOLEAN"
+                    ]
+                  }
+                },
+                {
+                  "default": "random",
+                  "id": "seed",
+                  "kind": "input",
+                  "required": false,
+                  "tooltip": "Random chooses the cheapest compatible provider. Enter an integer from 0 to 2147483647 to keep the seed on Runway; exact output may still vary.",
+                  "type": {
+                    "kind": "concrete",
+                    "types": [
+                      "COMBO"
+                    ]
+                  },
+                  "widget": {
+                    "editableOptions": true,
+                    "options": [
+                      "random"
+                    ],
+                    "type": "COMBO"
+                  }
+                },
+                {
+                  "default": false,
+                  "id": "camera_fixed",
+                  "kind": "input",
+                  "required": false,
+                  "tooltip": "Fix the camera for Seedance 1.0 Pro/Fast; the effect is not guaranteed.",
+                  "type": {
+                    "kind": "concrete",
+                    "types": [
+                      "BOOLEAN"
+                    ]
+                  }
+                },
+                {
+                  "default": false,
+                  "id": "watermark",
+                  "kind": "input",
+                  "required": false,
+                  "type": {
+                    "kind": "concrete",
+                    "types": [
+                      "BOOLEAN"
+                    ]
+                  }
+                },
+                {
+                  "id": "video",
+                  "kind": "output",
+                  "preview": true,
+                  "type": {
+                    "element": {
+                      "kind": "concrete",
+                      "types": [
+                        "VIDEO"
+                      ]
+                    },
+                    "kind": "asset"
+                  }
+                },
+                {
+                  "id": "draft_job_id",
+                  "kind": "output",
+                  "type": {
+                    "kind": "concrete",
+                    "types": [
+                      "STRING"
+                    ]
+                  }
+                }
+              ],
+              "category": "video/generate",
+              "description": "Generate, edit, extend or render draft-guided Seedance video.",
+              "displayName": "Seedance Video",
+              "idempotent": false,
+              "interface": [],
+              "ioBound": true,
+              "nodeType": "dinkster.remote.seedance.video",
+              "schemaVersion": 2,
+              "searchTerms": [
+                "seedance",
+                "text to video",
+                "image to video",
+                "video generation"
+              ],
+              "version": 2
+            },
+            "signature": "324c4e9d593341cdf00fc27319fca01c1e6b4a53"
+          }
+        },
+        "sunset": null
+      },
+      "dinkster.remote.seedance.video_asset": {
+        "availability": "available",
+        "latestVersion": 1,
+        "listing": {
+          "category": "video/assets",
+          "displayName": "Seedance Video Asset",
+          "mediaUrl": null,
+          "pricingDisplay": "priced per asset operation",
+          "requiresPlan": null,
+          "shortDescription": "Create an owned AI-generated virtual portrait resource; not real-person verification.",
+          "tags": [
+            "seedance",
+            "assets"
+          ]
+        },
+        "nodeType": "dinkster.remote.seedance.video_asset",
+        "schemaVersions": {
+          "1": {
+            "schema": {
+              "body": [
+                {
+                  "id": "media",
+                  "kind": "input",
+                  "required": true,
+                  "type": {
+                    "element": {
+                      "kind": "concrete",
+                      "types": [
+                        "VIDEO"
+                      ]
+                    },
+                    "kind": "asset"
+                  }
+                },
+                {
+                  "default": false,
+                  "id": "confirm_virtual_portrait_rights",
+                  "kind": "input",
+                  "required": true,
+                  "tooltip": "I own all rights; this virtual portrait does not resemble a real person.",
+                  "type": {
+                    "kind": "concrete",
+                    "types": [
+                      "BOOLEAN"
+                    ]
+                  }
+                },
+                {
+                  "id": "group_id",
+                  "kind": "input",
+                  "required": true,
+                  "tooltip": "Completed gateway asset-group job ID owned by this account and project.",
+                  "type": {
+                    "kind": "concrete",
+                    "types": [
+                      "STRING"
+                    ]
+                  },
+                  "widget": {
+                    "multiline": true,
+                    "type": "STRING"
+                  }
+                },
+                {
+                  "id": "asset_id",
+                  "kind": "output",
+                  "type": {
+                    "kind": "concrete",
+                    "types": [
+                      "STRING"
+                    ]
+                  }
+                },
+                {
+                  "id": "group_id",
+                  "kind": "output",
+                  "type": {
+                    "kind": "concrete",
+                    "types": [
+                      "STRING"
+                    ]
+                  }
+                }
+              ],
+              "category": "video/assets",
+              "description": "Create an owned AI-generated virtual portrait resource; not real-person verification.",
+              "displayName": "Seedance Video Asset",
+              "idempotent": false,
+              "interface": [],
+              "ioBound": true,
+              "nodeType": "dinkster.remote.seedance.video_asset",
+              "schemaVersion": 2,
+              "version": 1
+            },
+            "signature": "776917b7bbb8febdcd36bb3d1a45ac88fa684627"
           }
         },
         "sunset": null
       }
     },
-    "schemaWire": 1
+    "schemaWire": 2
   },
   "poll": {
-    "jobId": "recorded-job-1",
+    "createdAt": "2026-11-22T10:02:21.872509Z",
+    "error": null,
+    "finishedAt": "2026-11-22T10:02:21.981416Z",
+    "jobId": "35d3c5d7-7f22-4d34-84cf-3147669ad642",
+    "nodeType": "dinkster.remote.nanobanana.image",
     "outputs": {
-      "image": {
-        "digest": "blake3:6cf1f6ce2293dab7ff1366d0fd7762d526dca4a5292ec5cbf537dcdabfcfb1e8",
-        "downloadUrl": "{base_url}/download/output",
-        "mediaType": "image/png",
-        "name": "image.bin",
-        "size": 23
-      }
+      "images": [
+        {
+          "digest": "blake3:494515ba1ed3d25cdab88152943ed17851e64b3689b26bd47aa9b3d1c2cc45e1",
+          "downloadUrl": "{base_url}/v1/downloads/35d3c5d7-7f22-4d34-84cf-3147669ad642/images.0?expires=1795342642&signature=a22a97dd571f213d1ccc94273ed0e8299d8493ce9ecab244ea4be06d436d26c1",
+          "expiresAt": "2026-11-22T10:17:22Z",
+          "mediaType": "image/png",
+          "name": null,
+          "size": 68
+        }
+      ],
+      "text": "discarded text",
+      "thought_images": []
     },
     "progress": {
-      "step": 2,
+      "step": 100,
       "text": "complete",
-      "total": 2
+      "total": 100
     },
-    "state": "succeeded"
+    "projectId": "52efb2c2-2452-423e-8415-eb00d00d4917",
+    "queuePosition": null,
+    "schemaVersion": 2,
+    "startedAt": "2026-11-22T10:02:21.901038Z",
+    "state": "succeeded",
+    "usage": {
+      "quantity": 1,
+      "sku": "partner.nanobanana.gemini-3.1-flash-image.1k.minimal.image+text.v2",
+      "unit": "image"
+    }
   },
-  "sourceCommit": "3bbf143bcd193ab508d7bb409b3dc61522d3f412",
-  "submit": {
-    "job": {
-      "jobId": "recorded-job-1",
-      "progress": {
-        "step": 1,
-        "text": "accepted by gateway",
-        "total": 2
+  "polls": [
+    {
+      "createdAt": "2026-11-22T10:02:21.872509Z",
+      "error": null,
+      "finishedAt": "2026-11-22T10:02:21.981416Z",
+      "jobId": "35d3c5d7-7f22-4d34-84cf-3147669ad642",
+      "nodeType": "dinkster.remote.nanobanana.image",
+      "outputs": {
+        "images": [
+          {
+            "digest": "blake3:494515ba1ed3d25cdab88152943ed17851e64b3689b26bd47aa9b3d1c2cc45e1",
+            "downloadUrl": "{base_url}/v1/downloads/35d3c5d7-7f22-4d34-84cf-3147669ad642/images.0?expires=1795342642&signature=a22a97dd571f213d1ccc94273ed0e8299d8493ce9ecab244ea4be06d436d26c1",
+            "expiresAt": "2026-11-22T10:17:22Z",
+            "mediaType": "image/png",
+            "name": null,
+            "size": 68
+          }
+        ],
+        "text": "discarded text",
+        "thought_images": []
       },
-      "state": "running"
+      "progress": {
+        "step": 100,
+        "text": "complete",
+        "total": 100
+      },
+      "projectId": "52efb2c2-2452-423e-8415-eb00d00d4917",
+      "queuePosition": null,
+      "schemaVersion": 2,
+      "startedAt": "2026-11-22T10:02:21.901038Z",
+      "state": "succeeded",
+      "usage": {
+        "quantity": 1,
+        "sku": "partner.nanobanana.gemini-3.1-flash-image.1k.minimal.image+text.v2",
+        "unit": "image"
+      }
+    }
+  ],
+  "sourceCommit": "3e2606cdaca131964a433f729bc1f65d6efd7179",
+  "submit": {
+    "createdAt": "2026-11-22T10:02:21.872509Z",
+    "error": null,
+    "finishedAt": "2026-11-22T10:02:21.981416Z",
+    "jobId": "35d3c5d7-7f22-4d34-84cf-3147669ad642",
+    "nodeType": "dinkster.remote.nanobanana.image",
+    "outputs": {
+      "images": [
+        {
+          "digest": "blake3:494515ba1ed3d25cdab88152943ed17851e64b3689b26bd47aa9b3d1c2cc45e1",
+          "downloadUrl": "{base_url}/v1/downloads/35d3c5d7-7f22-4d34-84cf-3147669ad642/images.0?expires=1795342642&signature=a22a97dd571f213d1ccc94273ed0e8299d8493ce9ecab244ea4be06d436d26c1",
+          "expiresAt": "2026-11-22T10:17:22Z",
+          "mediaType": "image/png",
+          "name": null,
+          "size": 68
+        }
+      ],
+      "text": "discarded text",
+      "thought_images": []
+    },
+    "progress": {
+      "step": 100,
+      "text": "complete",
+      "total": 100
+    },
+    "projectId": "52efb2c2-2452-423e-8415-eb00d00d4917",
+    "queuePosition": null,
+    "schemaVersion": 2,
+    "startedAt": "2026-11-22T10:02:21.901038Z",
+    "state": "succeeded",
+    "usage": {
+      "quantity": 1,
+      "sku": "partner.nanobanana.gemini-3.1-flash-image.1k.minimal.image+text.v2",
+      "unit": "image"
     }
   }
 }

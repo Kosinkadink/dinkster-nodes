@@ -13,11 +13,11 @@ from dinkster_api.v1 import (
     MODEL_TYPE,
     NOISE_TYPE,
     SIGMAS_TYPE,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
     TypeExpr,
     initialize_inference_process,
     materialize_latent,
@@ -89,15 +89,16 @@ class RandomNoise(Node):
             NodeSchema(
                 node_type="dinkster.sampling.random_noise",
                 category=_CATEGORY,
-                inputs=(
-                    InputSpec(
+                body=(
+                    Input(
                         "noise_seed",
                         _INT,
                         default=0,
-                        widget=NumberWidget(min=0, max=_MAX_SEED, control_after_generate="fixed"),
+                        widget=NumberWidget(min=0, max=_MAX_SEED),
+                        after_run="fixed",
                     ),
+                    Output("NOISE", _NOISE),
                 ),
-                outputs=(OutputSpec("NOISE", _NOISE),),
             ),
             "RandomNoise",
         )
@@ -115,8 +116,7 @@ class DisableNoise(Node):
                 node_type="dinkster.sampling.disable_noise",
                 search_terms=("zero noise",),
                 category=_CATEGORY,
-                inputs=(),
-                outputs=(OutputSpec("NOISE", _NOISE),),
+                body=(Output("NOISE", _NOISE),),
             ),
             "DisableNoise",
         )
@@ -133,13 +133,13 @@ class AddNoise(Node):
             NodeSchema(
                 node_type="dinkster.sampling.add_noise",
                 category=_CATEGORY,
-                inputs=(
-                    InputSpec("model", _MODEL),
-                    InputSpec("noise", _NOISE),
-                    InputSpec("sigmas", _SIGMAS),
-                    InputSpec("latent_image", _LATENT),
+                body=(
+                    Input("model", _MODEL),
+                    Input("noise", _NOISE),
+                    Input("sigmas", _SIGMAS),
+                    Input("latent_image", _LATENT),
+                    Output("LATENT", _LATENT),
                 ),
-                outputs=(OutputSpec("LATENT", _LATENT),),
             ),
             "AddNoise",
         )

@@ -7,6 +7,7 @@ from types import SimpleNamespace
 from typing import Any
 
 import pytest
+from dinkster_api.v1 import Members, Record
 from dinkster_models import lora_file_loaders as loaders
 
 
@@ -146,20 +147,17 @@ def test_stack_rows_preserve_order_and_skip_disabled_or_zero_strength(
         return f"{args[0]}+{args[2]}", f"{args[1]}+{args[2]}"
 
     monkeypatch.setattr(loaders, "_apply_lora", apply)
-    rows = {
-        "second.lora_name": "second",
-        "second.strength": -0.5,
-        "second.enabled": True,
-        "disabled.lora_name": "disabled",
-        "disabled.strength": 1.0,
-        "disabled.enabled": False,
-        "zero.lora_name": "zero",
-        "zero.strength": 0.0,
-        "zero.enabled": True,
-        "first.lora_name": "first",
-        "first.strength": 1.25,
-        "first.enabled": True,
-    }
+    rows = Members(
+        Record(str(index), {"lora_name": name, "strength": strength, "enabled": enabled})
+        for index, (name, strength, enabled) in enumerate(
+            (
+                ("second", -0.5, True),
+                ("disabled", 1.0, False),
+                ("zero", 0.0, True),
+                ("first", 1.25, True),
+            )
+        )
+    )
 
     assert loaders.LoadLoraModel.execute(model="model", loras=rows) == {
         "MODEL": "model+second+first"

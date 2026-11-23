@@ -14,11 +14,12 @@ from dinkster_api.v1 import (
     CORE_INT,
     CORE_STRING,
     ComboWidget,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
+    Section,
     StringWidget,
     TypeExpr,
     initialize_inference_process,
@@ -58,68 +59,64 @@ class YuE2GenerateABC(Node):
                 "Generate Music node."
             ),
             search_terms=("yue2", "music", "abc", "notation"),
-            inputs=(
-                InputSpec("clip", _CLIP),
-                InputSpec(
-                    "style", _STRING, widget=StringWidget(multiline=True, dynamic_prompts=True)
-                ),
-                InputSpec(
-                    "lyrics", _STRING, widget=StringWidget(multiline=True, dynamic_prompts=True)
-                ),
-                InputSpec(
+            body=(
+                Input("clip", _CLIP),
+                Input("style", _STRING, widget=StringWidget(multiline=True, dynamic_prompts=True)),
+                Input("lyrics", _STRING, widget=StringWidget(multiline=True, dynamic_prompts=True)),
+                Input(
                     "seed",
                     _INT,
                     default=0,
-                    widget=NumberWidget(
-                        min=0, max=0xFFFFFFFFFFFFFFFF, control_after_generate="fixed"
+                    widget=NumberWidget(min=0, max=0xFFFFFFFFFFFFFFFF),
+                    after_run="fixed",
+                ),
+                Input("mode", _COMBO, widget=ComboWidget(_MODES), tooltip=_MODE_DOC),
+                Section(
+                    "advanced",
+                    label="Advanced",
+                    collapsed=True,
+                    rows=(
+                        Input(
+                            "max_abc_tokens",
+                            _INT,
+                            default=8192,
+                            widget=NumberWidget(min=1, max=20000),
+                        ),
+                        Input(
+                            "temperature",
+                            _FLOAT,
+                            default=0.7,
+                            widget=NumberWidget(min=0.0, max=5.0, step=0.05),
+                        ),
+                        Input(
+                            "top_p",
+                            _FLOAT,
+                            default=0.9,
+                            widget=NumberWidget(min=0.01, max=1.0, step=0.01),
+                        ),
+                        Input(
+                            "top_k",
+                            _INT,
+                            default=30,
+                            widget=NumberWidget(min=1, max=32768),
+                        ),
+                        Input(
+                            "repetition_penalty",
+                            _FLOAT,
+                            default=1.005,
+                            widget=NumberWidget(min=0.01, max=10.0, step=0.005),
+                        ),
+                        Input(
+                            "penalty_window",
+                            _INT,
+                            default=100,
+                            widget=NumberWidget(min=1, max=20000),
+                            tooltip="Number of recent ABC tokens used to penalize repetition.",
+                        ),
                     ),
                 ),
-                InputSpec("mode", _COMBO, widget=ComboWidget(_MODES), doc=_MODE_DOC),
-                InputSpec(
-                    "max_abc_tokens",
-                    _INT,
-                    default=8192,
-                    widget=NumberWidget(min=1, max=20000),
-                    advanced=True,
-                ),
-                InputSpec(
-                    "temperature",
-                    _FLOAT,
-                    default=0.7,
-                    widget=NumberWidget(min=0.0, max=5.0, step=0.05),
-                    advanced=True,
-                ),
-                InputSpec(
-                    "top_p",
-                    _FLOAT,
-                    default=0.9,
-                    widget=NumberWidget(min=0.01, max=1.0, step=0.01),
-                    advanced=True,
-                ),
-                InputSpec(
-                    "top_k",
-                    _INT,
-                    default=30,
-                    widget=NumberWidget(min=1, max=32768),
-                    advanced=True,
-                ),
-                InputSpec(
-                    "repetition_penalty",
-                    _FLOAT,
-                    default=1.005,
-                    widget=NumberWidget(min=0.01, max=10.0, step=0.005),
-                    advanced=True,
-                ),
-                InputSpec(
-                    "penalty_window",
-                    _INT,
-                    default=100,
-                    widget=NumberWidget(min=1, max=20000),
-                    advanced=True,
-                    doc="Number of recent ABC tokens used to penalize repetition.",
-                ),
+                Output("abc", _STRING, label="abc"),
             ),
-            outputs=(OutputSpec("abc", _STRING, display_name="abc"),),
         )
         return with_identity_replacement(schema, "YuE2GenerateABC")
 
@@ -173,88 +170,84 @@ class YuE2GenerateMusic(Node):
                 "An empty ABC input ignores the selected mode."
             ),
             search_terms=("yue2", "music", "audio", "abc"),
-            inputs=(
-                InputSpec("clip", _CLIP),
-                InputSpec(
-                    "style", _STRING, widget=StringWidget(multiline=True, dynamic_prompts=True)
-                ),
-                InputSpec(
-                    "lyrics", _STRING, widget=StringWidget(multiline=True, dynamic_prompts=True)
-                ),
-                InputSpec(
+            body=(
+                Input("clip", _CLIP),
+                Input("style", _STRING, widget=StringWidget(multiline=True, dynamic_prompts=True)),
+                Input("lyrics", _STRING, widget=StringWidget(multiline=True, dynamic_prompts=True)),
+                Input(
                     "abc",
                     _STRING,
                     default="",
                     widget=StringWidget(multiline=True),
-                    doc=(
+                    tooltip=(
                         "Connect the ABC generator or supply an edited score. Leave empty to use "
                         "off mode automatically."
                     ),
                 ),
-                InputSpec(
+                Input(
                     "seed",
                     _INT,
                     default=0,
-                    widget=NumberWidget(
-                        min=0, max=0xFFFFFFFFFFFFFFFF, control_after_generate="fixed"
-                    ),
+                    widget=NumberWidget(min=0, max=0xFFFFFFFFFFFFFFFF),
+                    after_run="fixed",
                 ),
-                InputSpec("mode", _COMBO, widget=ComboWidget(_MODES), doc=_MODE_DOC),
-                InputSpec(
+                Input("mode", _COMBO, widget=ComboWidget(_MODES), tooltip=_MODE_DOC),
+                Input(
                     "max_duration",
                     _FLOAT,
                     default=360.0,
                     widget=NumberWidget(min=0.04, max=900.0, step=0.04),
-                    doc=(
+                    tooltip=(
                         "Maximum duration in seconds. Automatically reduced for long prompts; "
                         "generation can stop earlier."
                     ),
                 ),
-                InputSpec(
-                    "temperature",
-                    _FLOAT,
-                    default=1.0,
-                    widget=NumberWidget(min=0.0, max=5.0, step=0.05),
-                    advanced=True,
-                ),
-                InputSpec(
-                    "top_p",
-                    _FLOAT,
-                    default=0.95,
-                    widget=NumberWidget(min=0.01, max=1.0, step=0.01),
-                    advanced=True,
-                ),
-                InputSpec(
-                    "top_k",
-                    _INT,
-                    default=100,
-                    widget=NumberWidget(min=1, max=32768),
-                    advanced=True,
-                ),
-                InputSpec(
-                    "repetition_penalty",
-                    _FLOAT,
-                    default=1.2,
-                    widget=NumberWidget(min=0.01, max=10.0, step=0.01),
-                    advanced=True,
-                ),
-                InputSpec(
-                    "cfg_scale",
-                    _FLOAT,
-                    default=1.0,
-                    required=False,
-                    widget=NumberWidget(min=0.0, max=100.0, step=0.01),
-                    advanced=True,
-                    doc=(
-                        "Autoregressive guidance for style and lyrics. 1.0 disables CFG, "
-                        "matching the ABC workflow. Use 1.01 to match the original off-mode "
-                        "guidance."
+                Section(
+                    "advanced",
+                    label="Advanced",
+                    collapsed=True,
+                    rows=(
+                        Input(
+                            "temperature",
+                            _FLOAT,
+                            default=1.0,
+                            widget=NumberWidget(min=0.0, max=5.0, step=0.05),
+                        ),
+                        Input(
+                            "top_p",
+                            _FLOAT,
+                            default=0.95,
+                            widget=NumberWidget(min=0.01, max=1.0, step=0.01),
+                        ),
+                        Input(
+                            "top_k",
+                            _INT,
+                            default=100,
+                            widget=NumberWidget(min=1, max=32768),
+                        ),
+                        Input(
+                            "repetition_penalty",
+                            _FLOAT,
+                            default=1.2,
+                            widget=NumberWidget(min=0.01, max=10.0, step=0.01),
+                        ),
+                        Input(
+                            "cfg_scale",
+                            _FLOAT,
+                            default=1.0,
+                            required=False,
+                            widget=NumberWidget(min=0.0, max=100.0, step=0.01),
+                            tooltip=(
+                                "Autoregressive guidance for style and lyrics. 1.0 disables CFG, "
+                                "matching the ABC workflow. Use 1.01 to match the original "
+                                "off-mode "
+                                "guidance."
+                            ),
+                        ),
                     ),
                 ),
-            ),
-            outputs=(
-                OutputSpec("CONDITIONING", _CONDITIONING),
-                OutputSpec("seconds", _FLOAT, display_name="seconds"),
+                Output("CONDITIONING", _CONDITIONING),
+                Output("seconds", _FLOAT, label="seconds"),
             ),
         )
         return with_identity_replacement(schema, "YuE2GenerateMusic")

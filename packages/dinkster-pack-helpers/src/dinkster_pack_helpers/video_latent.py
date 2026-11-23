@@ -7,10 +7,10 @@ import importlib
 from dinkster_api.v1 import (
     CORE_INT,
     LATENT_TYPE,
-    InputSpec,
+    Input,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
     TypeExpr,
 )
 
@@ -19,10 +19,8 @@ __all__ = ["video_latent_schema", "empty_video_latent"]
 _LATENT = TypeExpr.concrete(LATENT_TYPE)
 
 
-def _integer(
-    name: str, default: int, minimum: int, maximum: int, step: int | None = None
-) -> InputSpec:
-    return InputSpec(
+def _integer(name: str, default: int, minimum: int, maximum: int, step: int | None = None) -> Input:
+    return Input(
         name,
         TypeExpr.concrete(CORE_INT),
         default=default,
@@ -49,13 +47,13 @@ def _schema(
         node_type=node_type,
         display_name=display_name,
         category=category,
-        inputs=(
+        body=(
             _integer("width", width, spatial_minimum, maximum, spatial_step),
             _integer("height", height, spatial_minimum, maximum, spatial_step),
             _integer("length", length, 1, temporal_maximum or maximum, temporal_step),
             _integer("batch_size", 1, 1, batch_maximum),
+            Output("LATENT", _LATENT),
         ),
-        outputs=(OutputSpec("LATENT", _LATENT),),
     )
 
 

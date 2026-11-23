@@ -28,11 +28,14 @@ from dinkster_api.v1 import (
     AbsentOutput,
     CustomWidgetDescriptor,
     Deprecation,
-    InputSpec,
+    Editor,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
+    Section,
+    State,
     TypeExpr,
     with_identity_replacement,
 )
@@ -53,8 +56,8 @@ class Preview3D(Node):
                 "Use Preview 3D (Advanced) instead.", replacement="Preview3DAdvanced"
             ),
             search_visibility="deprecated",
-            inputs=(
-                InputSpec(
+            body=(
+                Input(
                     "model_file",
                     TypeExpr.union(
                         CORE_STRING,
@@ -68,18 +71,26 @@ class Preview3D(Node):
                     ),
                     default="",
                 ),
-                InputSpec(
-                    "camera_info",
-                    TypeExpr.concrete(LOAD3D_CAMERA_TYPE),
-                    required=False,
-                    advanced=True,
+                Section(
+                    "advanced",
+                    label="Advanced",
+                    collapsed=True,
+                    rows=(
+                        Input(
+                            "camera_info",
+                            TypeExpr.concrete(LOAD3D_CAMERA_TYPE),
+                            required=False,
+                        ),
+                        Input(
+                            "bg_image",
+                            TypeExpr.concrete(IMAGE_TYPE),
+                            required=False,
+                        ),
+                    ),
                 ),
-                InputSpec("bg_image", TypeExpr.concrete(IMAGE_TYPE), required=False, advanced=True),
-            ),
-            outputs=(
-                OutputSpec("model_3d", TypeExpr.concrete(FILE_3D_TYPE), preview=True),
-                OutputSpec("camera_info", TypeExpr.concrete(LOAD3D_CAMERA_TYPE), optional=True),
-                OutputSpec("bg_image", TypeExpr.concrete(IMAGE_TYPE), optional=True),
+                Output("model_3d", TypeExpr.concrete(FILE_3D_TYPE), preview=True),
+                Output("camera_info", TypeExpr.concrete(LOAD3D_CAMERA_TYPE), optional=True),
+                Output("bg_image", TypeExpr.concrete(IMAGE_TYPE), optional=True),
             ),
         )
         return with_identity_replacement(schema, "Preview3D")
@@ -113,27 +124,25 @@ class _Preview3D(Node):
             category="3d",
             description=cls.description,
             output_node=True,
-            inputs=(
-                InputSpec("model_3d", TypeExpr.union(*cls.formats)),
-                InputSpec(
-                    "model_3d_info",
-                    TypeExpr.concrete(LOAD3D_MODEL_INFO_TYPE),
-                    required=False,
-                    advanced=True,
-                ),
-                InputSpec(
-                    "viewport_state",
-                    TypeExpr.concrete(LOAD_3D_TYPE),
-                    widget=CustomWidgetDescriptor("LOAD_3D"),
-                ),
-                InputSpec(
-                    "camera_info",
-                    TypeExpr.concrete(LOAD3D_CAMERA_TYPE),
-                    required=False,
-                    advanced=True,
+            body=(
+                Input("model_3d", TypeExpr.union(*cls.formats)),
+                State("viewport_state", TypeExpr.concrete(LOAD_3D_TYPE)),
+                Editor(
+                    "viewport",
+                    CustomWidgetDescriptor(
+                        "LOAD_3D",
+                        writes={"state": "viewport_state"},
+                        reads={
+                            "model_3d": "model_3d",
+                            "width": "width",
+                            "height": "height",
+                            "model_3d_info": "model_3d_info",
+                            "camera_info": "camera_info",
+                        },
+                    ),
                 ),
                 *(
-                    InputSpec(
+                    Input(
                         axis,
                         TypeExpr.concrete(CORE_INT),
                         default=1024,
@@ -141,16 +150,33 @@ class _Preview3D(Node):
                     )
                     for axis in ("width", "height")
                 ),
-            ),
-            outputs=tuple(
-                OutputSpec(name, TypeExpr.concrete(type_id), preview=name == "model_3d")
-                for name, type_id in (
-                    ("model_3d", cls.output_type),
-                    ("model_3d_info", LOAD3D_MODEL_INFO_TYPE),
-                    ("camera_info", LOAD3D_CAMERA_TYPE),
-                    ("width", CORE_INT),
-                    ("height", CORE_INT),
-                )
+                Section(
+                    "advanced",
+                    label="Advanced",
+                    collapsed=True,
+                    rows=(
+                        Input(
+                            "model_3d_info",
+                            TypeExpr.concrete(LOAD3D_MODEL_INFO_TYPE),
+                            required=False,
+                        ),
+                        Input(
+                            "camera_info",
+                            TypeExpr.concrete(LOAD3D_CAMERA_TYPE),
+                            required=False,
+                        ),
+                    ),
+                ),
+                *tuple(
+                    Output(name, TypeExpr.concrete(type_id), preview=name == "model_3d")
+                    for name, type_id in (
+                        ("model_3d", cls.output_type),
+                        ("model_3d_info", LOAD3D_MODEL_INFO_TYPE),
+                        ("camera_info", LOAD3D_CAMERA_TYPE),
+                        ("width", CORE_INT),
+                        ("height", CORE_INT),
+                    )
+                ),
             ),
         )
         return with_identity_replacement(schema, cls.source_type)

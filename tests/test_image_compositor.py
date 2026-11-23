@@ -12,6 +12,7 @@ from dinkster_api.v1 import (
     COMFY_ARRAY_TYPE,
     CompositorWidget,
     Detection,
+    Editor,
     Region,
     TypeRegistry,
 )
@@ -203,7 +204,10 @@ def test_compositor_support_schemas_and_runtime_types() -> None:
     assert compositor.type.types == (COMPOSITOR_TYPE,)
     assert compositor.required is False
     assert compositor.default == {"version": 2, "documentDigest": None, "commands": []}
-    assert compositor.widget == CompositorWidget()
+    assert compositor.widget is None and not compositor.pin
+    assert [row for row in create.body if isinstance(row, Editor)] == [
+        Editor("composition", CompositorWidget(writes={"value": "compositor"}))
+    ]
     boxes = schemas["dinkster.layers.from_bounding_boxes"].inputs[2].type
     assert boxes.kind == "list"
     assert boxes.element is not None

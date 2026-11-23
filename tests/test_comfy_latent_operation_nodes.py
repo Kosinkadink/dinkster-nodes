@@ -10,7 +10,7 @@ from typing import Any, cast
 
 import numpy as np
 import pytest
-from dinkster_api.v1 import InputSpec, Node, NodeSchema, OutputSpec, TypeExpr
+from dinkster_api.v1 import Input, Node, NodeSchema, Output, TypeExpr
 from dinkster_graph import Graph, GraphNode, Link
 from dinkster_latent.latent_operations import (
     LatentApplyOperation,
@@ -33,9 +33,9 @@ class ResidentSource(Node):
     def define_schema(cls) -> NodeSchema:
         return NodeSchema(
             node_type="resident-fixture.source",
-            outputs=(
-                OutputSpec("operation", TypeExpr.concrete("LATENT_OPERATION")),
-                OutputSpec("conditioning", TypeExpr.concrete("CONDITIONING")),
+            body=(
+                Output("operation", TypeExpr.concrete("LATENT_OPERATION")),
+                Output("conditioning", TypeExpr.concrete("CONDITIONING")),
             ),
         )
 
@@ -56,11 +56,11 @@ class ResidentInspect(Node):
     def define_schema(cls) -> NodeSchema:
         return NodeSchema(
             node_type="resident-fixture.inspect",
-            inputs=(
-                InputSpec("operation", TypeExpr.concrete("LATENT_OPERATION")),
-                InputSpec("conditioning", TypeExpr.concrete("CONDITIONING")),
+            body=(
+                Input("operation", TypeExpr.concrete("LATENT_OPERATION")),
+                Input("conditioning", TypeExpr.concrete("CONDITIONING")),
+                Output("value", TypeExpr.concrete("FLOAT")),
             ),
-            outputs=(OutputSpec("value", TypeExpr.concrete("FLOAT")),),
         )
 
     @classmethod
@@ -74,7 +74,7 @@ class ResidentStorage(Node):
         return NodeSchema(
             node_type="resident-fixture.storage",
             idempotent=False,
-            outputs=(OutputSpec("live", TypeExpr.concrete("INT")),),
+            body=(Output("live", TypeExpr.concrete("INT")),),
         )
 
     @classmethod

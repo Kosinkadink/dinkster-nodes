@@ -9,11 +9,12 @@ from typing import Any
 from dinkster_api.v1 import (
     CORE_FLOAT,
     MODEL_TYPE,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
+    Section,
     TypeExpr,
     with_identity_replacement,
 )
@@ -29,17 +30,23 @@ def _schema(node_type: str, display_name: str) -> NodeSchema:
         node_type=node_type,
         display_name=display_name,
         category="model/sampling/guiders",
-        inputs=(
-            InputSpec("model", _MODEL),
-            InputSpec(
-                "min_cfg",
-                _FLOAT,
-                default=1.0,
-                advanced=True,
-                widget=NumberWidget(min=0.0, max=100.0, step=0.5, round=0.01),
+        body=(
+            Input("model", _MODEL),
+            Section(
+                "advanced",
+                label="Advanced",
+                collapsed=True,
+                rows=(
+                    Input(
+                        "min_cfg",
+                        _FLOAT,
+                        default=1.0,
+                        widget=NumberWidget(min=0.0, max=100.0, step=0.5, round=0.01),
+                    ),
+                ),
             ),
+            Output("MODEL", _MODEL),
         ),
-        outputs=(OutputSpec("MODEL", _MODEL),),
     )
 
 

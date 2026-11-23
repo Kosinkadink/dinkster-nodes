@@ -7,13 +7,12 @@ from typing import Any, cast
 import numpy as np
 from dinkster_api.v1 import (
     ABSENT,
-    IMAGECOMPARE_TYPE,
     CustomWidgetDescriptor,
-    InputSpec,
+    Editor,
+    Input,
     Node,
     NodeSchema,
-    OutputSpec,
-    TypeExpr,
+    Output,
     copy_media_semantics,
     report_preview,
 )
@@ -30,13 +29,15 @@ class ImageCompare(Node):
             node_type="dinkster.image.compare",
             display_name="Compare Images",
             category="image",
-            inputs=tuple(
-                InputSpec(name, IMAGE, required=False, default=None)
-                for name in ("image_a", "image_b")
-            ),
-            outputs=tuple(
-                OutputSpec(name, IMAGE, optional=True, preview=True)
-                for name in ("image_a", "image_b")
+            body=(
+                *tuple(
+                    Input(name, IMAGE, required=False, default=None)
+                    for name in ("image_a", "image_b")
+                ),
+                *tuple(
+                    Output(name, IMAGE, optional=True, preview=True)
+                    for name in ("image_a", "image_b")
+                ),
             ),
             output_node=True,
             search_terms=("compare images", "before after"),
@@ -65,14 +66,13 @@ class NativeImageCompare(Node):
             node_type="ImageCompare",
             display_name="Compare Images",
             category="image",
-            inputs=(
+            body=(
                 *ImageCompare.schema().inputs,
-                InputSpec(
-                    "compare_view",
-                    TypeExpr.concrete(IMAGECOMPARE_TYPE),
-                    default=None,
-                    socketless=True,
-                    widget=CustomWidgetDescriptor("IMAGECOMPARE"),
+                Editor(
+                    "comparison",
+                    CustomWidgetDescriptor(
+                        "IMAGECOMPARE", reads={"image_a": "image_a", "image_b": "image_b"}
+                    ),
                 ),
             ),
             output_node=True,
@@ -81,9 +81,7 @@ class NativeImageCompare(Node):
         )
 
     @classmethod
-    def execute(
-        cls, *, image_a: object = None, image_b: object = None, compare_view: object = None
-    ) -> Mapping[str, object]:
+    def execute(cls, *, image_a: object = None, image_b: object = None) -> Mapping[str, object]:
         images = ImageCompare.execute(image_a=image_a, image_b=image_b)
         for name, value in images.items():
             if value is ABSENT:

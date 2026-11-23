@@ -13,11 +13,11 @@ from dinkster_api.v1 import (
     LATENT_TYPE,
     MASK_TYPE,
     VAE_TYPE,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
     TypeExpr,
     initialize_inference_process,
     materialize_clip_vision_output,
@@ -40,63 +40,58 @@ class WanDancerVideo(Node):
         schema = NodeSchema(
             node_type="dinkster.wan.wan_dancer_video",
             category="model/conditioning/wan/dancer",
-            inputs=(
-                InputSpec("positive", _CONDITIONING),
-                InputSpec("negative", _CONDITIONING),
-                InputSpec("vae", TypeExpr.concrete(VAE_TYPE)),
-                InputSpec(
-                    "width", _INT, default=480, widget=NumberWidget(min=16, max=16384, step=16)
-                ),
-                InputSpec(
-                    "height", _INT, default=832, widget=NumberWidget(min=16, max=16384, step=16)
-                ),
-                InputSpec(
+            body=(
+                Input("positive", _CONDITIONING),
+                Input("negative", _CONDITIONING),
+                Input("vae", TypeExpr.concrete(VAE_TYPE)),
+                Input("width", _INT, default=480, widget=NumberWidget(min=16, max=16384, step=16)),
+                Input("height", _INT, default=832, widget=NumberWidget(min=16, max=16384, step=16)),
+                Input(
                     "length",
                     _INT,
                     default=149,
                     widget=NumberWidget(min=1, max=16384, step=4),
-                    doc="The number of frames in the generated video. "
+                    tooltip="The number of frames in the generated video. "
                     "Should stay 149 for WanDancer.",
                 ),
-                InputSpec(
+                Input(
                     "clip_vision_output",
                     _VISION,
                     required=False,
-                    doc="The CLIP vision embeds for the first frame.",
+                    tooltip="The CLIP vision embeds for the first frame.",
                 ),
-                InputSpec(
+                Input(
                     "clip_vision_output_ref",
                     _VISION,
                     required=False,
-                    doc="The CLIP vision embeds for the reference image.",
+                    tooltip="The CLIP vision embeds for the reference image.",
                 ),
-                InputSpec(
+                Input(
                     "start_image",
                     TypeExpr.concrete(IMAGE_TYPE),
                     required=False,
-                    doc="The initial image(s) to be encoded, can be any number of frames.",
+                    tooltip="The initial image(s) to be encoded, can be any number of frames.",
                 ),
-                InputSpec(
+                Input(
                     "mask",
                     TypeExpr.concrete(MASK_TYPE),
                     required=False,
-                    doc="Image conditioning mask for the start image(s). White is kept, black is "
+                    tooltip="Image conditioning mask for the start image(s). White is kept, black "
+                    "is "
                     "generated. Used for the local generations.",
                 ),
-                InputSpec(
+                Input(
                     "audio_encoder_output",
                     TypeExpr.concrete(AUDIO_ENCODER_OUTPUT_TYPE),
                     required=False,
                 ),
-            ),
-            outputs=(
-                OutputSpec("positive", _CONDITIONING, display_name="positive"),
-                OutputSpec("negative", _CONDITIONING, display_name="negative"),
-                OutputSpec(
+                Output("positive", _CONDITIONING, label="positive"),
+                Output("negative", _CONDITIONING, label="negative"),
+                Output(
                     "latent",
                     TypeExpr.concrete(LATENT_TYPE),
-                    display_name="latent",
-                    doc="Empty latent.",
+                    label="latent",
+                    tooltip="Empty latent.",
                 ),
             ),
         )

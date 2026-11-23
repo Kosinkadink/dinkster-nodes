@@ -7,6 +7,7 @@ import numpy as np
 import pytest
 import torch
 from dinkster_api.v1 import (
+    Record,
     materialize_image,
 )
 from dinkster_vision_sam3d_body.sam3d_openpose import render_pose_data_openpose
@@ -62,23 +63,24 @@ def _assert_rendered(styles: dict[str, Any]) -> None:
 def test_nonempty_render_modes_preserve_complete_source() -> None:
     packet = _render_packet()
     original = copy.deepcopy(packet)
+    rows: dict[str, dict[str, object]] = {
+        "mesh": {"shader": Record("normals", {})},
+        "silhouette": {},
+        "openpose_2d": {"limb_alpha": 0.5},
+        "openpose_3d": {"radius_m": 0.08},
+        "scail": {"radius_m": 0.08},
+    }
     images = {
-        style: SAM3DBody_Render.execute(
-            pose_data=packet,
-            render_style=style,
-            **{
-                "render_style.shader": "normals",
-                "render_style.limb_alpha": 0.5,
-                "render_style.radius_m": 0.08,
-            },
-        )["image"]
-        for style in ("mesh", "silhouette", "openpose_2d", "openpose_3d", "scail")
+        style: SAM3DBody_Render.execute(pose_data=packet, render_style=Record(style, rows[style]))[
+            "image"
+        ]
+        for style in rows
     }
     _assert_rendered(images)
     np.testing.assert_equal(packet, original)
-    hands = SAM3DBody_Render.execute(pose_data=packet, **{"render_style.region": "hands_only"})[
-        "image"
-    ]
+    hands = SAM3DBody_Render.execute(
+        pose_data=packet, render_style=Record("mesh", {"region": "hands_only"})
+    )["image"]
     assert torch.count_nonzero(hands) == 0
     np.testing.assert_equal(packet, original)
 
@@ -102,8 +104,7 @@ def test_external_rig_letterbox_and_projected_face_preserve_source() -> None:
         pose_data=packet,
         width=64,
         height=24,
-        render_style="openpose_2d",
-        **{"render_style.marker_radius_px": 1, "render_style.stick_width_px": 1},
+        render_style=Record("openpose_2d", {"marker_radius_px": 1, "stick_width_px": 1}),
     )["image"]
     assert image.shape == (3, 24, 64, 3)
     torch.testing.assert_close(image[0, 12, 27], torch.tensor([255, 85, 0]) / 255, rtol=0, atol=0)
@@ -118,8 +119,7 @@ def test_external_rig_letterbox_and_projected_face_preserve_source() -> None:
     original = copy.deepcopy(packet)
     image = SAM3DBody_Render.execute(
         pose_data=packet,
-        render_style="openpose_2d",
-        **{"render_style.face_style": "eyes_mouth"},
+        render_style=Record("openpose_2d", {"face_style": "eyes_mouth"}),
     )["image"]
     assert image[0, 12, 16].tolist() == [1, 1, 1]
     assert image[0, 12, 20].tolist() == [0, 0, 0]
@@ -134,8 +134,7 @@ def test_camera_zoom_reprojects_keypoints_without_changing_sources() -> None:
     image = SAM3DBody_Render.execute(
         pose_data=packet,
         camera_info=camera,
-        render_style="openpose_2d",
-        **{"render_style.marker_radius_px": 1, "render_style.stick_width_px": 1},
+        render_style=Record("openpose_2d", {"marker_radius_px": 1, "stick_width_px": 1}),
     )["image"]
     torch.testing.assert_close(image[0, 12, 13], torch.tensor([255, 85, 0]) / 255, rtol=0, atol=0)
     torch.testing.assert_close(image[0, 12, 19], torch.tensor([255, 170, 0]) / 255, rtol=0, atol=0)
@@ -238,7 +237,7 @@ def test_render_silhouette_letterbox_background_tail_and_source() -> None:
     }
     original = copy.deepcopy(pose)
     background = torch.tensor([0.2, 0.4, 0.8])[None, None, None].expand(1, 12, 16, 3).clone()
-    image = SAM3DBody_Render.execute(pose_data=pose, render_style="silhouette")["image"]
+    image = SAM3DBody_Render.execute(pose_data=pose, render_style=Record("silhouette", {}))["image"]
     assert image[0, 12, 16].tolist() == [1, 1, 1]
     assert image[0, 0, 0].tolist() == [0, 0, 0]
     assert set(image.unique().tolist()) == {0.0, 1.0}
@@ -247,7 +246,7 @@ def test_render_silhouette_letterbox_background_tail_and_source() -> None:
         pose_data=pose,
         width=48,
         background=background,
-        **{"render_style.opacity": 0.0},
+        render_style=Record("mesh", {"opacity": 0.0}),
     )["image"]
     assert transparent.shape == (3, 36, 48, 3)
     torch.testing.assert_close(
@@ -264,7 +263,7 @@ def test_render_silhouette_letterbox_background_tail_and_source() -> None:
 @pytest.mark.parametrize("style", ("mesh", "silhouette", "openpose_2d", "openpose_3d", "scail"))
 def test_empty_pose_has_one_black_frame_in_each_style(style: str) -> None:
     image = SAM3DBody_Render.execute(
-        pose_data={"image_size": (18, 30), "frames": []}, height=12, render_style=style
+        pose_data={"image_size": (18, 30), "frames": []}, height=12, render_style=Record(style, {})
     )["image"]
     assert image.shape == (1, 12, 20, 3)
     assert image.dtype == torch.float32 and image.device.type == "cpu"

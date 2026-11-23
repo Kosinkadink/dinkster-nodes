@@ -16,19 +16,21 @@ sys.modules['dinkster_inference'] = None
 from dinkster_vision_moge import NODES
 from dinkster_vision_moge.moge_inference import MoGeInference
 from dinkster_workers import load_manifest
+from tests.body_rows import advanced_ids
 schema = MoGeInference.define_schema()
 manifest = load_manifest('packages/dinkster-nodes-vision-moge/dinkster-pack.toml')
 assert NODES.count(MoGeInference) == 1
 assert manifest.namespaces.count('dinkster.vision.moge') == 1
 assert schema.node_type == 'dinkster.vision.moge.mo_ge_inference'
 assert [i.id for i in schema.inputs] == [
-    'moge_model', 'image', 'resolution_level', 'fov_x_degrees', 'batch_size',
+    'moge_model', 'image', 'resolution_level', 'batch_size', 'fov_x_degrees',
     'force_projection', 'apply_mask', 'refine_steps'
 ]
-assert [i.default for i in schema.inputs[2:]] == [9, 0.0, 4, True, True, 3]
+assert [i.default for i in schema.inputs[2:]] == [9, 4, 0.0, True, True, 3]
 assert [o.id for o in schema.outputs] == ['moge_geometry']
-assert schema.inputs[3].advanced and schema.inputs[5].advanced
-assert schema.inputs[6].advanced and schema.inputs[7].advanced
+assert advanced_ids(schema.body) == (
+    'fov_x_degrees', 'force_projection', 'apply_mask', 'refine_steps'
+)
 """,
         ],
         capture_output=True,

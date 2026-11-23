@@ -3,13 +3,19 @@
 from __future__ import annotations
 
 import math
+from collections.abc import Mapping
 from pathlib import Path
 from typing import cast
 
 import pytest
+from dinkster_api.v1 import Item, Members
 from dinkster_engine.testing import load_pack
 from dinkster_utilities.math import ComfyMathExpression
 from simpleeval import FeatureNotAvailable
+
+
+def _members(values: Mapping[str, object]) -> Members[Item]:
+    return Members(Item(key, value) for key, value in values.items())
 
 
 @pytest.mark.parametrize(
@@ -40,7 +46,7 @@ def test_expression_results(
     int_value: int,
     bool_value: bool,
 ) -> None:
-    result = ComfyMathExpression.execute(expression=expression, values=values)
+    result = ComfyMathExpression.execute(expression=expression, values=_members(values))
     assert result == {"FLOAT": float_value, "INT": int_value, "BOOL": bool_value}
     assert type(result["FLOAT"]) is float
     assert type(result["INT"]) is int
@@ -65,26 +71,28 @@ def test_expression_rejects_invalid_results_and_exponent_overflow(
     expression: str, message: str
 ) -> None:
     with pytest.raises(ValueError) as raised:
-        ComfyMathExpression.execute(expression=expression, values={"a": 0})
+        ComfyMathExpression.execute(expression=expression, values=_members({"a": 0}))
     assert str(raised.value) == message
 
 
 def test_float_overflow_does_not_truncate_or_accept_large_result() -> None:
     with pytest.raises(ValueError) as raised:
-        ComfyMathExpression.execute(expression="a", values={"a": 10**400})
+        ComfyMathExpression.execute(expression="a", values=_members({"a": 10**400}))
     assert str(raised.value) == (
         "Math Expression 'a' produced a result too large to represent as a float: " + str(10**400)
     )
 
 
 def test_value_named_values_is_replaced_by_ordered_input_list() -> None:
-    result = ComfyMathExpression.execute(expression="sum(values)", values={"values": 7, "a": -3})
+    result = ComfyMathExpression.execute(
+        expression="sum(values)", values=_members({"values": 7, "a": -3})
+    )
     assert result == {"FLOAT": 4.0, "INT": 4, "BOOL": True}
 
 
 def test_expression_keeps_simpleeval_attribute_access_restrictions() -> None:
     with pytest.raises(FeatureNotAvailable):
-        ComfyMathExpression.execute(expression="a.__class__", values={"a": 1})
+        ComfyMathExpression.execute(expression="a.__class__", values=_members({"a": 1}))
 
 
 def test_isolated_manifest_evaluates_ordered_numeric_union_family() -> None:

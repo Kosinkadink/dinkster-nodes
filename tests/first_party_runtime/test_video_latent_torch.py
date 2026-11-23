@@ -13,10 +13,10 @@ import torch
 from dinkster_api.v1 import (
     CORE_STRING,
     LATENT_TYPE,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
-    OutputSpec,
+    Output,
     TypeExpr,
     materialize_latent,
 )
@@ -51,11 +51,13 @@ class VideoLatentInspect(Node):
     def define_schema(cls) -> NodeSchema:
         return NodeSchema(
             node_type="video-latent-fixture.inspect",
-            inputs=tuple(
-                InputSpec(node.schema().node_type, TypeExpr.concrete(LATENT_TYPE))
-                for node in VIDEO_LATENT_NODES
+            body=(
+                *tuple(
+                    Input(node.schema().node_type, TypeExpr.concrete(LATENT_TYPE))
+                    for node in VIDEO_LATENT_NODES
+                ),
+                Output("summary", TypeExpr.concrete(CORE_STRING)),
             ),
-            outputs=(OutputSpec("summary", TypeExpr.concrete(CORE_STRING)),),
         )
 
     @classmethod
@@ -280,10 +282,10 @@ class VideoLatentTransformSource(Node):
     def define_schema(cls) -> NodeSchema:
         return NodeSchema(
             node_type="video-latent-transform-fixture.source",
-            outputs=(
-                OutputSpec("video", TypeExpr.concrete(LATENT_TYPE)),
-                OutputSpec("audio", TypeExpr.concrete(LATENT_TYPE)),
-                OutputSpec("normalization", TypeExpr.concrete(LATENT_TYPE)),
+            body=(
+                Output("video", TypeExpr.concrete(LATENT_TYPE)),
+                Output("audio", TypeExpr.concrete(LATENT_TYPE)),
+                Output("normalization", TypeExpr.concrete(LATENT_TYPE)),
             ),
         )
 
@@ -327,11 +329,13 @@ class VideoLatentTransformInspect(Node):
         latent = TypeExpr.concrete(LATENT_TYPE)
         return NodeSchema(
             node_type="video-latent-transform-fixture.inspect",
-            inputs=tuple(
-                InputSpec(name, latent)
-                for name in ("video", "trimmed", "audio", "frozen", "normalized")
+            body=(
+                *tuple(
+                    Input(name, latent)
+                    for name in ("video", "trimmed", "audio", "frozen", "normalized")
+                ),
+                Output("summary", TypeExpr.concrete(CORE_STRING)),
             ),
-            outputs=(OutputSpec("summary", TypeExpr.concrete(CORE_STRING)),),
         )
 
     @classmethod

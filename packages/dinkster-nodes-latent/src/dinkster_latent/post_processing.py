@@ -8,11 +8,14 @@ from typing import Any, cast
 
 from dinkster_api.v1 import (
     LATENT_TYPE,
-    InputFamilySpec,
-    InputSpec,
+    Group,
+    Input,
+    Item,
+    Members,
     Node,
     NodeSchema,
-    OutputSpec,
+    Numbered,
+    Output,
     TypeExpr,
     materialize_latent,
     with_identity_replacement,
@@ -60,21 +63,23 @@ class BatchLatentsNode(Node):
                 node_type="dinkster.latent.batch_latents_node",
                 display_name="Batch Latents",
                 category="model/latent/batch",
-                input_families=(
-                    InputFamilySpec(
+                body=(
+                    Group(
                         "latents",
-                        (InputSpec("latent", _LATENT),),
-                        1,
-                        50,
-                        member_prefix="latent",
+                        value=Input("latent", _LATENT),
+                        min_members=1,
+                        max_members=50,
                         optional_after_minimum=True,
+                        keys=Numbered("latent", start=0),
                     ),
+                    Output("LATENT", _LATENT),
                 ),
-                outputs=(OutputSpec("LATENT", _LATENT),),
             ),
             "BatchLatentsNode",
         )
 
     @classmethod
-    def execute(cls, *, latents: Mapping[str, dict[str, Any]]) -> Mapping[str, object]:
-        return cls.outputs(LATENT=_batch_latents(list(latents.values())))
+    def execute(cls, *, latents: Members[Item]) -> Mapping[str, object]:
+        return cls.outputs(
+            LATENT=_batch_latents([cast(dict[str, Any], member.value) for member in latents])
+        )

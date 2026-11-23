@@ -12,6 +12,7 @@ import av
 import numpy as np
 import pytest
 from dinkster_api.v1 import VIDEO_TYPE
+from dinkster_schema import elaborate
 from dinkster_values import TypeRegistry, effective_video_facts, encode_video, video_from_source
 from dinkster_video.video_edits import VideoCrop, VideoTrim
 
@@ -88,7 +89,7 @@ def test_native_video_chain_matches_across_worker_shared_memory() -> None:
                         "start_time": registry.wrap("FLOAT", 0.5),
                         "duration": registry.wrap("FLOAT", 1.0),
                     },
-                    effective_schema=worker.schemas["dinkster.video.video_slice"],
+                    effective_schema=elaborate(worker.schemas["dinkster.video.video_slice"], ()),
                 )
             )
             assert trimmed.error is None
@@ -99,7 +100,9 @@ def test_native_video_chain_matches_across_worker_shared_memory() -> None:
                     node_id="frames",
                     node_type="dinkster.video.get_video_components",
                     inputs={"video": trimmed.outputs["video"]},
-                    effective_schema=worker.schemas["dinkster.video.get_video_components"],
+                    effective_schema=elaborate(
+                        worker.schemas["dinkster.video.get_video_components"], ()
+                    ),
                 )
             )
             assert frames.error is None

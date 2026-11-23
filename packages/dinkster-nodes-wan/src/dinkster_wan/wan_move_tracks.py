@@ -14,11 +14,11 @@ from dinkster_api.v1 import (
     MASK_TYPE,
     TRACKS_TYPE,
     ComboWidget,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
     StringWidget,
     TypeExpr,
     initialize_inference_process,
@@ -82,20 +82,18 @@ class WanMoveTracksFromCoords(Node):
         schema = NodeSchema(
             node_type="dinkster.wan.wan_move_tracks_from_coords",
             category=_CATEGORY,
-            inputs=(
-                InputSpec(
+            body=(
+                Input(
                     "track_coords",
                     _STRING,
                     required=False,
                     default="[]",
-                    force_input=True,
+                    pin_first=True,
                     widget=StringWidget(multiline=False),
                 ),
-                InputSpec("track_mask", _MASK, required=False),
-            ),
-            outputs=(
-                OutputSpec("TRACKS", _TRACKS),
-                OutputSpec("track_length", _INT, display_name="track_length"),
+                Input("track_mask", _MASK, required=False),
+                Output("TRACKS", _TRACKS),
+                Output("track_length", _INT, label="track_length"),
             ),
         )
         return with_identity_replacement(schema, "WanMoveTracksFromCoords")
@@ -133,95 +131,89 @@ class GenerateTracks(Node):
             display_name="Generate Video Tracks",
             category=_CATEGORY,
             search_terms=("motion paths", "camera movement", "trajectory"),
-            inputs=(
-                InputSpec(
-                    "width", _INT, default=832, widget=NumberWidget(min=16, max=4096, step=16)
-                ),
-                InputSpec(
-                    "height", _INT, default=480, widget=NumberWidget(min=16, max=4096, step=16)
-                ),
-                InputSpec(
+            body=(
+                Input("width", _INT, default=832, widget=NumberWidget(min=16, max=4096, step=16)),
+                Input("height", _INT, default=480, widget=NumberWidget(min=16, max=4096, step=16)),
+                Input(
                     "start_x",
                     _FLOAT,
                     default=0.0,
                     widget=NumberWidget(min=0.0, max=1.0, step=0.01),
-                    doc="Normalized X coordinate (0-1) for start position.",
+                    tooltip="Normalized X coordinate (0-1) for start position.",
                 ),
-                InputSpec(
+                Input(
                     "start_y",
                     _FLOAT,
                     default=0.0,
                     widget=NumberWidget(min=0.0, max=1.0, step=0.01),
-                    doc="Normalized Y coordinate (0-1) for start position.",
+                    tooltip="Normalized Y coordinate (0-1) for start position.",
                 ),
-                InputSpec(
+                Input(
                     "end_x",
                     _FLOAT,
                     default=1.0,
                     widget=NumberWidget(min=0.0, max=1.0, step=0.01),
-                    doc="Normalized X coordinate (0-1) for end position.",
+                    tooltip="Normalized X coordinate (0-1) for end position.",
                 ),
-                InputSpec(
+                Input(
                     "end_y",
                     _FLOAT,
                     default=1.0,
                     widget=NumberWidget(min=0.0, max=1.0, step=0.01),
-                    doc="Normalized Y coordinate (0-1) for end position.",
+                    tooltip="Normalized Y coordinate (0-1) for end position.",
                 ),
-                InputSpec("num_frames", _INT, default=81, widget=NumberWidget(min=1, max=1024)),
-                InputSpec("num_tracks", _INT, default=5, widget=NumberWidget(min=1, max=100)),
-                InputSpec(
+                Input("num_frames", _INT, default=81, widget=NumberWidget(min=1, max=1024)),
+                Input("num_tracks", _INT, default=5, widget=NumberWidget(min=1, max=100)),
+                Input(
                     "track_spread",
                     _FLOAT,
                     default=0.025,
                     widget=NumberWidget(min=0.0, max=1.0, step=0.001),
-                    doc=(
+                    tooltip=(
                         "Normalized distance between tracks. Tracks are spread perpendicular "
                         "to the motion direction."
                     ),
                 ),
-                InputSpec(
+                Input(
                     "bezier",
                     _BOOLEAN,
                     default=False,
-                    doc="Enable Bezier curve path using the mid point as control point.",
+                    tooltip="Enable Bezier curve path using the mid point as control point.",
                 ),
-                InputSpec(
+                Input(
                     "mid_x",
                     _FLOAT,
                     default=0.5,
                     widget=NumberWidget(min=0.0, max=1.0, step=0.01),
-                    doc=(
+                    tooltip=(
                         "Normalized X control point for Bezier curve. Only used when 'bezier' is "
                         "enabled."
                     ),
                 ),
-                InputSpec(
+                Input(
                     "mid_y",
                     _FLOAT,
                     default=0.5,
                     widget=NumberWidget(min=0.0, max=1.0, step=0.01),
-                    doc=(
+                    tooltip=(
                         "Normalized Y control point for Bezier curve. Only used when 'bezier' is "
                         "enabled."
                     ),
                 ),
-                InputSpec(
+                Input(
                     "interpolation",
                     _COMBO,
                     widget=ComboWidget(_INTERPOLATIONS),
-                    doc="Controls the timing/speed of movement along the path.",
+                    tooltip="Controls the timing/speed of movement along the path.",
                 ),
-                InputSpec(
+                Input(
                     "track_mask",
                     _MASK,
                     required=False,
-                    doc="Optional mask to indicate visible frames.",
+                    tooltip="Optional mask to indicate visible frames.",
                 ),
-            ),
-            outputs=(
-                OutputSpec("TRACKS", _TRACKS),
-                OutputSpec("track_length", _INT, display_name="track_length"),
+                Output("TRACKS", _TRACKS),
+                Output("track_length", _INT, label="track_length"),
             ),
         )
         return with_identity_replacement(schema, "GenerateTracks")
@@ -316,8 +308,11 @@ class WanMoveConcatTrack(Node):
         schema = NodeSchema(
             node_type="dinkster.wan.wan_move_concat_track",
             category=_CATEGORY,
-            inputs=(InputSpec("tracks_1", _TRACKS), InputSpec("tracks_2", _TRACKS, required=False)),
-            outputs=(OutputSpec("TRACKS", _TRACKS),),
+            body=(
+                Input("tracks_1", _TRACKS),
+                Input("tracks_2", _TRACKS, required=False),
+                Output("TRACKS", _TRACKS),
+            ),
         )
         return with_identity_replacement(schema, "WanMoveConcatTrack")
 

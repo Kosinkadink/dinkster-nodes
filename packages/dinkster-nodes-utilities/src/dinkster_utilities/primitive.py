@@ -10,11 +10,11 @@ from dinkster_api.v1 import (
     CORE_FLOAT,
     CORE_INT,
     CORE_STRING,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
     StringWidget,
     TypeExpr,
     with_identity_replacement,
@@ -28,14 +28,14 @@ class PrimitiveString(Node):
             node_type="dinkster.utilities.primitive_string",
             display_name="Text",
             category="utilities/primitive",
-            inputs=(
-                InputSpec(
+            body=(
+                Input(
                     "value",
                     TypeExpr.concrete(CORE_STRING),
                     widget=StringWidget(multiline=False),
                 ),
+                Output("STRING", TypeExpr.concrete(CORE_STRING)),
             ),
-            outputs=(OutputSpec("STRING", TypeExpr.concrete(CORE_STRING)),),
         )
         return with_identity_replacement(schema, "PrimitiveString")
 
@@ -51,12 +51,10 @@ class PrimitiveStringMultiline(Node):
             node_type="dinkster.utilities.primitive_string_multiline",
             display_name="Text (Multiline)",
             category="utilities/primitive",
-            inputs=(
-                InputSpec(
-                    "value", TypeExpr.concrete(CORE_STRING), widget=StringWidget(multiline=True)
-                ),
+            body=(
+                Input("value", TypeExpr.concrete(CORE_STRING), widget=StringWidget(multiline=True)),
+                Output("STRING", TypeExpr.concrete(CORE_STRING)),
             ),
-            outputs=(OutputSpec("STRING", TypeExpr.concrete(CORE_STRING)),),
         )
         return with_identity_replacement(schema, "PrimitiveStringMultiline")
 
@@ -72,16 +70,15 @@ class PrimitiveInt(Node):
             node_type="dinkster.utilities.primitive_int",
             display_name="Int",
             category="utilities/primitive",
-            inputs=(
-                InputSpec(
+            body=(
+                Input(
                     "value",
                     TypeExpr.concrete(CORE_INT),
-                    widget=NumberWidget(
-                        min=-sys.maxsize, max=sys.maxsize, control_after_generate="fixed"
-                    ),
+                    widget=NumberWidget(min=-sys.maxsize, max=sys.maxsize),
+                    after_run="fixed",
                 ),
+                Output("INT", TypeExpr.concrete(CORE_INT)),
             ),
-            outputs=(OutputSpec("INT", TypeExpr.concrete(CORE_INT)),),
         )
         return with_identity_replacement(schema, "PrimitiveInt")
 
@@ -97,14 +94,14 @@ class PrimitiveFloat(Node):
             node_type="dinkster.utilities.primitive_float",
             display_name="Float",
             category="utilities/primitive",
-            inputs=(
-                InputSpec(
+            body=(
+                Input(
                     "value",
                     TypeExpr.concrete(CORE_FLOAT),
                     widget=NumberWidget(min=-float(sys.maxsize), max=float(sys.maxsize), step=0.1),
                 ),
+                Output("FLOAT", TypeExpr.concrete(CORE_FLOAT)),
             ),
-            outputs=(OutputSpec("FLOAT", TypeExpr.concrete(CORE_FLOAT)),),
         )
         return with_identity_replacement(schema, "PrimitiveFloat")
 
@@ -120,8 +117,10 @@ class PrimitiveBoolean(Node):
             node_type="dinkster.utilities.primitive_boolean",
             display_name="Boolean",
             category="utilities/primitive",
-            inputs=(InputSpec("value", TypeExpr.concrete(CORE_BOOLEAN)),),
-            outputs=(OutputSpec("BOOLEAN", TypeExpr.concrete(CORE_BOOLEAN)),),
+            body=(
+                Input("value", TypeExpr.concrete(CORE_BOOLEAN)),
+                Output("BOOLEAN", TypeExpr.concrete(CORE_BOOLEAN)),
+            ),
         )
         return with_identity_replacement(schema, "PrimitiveBoolean")
 

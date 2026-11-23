@@ -11,10 +11,10 @@ from dinkster_api.v1 import (
     IMAGE_TYPE,
     LATENT_TYPE,
     VAE_TYPE,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
-    OutputSpec,
+    Output,
     TypeExpr,
     materialize_image,
     with_identity_replacement,
@@ -31,16 +31,14 @@ class InstructPixToPixConditioning(Node):
         schema = NodeSchema(
             node_type="dinkster.misc.models.instruct_pix_to_pix_conditioning",
             category="model/conditioning/instructpix2pix",
-            inputs=(
-                InputSpec("positive", _CONDITIONING),
-                InputSpec("negative", _CONDITIONING),
-                InputSpec("vae", TypeExpr.concrete(VAE_TYPE)),
-                InputSpec("pixels", TypeExpr.concrete(IMAGE_TYPE)),
-            ),
-            outputs=(
-                OutputSpec("positive", _CONDITIONING),
-                OutputSpec("negative", _CONDITIONING),
-                OutputSpec("latent", _LATENT),
+            body=(
+                Input("positive", _CONDITIONING),
+                Input("negative", _CONDITIONING),
+                Input("vae", TypeExpr.concrete(VAE_TYPE)),
+                Input("pixels", TypeExpr.concrete(IMAGE_TYPE)),
+                Output("positive", _CONDITIONING),
+                Output("negative", _CONDITIONING),
+                Output("latent", _LATENT),
             ),
         )
         return with_identity_replacement(schema, "InstructPixToPixConditioning")

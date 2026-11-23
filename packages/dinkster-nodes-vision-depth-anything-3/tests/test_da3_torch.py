@@ -6,6 +6,7 @@ from typing import Any
 
 import pytest
 import torch
+from dinkster_api.v1 import Record
 from dinkster_vision_depth_anything_3.depth_anything_3 import (
     DA3GeometryToMesh,
     DA3Render,
@@ -50,19 +51,12 @@ def test_render_and_mesh_values_preserve_source(camera: bool) -> None:
     }
     raw = DA3Render.execute(
         da3_geometry=packet,
-        output="depth",
-        **{
-            "output.normalization": "raw",
-            "output.apply_sky_clip": False,
-        },
+        output=Record("depth", {"normalization": "raw", "apply_sky_clip": False}),
     )["IMAGE"]
     torch.testing.assert_close(raw, torch.full((2, 3, 5, 3), 4.0), rtol=0, atol=0)
     confidence = DA3Render.execute(
         da3_geometry=packet,
-        output="confidence",
-        **{
-            "output.colored": False,
-        },
+        output=Record("confidence", {"colored": False}),
     )["IMAGE"]
     torch.testing.assert_close(confidence, torch.ones(2, 3, 5, 3), rtol=0, atol=0)
     mesh = DA3GeometryToMesh.execute(

@@ -9,11 +9,11 @@ from typing import Any
 from dinkster_api.v1 import (
     CORE_INT,
     LATENT_TYPE,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
     TypeExpr,
     initialize_inference_process,
     with_identity_replacement,
@@ -22,8 +22,8 @@ from dinkster_api.v1 import (
 
 def _integer(
     name: str, default: int, maximum: int, minimum: int = 1, step: int | None = None
-) -> InputSpec:
-    return InputSpec(
+) -> Input:
+    return Input(
         name,
         TypeExpr.concrete(CORE_INT),
         default=default,
@@ -31,7 +31,7 @@ def _integer(
     )
 
 
-def _image_inputs() -> tuple[InputSpec, ...]:
+def _image_inputs() -> tuple[Input, ...]:
     return (
         _integer("width", 1024, 16384, 16, 16),
         _integer("height", 1024, 16384, 16, 16),
@@ -42,7 +42,7 @@ def _image_inputs() -> tuple[InputSpec, ...]:
 def _schema(
     name: str,
     category: str,
-    inputs: tuple[InputSpec, ...],
+    inputs: tuple[Input, ...],
     display: str | None = None,
     description: str = "",
 ) -> NodeSchema:
@@ -51,8 +51,10 @@ def _schema(
         display_name=display or "",
         category=category,
         description=description,
-        inputs=inputs,
-        outputs=(OutputSpec("LATENT", TypeExpr.concrete(LATENT_TYPE)),),
+        body=(
+            *inputs,
+            Output("LATENT", TypeExpr.concrete(LATENT_TYPE)),
+        ),
     )
 
 

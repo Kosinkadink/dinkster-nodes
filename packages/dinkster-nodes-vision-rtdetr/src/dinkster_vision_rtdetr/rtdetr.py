@@ -15,10 +15,10 @@ from dinkster_api.v1 import (
     MODEL_TYPE,
     ComboOption,
     ComboWidget,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
-    OutputSpec,
+    Output,
     TypeExpr,
     initialize_inference_process,
     materialize_image,
@@ -119,36 +119,36 @@ class RTDETR_detect(Node):
             display_name="Run Real-Time Detection (RT-DETR)",
             category="image/detection",
             search_terms=("bbox", "bounding box", "object detection", "coco"),
-            inputs=(
-                InputSpec("model", TypeExpr.concrete(MODEL_TYPE), display_name="model"),
-                InputSpec("image", _IMAGE, display_name="image"),
-                InputSpec(
+            body=(
+                Input("model", TypeExpr.concrete(MODEL_TYPE), label="model"),
+                Input("image", _IMAGE, label="image"),
+                Input(
                     "threshold",
                     TypeExpr.concrete(CORE_FLOAT),
-                    display_name="threshold",
+                    label="threshold",
                     default=0.5,
                 ),
-                InputSpec(
+                Input(
                     "class_name",
                     TypeExpr.concrete(CORE_COMBO),
                     default="all",
                     widget=ComboWidget(
                         options=tuple(ComboOption(name) for name in ("all", *_COCO_CLASSES))
                     ),
-                    doc="Filter detections by class. Set to 'all' to disable filtering.",
+                    tooltip="Filter detections by class. Set to 'all' to disable filtering.",
                 ),
-                InputSpec(
+                Input(
                     "max_detections",
                     TypeExpr.concrete(CORE_INT),
-                    display_name="max_detections",
+                    label="max_detections",
                     default=100,
-                    doc=(
+                    tooltip=(
                         "Maximum number of detections to return per image. "
                         "In order of descending confidence score."
                     ),
                 ),
+                Output("bboxes", _BBOX),
             ),
-            outputs=(OutputSpec("bboxes", _BBOX),),
         )
         return with_identity_replacement(schema, "RTDETR_detect")
 
@@ -207,16 +207,16 @@ class DrawBBoxes(Node):
                 "visualize detections",
                 "coco",
             ),
-            inputs=(
-                InputSpec("image", _IMAGE, required=False),
-                InputSpec(
+            body=(
+                Input("image", _IMAGE, required=False),
+                Input(
                     "bboxes",
                     _BBOX,
-                    force_input=True,
+                    pin_first=True,
                     default={"x": 0, "y": 0, "width": 512, "height": 512},
                 ),
+                Output("out_image", _IMAGE),
             ),
-            outputs=(OutputSpec("out_image", _IMAGE),),
         )
         return with_identity_replacement(schema, "DrawBBoxes")
 

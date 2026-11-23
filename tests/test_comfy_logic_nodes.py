@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
+
 import pytest
+from dinkster_api.v1 import Item, Members
 from dinkster_caches import MemoryLRUCache
 from dinkster_engine import Engine
 from dinkster_graph import Graph, GraphNode, Link
@@ -14,6 +17,10 @@ from dinkster_values import TypeRegistry, is_absent, register_core_types
 from dinkster_workers import InProcessWorker
 
 from tests.async_scenarios import run_scenario
+
+
+def _members(values: Mapping[str, object]) -> Members[Item]:
+    return Members(Item(key, value) for key, value in values.items())
 
 
 @pytest.mark.parametrize("index", [0, -7, 205])
@@ -47,8 +54,8 @@ def test_not_uses_truthiness(value: object, expected: bool) -> None:
 def test_mapping_values_determine_truth(
     values: dict[str, object], conjunction: bool, disjunction: bool
 ) -> None:
-    assert ComfyAndNode.execute(values=values) == {"BOOLEAN": conjunction}
-    assert ComfyOrNode.execute(values=values) == {"BOOLEAN": disjunction}
+    assert ComfyAndNode.execute(values=_members(values)) == {"BOOLEAN": conjunction}
+    assert ComfyOrNode.execute(values=_members(values)) == {"BOOLEAN": disjunction}
 
 
 @pytest.mark.parametrize("switch", [False, True])

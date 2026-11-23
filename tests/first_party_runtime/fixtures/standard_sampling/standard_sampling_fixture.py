@@ -8,10 +8,10 @@ from dinkster_api.v1 import (
     CORE_STRING,
     LATENT_TYPE,
     MODEL_TYPE,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
-    OutputSpec,
+    Output,
     TypeExpr,
     materialize_latent,
     register_inference_types,
@@ -24,11 +24,10 @@ class Source(Node):
     def define_schema(cls) -> NodeSchema:
         return NodeSchema(
             node_type="standard-sampling-fixture.source",
-            inputs=(),
-            outputs=(
-                OutputSpec("model", TypeExpr.concrete(MODEL_TYPE)),
-                OutputSpec("conditioning", TypeExpr.concrete(CONDITIONING_TYPE)),
-                OutputSpec("latent", TypeExpr.concrete(LATENT_TYPE)),
+            body=(
+                Output("model", TypeExpr.concrete(MODEL_TYPE)),
+                Output("conditioning", TypeExpr.concrete(CONDITIONING_TYPE)),
+                Output("latent", TypeExpr.concrete(LATENT_TYPE)),
             ),
         )
 
@@ -43,11 +42,13 @@ class Inspect(Node):
     def define_schema(cls) -> NodeSchema:
         return NodeSchema(
             node_type="standard-sampling-fixture.inspect",
-            inputs=tuple(
-                InputSpec(name, TypeExpr.concrete(LATENT_TYPE))
-                for name in ("source", "standard", "advanced")
+            body=(
+                *tuple(
+                    Input(name, TypeExpr.concrete(LATENT_TYPE))
+                    for name in ("source", "standard", "advanced")
+                ),
+                Output("summary", TypeExpr.concrete(CORE_STRING)),
             ),
-            outputs=(OutputSpec("summary", TypeExpr.concrete(CORE_STRING)),),
         )
 
     @classmethod

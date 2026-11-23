@@ -7,20 +7,24 @@ import importlib
 import logging
 import math
 from collections.abc import Mapping
-from typing import Any
+from typing import Any, cast
 
 from dinkster_api.v1 import (
     CORE_FLOAT,
     CORE_STRING,
     MESH_TYPE,
-    DynamicComboOption,
-    DynamicComboSpec,
-    InputFamilySpec,
-    InputSpec,
+    Choice,
+    Group,
+    Input,
+    Item,
+    Members,
     Node,
     NodeSchema,
+    Numbered,
     NumberWidget,
-    OutputSpec,
+    Option,
+    Output,
+    Record,
     TriangleMeshBatch,
     TypeExpr,
     materialize_mesh,
@@ -43,28 +47,28 @@ class RotateMesh(Node):
                 "Rotate a mesh. Euler XYZ applies X then Y then Z about the world axes (degrees). "
                 "Quaternion is (w, x, y, z), auto-normalized."
             ),
-            inputs=(InputSpec("mesh", _MESH),),
-            combos=(
-                DynamicComboSpec(
+            body=(
+                Input("mesh", _MESH),
+                Choice(
                     "mode",
-                    (
-                        DynamicComboOption(
+                    options=(
+                        Option(
                             "euler_xyz",
-                            tuple(
-                                InputSpec(
+                            rows=tuple(
+                                Input(
                                     f"angle_{axis}",
                                     _FLOAT,
                                     default=0.0,
                                     widget=NumberWidget(min=-360.0, max=360.0, step=0.1),
-                                    doc=f"Rotation around the {axis.upper()} axis in degrees.",
+                                    tooltip=f"Rotation around the {axis.upper()} axis in degrees.",
                                 )
                                 for axis in "xyz"
                             ),
                         ),
-                        DynamicComboOption(
+                        Option(
                             "quaternion",
-                            tuple(
-                                InputSpec(
+                            rows=tuple(
+                                Input(
                                     f"q{axis}",
                                     _FLOAT,
                                     default=1.0 if axis == "w" else 0.0,
@@ -75,17 +79,21 @@ class RotateMesh(Node):
                         ),
                     ),
                 ),
+                Output("mesh", _MESH),
             ),
-            input_order=("mesh", "mode"),
-            outputs=(OutputSpec("mesh", _MESH),),
         )
         return with_identity_replacement(schema, "RotateMesh")
 
     @classmethod
-    def execute(cls, *, mesh: Any, mode: str, **inputs: Any) -> Mapping[str, object]:
+    def execute(
+        cls,
+        *,
+        mesh: Any,
+        mode: Record,
+    ) -> Mapping[str, object]:
         mesh = materialize_mesh(mesh)
-        if mode == "euler_xyz":
-            ax, ay, az = (math.radians(inputs[f"mode.angle_{axis}"]) for axis in "xyz")
+        if mode.key == "euler_xyz":
+            ax, ay, az = (math.radians(cast("float", mode[f"angle_{axis}"])) for axis in "xyz")
             if ax == 0.0 and ay == 0.0 and az == 0.0:
                 return cls.outputs(mesh=mesh)
             cx, sx = math.cos(ax), math.sin(ax)
@@ -96,8 +104,8 @@ class RotateMesh(Node):
                 [cy * sz, sx * sy * sz + cx * cz, cx * sy * sz - sx * cz],
                 [-sy, sx * cy, cx * cy],
             ]
-        elif mode == "quaternion":
-            qw, qx, qy, qz = (inputs[f"mode.q{axis}"] for axis in "wxyz")
+        elif mode.key == "quaternion":
+            qw, qx, qy, qz = (cast("float", mode[f"q{axis}"]) for axis in "wxyz")
             norm = math.sqrt(qw * qw + qx * qx + qy * qy + qz * qz)
             if norm < 1e-8:
                 raise ValueError("RotateMesh: quaternion has zero magnitude")
@@ -110,7 +118,7 @@ class RotateMesh(Node):
                 [2 * (qx * qz - qy * qw), 2 * (qy * qz + qx * qw), 1 - 2 * (qx * qx + qy * qy)],
             ]
         else:
-            raise ValueError(f"RotateMesh: unknown mode {mode!r}")
+            raise ValueError(f"RotateMesh: unknown mode {mode.key!r}")
         torch = importlib.import_module("torch")
 
         def rotate(value: Any) -> Any:
@@ -134,12 +142,10 @@ class GetMeshInfo(Node):
             node_type="dinkster.3d.get_mesh_info",
             display_name="Get Mesh Info",
             category="3d/mesh",
-            inputs=(InputSpec("mesh", _MESH),),
-            outputs=(
-                OutputSpec("MESH", _MESH, display_name="mesh"),
-                OutputSpec(
-                    "STRING", TypeExpr.concrete(CORE_STRING), display_name="info", preview=True
-                ),
+            body=(
+                Input("mesh", _MESH),
+                Output("MESH", _MESH, label="mesh"),
+                Output("STRING", TypeExpr.concrete(CORE_STRING), label="info", preview=True),
             ),
         )
         return with_identity_replacement(schema, "GetMeshInfo")
@@ -217,23 +223,23 @@ class MergeMeshes(Node):
                 "Concatenate N meshes into one by offsetting face indices and stacking verts, "
                 "faces, uvs, and colors."
             ),
-            input_families=(
-                InputFamilySpec(
+            body=(
+                Group(
                     "meshes",
-                    (InputSpec("mesh", _MESH),),
+                    value=Input("mesh", _MESH),
                     min_members=2,
                     max_members=50,
-                    member_prefix="mesh",
                     optional_after_minimum=True,
+                    keys=Numbered("mesh", start=0),
                 ),
+                Output("mesh", _MESH),
             ),
-            outputs=(OutputSpec("mesh", _MESH),),
         )
         return with_identity_replacement(schema, "MergeMeshes")
 
     @classmethod
-    def execute(cls, *, meshes: Mapping[str, object]) -> Mapping[str, object]:
-        values = [materialize_mesh(value) for value in meshes.values()]
+    def execute(cls, *, meshes: Members[Item]) -> Mapping[str, object]:
+        values = [materialize_mesh(member.value) for member in meshes]
         if not values:
             raise ValueError("MergeMeshes: need at least one mesh")
         torch = importlib.import_module("torch")

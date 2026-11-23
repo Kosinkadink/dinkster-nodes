@@ -15,18 +15,21 @@ from dinkster_api.v1 import (
     MEBIBYTE,
     AssetError,
     AssetWriter,
+    Choice,
     ComboWidget,
     Deprecation,
-    DynamicComboOption,
-    DynamicComboSpec,
-    InputSpec,
+    Input,
     MountSnapshotWriter,
     MountWidget,
     Node,
     NodeSchema,
-    OutputSpec,
+    Option,
+    Output,
+    Record,
+    Row,
     StringWidget,
     TypeExpr,
+    Use,
     attach_saved_artifact,
     initialize_inference_process,
     materialize_audio,
@@ -138,19 +141,18 @@ def _save_audio(
             attach_saved_artifact(ref.to_wire())
 
 
-def _mount_input() -> InputSpec:
-    return InputSpec(
+def _mount_input() -> Input:
+    return Input(
         "mount",
         _STRING,
         required=False,
         default=None,
         widget=MountWidget(),
-        adjacent_to="filename_prefix",
     )
 
 
-def _audio_output() -> tuple[OutputSpec, ...]:
-    return (OutputSpec("audio", _AUDIO, preview=True),)
+def _audio_output() -> tuple[Output, ...]:
+    return (Output("audio", _AUDIO, preview=True),)
 
 
 class SaveAudio(Node):
@@ -163,17 +165,21 @@ class SaveAudio(Node):
             deprecation=Deprecation("Deprecated in ComfyUI."),
             search_visibility="deprecated",
             search_terms=("export flac",),
-            inputs=(
-                InputSpec("audio", _AUDIO),
-                InputSpec(
-                    "filename_prefix",
-                    _STRING,
-                    default="audio/ComfyUI",
-                    widget=StringWidget(multiline=False),
+            body=(
+                Input("audio", _AUDIO),
+                Row(
+                    rows=(
+                        Input(
+                            "filename_prefix",
+                            _STRING,
+                            default="audio/ComfyUI",
+                            widget=StringWidget(multiline=False),
+                        ),
+                        _mount_input(),
+                    )
                 ),
-                _mount_input(),
+                *_audio_output(),
             ),
-            outputs=_audio_output(),
             idempotent=False,
             output_node=True,
         )
@@ -201,20 +207,22 @@ class SaveAudioMP3(Node):
             deprecation=Deprecation("Deprecated in ComfyUI."),
             search_visibility="deprecated",
             search_terms=("export mp3",),
-            inputs=(
-                InputSpec("audio", _AUDIO),
-                InputSpec(
-                    "filename_prefix",
-                    _STRING,
-                    default="audio/ComfyUI",
-                    widget=StringWidget(multiline=False),
+            body=(
+                Input("audio", _AUDIO),
+                Row(
+                    rows=(
+                        Input(
+                            "filename_prefix",
+                            _STRING,
+                            default="audio/ComfyUI",
+                            widget=StringWidget(multiline=False),
+                        ),
+                        _mount_input(),
+                    )
                 ),
-                InputSpec(
-                    "quality", _COMBO, default="V0", widget=ComboWidget(options=_MP3_QUALITIES)
-                ),
-                _mount_input(),
+                Input("quality", _COMBO, default="V0", widget=ComboWidget(options=_MP3_QUALITIES)),
+                *_audio_output(),
             ),
-            outputs=_audio_output(),
             idempotent=False,
             output_node=True,
         )
@@ -249,20 +257,24 @@ class SaveAudioOpus(Node):
             deprecation=Deprecation("Deprecated in ComfyUI."),
             search_visibility="deprecated",
             search_terms=("export opus",),
-            inputs=(
-                InputSpec("audio", _AUDIO),
-                InputSpec(
-                    "filename_prefix",
-                    _STRING,
-                    default="audio/ComfyUI",
-                    widget=StringWidget(multiline=False),
+            body=(
+                Input("audio", _AUDIO),
+                Row(
+                    rows=(
+                        Input(
+                            "filename_prefix",
+                            _STRING,
+                            default="audio/ComfyUI",
+                            widget=StringWidget(multiline=False),
+                        ),
+                        _mount_input(),
+                    )
                 ),
-                InputSpec(
+                Input(
                     "quality", _COMBO, default="128k", widget=ComboWidget(options=_OPUS_QUALITIES)
                 ),
-                _mount_input(),
+                *_audio_output(),
             ),
-            outputs=_audio_output(),
             idempotent=False,
             output_node=True,
         )
@@ -304,53 +316,52 @@ class SaveAudioAdvanced(Node):
                 "mp3",
                 "opus",
             ),
-            inputs=(
-                InputSpec("audio", _AUDIO, doc="The audio to save."),
-                InputSpec(
-                    "filename_prefix",
-                    _STRING,
-                    default="audio/ComfyUI",
-                    doc=(
-                        "The prefix for the file to save. May include formatting tokens such as "
-                        "%date:yyyy-MM-dd%."
-                    ),
-                    widget=StringWidget(multiline=False),
-                ),
-                _mount_input(),
-            ),
-            combos=(
-                DynamicComboSpec(
-                    "format",
-                    (
-                        DynamicComboOption("flac"),
-                        DynamicComboOption(
-                            "mp3",
-                            (
-                                InputSpec(
-                                    "quality",
-                                    _COMBO,
-                                    default="V0",
-                                    widget=ComboWidget(options=_MP3_QUALITIES),
-                                ),
+            body=(
+                Input("audio", _AUDIO, tooltip="The audio to save."),
+                Row(
+                    rows=(
+                        Input(
+                            "filename_prefix",
+                            _STRING,
+                            default="audio/ComfyUI",
+                            tooltip=(
+                                "The prefix for the file to save. May include formatting tokens "
+                                "such as "
+                                "%date:yyyy-MM-dd%."
                             ),
+                            widget=StringWidget(multiline=False),
                         ),
-                        DynamicComboOption(
+                        _mount_input(),
+                    )
+                ),
+                Choice(
+                    "format",
+                    options=(
+                        Option("flac"),
+                        Option("mp3", rows=(Use("quality"),)),
+                        Option(
                             "opus",
-                            (
-                                InputSpec(
+                            rows=(
+                                Use(
                                     "quality",
-                                    _COMBO,
                                     default="128k",
                                     widget=ComboWidget(options=_OPUS_QUALITIES),
                                 ),
                             ),
                         ),
                     ),
-                    doc="The file format in which to save the audio.",
+                    shared=(
+                        Input(
+                            "quality",
+                            _COMBO,
+                            default="V0",
+                            widget=ComboWidget(options=_MP3_QUALITIES),
+                        ),
+                    ),
+                    tooltip="The file format in which to save the audio.",
                 ),
+                *_audio_output(),
             ),
-            input_order=("audio", "filename_prefix", "format", "mount"),
-            outputs=_audio_output(),
             idempotent=False,
             output_node=True,
         )
@@ -362,28 +373,18 @@ class SaveAudioAdvanced(Node):
         *,
         audio: object,
         filename_prefix: str,
-        format: str,
+        format: Record,
         mount: str | None = None,
-        quality: str | None = None,
-        **option_values: object,
     ) -> Mapping[str, object]:
-        nested_quality = option_values.pop("format.quality", quality)
-        if nested_quality is None or isinstance(nested_quality, str):
-            quality = nested_quality
-        else:
-            raise TypeError("format.quality must be a string")
-        if option_values:
-            unexpected = next(iter(option_values))
-            raise TypeError(
-                f"SaveAudioAdvanced.execute() got an unexpected keyword argument {unexpected!r}"
-            )
-        if format not in _FORMATS:
-            raise ValueError(f"Unsupported audio format: {format!r}")
-        if format == "mp3" and quality not in _MP3_QUALITIES:
+        kind = format.key
+        quality = cast(str | None, format.get("quality"))
+        if kind not in _FORMATS:
+            raise ValueError(f"Unsupported audio format: {kind!r}")
+        if kind == "mp3" and quality not in _MP3_QUALITIES:
             raise ValueError(f"Unsupported MP3 quality: {quality!r}")
-        if format == "opus" and quality not in _OPUS_QUALITIES:
+        if kind == "opus" and quality not in _OPUS_QUALITIES:
             raise ValueError(f"Unsupported Opus quality: {quality!r}")
-        _save_audio(audio, filename_prefix, mount, format, quality)
+        _save_audio(audio, filename_prefix, mount, kind, quality)
         return cls.outputs(audio=audio)
 
 

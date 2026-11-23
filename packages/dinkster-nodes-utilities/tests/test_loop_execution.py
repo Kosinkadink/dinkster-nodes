@@ -76,8 +76,8 @@ def test_make_list_preserves_document_order_across_cached_runs(in_process: bool)
                 )
             )
             engine = composer.composition.make_engine(lambda _event: None)
-            values = {"z": 17, "a": -4, "m": 29}
-            for order in (("z", "a", "m"), ("m", "z", "a"), ("z", "a", "m")):
+            values = {"2": 17, "0": -4, "1": 29}
+            for order in (("2", "0", "1"), ("1", "2", "0"), ("2", "0", "1")):
                 graph = Graph(
                     {
                         "list": GraphNode(

@@ -11,21 +11,22 @@ from typing import Any, cast
 
 from dinkster_image._draft_initialization import IMAGE_NODES
 from dinkster_schema import (
+    Choice,
     ComboWidget,
-    DynamicComboSpec,
-    DynamicEntry,
-    DynamicSlotSpec,
-    InputFamilySpec,
-    InputSpec,
+    Group,
+    Input,
     MappingSource,
     NodeSchema,
     ReplacementPredicate,
     ReplacementRule,
+    TypeChoice,
     TypeExpr,
     schema_from_wire,
     schema_to_wire,
     validate_replacement_references,
 )
+
+from tests.body_rows import choices, placed_rows, scope
 
 # Generated from commit 681f529b5eb80554d28ef836016bf78a7c4654f3.
 FIXTURE = Path(__file__).parent / "fixtures" / "image_native_v1.json.zlib.b85"
@@ -242,12 +243,28 @@ def _native_scalar_type_expressions(value: Any) -> Any:
     return converted
 
 
+def _body_wire(wire: dict[str, Any]) -> dict[str, Any]:
+    """A frozen version-1 flat interface's inputs and outputs as the body wire read today.
+
+    The wire no longer carries an input's ``advanced`` mark; it is layout and is dropped."""
+    body = [
+        {
+            "kind": entry["role"],
+            **{key: value for key, value in entry.items() if key not in ("role", "advanced")},
+        }
+        for entry in cast("list[dict[str, Any]]", wire["interface"])
+        if entry["role"] in ("input", "output")
+    ]
+    rest = {key: value for key, value in wire.items() if key != "interface"}
+    return {**rest, "schemaVersion": 2, "interface": [], "body": body}
+
+
 @cache
 def _v1_schemas() -> dict[str, NodeSchema]:
     wires = cast(
         "list[dict[str, Any]]", _native_scalar_type_expressions(json.loads(_fixture_bytes()))
     )
-    return {schema.node_type: schema for schema in map(schema_from_wire, wires)}
+    return {schema.node_type: schema for schema in map(schema_from_wire, map(_body_wire, wires))}
 
 
 @cache
@@ -293,50 +310,46 @@ def _resize_migrations() -> tuple[ReplacementRule, ReplacementRule]:
     return dotted, flat
 
 
-def _dynamic_ids(entries: Sequence[DynamicEntry]) -> set[str]:
-    found: set[str] = set()
-    for entry in entries:
-        found.add(entry.id)
-        if isinstance(entry, InputFamilySpec):
-            found.update(_dynamic_ids(entry.template))
-        elif isinstance(entry, DynamicComboSpec):
-            for option in entry.options:
-                found.update(_dynamic_ids(option.inputs))
-        elif isinstance(entry, DynamicSlotSpec):
-            found.update(_dynamic_ids(entry.inputs))
-            for variant in entry.variants or ():
-                found.update(_dynamic_ids(variant.inputs))
-    return found
+def _dynamic_rows(schema: NodeSchema) -> list[object]:
+    """Every row inside the node's top-level choices and type choices, the choices included,
+    with each Use as the place shows it."""
+
+    def walk(rows: Sequence[object]) -> list[object]:
+        found: list[object] = []
+        for row in rows:
+            found.append(row)
+            if isinstance(row, Group):
+                found.extend(
+                    walk((row.value,) if row.value is not None else scope(row.member or ()))
+                )
+            elif isinstance(row, Choice):
+                for option in row.options:
+                    found.extend(walk(placed_rows(row, option)))
+            elif isinstance(row, TypeChoice):
+                found.extend(walk(scope(row.rows)))
+                for variant in row.variants or ():
+                    found.extend(walk(scope(variant.rows)))
+        return found
+
+    return walk([row for row in scope(schema.body) if isinstance(row, (Choice, TypeChoice))])
 
 
-def _nested_entries(entries: Sequence[DynamicEntry]) -> list[DynamicEntry]:
-    found: list[DynamicEntry] = []
-    for entry in entries:
-        found.append(entry)
-        if isinstance(entry, InputFamilySpec):
-            found.extend(_nested_entries(entry.template))
-        elif isinstance(entry, DynamicComboSpec):
-            for option in entry.options:
-                found.extend(_nested_entries(option.inputs))
-        elif isinstance(entry, DynamicSlotSpec):
-            found.extend(_nested_entries(entry.inputs))
-            for variant in entry.variants or ():
-                found.extend(_nested_entries(variant.inputs))
-    return found
+def _dynamic_ids(schema: NodeSchema) -> set[str]:
+    return {cast("Any", row).id for row in _dynamic_rows(schema)}
 
 
-def _default_choices(entries: Sequence[DynamicEntry], parent: str = "") -> dict[str, str]:
-    choices: dict[str, str] = {}
-    for entry in entries:
-        if not isinstance(entry, DynamicComboSpec):
+def _default_choices(rows: Sequence[object], parent: str = "") -> dict[str, str]:
+    found: dict[str, str] = {}
+    for choice in rows:
+        if not isinstance(choice, Choice):
             continue
-        path = f"{parent}.{entry.id}" if parent else entry.id
-        assert entry.default is not None
-        choices[path] = entry.default
-        option = entry.option(entry.default)
+        path = f"{parent}.{choice.id}" if parent else choice.id
+        assert choice.default is not None
+        found[path] = choice.default
+        option = choice.option(choice.default)
         assert option is not None
-        choices.update(_default_choices(option.inputs, path))
-    return choices
+        found.update(_default_choices(placed_rows(choice, option), path))
+    return found
 
 
 def _matches(predicate: ReplacementPredicate, kind: str, input_id: str) -> bool:
@@ -413,8 +426,7 @@ def test_historical_inputs_are_exactly_the_retired_static_interface() -> None:
 
 def test_moved_static_input_inventory_is_the_audited_148() -> None:
     actual = {
-        node_type: _dynamic_ids((*schema.combos, *schema.slots))
-        - {combo.id for combo in schema.combos}
+        node_type: _dynamic_ids(schema) - {choice.id for choice in choices(schema)}
         for node_type, schema in _current_schemas().items()
     }
     assert {"minimum_area", "connectivity"} <= actual["dinkster.mask.morphology"]
@@ -432,22 +444,23 @@ def test_dynamic_inputs_preserve_v1_types_defaults_and_options() -> None:
         if node_type == "dinkster.image.resize":
             continue
         old_inputs = {spec.id: spec for spec in _v1_schemas()[node_type].inputs}
-        entries = _nested_entries((*current.combos, *current.slots))
+        entries = _dynamic_rows(current)
+        assert entries
         for entry in entries:
-            if isinstance(entry, InputSpec) and entry.id == "mask_polarity":
+            if isinstance(entry, Input) and entry.id == "mask_polarity":
                 assert isinstance(entry.widget, ComboWidget)
                 assert entry.widget.options == ("coverage", "transparency")
                 assert entry.default == "coverage"
                 continue
-            old = old_inputs.get(entry.id)
+            old = old_inputs.get(cast("Any", entry).id)
             if old is None:
-                assert (node_type, entry.id) in {
+                assert (node_type, cast("Any", entry).id) in {
                     ("dinkster.image.crop", "source"),
                     ("dinkster.mask.morphology", "minimum_area"),
                     ("dinkster.mask.morphology", "connectivity"),
                 }
                 continue
-            if isinstance(entry, InputSpec):
+            if isinstance(entry, Input):
                 expected_type = (
                     TypeExpr.concrete("REGION")
                     if old.type == TypeExpr.concrete("dinkster.region")
@@ -458,9 +471,10 @@ def test_dynamic_inputs_preserve_v1_types_defaults_and_options() -> None:
                     old.default,
                     old.widget,
                 )
-            elif isinstance(entry, DynamicComboSpec):
+            elif isinstance(entry, Choice):
                 assert entry.default == old.default
                 assert isinstance(old.widget, ComboWidget)
+                assert isinstance(old.widget.options, tuple)
                 current_only = {option.key for option in entry.options} - set(old.widget.options)
                 assert current_only <= {
                     "fill_holes",
@@ -471,7 +485,7 @@ def test_dynamic_inputs_preserve_v1_types_defaults_and_options() -> None:
                     "remove_small_components",
                     "total_pixels",
                 }
-            elif isinstance(entry, DynamicSlotSpec):
+            elif isinstance(entry, TypeChoice):
                 assert entry.variants is not None
                 assert {variant.type for variant in entry.variants} == {old.type}
 
@@ -484,17 +498,12 @@ def test_migration_case_inventory_and_identity_mappings() -> None:
         assert len(rule.cases) == expected_count
         assert sum(case.unconditional for case in rule.cases) == 1
         assert rule.cases[-1].unconditional
-        assert dict(rule.cases[-1].slot_variants) == _default_choices(
-            (*schema.combos, *schema.slots)
-        )
+        assert dict(rule.cases[-1].slot_variants) == _default_choices(scope(schema.body))
         expected_outputs = {output.id: output.id for output in schema.outputs}
         for case in rule.cases:
             assert case.to == node_type
             assert dict(case.outputs) == expected_outputs
-            assert {
-                target: (mapping.kind, mapping.source_family)
-                for target, mapping in case.output_families
-            } == {family.id: ("copy", family.id) for family in schema.output_families}
+            assert not case.output_families
         total_cases += len(rule.cases)
     assert total_cases == 242
     assert validate_replacement_references(_current_schemas()) == ()

@@ -13,11 +13,11 @@ from dinkster_api.v1 import (
     CORE_STRING,
     MODEL_TYPE,
     ComboWidget,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
     StringWidget,
     TypeExpr,
     initialize_inference_process,
@@ -59,39 +59,39 @@ class ContextWindowsManual(Node):
                 display_name="Context Windows (Manual)",
                 category="model/patch",
                 description="Manually set context windows.",
-                inputs=(
-                    InputSpec("model", _MODEL),
-                    InputSpec("context_length", _INT, default=16, widget=NumberWidget(min=1)),
-                    InputSpec("context_overlap", _INT, default=4, widget=NumberWidget(min=0)),
-                    InputSpec(
+                body=(
+                    Input("model", _MODEL),
+                    Input("context_length", _INT, default=16, widget=NumberWidget(min=1)),
+                    Input("context_overlap", _INT, default=4, widget=NumberWidget(min=0)),
+                    Input(
                         "context_schedule",
                         _COMBO,
                         default="standard_static",
                         widget=ComboWidget(_SCHEDULES),
                     ),
-                    InputSpec("context_stride", _INT, default=1, widget=NumberWidget(min=1)),
-                    InputSpec("closed_loop", _BOOLEAN, default=False),
-                    InputSpec(
+                    Input("context_stride", _INT, default=1, widget=NumberWidget(min=1)),
+                    Input("closed_loop", _BOOLEAN, default=False),
+                    Input(
                         "fuse_method", _COMBO, default="pyramid", widget=ComboWidget(_FUSE_METHODS)
                     ),
-                    InputSpec("dim", _INT, default=0, widget=NumberWidget(min=0, max=5)),
-                    InputSpec("freenoise", _BOOLEAN, default=False),
-                    InputSpec(
+                    Input("dim", _INT, default=0, widget=NumberWidget(min=0, max=5)),
+                    Input("freenoise", _BOOLEAN, default=False),
+                    Input(
                         "cond_retain_index_list",
                         _STRING,
                         default="",
                         widget=StringWidget(multiline=False),
                     ),
-                    InputSpec("split_conds_to_windows", _BOOLEAN, default=False),
-                    InputSpec(
+                    Input("split_conds_to_windows", _BOOLEAN, default=False),
+                    Input(
                         "latent_retain_index_list",
                         _STRING,
                         default="",
                         widget=StringWidget(multiline=False),
                     ),
-                    InputSpec("causal_window_fix", _BOOLEAN, default=True),
+                    Input("causal_window_fix", _BOOLEAN, default=True),
+                    Output("MODEL", _MODEL),
                 ),
-                outputs=(OutputSpec("MODEL", _MODEL),),
             ),
             "ContextWindowsManual",
         )

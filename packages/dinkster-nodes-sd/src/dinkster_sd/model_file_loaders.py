@@ -14,11 +14,11 @@ from dinkster_api.v1 import (
     VAE_TYPE,
     AssetRef,
     AssetWidget,
-    InputSpec,
+    Input,
     LocalAssetRef,
     Node,
     NodeSchema,
-    OutputSpec,
+    Output,
     TypeExpr,
     initialize_inference_process,
     mount_roots_for_kind,
@@ -38,11 +38,11 @@ _MODEL = TypeExpr.concrete(MODEL_TYPE)
 _VAE = TypeExpr.concrete(VAE_TYPE)
 
 
-def _asset(name: str, kind: str, *, doc: str = "") -> InputSpec:
-    return InputSpec(
+def _asset(name: str, kind: str, *, doc: str = "") -> Input:
+    return Input(
         name,
         _ASSET,
-        doc=doc,
+        tooltip=doc,
         widget=AssetWidget(kind=kind, accept=("application/octet-stream",)),
     )
 
@@ -64,12 +64,12 @@ class unCLIPCheckpointLoader(Node):
             node_type="dinkster.sd.un_clip_checkpoint_loader",
             display_name="Load unCLIP Checkpoint",
             category="model/loaders",
-            inputs=(_asset("ckpt_name", "model/checkpoint"),),
-            outputs=(
-                OutputSpec("MODEL", _MODEL),
-                OutputSpec("CLIP", _CLIP),
-                OutputSpec("VAE", _VAE),
-                OutputSpec("CLIP_VISION", _CLIP_VISION),
+            body=(
+                _asset("ckpt_name", "model/checkpoint"),
+                Output("MODEL", _MODEL),
+                Output("CLIP", _CLIP),
+                Output("VAE", _VAE),
+                Output("CLIP_VISION", _CLIP_VISION),
             ),
         )
         return with_identity_replacement(schema, "unCLIPCheckpointLoader")
@@ -96,8 +96,10 @@ class GLIGENLoader(Node):
             node_type="dinkster.sd.gligen_loader",
             display_name="Load GLIGEN Model",
             category="model/loaders",
-            inputs=(_asset("gligen_name", "model/gligen"),),
-            outputs=(OutputSpec("GLIGEN", _GLIGEN),),
+            body=(
+                _asset("gligen_name", "model/gligen"),
+                Output("GLIGEN", _GLIGEN),
+            ),
         )
         return with_identity_replacement(schema, "GLIGENLoader")
 
@@ -116,11 +118,11 @@ class ImageOnlyCheckpointLoader(Node):
             node_type="dinkster.sd.image_only_checkpoint_loader",
             display_name="Load Checkpoint Image Only (img2vid model)",
             category="model/loaders",
-            inputs=(_asset("ckpt_name", "model/checkpoint"),),
-            outputs=(
-                OutputSpec("MODEL", _MODEL),
-                OutputSpec("CLIP_VISION", _CLIP_VISION),
-                OutputSpec("VAE", _VAE),
+            body=(
+                _asset("ckpt_name", "model/checkpoint"),
+                Output("MODEL", _MODEL),
+                Output("CLIP_VISION", _CLIP_VISION),
+                Output("VAE", _VAE),
             ),
         )
         return with_identity_replacement(schema, "ImageOnlyCheckpointLoader")

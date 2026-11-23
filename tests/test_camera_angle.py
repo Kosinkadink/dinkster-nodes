@@ -12,10 +12,10 @@ from dinkster_3d.camera_angle import CameraAngle
 from dinkster_api.v1 import (
     CORE_STRING,
     LOAD3D_CAMERA_TYPE,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
-    OutputSpec,
+    Output,
     TypeExpr,
 )
 from dinkster_graph import Graph, GraphNode, Link
@@ -50,9 +50,7 @@ def test_camera_shot_boundaries(
 
 
 def test_camera_geometry_and_clamps_ignore_presentation_values() -> None:
-    result = CameraAngle.execute(
-        horizontal_angle=90, vertical_angle=30, zoom=4, image=object(), view="presentation"
-    )
+    result = CameraAngle.execute(horizontal_angle=90, vertical_angle=30, zoom=4, image=object())
     camera = result["camera_info"]
     assert isinstance(camera, dict)
     assert camera["position"] == pytest.approx({"x": 3 * math.sqrt(3), "y": 3, "z": 0})
@@ -72,11 +70,11 @@ class CameraAngleInspect(Node):
     def define_schema(cls) -> NodeSchema:
         return NodeSchema(
             "camera-angle-fixture.inspect",
-            inputs=(
-                InputSpec("camera", TypeExpr.concrete(LOAD3D_CAMERA_TYPE)),
-                InputSpec("prompt", TypeExpr.concrete(CORE_STRING)),
+            body=(
+                Input("camera", TypeExpr.concrete(LOAD3D_CAMERA_TYPE)),
+                Input("prompt", TypeExpr.concrete(CORE_STRING)),
+                Output("summary", TypeExpr.concrete(CORE_STRING)),
             ),
-            outputs=(OutputSpec("summary", TypeExpr.concrete(CORE_STRING)),),
         )
 
     @classmethod

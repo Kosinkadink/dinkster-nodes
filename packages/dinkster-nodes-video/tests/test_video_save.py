@@ -9,9 +9,7 @@ from typing import Any
 import av
 import numpy as np
 import pytest
-from dinkster_api.v1 import (
-    ExportSnapshot,
-)
+from dinkster_api.v1 import ExportSnapshot, Record
 from dinkster_assets.identity import AssetError
 from dinkster_video.video_components import CreateVideo
 from dinkster_video.video_save import SaveVideo
@@ -54,6 +52,14 @@ def _video() -> object:
     return CreateVideo.execute(images=_images(), fps=4.0)["video"]
 
 
+def _format(kind: str, codec: str, crf: float | None = None) -> Record:
+    """The format value execute receives: the container, its codec and the encoding."""
+    if codec == "auto":
+        return Record(kind, {"codec": Record("auto", {})})
+    encoding = Record("auto", {}) if crf is None else Record("re-encode", {"crf": crf})
+    return Record(kind, {"codec": Record(codec, {"encoding": encoding})})
+
+
 def _tags(path: Path) -> tuple[dict[str, object], Any, int]:
     with av.open(path) as container:
         tags = {
@@ -84,10 +90,7 @@ def test_save_video_writes_selected_mount_metadata_and_original_video(
         SaveVideo.execute(
             video=video,
             filename_prefix="video/%width%x%height%/clip",
-            format={
-                "format": "mp4",
-                "codec": {"codec": "h264", "encoding": {"crf": 18.0}},
-            },
+            format=_format("mp4", "h264", 18.0),
             mount="alternate",
         )["video"]
         is video
@@ -107,36 +110,41 @@ def test_save_video_writes_selected_mount_metadata_and_original_video(
 
 
 @pytest.mark.parametrize(
-    ("format", "codec", "crf"),
+    ("kind", "codec", "crf", "extension", "encoder"),
     (
-        ("auto", "h264", 18),
-        ("mkv", "h264", 18),
+        ("auto", "auto", None, "mp4", "h264"),
+        ("auto", "h264", None, "mp4", "h264"),
+        ("auto", "h264", 18.0, "mp4", "h264"),
+        ("auto", "av1", None, "webm", "av1"),
+        ("auto", "av1", 40.0, "webm", "av1"),
+        ("mp4", "auto", None, "mp4", "h264"),
+        ("mp4", "h264", 30.0, "mp4", "h264"),
+        ("mp4", "av1", None, "mp4", "av1"),
+        ("mkv", "auto", None, "mkv", "h264"),
+        ("mkv", "h264", None, "mkv", "h264"),
+        ("mkv", "av1", 40.0, "mkv", "av1"),
+        ("webm", "auto", None, "webm", "av1"),
+        ("webm", "av1", 40.0, "webm", "av1"),
     ),
 )
-def test_save_video_accepts_flat_dynamic_native_values(
+def test_save_video_writes_each_container_codec_and_encoding(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
-    format: str,
+    kind: str,
     codec: str,
-    crf: int,
+    crf: float | None,
+    extension: str,
+    encoder: str,
 ) -> None:
     default, _, _ = _mounts(tmp_path, monkeypatch)
     video = _video()
-    extension = "mp4" if format == "auto" else format
     result = SaveVideo.execute(
-        video=video,
-        filename_prefix=f"flat/{extension}",
-        format=format,
-        **{
-            "format.codec": codec,
-            "format.codec.encoding": "re-encode",
-            "format.codec.encoding.crf": crf,
-        },
+        video=video, filename_prefix="clip/out", format=_format(kind, codec, crf)
     )
     assert result["video"] is video
-    path = next(default.glob(f"flat/{extension}_*.{extension}"))
+    path = next(default.glob(f"clip/out_*.{extension}"))
     _, stream, frame_count = _tags(path)
-    assert stream.codec_context.name == "h264"
+    assert encoder in stream.codec_context.name
     assert (stream.width, stream.height) == (24, 16)
     assert frame_count == 3
 
@@ -155,9 +163,7 @@ def test_save_video_refuses_unsafe_values_without_publishing(
 ) -> None:
     default, alternate, readonly = _mounts(tmp_path, monkeypatch)
     with pytest.raises((ValueError, AssetError)):
-        SaveVideo.execute(
-            video=_video(), filename_prefix=prefix, format=format, **{"format.codec": codec}
-        )
+        SaveVideo.execute(video=_video(), filename_prefix=prefix, format=_format(format, codec))
     assert not list(default.rglob("*"))
     assert not list(alternate.rglob("*"))
     assert not list(readonly.rglob("*"))
@@ -169,7 +175,10 @@ def test_save_video_refuses_readonly_mount_without_publishing(
     default, alternate, readonly = _mounts(tmp_path, monkeypatch)
     with pytest.raises(AssetError, match="mount"):
         SaveVideo.execute(
-            video=_video(), filename_prefix="video/clip", format="mp4", mount="readonly"
+            video=_video(),
+            filename_prefix="video/clip",
+            format=_format("mp4", "auto"),
+            mount="readonly",
         )
     assert not list(default.rglob("*"))
     assert not list(alternate.rglob("*"))

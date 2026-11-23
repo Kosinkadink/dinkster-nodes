@@ -11,11 +11,11 @@ from dinkster_api.v1 import (
     CLIP_TYPE,
     AssetRef,
     AssetWidget,
-    InputSpec,
+    Input,
     LocalAssetRef,
     Node,
     NodeSchema,
-    OutputSpec,
+    Output,
     TypeExpr,
     initialize_inference_process,
     mount_roots_for_kind,
@@ -29,15 +29,17 @@ def _schema(node_type: str, display_name: str, recipe: str, count: int) -> NodeS
         display_name=display_name,
         category="model/loaders",
         description="Recipes:\n" + recipe,
-        inputs=tuple(
-            InputSpec(
-                f"clip_name{index}",
-                TypeExpr.concrete(ASSET_TYPE),
-                widget=AssetWidget(kind="model/text-encoder"),
-            )
-            for index in range(1, count + 1)
+        body=(
+            *tuple(
+                Input(
+                    f"clip_name{index}",
+                    TypeExpr.concrete(ASSET_TYPE),
+                    widget=AssetWidget(kind="model/text-encoder"),
+                )
+                for index in range(1, count + 1)
+            ),
+            Output("CLIP", TypeExpr.concrete(CLIP_TYPE)),
         ),
-        outputs=(OutputSpec("CLIP", TypeExpr.concrete(CLIP_TYPE)),),
     )
 
 

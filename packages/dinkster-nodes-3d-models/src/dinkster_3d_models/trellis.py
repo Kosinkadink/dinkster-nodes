@@ -13,10 +13,10 @@ from dinkster_api.v1 import (
     SHAPE_SUBDIVIDES_TYPE,
     VAE_TYPE,
     VOXEL_TYPE,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
-    OutputSpec,
+    Output,
     TypeExpr,
     initialize_inference_process,
     materialize_latent,
@@ -87,15 +87,13 @@ class Trellis2TextureStage(Node):
             node_type="dinkster.3d.models.trellis2_texture_stage",
             display_name="Trellis2 Texture Stage",
             category="model/conditioning/trellis",
-            inputs=(
-                InputSpec("positive", conditioning),
-                InputSpec("negative", conditioning),
-                InputSpec("shape_latent", latent),
-            ),
-            outputs=(
-                OutputSpec("positive", conditioning),
-                OutputSpec("negative", conditioning),
-                OutputSpec("LATENT", latent),
+            body=(
+                Input("positive", conditioning),
+                Input("negative", conditioning),
+                Input("shape_latent", latent),
+                Output("positive", conditioning),
+                Output("negative", conditioning),
+                Output("LATENT", latent),
             ),
         )
         return with_identity_replacement(schema, "Trellis2TextureStage")
@@ -157,18 +155,18 @@ class VaeDecodeTextureTrellis(Node):
             node_type="dinkster.3d.models.vae_decode_texture_trellis",
             display_name="Trellis2 VAE Decode Texture",
             category="model/latent/trellis",
-            inputs=(
-                InputSpec("samples", TypeExpr.concrete(LATENT_TYPE)),
-                InputSpec("vae", TypeExpr.concrete(VAE_TYPE)),
-                InputSpec(
+            body=(
+                Input("samples", TypeExpr.concrete(LATENT_TYPE)),
+                Input("vae", TypeExpr.concrete(VAE_TYPE)),
+                Input(
                     "shape_subdivides",
                     TypeExpr.concrete(SHAPE_SUBDIVIDES_TYPE),
-                    doc="Shape information used to guide higher-detail reconstruction "
+                    tooltip="Shape information used to guide higher-detail reconstruction "
                     "during decoding. "
                     "Helps preserve structure consistency at higher resolutions.",
                 ),
+                Output("voxel_colors", TypeExpr.concrete(VOXEL_TYPE)),
             ),
-            outputs=(OutputSpec("voxel_colors", TypeExpr.concrete(VOXEL_TYPE)),),
         )
         return with_identity_replacement(schema, "VaeDecodeTextureTrellis")
 

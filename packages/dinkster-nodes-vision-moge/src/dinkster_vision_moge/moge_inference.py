@@ -13,11 +13,12 @@ from dinkster_api.v1 import (
     IMAGE_TYPE,
     MOGE_GEOMETRY_TYPE,
     MOGE_MODEL_TYPE,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
+    Section,
     TypeExpr,
     materialize_image,
     with_identity_replacement,
@@ -33,67 +34,76 @@ class MoGeInference(Node):
             description="Run MoGe on a single image to estimate depth and geometry.",
             category="image/geometry estimation",
             search_terms=("moge", "depth", "geometry", "depth estimation", "geometry estimation"),
-            inputs=(
-                InputSpec("moge_model", TypeExpr.concrete(MOGE_MODEL_TYPE)),
-                InputSpec("image", TypeExpr.concrete(IMAGE_TYPE)),
-                InputSpec(
+            body=(
+                Input("moge_model", TypeExpr.concrete(MOGE_MODEL_TYPE)),
+                Input("image", TypeExpr.concrete(IMAGE_TYPE)),
+                Input(
                     "resolution_level",
                     TypeExpr.concrete(CORE_INT),
                     default=9,
                     widget=NumberWidget(min=0, max=9),
-                    doc="0 = fastest, 9 = most detail.",
+                    tooltip="0 = fastest, 9 = most detail.",
                 ),
-                InputSpec(
-                    "fov_x_degrees",
-                    TypeExpr.concrete(CORE_FLOAT),
-                    default=0.0,
-                    advanced=True,
-                    widget=NumberWidget(min=0.0, max=170.0, step=0.1),
-                    doc=(
-                        "Horizontal field of view of the source camera. Sets the focal length "
-                        "used to unproject the depth map into 3D. 0 = auto-recover from the "
-                        "predicted points."
-                    ),
-                ),
-                InputSpec(
+                Input(
                     "batch_size",
                     TypeExpr.concrete(CORE_INT),
                     default=4,
                     widget=NumberWidget(min=1, max=64),
-                    doc="Images per inference call. Lower if you OOM on a long video / image set.",
+                    tooltip="Images per inference call. Lower if you OOM on a long video / image "
+                    "set.",
                 ),
-                InputSpec(
-                    "force_projection",
-                    TypeExpr.concrete(CORE_BOOLEAN),
-                    default=True,
-                    advanced=True,
-                ),
-                InputSpec(
-                    "apply_mask",
-                    TypeExpr.concrete(CORE_BOOLEAN),
-                    default=True,
-                    advanced=True,
-                    doc=(
-                        "Set masked-out (sky / invalid) pixels to inf in points and depth so "
-                        "meshing culls them. Disable to keep the raw predicted geometry "
-                        "everywhere; the mask is still returned separately."
+                Section(
+                    "advanced",
+                    label="Advanced",
+                    collapsed=True,
+                    rows=(
+                        Input(
+                            "fov_x_degrees",
+                            TypeExpr.concrete(CORE_FLOAT),
+                            default=0.0,
+                            widget=NumberWidget(min=0.0, max=170.0, step=0.1),
+                            tooltip=(
+                                "Horizontal field of view of the source camera. Sets the focal "
+                                "length "
+                                "used to unproject the depth map into 3D. 0 = auto-recover from "
+                                "the "
+                                "predicted points."
+                            ),
+                        ),
+                        Input(
+                            "force_projection",
+                            TypeExpr.concrete(CORE_BOOLEAN),
+                            default=True,
+                        ),
+                        Input(
+                            "apply_mask",
+                            TypeExpr.concrete(CORE_BOOLEAN),
+                            default=True,
+                            tooltip=(
+                                "Set masked-out (sky / invalid) pixels to inf in points and depth "
+                                "so "
+                                "meshing culls them. Disable to keep the raw predicted geometry "
+                                "everywhere; the mask is still returned separately."
+                            ),
+                        ),
+                        Input(
+                            "refine_steps",
+                            TypeExpr.concrete(CORE_INT),
+                            default=3,
+                            widget=NumberWidget(min=0, max=8),
+                            tooltip=(
+                                "MoGe-3 only: sparse volumetric refinement passes over the "
+                                "predicted "
+                                "depth. "
+                                "More passes sharpen fine detail and edges at a roughly linear "
+                                "cost. "
+                                "0 disables refinement. Ignored by MoGe-1 / MoGe-2."
+                            ),
+                        ),
                     ),
                 ),
-                InputSpec(
-                    "refine_steps",
-                    TypeExpr.concrete(CORE_INT),
-                    default=3,
-                    advanced=True,
-                    widget=NumberWidget(min=0, max=8),
-                    doc=(
-                        "MoGe-3 only: sparse volumetric refinement passes over the predicted "
-                        "depth. "
-                        "More passes sharpen fine detail and edges at a roughly linear cost. "
-                        "0 disables refinement. Ignored by MoGe-1 / MoGe-2."
-                    ),
-                ),
+                Output("moge_geometry", TypeExpr.concrete(MOGE_GEOMETRY_TYPE)),
             ),
-            outputs=(OutputSpec("moge_geometry", TypeExpr.concrete(MOGE_GEOMETRY_TYPE)),),
         )
         return with_identity_replacement(schema, "MoGeInference")
 

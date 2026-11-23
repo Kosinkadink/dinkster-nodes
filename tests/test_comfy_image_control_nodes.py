@@ -8,6 +8,8 @@ from dinkster_misc_models.image_control_patches import ZImageFunControlnet
 from dinkster_qwen import NODES as QWEN_NODES
 from dinkster_qwen.image_control_patches import QwenImageDiffsynthControlnet
 
+from tests.body_rows import advanced_ids
+
 
 def test_image_control_public_contracts() -> None:
     expected = (
@@ -59,5 +61,5 @@ def test_image_control_public_contracts() -> None:
             for name, default in (("start_percent", 0.0), ("end_percent", 1.0)):
                 assert not inputs[name].required
                 assert inputs[name].default == default
-                assert inputs[name].advanced
+                assert name in advanced_ids(schema.body)
                 assert inputs[name].widget == NumberWidget(min=0.0, max=1.0, step=0.001)

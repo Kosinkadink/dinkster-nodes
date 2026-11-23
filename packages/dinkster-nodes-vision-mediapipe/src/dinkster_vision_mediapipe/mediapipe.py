@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import importlib
-from collections.abc import Mapping
 from typing import Any
 
 from dinkster_api.v1 import (
@@ -13,14 +12,15 @@ from dinkster_api.v1 import (
     FACE_LANDMARKS_TYPE,
     IMAGE_TYPE,
     MASK_TYPE,
+    Choice,
     ColorWidget,
-    DynamicComboOption,
-    DynamicComboSpec,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Option,
+    Output,
+    Record,
     TypeExpr,
     initialize_inference_process,
     materialize_image,
@@ -88,65 +88,55 @@ class MediaPipeFaceMeshVisualize(Node):
                 "face detection",
                 "visualize",
             ),
-            inputs=(
-                InputSpec("face_landmarks", TypeExpr.concrete(FACE_LANDMARKS_TYPE)),
-                InputSpec(
+            body=(
+                Input("face_landmarks", TypeExpr.concrete(FACE_LANDMARKS_TYPE)),
+                Input(
                     "image",
                     TypeExpr.concrete(IMAGE_TYPE),
                     required=False,
-                    doc="If not connected, a black canvas will be used.",
+                    tooltip="If not connected, a black canvas will be used.",
                 ),
-                InputSpec(
-                    "color", TypeExpr.concrete(COLOR_TYPE), default="#00ff00", widget=ColorWidget()
-                ),
-                InputSpec(
-                    "thickness",
-                    TypeExpr.concrete(CORE_INT),
-                    default=1,
-                    widget=NumberWidget(min=0, max=8, step=1),
-                    doc="Edge line thickness in pixels. 0 disables edge drawing.",
-                ),
-                InputSpec(
-                    "point_size",
-                    TypeExpr.concrete(CORE_INT),
-                    default=2,
-                    widget=NumberWidget(min=0, max=16, step=1),
-                    doc="Landmark dot radius in pixels. 0 disables point drawing.",
-                ),
-            ),
-            combos=(
-                DynamicComboSpec(
+                Choice(
                     "connections",
-                    (
-                        DynamicComboOption("all"),
-                        DynamicComboOption("fill"),
-                        DynamicComboOption(
+                    options=(
+                        Option("all"),
+                        Option("fill"),
+                        Option(
                             "custom",
-                            tuple(
-                                InputSpec(
+                            rows=tuple(
+                                Input(
                                     feature,
                                     TypeExpr.concrete(CORE_BOOLEAN),
                                     default=default,
-                                    doc=f"Draw the '{feature}' connection set.",
+                                    tooltip=f"Draw the '{feature}' connection set.",
                                 )
                                 for feature, default in _CUSTOM_FEATURES
                             ),
                         ),
                     ),
-                    doc="'all' = oval+eyes+brows+lips+irises+nose. 'fill' = solid face_oval "
+                    tooltip="'all' = oval+eyes+brows+lips+irises+nose. 'fill' = solid face_oval "
                     "polygon (silhouette mask). 'custom' = toggle each feature individually "
                     "(including 'tesselation', the full 2547-edge wireframe).",
                 ),
+                Input(
+                    "color", TypeExpr.concrete(COLOR_TYPE), default="#00ff00", widget=ColorWidget()
+                ),
+                Input(
+                    "thickness",
+                    TypeExpr.concrete(CORE_INT),
+                    default=1,
+                    widget=NumberWidget(min=0, max=8, step=1),
+                    tooltip="Edge line thickness in pixels. 0 disables edge drawing.",
+                ),
+                Input(
+                    "point_size",
+                    TypeExpr.concrete(CORE_INT),
+                    default=2,
+                    widget=NumberWidget(min=0, max=16, step=1),
+                    tooltip="Landmark dot radius in pixels. 0 disables point drawing.",
+                ),
+                Output("IMAGE", TypeExpr.concrete(IMAGE_TYPE)),
             ),
-            input_order=(
-                "face_landmarks",
-                "image",
-                "connections",
-                "color",
-                "thickness",
-                "point_size",
-            ),
-            outputs=(OutputSpec("IMAGE", TypeExpr.concrete(IMAGE_TYPE)),),
         )
         return with_identity_replacement(schema, "MediaPipeFaceMeshVisualize")
 
@@ -155,22 +145,16 @@ class MediaPipeFaceMeshVisualize(Node):
         cls,
         *,
         face_landmarks: Any,
-        connections: str | Mapping[str, Any],
+        connections: Record,
         color: str,
         thickness: int,
         point_size: int,
         image: Any = None,
-        **inputs: Any,
     ) -> Any:
         torch, np, image_module, image_draw, image_color, management = _runtime()
-        if isinstance(connections, str):
-            connections = {
-                "connections": connections,
-                **{key.removeprefix("connections."): value for key, value in inputs.items()},
-            }
         packet = materialize_vision_packet(face_landmarks)
         sets = packet["connection_sets"]
-        selected = connections["connections"]
+        selected = connections.key
         rings = None
         edges: frozenset[tuple[int, int]]
         if selected == "fill":
@@ -269,50 +253,42 @@ class MediaPipeFaceMask(Node):
                 "face detection",
                 "visualize",
             ),
-            inputs=(InputSpec("face_landmarks", TypeExpr.concrete(FACE_LANDMARKS_TYPE)),),
-            combos=(
-                DynamicComboSpec(
+            body=(
+                Input("face_landmarks", TypeExpr.concrete(FACE_LANDMARKS_TYPE)),
+                Choice(
                     "regions",
-                    (
-                        DynamicComboOption("all"),
-                        DynamicComboOption(
+                    options=(
+                        Option("all"),
+                        Option(
                             "custom",
-                            tuple(
-                                InputSpec(
+                            rows=tuple(
+                                Input(
                                     region,
                                     TypeExpr.concrete(CORE_BOOLEAN),
                                     default=region == "face_oval",
-                                    doc=f"Include the '{region}' region in the mask.",
+                                    tooltip=f"Include the '{region}' region in the mask.",
                                 )
                                 for region in _MASK_REGIONS
                             ),
                         ),
                     ),
-                    doc="'all' = union of face_oval+lips+eyes+irises (which collapses to "
+                    tooltip="'all' = union of face_oval+lips+eyes+irises (which collapses to "
                     "face_oval since it encloses the rest). 'custom' = toggle each region "
                     "individually for combos like lips+eyes.",
                 ),
+                Output("MASK", TypeExpr.concrete(MASK_TYPE)),
             ),
-            input_order=("face_landmarks", "regions"),
-            outputs=(OutputSpec("MASK", TypeExpr.concrete(MASK_TYPE)),),
         )
         return with_identity_replacement(schema, "MediaPipeFaceMask")
 
     @classmethod
-    def execute(
-        cls, *, face_landmarks: Any, regions: str | Mapping[str, Any], **inputs: Any
-    ) -> Any:
+    def execute(cls, *, face_landmarks: Any, regions: Record) -> Any:
         torch, np, image_module, image_draw, _, management = _runtime()
-        if isinstance(regions, str):
-            regions = {
-                "regions": regions,
-                **{key.removeprefix("regions."): value for key, value in inputs.items()},
-            }
         packet = materialize_vision_packet(face_landmarks)
         sets = packet["connection_sets"]
         picked = (
             [region for region in _MASK_REGIONS if regions.get(region, False)]
-            if regions["regions"] == "custom"
+            if regions.key == "custom"
             else _MASK_REGIONS
         )
         rings = [ring for region in picked for ring in _ordered_rings(sets[region])]

@@ -14,10 +14,10 @@ import pytest
 from dinkster_api.v1 import (
     POSE_KEYPOINT_TYPE,
     POSE_TYPE,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
-    OutputSpec,
+    Output,
     TypeExpr,
     TypeRegistry,
     register_inference_types,
@@ -154,7 +154,7 @@ class PoseSource(Node):
     def define_schema(cls) -> NodeSchema:
         return NodeSchema(
             node_type="pose-keypoint-source.emit",
-            outputs=(OutputSpec("frames", TypeExpr.concrete(POSE_KEYPOINT_TYPE)),),
+            body=(Output("frames", TypeExpr.concrete(POSE_KEYPOINT_TYPE)),),
         )
 
     @classmethod
@@ -167,8 +167,10 @@ class PoseObserver(Node):
     def define_schema(cls) -> NodeSchema:
         return NodeSchema(
             node_type="pose-keypoint-observer.inspect",
-            inputs=(InputSpec("frames", TypeExpr.concrete(POSE_KEYPOINT_TYPE)),),
-            outputs=(OutputSpec("frames", TypeExpr.concrete(POSE_KEYPOINT_TYPE)),),
+            body=(
+                Input("frames", TypeExpr.concrete(POSE_KEYPOINT_TYPE)),
+                Output("frames", TypeExpr.concrete(POSE_KEYPOINT_TYPE)),
+            ),
         )
 
     @classmethod

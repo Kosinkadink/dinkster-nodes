@@ -6,6 +6,8 @@ from dinkster_flux.cache import FluxKVCache
 from dinkster_models import NODES as MODEL_NODES
 from dinkster_models.cache import EasyCache, LazyCache
 
+from tests.body_rows import advanced_ids
+
 
 def test_cache_nodes_publish_the_fixed_core_interfaces() -> None:
     assert EasyCache in MODEL_NODES
@@ -43,7 +45,7 @@ def test_cache_nodes_publish_the_fixed_core_interfaces() -> None:
             NumberWidget(min=0.0, max=1.0, step=0.01),
             NumberWidget(min=0.0, max=1.0, step=0.01),
         ]
-        assert all(item.advanced for item in schema.inputs[1:])
+        assert advanced_ids(schema.body) == tuple(item.id for item in schema.inputs[1:])
         assert [(item.id, item.type) for item in schema.outputs] == [
             ("MODEL", TypeExpr.concrete(MODEL_TYPE))
         ]

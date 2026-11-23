@@ -17,13 +17,14 @@ from dinkster_api.v1 import (
     MASK_TYPE,
     REGION_TYPE,
     VIDEO_TYPE,
-    DynamicComboOption,
-    DynamicComboSpec,
-    InputSpec,
+    Choice,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Option,
+    Output,
+    Section,
     TypeExpr,
     coerce_video,
     disassemble_video,
@@ -180,25 +181,23 @@ class TrackedCrop(Node):
                 "Crop one tracked selection per frame. The largest visible selection sets the "
                 "fixed output size; empty frames remain as zero crops and zero-area regions."
             ),
-            inputs=(
-                InputSpec("media", MEDIA),
-                InputSpec(
+            body=(
+                Input("media", MEDIA),
+                Input(
                     "padding",
                     INT,
                     required=False,
                     default=0,
                     widget=NumberWidget(min=0, max=MAX_DIMENSION, step=1),
                 ),
-            ),
-            combos=(
-                DynamicComboSpec(
+                Choice(
                     "source",
-                    (
-                        DynamicComboOption(
+                    options=(
+                        Option(
                             "masks",
-                            (
-                                InputSpec("masks", MASK),
-                                InputSpec(
+                            rows=(
+                                Input("masks", MASK),
+                                Input(
                                     "threshold",
                                     FLOAT,
                                     required=False,
@@ -207,18 +206,15 @@ class TrackedCrop(Node):
                                 ),
                             ),
                         ),
-                        DynamicComboOption(
-                            "bounding_boxes",
-                            (InputSpec("bounding_boxes", REGIONS_OR_DETECTIONS),),
+                        Option(
+                            "bounding_boxes", rows=(Input("bounding_boxes", REGIONS_OR_DETECTIONS),)
                         ),
                     ),
                     default="masks",
                 ),
-            ),
-            outputs=(
-                OutputSpec("media", MEDIA, preview=True),
-                OutputSpec("regions", REGION_LIST),
-                OutputSpec("masks", MASK, preview=True),
+                Output("media", MEDIA, preview=True),
+                Output("regions", REGION_LIST),
+                Output("masks", MASK, preview=True),
             ),
             search_terms=("tracked crop", "crop sequence", "crop video by mask"),
         )
@@ -339,21 +335,32 @@ class TrackedUncrop(Node):
                 "Reinsert processed crops at their matching tracked regions. Zero-area regions "
                 "leave the corresponding base frame unchanged."
             ),
-            inputs=(
-                InputSpec("base", BASE_MEDIA),
-                InputSpec("crop", IMAGE_OR_VIDEO),
-                InputSpec("regions", REGION_LIST),
-                InputSpec("masks", MASK, required=False, default=None),
-                InputSpec(
+            body=(
+                Input("base", BASE_MEDIA),
+                Input("crop", IMAGE_OR_VIDEO),
+                Input("regions", REGION_LIST),
+                Input("masks", MASK, required=False, default=None),
+                Input(
                     "opacity",
                     FLOAT,
                     required=False,
                     default=1.0,
                     widget=NumberWidget(min=0.0, max=1.0, step=0.01),
                 ),
-                combo_input("interpolation", INTERPOLATION_OPTIONS, "bilinear", advanced=True),
+                Section(
+                    "advanced",
+                    label="Advanced",
+                    collapsed=True,
+                    rows=(
+                        combo_input(
+                            "interpolation",
+                            INTERPOLATION_OPTIONS,
+                            "bilinear",
+                        ),
+                    ),
+                ),
+                Output("media", BASE_MEDIA, preview=True),
             ),
-            outputs=(OutputSpec("media", BASE_MEDIA, preview=True),),
             search_terms=("tracked uncrop", "reinsert crop sequence", "composite tracked crop"),
         )
 

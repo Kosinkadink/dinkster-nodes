@@ -28,14 +28,18 @@ from dinkster_api.v1 import (
     AssetWriter,
     ColorWidget,
     ComboWidget,
-    InputSpec,
+    CustomWidgetDescriptor,
+    Editor,
+    Input,
     LocalAssetRef,
     MountSnapshotWriter,
     MountWidget,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
+    Row,
+    Section,
     SourceFilenameSpec,
     StringWidget,
     TypeExpr,
@@ -189,8 +193,8 @@ def _load_webp(asset: AssetRef | LocalAssetRef) -> tuple[Any, Any]:
     return torch.stack(images), torch.stack(masks)
 
 
-def _asset_input(category: Literal["input", "output"]) -> InputSpec:
-    return InputSpec(
+def _asset_input(category: Literal["input", "output"]) -> Input:
+    return Input(
         "image",
         _ASSET,
         widget=AssetWidget(_IMAGE_MEDIA_TYPES, kind="media/image", allow_upload=True),
@@ -270,28 +274,33 @@ class SaveImage(Node):
             display_name="Save Image",
             category="image",
             description="Saves the input images to your ComfyUI output directory.",
-            inputs=(
-                InputSpec("images", _IMAGE, doc="The images to save."),
-                InputSpec(
-                    "filename_prefix",
-                    _STRING,
-                    default="ComfyUI",
-                    doc=(
-                        "The prefix for the file to save. This may include formatting information "
-                        "such as %date:yyyy-MM-dd% or %Empty Latent Image.width% to include values "
-                        "from nodes."
-                    ),
+            body=(
+                Input("images", _IMAGE, tooltip="The images to save."),
+                Row(
+                    rows=(
+                        Input(
+                            "filename_prefix",
+                            _STRING,
+                            default="ComfyUI",
+                            tooltip=(
+                                "The prefix for the file to save. This may include formatting "
+                                "information "
+                                "such as %date:yyyy-MM-dd% or %Empty Latent Image.width% to "
+                                "include values "
+                                "from nodes."
+                            ),
+                        ),
+                        Input(
+                            "mount",
+                            _STRING,
+                            required=False,
+                            default=None,
+                            widget=MountWidget(),
+                        ),
+                    )
                 ),
-                InputSpec(
-                    "mount",
-                    _STRING,
-                    required=False,
-                    default=None,
-                    widget=MountWidget(),
-                    adjacent_to="filename_prefix",
-                ),
+                Output("images", _IMAGE),
             ),
-            outputs=(OutputSpec("images", _IMAGE),),
             idempotent=False,
             output_node=True,
             search_terms=(
@@ -362,8 +371,10 @@ class PreviewImage(Node):
             display_name="Preview Image",
             category="image",
             description="Preview the images without saving them to the ComfyUI output directory.",
-            inputs=(InputSpec("images", _IMAGE),),
-            outputs=(OutputSpec("images", _IMAGE, preview=True),),
+            body=(
+                Input("images", _IMAGE),
+                Output("images", _IMAGE, preview=True),
+            ),
             output_node=True,
             search_terms=(
                 "preview",
@@ -389,37 +400,40 @@ class SaveAnimatedWEBP(Node):
             "dinkster.image.save_animated_webp",
             display_name="Save Animated WEBP",
             category="image",
-            inputs=(
-                InputSpec("images", _IMAGE),
-                InputSpec(
-                    "filename_prefix",
-                    _STRING,
-                    default="ComfyUI",
-                    widget=StringWidget(multiline=False),
+            body=(
+                Input("images", _IMAGE),
+                Row(
+                    rows=(
+                        Input(
+                            "filename_prefix",
+                            _STRING,
+                            default="ComfyUI",
+                            widget=StringWidget(multiline=False),
+                        ),
+                        Input(
+                            "mount",
+                            _STRING,
+                            required=False,
+                            default=None,
+                            widget=MountWidget(),
+                        ),
+                    )
                 ),
-                InputSpec(
+                Input(
                     "fps",
                     _FLOAT,
                     default=6.0,
                     widget=NumberWidget(min=0.01, max=1000.0, step=0.01),
                 ),
-                InputSpec("lossless", _BOOLEAN, default=True),
-                InputSpec("quality", _INT, default=80, widget=NumberWidget(min=0, max=100)),
-                InputSpec(
+                Input("lossless", _BOOLEAN, default=True),
+                Input("quality", _INT, default=80, widget=NumberWidget(min=0, max=100)),
+                Input(
                     "method",
                     _COMBO,
                     widget=ComboWidget(options=("default", "fastest", "slowest")),
                 ),
-                InputSpec(
-                    "mount",
-                    _STRING,
-                    required=False,
-                    default=None,
-                    widget=MountWidget(),
-                    adjacent_to="filename_prefix",
-                ),
+                Output("images", _IMAGE),
             ),
-            outputs=(OutputSpec("images", _IMAGE),),
             idempotent=False,
             output_node=True,
         )
@@ -462,37 +476,46 @@ class SaveAnimatedPNG(Node):
             "dinkster.image.save_animated_png",
             display_name="Save Animated PNG",
             category="image",
-            inputs=(
-                InputSpec("images", _IMAGE),
-                InputSpec(
-                    "filename_prefix",
-                    _STRING,
-                    default="ComfyUI",
-                    widget=StringWidget(multiline=False),
+            body=(
+                Input("images", _IMAGE),
+                Row(
+                    rows=(
+                        Input(
+                            "filename_prefix",
+                            _STRING,
+                            default="ComfyUI",
+                            widget=StringWidget(multiline=False),
+                        ),
+                        Input(
+                            "mount",
+                            _STRING,
+                            required=False,
+                            default=None,
+                            widget=MountWidget(),
+                        ),
+                    )
                 ),
-                InputSpec(
+                Input(
                     "fps",
                     _FLOAT,
                     default=6.0,
                     widget=NumberWidget(min=0.01, max=1000.0, step=0.01),
                 ),
-                InputSpec(
-                    "compress_level",
-                    _INT,
-                    default=4,
-                    advanced=True,
-                    widget=NumberWidget(min=0, max=9),
+                Section(
+                    "advanced",
+                    label="Advanced",
+                    collapsed=True,
+                    rows=(
+                        Input(
+                            "compress_level",
+                            _INT,
+                            default=4,
+                            widget=NumberWidget(min=0, max=9),
+                        ),
+                    ),
                 ),
-                InputSpec(
-                    "mount",
-                    _STRING,
-                    required=False,
-                    default=None,
-                    widget=MountWidget(),
-                    adjacent_to="filename_prefix",
-                ),
+                Output("images", _IMAGE),
             ),
-            outputs=(OutputSpec("images", _IMAGE),),
             idempotent=False,
             output_node=True,
         )
@@ -525,36 +548,50 @@ class Painter(Node):
             node_type="dinkster.image.painter",
             display_name="Painter",
             category="image",
-            inputs=(
-                InputSpec("image", _IMAGE, required=False, default=None),
-                InputSpec(
+            body=(
+                Input("image", _IMAGE, required=False, default=None),
+                Input(
                     "mask",
                     _ASSET,
                     required=False,
                     default=None,
-                    socketless=True,
+                    pin=False,
                     widget=AssetWidget(_IMAGE_MEDIA_TYPES, kind="media/image", allow_upload=True),
                     source_filename=SourceFilenameSpec("media/image", "input"),
                 ),
+                Editor(
+                    "painter",
+                    CustomWidgetDescriptor(
+                        "PAINTER",
+                        writes={"mask": "mask"},
+                        reads={
+                            "width": "width",
+                            "height": "height",
+                            "image": "image",
+                            "bg_color": "bg_color",
+                        },
+                    ),
+                ),
                 *(
-                    InputSpec(
+                    Input(
                         name,
                         _INT,
                         default=512,
                         widget=NumberWidget(min=64, max=4096, step=64),
-                        socketless=True,
+                        pin=False,
                         hidden=True,
                     )
                     for name in ("width", "height")
                 ),
-                InputSpec(
+                Input(
                     "bg_color",
                     TypeExpr.concrete(COLOR_TYPE),
                     default="#000000",
                     widget=ColorWidget(),
                 ),
+                Output("IMAGE", _IMAGE),
+                Output("MASK", _MASK),
             ),
-            outputs=(OutputSpec("IMAGE", _IMAGE), OutputSpec("MASK", _MASK)),
             emits_previews=True,
         )
         return with_identity_replacement(schema, "Painter")
@@ -636,8 +673,7 @@ class LoadImage(Node):
             node_type="dinkster.image.load_image",
             display_name="Load Image",
             category="image",
-            inputs=(_asset_input("input"),),
-            outputs=(OutputSpec("IMAGE", _IMAGE), OutputSpec("MASK", _MASK)),
+            body=(_asset_input("input"), Output("IMAGE", _IMAGE), Output("MASK", _MASK)),
             search_terms=(
                 "load image",
                 "open image",
@@ -663,15 +699,15 @@ class LoadImageMask(Node):
             node_type="dinkster.image.load_image_mask",
             display_name="Load Image (as Mask)",
             category="image",
-            inputs=(
+            body=(
                 _asset_input("input"),
-                InputSpec(
+                Input(
                     "channel",
                     _COMBO,
                     widget=ComboWidget(options=("alpha", "red", "green", "blue")),
                 ),
+                Output("MASK", _MASK),
             ),
-            outputs=(OutputSpec("MASK", _MASK),),
             search_terms=("import mask", "alpha mask", "channel mask"),
         )
         return with_identity_replacement(schema, "LoadImageMask")
@@ -699,8 +735,7 @@ class LoadImageOutput(LoadImage):
                 "node will update the image list and automatically select the first image, "
                 "allowing for easy iteration."
             ),
-            inputs=(_asset_input("output"),),
-            outputs=(OutputSpec("IMAGE", _IMAGE), OutputSpec("MASK", _MASK)),
+            body=(_asset_input("output"), Output("IMAGE", _IMAGE), Output("MASK", _MASK)),
             search_terms=("output image", "previous generation"),
         )
         return with_identity_replacement(schema, "LoadImageOutput")

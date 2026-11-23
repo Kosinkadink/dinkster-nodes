@@ -12,10 +12,10 @@ from dinkster_api.v1 import (
     AUDIO_ENCODER_OUTPUT_TYPE,
     AUDIO_TYPE,
     CORE_STRING,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
-    OutputSpec,
+    Output,
     TypeExpr,
     initialize_inference_process,
     materialize_audio,
@@ -150,7 +150,7 @@ class AudioSource(Node):
     def define_schema(cls) -> NodeSchema:
         return NodeSchema(
             node_type="wandancer-audio-fixture.source",
-            outputs=(OutputSpec("audio", TypeExpr.concrete(AUDIO_TYPE)),),
+            body=(Output("audio", TypeExpr.concrete(AUDIO_TYPE)),),
         )
 
     @classmethod
@@ -165,12 +165,12 @@ class AudioConsumer(Node):
     def define_schema(cls) -> NodeSchema:
         return NodeSchema(
             node_type="wandancer-audio-fixture.consumer",
-            inputs=(
-                InputSpec("encoded", TypeExpr.concrete(AUDIO_ENCODER_OUTPUT_TYPE)),
-                InputSpec("fps_string", TypeExpr.concrete(CORE_STRING)),
-                InputSpec("audio", TypeExpr.concrete(AUDIO_TYPE)),
+            body=(
+                Input("encoded", TypeExpr.concrete(AUDIO_ENCODER_OUTPUT_TYPE)),
+                Input("fps_string", TypeExpr.concrete(CORE_STRING)),
+                Input("audio", TypeExpr.concrete(AUDIO_TYPE)),
+                Output("summary", TypeExpr.concrete(CORE_STRING)),
             ),
-            outputs=(OutputSpec("summary", TypeExpr.concrete(CORE_STRING)),),
         )
 
     @classmethod

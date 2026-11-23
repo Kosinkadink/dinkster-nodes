@@ -9,11 +9,11 @@ from dinkster_api.v1 import (
     CLIP_VISION_OUTPUT_TYPE,
     CONDITIONING_TYPE,
     CORE_FLOAT,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
     TypeExpr,
     materialize_clip_vision_output,
     with_identity_replacement,
@@ -27,23 +27,23 @@ class unCLIPConditioning(Node):
             node_type="dinkster.sd.un_clip_conditioning",
             display_name="unCLIPConditioning",
             category="model/conditioning",
-            inputs=(
-                InputSpec("conditioning", TypeExpr.concrete(CONDITIONING_TYPE)),
-                InputSpec("clip_vision_output", TypeExpr.concrete(CLIP_VISION_OUTPUT_TYPE)),
-                InputSpec(
+            body=(
+                Input("conditioning", TypeExpr.concrete(CONDITIONING_TYPE)),
+                Input("clip_vision_output", TypeExpr.concrete(CLIP_VISION_OUTPUT_TYPE)),
+                Input(
                     "strength",
                     TypeExpr.concrete(CORE_FLOAT),
                     default=1.0,
                     widget=NumberWidget(min=-10.0, max=10.0, step=0.01),
                 ),
-                InputSpec(
+                Input(
                     "noise_augmentation",
                     TypeExpr.concrete(CORE_FLOAT),
                     default=0.0,
                     widget=NumberWidget(min=0.0, max=1.0, step=0.01),
                 ),
+                Output("CONDITIONING", TypeExpr.concrete(CONDITIONING_TYPE)),
             ),
-            outputs=(OutputSpec("CONDITIONING", TypeExpr.concrete(CONDITIONING_TYPE)),),
         )
         return with_identity_replacement(schema, "unCLIPConditioning")
 

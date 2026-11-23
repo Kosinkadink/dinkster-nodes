@@ -33,6 +33,8 @@ from dinkster_models.hook_conditioning import (
     SetClipHooks,
 )
 
+from tests.body_rows import advanced_ids
+
 HOOK_CONDITIONING_NODES = (
     ConditioningSetProperties,
     ConditioningSetPropertiesAndCombine,
@@ -95,7 +97,7 @@ def test_hook_conditioning_schemas_are_torch_free_and_match_core_interfaces() ->
             ("positive", "negative"),
         ),
         "dinkster.models.set_clip_hooks": (
-            ("clip", "apply_to_conds", "schedule_clip", "hooks"),
+            ("clip", "hooks", "apply_to_conds", "schedule_clip"),
             ("clip",),
         ),
         "dinkster.models.conditioning_timesteps_range": (
@@ -145,12 +147,16 @@ def test_hook_conditioning_schemas_are_torch_free_and_match_core_interfaces() ->
     assert properties.inputs[1].widget == NumberWidget(min=0.0, max=10.0, step=0.01)
     assert properties.inputs[2].widget == ComboWidget(("default", "mask bounds"))
     clip = schemas["dinkster.models.set_clip_hooks"]
-    assert [(item.type, item.required, item.default, item.advanced) for item in clip.inputs] == [
+    advanced = advanced_ids(clip.body)
+    assert [
+        (item.type, item.required, item.default, item.id in advanced) for item in clip.inputs
+    ] == [
         (TypeExpr.concrete(CLIP_TYPE), True, None, False),
+        (hooks, False, None, False),
         (boolean, True, True, True),
         (boolean, True, False, True),
-        (hooks, False, None, False),
     ]
+    assert advanced == ("apply_to_conds", "schedule_clip")
     assert clip.occupies == ("gpu",)
     range_ = schemas["dinkster.models.conditioning_timesteps_range"]
     assert [(item.required, item.default, item.widget) for item in range_.inputs] == [

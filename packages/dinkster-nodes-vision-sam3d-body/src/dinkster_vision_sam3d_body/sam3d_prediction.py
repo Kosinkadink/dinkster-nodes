@@ -16,11 +16,12 @@ from dinkster_api.v1 import (
     MHR_POSE_DATA_TYPE,
     SAM3_TRACK_DATA_TYPE,
     SAM3D_BODY_MODEL_TYPE,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
+    Section,
     TypeExpr,
     initialize_inference_process,
     materialize_image,
@@ -37,48 +38,56 @@ class SAM3DBody_Predict(Node):
             node_type="dinkster.vision.sam3d.body.sam3_d_body_predict",
             display_name="Run SAM3D Body Prediction",
             category="image/detection",
-            inputs=(
-                InputSpec("sam3d_body_model", TypeExpr.concrete(SAM3D_BODY_MODEL_TYPE)),
-                InputSpec("image", TypeExpr.concrete(IMAGE_TYPE)),
-                InputSpec(
+            body=(
+                Input("sam3d_body_model", TypeExpr.concrete(SAM3D_BODY_MODEL_TYPE)),
+                Input("image", TypeExpr.concrete(IMAGE_TYPE)),
+                Input(
                     "track_data",
                     TypeExpr.concrete(SAM3_TRACK_DATA_TYPE),
                     required=False,
-                    doc="Tracking data from SAM3 Video Track, required for multi-person detection",
+                    tooltip="Tracking data from SAM3 Video Track, required for multi-person "
+                    "detection",
                 ),
-                InputSpec(
+                Input(
                     "bboxes",
                     TypeExpr.concrete(BOUNDING_BOX_TYPE),
                     required=False,
                     default={"x": 0, "y": 0, "width": 512, "height": 512},
-                    force_input=True,
-                    doc="Per-frame bounding boxes used for better detection. Can be used as an "
+                    pin_first=True,
+                    tooltip="Per-frame bounding boxes used for better detection. Can be used as an "
                     "alternative to tracking data. ",
                 ),
-                InputSpec(
+                Input(
                     "run_hand_refinement",
                     TypeExpr.concrete(CORE_BOOLEAN),
                     default=True,
-                    doc="Improves hand pose at the cost of extra inference time and memory use",
+                    tooltip="Improves hand pose at the cost of extra inference time and memory use",
                 ),
-                InputSpec(
-                    "fov",
-                    TypeExpr.concrete(CORE_FLOAT),
-                    advanced=True,
-                    doc="Vertical FoV in degrees. Affects predicted depth and absolute scale. "
-                    "0 = fall back to ~53 degrees (16:9).",
+                Section(
+                    "advanced",
+                    label="Advanced",
+                    collapsed=True,
+                    rows=(
+                        Input(
+                            "fov",
+                            TypeExpr.concrete(CORE_FLOAT),
+                            tooltip="Vertical FoV in degrees. Affects predicted depth and absolute "
+                            "scale. "
+                            "0 = fall back to ~53 degrees (16:9).",
+                        ),
+                        Input(
+                            "batch_size",
+                            TypeExpr.concrete(CORE_INT),
+                            default=64,
+                            widget=NumberWidget(min=1, max=512, step=1),
+                            tooltip="Max person crops to process as a batch. Larger values use "
+                            "more VRAM "
+                            "for faster inference.",
+                        ),
+                    ),
                 ),
-                InputSpec(
-                    "batch_size",
-                    TypeExpr.concrete(CORE_INT),
-                    default=64,
-                    widget=NumberWidget(min=1, max=512, step=1),
-                    advanced=True,
-                    doc="Max person crops to process as a batch. Larger values use more VRAM "
-                    "for faster inference.",
-                ),
+                Output("mhr_pose_data", TypeExpr.concrete(MHR_POSE_DATA_TYPE)),
             ),
-            outputs=(OutputSpec("mhr_pose_data", TypeExpr.concrete(MHR_POSE_DATA_TYPE)),),
         )
         return with_identity_replacement(schema, "SAM3DBody_Predict")
 

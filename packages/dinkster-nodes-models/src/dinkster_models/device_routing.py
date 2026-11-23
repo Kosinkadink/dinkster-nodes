@@ -16,13 +16,13 @@ from dinkster_api.v1 import (
     CORE_INT,
     MODEL_TYPE,
     VAE_TYPE,
-    ComboOption,
     ComboWidget,
-    InputSpec,
+    Input,
+    NamedList,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
     TypeExpr,
     initialize_inference_process,
     with_identity_replacement,
@@ -53,15 +53,9 @@ def _multigpu() -> Any:
     return importlib.import_module("dinkster_inference.multigpu")
 
 
-def _device_input(options: tuple[str, ...], choice_id: str) -> InputSpec:
-    return InputSpec(
-        "device",
-        _COMBO,
-        default="default",
-        widget=ComboWidget(
-            tuple(ComboOption(option) for option in options),
-            remote_route=f"/api/choices/{choice_id}",
-        ),
+def _device_input(choice_id: str) -> Input:
+    return Input(
+        "device", _COMBO, default="default", widget=ComboWidget(options=NamedList(choice_id))
     )
 
 
@@ -168,16 +162,16 @@ class MultiGPUWorkUnits(Node):
                 node_type="dinkster.models.multi_gpu_work_units",
                 display_name="MultiGPU CFG Split",
                 category="advanced/multigpu",
-                inputs=(
-                    InputSpec("model", _MODEL),
-                    InputSpec(
+                body=(
+                    Input("model", _MODEL),
+                    Input(
                         "max_gpus",
                         _INT,
                         default=2,
                         widget=NumberWidget(min=1, step=1),
                     ),
+                    Output("MODEL", _MODEL),
                 ),
-                outputs=(OutputSpec("MODEL", _MODEL),),
                 occupies=("gpu",),
             ),
             "MultiGPU_WorkUnits",
@@ -197,11 +191,11 @@ class SelectModelDevice(Node):
                 node_type="dinkster.models.select_model_device",
                 display_name="Select Model Device",
                 category="advanced/multigpu",
-                inputs=(
-                    InputSpec("model", _MODEL),
-                    _device_input(("default", "cpu"), "devices.gpu"),
+                body=(
+                    Input("model", _MODEL),
+                    _device_input("devices.gpu"),
+                    Output("MODEL", _MODEL),
                 ),
-                outputs=(OutputSpec("MODEL", _MODEL),),
                 occupies=("gpu",),
             ),
             "SelectModelDevice",
@@ -239,11 +233,11 @@ class SelectCLIPDevice(Node):
                 node_type="dinkster.models.select_clip_device",
                 display_name="Select CLIP Device",
                 category="advanced/multigpu",
-                inputs=(
-                    InputSpec("clip", _CLIP),
-                    _device_input(("default", "cpu"), "devices.gpu"),
+                body=(
+                    Input("clip", _CLIP),
+                    _device_input("devices.gpu"),
+                    Output("CLIP", _CLIP),
                 ),
-                outputs=(OutputSpec("CLIP", _CLIP),),
                 occupies=("gpu",),
             ),
             "SelectCLIPDevice",
@@ -277,11 +271,11 @@ class SelectVAEDevice(Node):
                 node_type="dinkster.models.select_vae_device",
                 display_name="Select VAE Device",
                 category="advanced/multigpu",
-                inputs=(
-                    InputSpec("vae", _VAE),
-                    _device_input(("default",), "devices.vae"),
+                body=(
+                    Input("vae", _VAE),
+                    _device_input("devices.vae"),
+                    Output("VAE", _VAE),
                 ),
-                outputs=(OutputSpec("VAE", _VAE),),
                 occupies=("gpu",),
             ),
             "SelectVAEDevice",

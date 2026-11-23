@@ -8,15 +8,17 @@ from typing import cast
 
 import numpy as np
 from dinkster_api.v1 import (
-    DynamicComboOption,
-    DynamicComboSpec,
-    DynamicSlotSpec,
-    InputSpec,
+    Choice,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
-    SlotVariant,
+    Option,
+    Output,
+    Section,
+    TypeChoice,
+    Use,
+    Variant,
     annotate_mask,
     copy_media_semantics,
 )
@@ -186,13 +188,11 @@ class ImageComposite(Node):
             "interpolation",
             _INTERPOLATION_OPTIONS,
             "bilinear",
-            advanced=True,
         )
         mask_polarity = _combo(
             "mask_polarity",
             ("opacity", "transparency"),
             "opacity",
-            advanced=True,
         )
         return with_mask_polarity(
             with_v1_migration(
@@ -201,17 +201,17 @@ class ImageComposite(Node):
                     version=2,
                     display_name="Composite Images",
                     category="image/composition",
-                    inputs=(
-                        InputSpec("destination", IMAGE),
-                        InputSpec("source", IMAGE),
-                        InputSpec(
+                    body=(
+                        Input("destination", IMAGE),
+                        Input("source", IMAGE),
+                        Input(
                             "x",
                             INT,
                             required=False,
                             default=0,
                             widget=NumberWidget(min=-MAX_DIMENSION, max=MAX_DIMENSION, step=1),
                         ),
-                        InputSpec(
+                        Input(
                             "y",
                             INT,
                             required=False,
@@ -219,46 +219,48 @@ class ImageComposite(Node):
                             widget=NumberWidget(min=-MAX_DIMENSION, max=MAX_DIMENSION, step=1),
                         ),
                         _combo("blend_mode", BLEND_MODES, "normal"),
-                        InputSpec(
+                        Input(
                             "factor",
                             FLOAT,
                             required=False,
                             default=1.0,
                             widget=NumberWidget(min=0.0, max=1.0, step=0.01),
                         ),
-                        InputSpec(
-                            "clamp_output",
-                            BOOLEAN,
-                            required=False,
-                            default=True,
-                            advanced=True,
-                        ),
-                        _combo(
-                            "batch_policy",
-                            ("singleton_broadcast", "strict", "destination_repeat"),
-                            "singleton_broadcast",
-                            advanced=True,
-                        ),
-                    ),
-                    combos=(
-                        DynamicComboSpec(
+                        Choice(
                             "source_resize",
-                            (
-                                DynamicComboOption("none"),
-                                DynamicComboOption("stretch", (interpolation,)),
-                                DynamicComboOption("fill", (interpolation,)),
+                            options=(
+                                Option("none"),
+                                Option("stretch", rows=(Use("interpolation"),)),
+                                Option("fill", rows=(Use("interpolation"),)),
                             ),
+                            shared=(interpolation,),
                             default="none",
                         ),
-                    ),
-                    slots=(
-                        DynamicSlotSpec(
+                        TypeChoice(
                             "mask",
-                            variants=(SlotVariant("mask", MASK, inputs=(mask_polarity,)),),
+                            variants=(Variant("mask", MASK, rows=(mask_polarity,)),),
                             required=False,
                         ),
+                        Section(
+                            "advanced",
+                            label="Advanced",
+                            collapsed=True,
+                            rows=(
+                                Input(
+                                    "clamp_output",
+                                    BOOLEAN,
+                                    required=False,
+                                    default=True,
+                                ),
+                                _combo(
+                                    "batch_policy",
+                                    ("singleton_broadcast", "strict", "destination_repeat"),
+                                    "singleton_broadcast",
+                                ),
+                            ),
+                        ),
+                        Output("image", IMAGE, preview=True),
                     ),
-                    outputs=(OutputSpec("image", IMAGE, preview=True),),
                     search_terms=(
                         "blend images",
                         "paste image",
@@ -488,27 +490,31 @@ class PorterDuffComposite(Node):
                 node_type="dinkster.image.porter_duff",
                 display_name="Porter-Duff Composite",
                 category="image/composition",
-                inputs=(
-                    InputSpec("source", IMAGE),
-                    InputSpec("source_alpha_mask", MASK, mask_semantic="alpha"),
-                    InputSpec("destination", IMAGE),
-                    InputSpec("destination_alpha_mask", MASK, mask_semantic="alpha"),
+                body=(
+                    Input("source", IMAGE),
+                    Input("source_alpha_mask", MASK, mask_semantic="alpha"),
+                    Input("destination", IMAGE),
+                    Input("destination_alpha_mask", MASK, mask_semantic="alpha"),
                     _combo("mode", PORTER_DUFF_MODES, "SRC_OVER"),
                     _combo(
                         "alpha_mask_polarity",
                         ("transparency", "opacity"),
                         "transparency",
                     ),
-                    _combo(
-                        "batch_policy",
-                        ("singleton_broadcast", "strict", "truncate_to_shortest"),
-                        "singleton_broadcast",
-                        advanced=True,
+                    Section(
+                        "advanced",
+                        label="Advanced",
+                        collapsed=True,
+                        rows=(
+                            _combo(
+                                "batch_policy",
+                                ("singleton_broadcast", "strict", "truncate_to_shortest"),
+                                "singleton_broadcast",
+                            ),
+                        ),
                     ),
-                ),
-                outputs=(
-                    OutputSpec("image", IMAGE, preview=True),
-                    OutputSpec("alpha_mask", MASK, preview=True, mask_semantic="alpha"),
+                    Output("image", IMAGE, preview=True),
+                    Output("alpha_mask", MASK, preview=True, mask_semantic="alpha"),
                 ),
                 search_terms=("alpha composite", "PorterDuffImageComposite", "premultiplied alpha"),
             )

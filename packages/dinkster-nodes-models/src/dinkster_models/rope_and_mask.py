@@ -9,11 +9,12 @@ from typing import Any
 from dinkster_api.v1 import (
     CORE_FLOAT,
     MODEL_TYPE,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
+    Section,
     TypeExpr,
     with_identity_replacement,
 )
@@ -29,31 +30,37 @@ class ScaleROPE(Node):
                 node_type="dinkster.models.scale_rope",
                 category="model/patch",
                 description="Scale and shift the ROPE of the model.",
-                inputs=(
-                    InputSpec("model", _MODEL),
-                    *(
-                        InputSpec(
-                            name,
-                            TypeExpr.concrete(CORE_FLOAT),
-                            default=0.0 if name.startswith("shift") else 1.0,
-                            advanced=True,
-                            widget=NumberWidget(
-                                min=-256.0 if name.startswith("shift") else 0.0,
-                                max=256.0 if name.startswith("shift") else 100.0,
-                                step=0.1,
+                body=(
+                    Input("model", _MODEL),
+                    Section(
+                        "advanced",
+                        label="Advanced",
+                        collapsed=True,
+                        rows=(
+                            *(
+                                Input(
+                                    name,
+                                    TypeExpr.concrete(CORE_FLOAT),
+                                    default=0.0 if name.startswith("shift") else 1.0,
+                                    widget=NumberWidget(
+                                        min=-256.0 if name.startswith("shift") else 0.0,
+                                        max=256.0 if name.startswith("shift") else 100.0,
+                                        step=0.1,
+                                    ),
+                                )
+                                for name in (
+                                    "scale_x",
+                                    "shift_x",
+                                    "scale_y",
+                                    "shift_y",
+                                    "scale_t",
+                                    "shift_t",
+                                )
                             ),
-                        )
-                        for name in (
-                            "scale_x",
-                            "shift_x",
-                            "scale_y",
-                            "shift_y",
-                            "scale_t",
-                            "shift_t",
-                        )
+                        ),
                     ),
+                    Output("MODEL", _MODEL),
                 ),
-                outputs=(OutputSpec("MODEL", _MODEL),),
             ),
             "ScaleROPE",
         )
@@ -84,17 +91,17 @@ class DifferentialDiffusion(Node):
                 display_name="Differential Diffusion",
                 category="experimental",
                 search_terms=("inpaint gradient", "variable denoise strength"),
-                inputs=(
-                    InputSpec("model", _MODEL),
-                    InputSpec(
+                body=(
+                    Input("model", _MODEL),
+                    Input(
                         "strength",
                         TypeExpr.concrete(CORE_FLOAT),
                         default=1.0,
                         required=False,
                         widget=NumberWidget(min=0.0, max=1.0, step=0.01),
                     ),
+                    Output("MODEL", _MODEL),
                 ),
-                outputs=(OutputSpec("MODEL", _MODEL),),
             ),
             "DifferentialDiffusion",
         )

@@ -6,10 +6,10 @@ from typing import Any
 from dinkster_api.v1 import (
     MODEL_TYPE,
     Deprecation,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
-    OutputSpec,
+    Output,
     TypeExpr,
     with_identity_replacement,
 )
@@ -26,8 +26,10 @@ class wanBlockSwap(Node):
                 "Intercept wanBlockSwap custom node that causes major instability "
                 "and make it no-op."
             ),
-            inputs=(InputSpec("model", _MODEL),),
-            outputs=(OutputSpec("MODEL", _MODEL),),
+            body=(
+                Input("model", _MODEL),
+                Output("MODEL", _MODEL),
+            ),
             deprecation=Deprecation(
                 message="wanBlockSwap is a no-op because it conflicts with model memory management."
             ),

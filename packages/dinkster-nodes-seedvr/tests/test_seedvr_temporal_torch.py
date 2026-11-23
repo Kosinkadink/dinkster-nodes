@@ -5,6 +5,7 @@ import math
 import dinkster_seedvr.seedvr_temporal as seedvr_temporal
 import pytest
 import torch
+from dinkster_api.v1 import Record
 from dinkster_seedvr.seedvr_temporal import SeedVR2TemporalChunk, SeedVR2TemporalMerge
 
 
@@ -24,7 +25,7 @@ def test_manual_chunks_and_merges_with_runt_final_chunk(monkeypatch) -> None:
     chunks = SeedVR2TemporalChunk.execute(
         latent=source,
         temporal_overlap=2,
-        chunking_mode={"chunking_mode": "manual", "frames_per_chunk": 13},
+        chunking_mode=Record("manual", {"frames_per_chunk": 13}),
     )
     assert [chunk["samples"].shape[2] for chunk in chunks["latents"]] == [4, 4, 3]
     assert chunks["temporal_overlap"] == 2

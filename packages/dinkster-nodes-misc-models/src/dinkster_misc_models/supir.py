@@ -12,11 +12,12 @@ from dinkster_api.v1 import (
     MODEL_PATCH_TYPE,
     MODEL_TYPE,
     VAE_TYPE,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
+    Section,
     TypeExpr,
     initialize_inference_process,
     materialize_image,
@@ -31,49 +32,54 @@ class SUPIRApply(Node):
             node_type="dinkster.misc.models.supir_apply",
             display_name="Apply SUPIR Patch",
             category="model/patch/supir",
-            inputs=(
-                InputSpec("model", TypeExpr.concrete(MODEL_TYPE)),
-                InputSpec("model_patch", TypeExpr.concrete(MODEL_PATCH_TYPE)),
-                InputSpec("vae", TypeExpr.concrete(VAE_TYPE)),
-                InputSpec("image", TypeExpr.concrete(IMAGE_TYPE)),
-                InputSpec(
+            body=(
+                Input("model", TypeExpr.concrete(MODEL_TYPE)),
+                Input("model_patch", TypeExpr.concrete(MODEL_PATCH_TYPE)),
+                Input("vae", TypeExpr.concrete(VAE_TYPE)),
+                Input("image", TypeExpr.concrete(IMAGE_TYPE)),
+                Input(
                     "strength_start",
                     TypeExpr.concrete(CORE_FLOAT),
                     default=1.0,
                     widget=NumberWidget(min=0.0, max=10.0, step=0.01),
-                    doc="Control strength at the start of sampling (high sigma).",
+                    tooltip="Control strength at the start of sampling (high sigma).",
                 ),
-                InputSpec(
+                Input(
                     "strength_end",
                     TypeExpr.concrete(CORE_FLOAT),
                     default=1.0,
                     widget=NumberWidget(min=0.0, max=10.0, step=0.01),
-                    doc=(
+                    tooltip=(
                         "Control strength at the end of sampling (low sigma). "
                         "Linearly interpolated from start."
                     ),
                 ),
-                InputSpec(
-                    "restore_cfg",
-                    TypeExpr.concrete(CORE_FLOAT),
-                    default=4.0,
-                    advanced=True,
-                    widget=NumberWidget(min=0.0, max=20.0, step=0.1),
-                    doc=(
-                        "Pulls denoised output toward the input latent. "
-                        "Higher = stronger fidelity to input. 0 to disable."
+                Section(
+                    "advanced",
+                    label="Advanced",
+                    collapsed=True,
+                    rows=(
+                        Input(
+                            "restore_cfg",
+                            TypeExpr.concrete(CORE_FLOAT),
+                            default=4.0,
+                            widget=NumberWidget(min=0.0, max=20.0, step=0.1),
+                            tooltip=(
+                                "Pulls denoised output toward the input latent. "
+                                "Higher = stronger fidelity to input. 0 to disable."
+                            ),
+                        ),
+                        Input(
+                            "restore_cfg_s_tmin",
+                            TypeExpr.concrete(CORE_FLOAT),
+                            default=0.05,
+                            widget=NumberWidget(min=0.0, max=1.0, step=0.01),
+                            tooltip="Sigma threshold below which restore_cfg is disabled.",
+                        ),
                     ),
                 ),
-                InputSpec(
-                    "restore_cfg_s_tmin",
-                    TypeExpr.concrete(CORE_FLOAT),
-                    default=0.05,
-                    advanced=True,
-                    widget=NumberWidget(min=0.0, max=1.0, step=0.01),
-                    doc="Sigma threshold below which restore_cfg is disabled.",
-                ),
+                Output("MODEL", TypeExpr.concrete(MODEL_TYPE)),
             ),
-            outputs=(OutputSpec("MODEL", TypeExpr.concrete(MODEL_TYPE)),),
         )
         return with_identity_replacement(schema, "SUPIRApply")
 

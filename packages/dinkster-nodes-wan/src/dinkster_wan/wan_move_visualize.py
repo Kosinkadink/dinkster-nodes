@@ -9,11 +9,12 @@ from dinkster_api.v1 import (
     CORE_INT,
     IMAGE_TYPE,
     TRACKS_TYPE,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
+    Section,
     TypeExpr,
     initialize_inference_process,
     materialize_image,
@@ -99,37 +100,42 @@ class WanMoveVisualizeTracks(Node):
         schema = NodeSchema(
             node_type="dinkster.wan.wan_move_visualize_tracks",
             category="model/conditioning/wan/move",
-            inputs=(
-                InputSpec("images", _IMAGE),
-                InputSpec("tracks", _TRACKS, required=False),
-                InputSpec(
+            body=(
+                Input("images", _IMAGE),
+                Input("tracks", _TRACKS, required=False),
+                Input(
                     "line_resolution",
                     TypeExpr.concrete(CORE_INT),
                     default=24,
                     widget=NumberWidget(min=1, max=1024),
                 ),
-                InputSpec(
-                    "circle_size",
-                    TypeExpr.concrete(CORE_INT),
-                    default=12,
-                    widget=NumberWidget(min=1, max=128),
-                    advanced=True,
-                ),
-                InputSpec(
+                Input(
                     "opacity",
                     TypeExpr.concrete(CORE_FLOAT),
                     default=0.75,
                     widget=NumberWidget(min=0.0, max=1.0, step=0.01),
                 ),
-                InputSpec(
-                    "line_width",
-                    TypeExpr.concrete(CORE_INT),
-                    default=16,
-                    widget=NumberWidget(min=1, max=128),
-                    advanced=True,
+                Section(
+                    "advanced",
+                    label="Advanced",
+                    collapsed=True,
+                    rows=(
+                        Input(
+                            "circle_size",
+                            TypeExpr.concrete(CORE_INT),
+                            default=12,
+                            widget=NumberWidget(min=1, max=128),
+                        ),
+                        Input(
+                            "line_width",
+                            TypeExpr.concrete(CORE_INT),
+                            default=16,
+                            widget=NumberWidget(min=1, max=128),
+                        ),
+                    ),
                 ),
+                Output("IMAGE", _IMAGE),
             ),
-            outputs=(OutputSpec("IMAGE", _IMAGE),),
         )
         return with_identity_replacement(schema, "WanMoveVisualizeTracks")
 

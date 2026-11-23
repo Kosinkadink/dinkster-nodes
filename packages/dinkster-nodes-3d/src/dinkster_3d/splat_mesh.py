@@ -11,14 +11,15 @@ from dinkster_api.v1 import (
     CORE_INT,
     MESH_TYPE,
     SPLAT_TYPE,
-    InputSpec,
+    Input,
     MappingSource,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
     ReplacementCase,
     ReplacementRule,
+    Section,
     TypeExpr,
     initialize_inference_process,
     materialize_splat,
@@ -41,55 +42,59 @@ class SplatToMesh(Node):
                 "splat surface",
                 "mesh splat",
             ),
-            inputs=(
-                InputSpec("splat", TypeExpr.concrete(SPLAT_TYPE)),
-                InputSpec(
+            body=(
+                Input("splat", TypeExpr.concrete(SPLAT_TYPE)),
+                Input(
                     "resolution",
                     TypeExpr.concrete(CORE_INT),
                     default=384,
                     widget=NumberWidget(min=64, max=768, step=16),
                 ),
-                InputSpec(
+                Input(
                     "kernel",
                     TypeExpr.concrete(CORE_INT),
                     default=5,
                     widget=NumberWidget(min=1, max=8),
                 ),
-                InputSpec(
-                    "smooth",
-                    TypeExpr.concrete(CORE_INT),
-                    default=0,
-                    advanced=True,
-                    widget=NumberWidget(min=0, max=60),
-                ),
-                InputSpec(
+                Input(
                     "level",
                     TypeExpr.concrete(CORE_FLOAT),
                     default=0.4,
                     widget=NumberWidget(min=0.0, max=2.0, step=0.01),
                 ),
-                InputSpec(
-                    "min_component",
-                    TypeExpr.concrete(CORE_INT),
-                    default=500,
-                    advanced=True,
-                    widget=NumberWidget(min=0, max=100000, step=50),
-                ),
-                InputSpec(
-                    "min_opacity",
-                    TypeExpr.concrete(CORE_FLOAT),
-                    default=0.02,
-                    advanced=True,
-                    widget=NumberWidget(min=0.0, max=1.0, step=0.01),
-                ),
-                InputSpec(
+                Input(
                     "color_sharpen",
                     TypeExpr.concrete(CORE_FLOAT),
                     default=2.0,
                     widget=NumberWidget(min=1.0, max=8.0, step=0.5),
                 ),
+                Section(
+                    "advanced",
+                    label="Advanced",
+                    collapsed=True,
+                    rows=(
+                        Input(
+                            "smooth",
+                            TypeExpr.concrete(CORE_INT),
+                            default=0,
+                            widget=NumberWidget(min=0, max=60),
+                        ),
+                        Input(
+                            "min_component",
+                            TypeExpr.concrete(CORE_INT),
+                            default=500,
+                            widget=NumberWidget(min=0, max=100000, step=50),
+                        ),
+                        Input(
+                            "min_opacity",
+                            TypeExpr.concrete(CORE_FLOAT),
+                            default=0.02,
+                            widget=NumberWidget(min=0.0, max=1.0, step=0.01),
+                        ),
+                    ),
+                ),
+                Output("mesh", TypeExpr.concrete(MESH_TYPE), label="mesh"),
             ),
-            outputs=(OutputSpec("mesh", TypeExpr.concrete(MESH_TYPE), display_name="mesh"),),
         )
         return replace(
             schema,

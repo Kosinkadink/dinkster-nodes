@@ -9,22 +9,22 @@ from dinkster_api.v1 import (
     CLIP_TYPE,
     CORE_FLOAT,
     MODEL_TYPE,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
+    Section,
     TypeExpr,
     with_identity_replacement,
 )
 
 
-def _strength(name: str) -> InputSpec:
-    return InputSpec(
+def _strength(name: str) -> Input:
+    return Input(
         name,
         TypeExpr.concrete(CORE_FLOAT),
         default=1.0,
-        advanced=True,
         widget=NumberWidget(min=0.0, max=10.0, step=0.01),
     )
 
@@ -35,14 +35,21 @@ def _schema(node_type: str, *, clip: bool = False) -> NodeSchema:
     return NodeSchema(
         node_type=node_type,
         category="experimental/attention_experiments",
-        inputs=(
-            InputSpec(name, TypeExpr.concrete(value_type)),
-            _strength("q"),
-            _strength("k"),
-            _strength("v"),
-            _strength("out"),
+        body=(
+            Input(name, TypeExpr.concrete(value_type)),
+            Section(
+                "advanced",
+                label="Advanced",
+                collapsed=True,
+                rows=(
+                    _strength("q"),
+                    _strength("k"),
+                    _strength("v"),
+                    _strength("out"),
+                ),
+            ),
+            Output(value_type, TypeExpr.concrete(value_type)),
         ),
-        outputs=(OutputSpec(value_type, TypeExpr.concrete(value_type)),),
         search_terms=("clip attention scale", "text encoder attention") if clip else (),
     )
 
@@ -132,14 +139,21 @@ class UNetTemporalAttentionMultiply(Node):
             NodeSchema(
                 node_type="dinkster.models.u_net_temporal_attention_multiply",
                 category="experimental/attention_experiments",
-                inputs=(
-                    InputSpec("model", TypeExpr.concrete(MODEL_TYPE)),
-                    _strength("self_structural"),
-                    _strength("self_temporal"),
-                    _strength("cross_structural"),
-                    _strength("cross_temporal"),
+                body=(
+                    Input("model", TypeExpr.concrete(MODEL_TYPE)),
+                    Section(
+                        "advanced",
+                        label="Advanced",
+                        collapsed=True,
+                        rows=(
+                            _strength("self_structural"),
+                            _strength("self_temporal"),
+                            _strength("cross_structural"),
+                            _strength("cross_temporal"),
+                        ),
+                    ),
+                    Output("MODEL", TypeExpr.concrete(MODEL_TYPE)),
                 ),
-                outputs=(OutputSpec("MODEL", TypeExpr.concrete(MODEL_TYPE)),),
             ),
             "UNetTemporalAttentionMultiply",
         )

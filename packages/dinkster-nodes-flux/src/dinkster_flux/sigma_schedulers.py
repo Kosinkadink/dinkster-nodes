@@ -9,11 +9,11 @@ from collections.abc import Mapping
 from dinkster_api.v1 import (
     CORE_INT,
     SIGMAS_TYPE,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
     TypeExpr,
     with_identity_replacement,
 )
@@ -25,8 +25,8 @@ _SIGMAS = TypeExpr.concrete(SIGMAS_TYPE)
 _CATEGORY = "model/sampling/schedulers"
 
 
-def _integer(name: str, default: int, minimum: int, maximum: int) -> InputSpec:
-    return InputSpec(
+def _integer(name: str, default: int, minimum: int, maximum: int) -> Input:
+    return Input(
         name,
         _INT,
         default=default,
@@ -40,16 +40,12 @@ class Flux2Scheduler(Node):
         schema = NodeSchema(
             node_type="dinkster.flux.flux2_scheduler",
             category=_CATEGORY,
-            inputs=(
+            body=(
                 _integer("steps", 20, 1, 4096),
-                InputSpec(
-                    "width", _INT, default=1024, widget=NumberWidget(min=16, max=16384, step=1)
-                ),
-                InputSpec(
-                    "height", _INT, default=1024, widget=NumberWidget(min=16, max=16384, step=1)
-                ),
+                Input("width", _INT, default=1024, widget=NumberWidget(min=16, max=16384, step=1)),
+                Input("height", _INT, default=1024, widget=NumberWidget(min=16, max=16384, step=1)),
+                Output("SIGMAS", _SIGMAS),
             ),
-            outputs=(OutputSpec("SIGMAS", _SIGMAS),),
         )
         return with_identity_replacement(schema, "Flux2Scheduler")
 

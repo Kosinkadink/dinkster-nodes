@@ -9,10 +9,10 @@ import torch
 from dinkster_api.v1 import (
     CONDITIONING_TYPE,
     CORE_STRING,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
-    OutputSpec,
+    Output,
     TypeExpr,
 )
 from dinkster_assets import AssetError, MountDef, MountTable, digest_file
@@ -150,8 +150,10 @@ class InspectConditioning(Node):
     def define_schema(cls) -> NodeSchema:
         return NodeSchema(
             node_type="conditioning-fixture.inspect",
-            inputs=(InputSpec("value", TypeExpr.concrete(CONDITIONING_TYPE)),),
-            outputs=(OutputSpec("summary", TypeExpr.concrete(CORE_STRING)),),
+            body=(
+                Input("value", TypeExpr.concrete(CONDITIONING_TYPE)),
+                Output("summary", TypeExpr.concrete(CORE_STRING)),
+            ),
         )
 
     @classmethod

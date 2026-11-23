@@ -10,19 +10,23 @@ from dinkster_sampling.model_specific_schedulers import (
     OptimalStepsScheduler,
 )
 
+from tests.body_rows import advanced_ids
+
 
 def test_model_specific_schedulers_are_registered_with_exact_public_schemas() -> None:
     expected = {
-        "dinkster.sampling.align_your_steps_scheduler": ("model_type", "steps", "denoise"),
-        "dinkster.sampling.gits_scheduler": ("coeff", "steps", "denoise"),
-        "dinkster.sampling.optimal_steps_scheduler": ("model_type", "steps", "denoise"),
-        "dinkster.misc.models.ideogram4_scheduler": ("steps", "width", "height", "mu", "std"),
+        "dinkster.sampling.align_your_steps_scheduler": (("model_type", "steps", "denoise"), ()),
+        "dinkster.sampling.gits_scheduler": (("steps", "denoise"), ("coeff",)),
+        "dinkster.sampling.optimal_steps_scheduler": (("model_type", "steps", "denoise"), ()),
+        "dinkster.misc.models.ideogram4_scheduler": (("steps", "width", "height", "mu", "std"), ()),
     }
 
     for node in (AlignYourStepsScheduler, GITSScheduler, OptimalStepsScheduler, Ideogram4Scheduler):
         schema = node.schema()
         assert schema.node_type in expected
-        assert tuple(input.id for input in schema.inputs) == expected[schema.node_type]
+        inputs, advanced = expected[schema.node_type]
+        assert tuple(input.id for input in schema.inputs) == (*inputs, *advanced)
+        assert advanced_ids(schema.body) == advanced
         assert tuple(output.id for output in schema.outputs) == ("SIGMAS",)
         assert schema.outputs[0].type == TypeExpr.concrete(SIGMAS_TYPE)
         assert node in (MISC_NODES if node is Ideogram4Scheduler else SAMPLING_NODES)

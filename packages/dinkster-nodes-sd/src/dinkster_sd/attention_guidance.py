@@ -9,11 +9,12 @@ from dinkster_api.v1 import (
     CORE_FLOAT,
     CORE_STRING,
     MODEL_TYPE,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
+    Section,
     StringWidget,
     TypeExpr,
     with_identity_replacement,
@@ -36,34 +37,38 @@ class SkipLayerGuidanceSD3(Node):
             description=(
                 "Generic version of SkipLayerGuidance node that can be used on every DiT model."
             ),
-            inputs=(
-                InputSpec("model", _MODEL),
-                InputSpec(
-                    "layers",
-                    _STRING,
-                    default="7, 8, 9",
-                    advanced=True,
-                    widget=StringWidget(multiline=False),
-                ),
-                InputSpec(
+            body=(
+                Input("model", _MODEL),
+                Input(
                     "scale", _FLOAT, default=3.0, widget=NumberWidget(min=0.0, max=10.0, step=0.1)
                 ),
-                InputSpec(
-                    "start_percent",
-                    _FLOAT,
-                    default=0.01,
-                    advanced=True,
-                    widget=NumberWidget(min=0.0, max=1.0, step=0.001),
+                Section(
+                    "advanced",
+                    label="Advanced",
+                    collapsed=True,
+                    rows=(
+                        Input(
+                            "layers",
+                            _STRING,
+                            default="7, 8, 9",
+                            widget=StringWidget(multiline=False),
+                        ),
+                        Input(
+                            "start_percent",
+                            _FLOAT,
+                            default=0.01,
+                            widget=NumberWidget(min=0.0, max=1.0, step=0.001),
+                        ),
+                        Input(
+                            "end_percent",
+                            _FLOAT,
+                            default=0.15,
+                            widget=NumberWidget(min=0.0, max=1.0, step=0.001),
+                        ),
+                    ),
                 ),
-                InputSpec(
-                    "end_percent",
-                    _FLOAT,
-                    default=0.15,
-                    advanced=True,
-                    widget=NumberWidget(min=0.0, max=1.0, step=0.001),
-                ),
+                Output("MODEL", _MODEL),
             ),
-            outputs=(OutputSpec("MODEL", _MODEL),),
         )
         return with_identity_replacement(schema, "SkipLayerGuidanceSD3")
 

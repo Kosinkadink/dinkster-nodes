@@ -12,11 +12,12 @@ from dinkster_api.v1 import (
     CORE_INT,
     SAMPLER_TYPE,
     ComboWidget,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
+    Section,
     TypeExpr,
     initialize_inference_process,
     with_identity_replacement,
@@ -150,7 +151,7 @@ def sample_euler_cfg_pp_alternative(
 
 def _sampler_schema(
     node_type: str,
-    inputs: tuple[InputSpec, ...],
+    inputs: tuple[Input | Section, ...],
     *,
     category: str = _SAMPLER_CATEGORY,
     display_name: str = "",
@@ -161,8 +162,10 @@ def _sampler_schema(
         display_name=display_name,
         category=category,
         description=description,
-        inputs=inputs,
-        outputs=(OutputSpec("SAMPLER", _SAMPLER),),
+        body=(
+            *inputs,
+            Output("SAMPLER", _SAMPLER),
+        ),
     )
 
 
@@ -173,25 +176,30 @@ class SamplerLCMUpscale(Node):
             _sampler_schema(
                 "dinkster.sampling.sampler_lcm_upscale",
                 (
-                    InputSpec(
-                        "scale_ratio",
-                        _FLOAT,
-                        default=1.0,
-                        advanced=True,
-                        widget=NumberWidget(min=0.1, max=20.0, step=0.01),
-                    ),
-                    InputSpec(
-                        "scale_steps",
-                        _INT,
-                        default=-1,
-                        advanced=True,
-                        widget=NumberWidget(min=-1, max=1000, step=1),
-                    ),
-                    InputSpec(
+                    Input(
                         "upscale_method",
                         _COMBO,
                         default="bislerp",
                         widget=ComboWidget(options=_UPSCALE_METHODS),
+                    ),
+                    Section(
+                        "advanced",
+                        label="Advanced",
+                        collapsed=True,
+                        rows=(
+                            Input(
+                                "scale_ratio",
+                                _FLOAT,
+                                default=1.0,
+                                widget=NumberWidget(min=0.1, max=20.0, step=0.01),
+                            ),
+                            Input(
+                                "scale_steps",
+                                _INT,
+                                default=-1,
+                                widget=NumberWidget(min=-1, max=1000, step=1),
+                            ),
+                        ),
                     ),
                 ),
             ),
@@ -221,29 +229,30 @@ class SamplerLCM(Node):
             _sampler_schema(
                 "dinkster.sampling.sampler_lcm",
                 (
-                    InputSpec(
+                    Input(
                         "s_noise",
                         _FLOAT,
                         default=1.0,
-                        doc="Per-step noise multiplier at the first step (1.0 = match training).",
+                        tooltip="Per-step noise multiplier at the first step (1.0 = match "
+                        "training).",
                         widget=NumberWidget(min=0.0, max=64.0, step=0.01),
                     ),
-                    InputSpec(
+                    Input(
                         "s_noise_end",
                         _FLOAT,
                         default=1.0,
-                        doc=(
+                        tooltip=(
                             "Per-step noise multiplier at the last step. "
                             "Set equal to s_noise for a "
                             "constant schedule."
                         ),
                         widget=NumberWidget(min=0.0, max=64.0, step=0.01),
                     ),
-                    InputSpec(
+                    Input(
                         "noise_clip_std",
                         _FLOAT,
                         default=0.0,
-                        doc="Clamp per-step noise to +/- N*std. 0 disables.",
+                        tooltip="Clamp per-step noise to +/- N*std. 0 disables.",
                         widget=NumberWidget(min=0.0, max=10.0, step=0.01),
                     ),
                 ),
@@ -278,12 +287,18 @@ class SamplerEulerCFGpp(Node):
             _sampler_schema(
                 "dinkster.sampling.sampler_euler_cf_gpp",
                 (
-                    InputSpec(
-                        "version",
-                        _COMBO,
-                        default="regular",
-                        advanced=True,
-                        widget=ComboWidget(options=("regular", "alternative")),
+                    Section(
+                        "advanced",
+                        label="Advanced",
+                        collapsed=True,
+                        rows=(
+                            Input(
+                                "version",
+                                _COMBO,
+                                default="regular",
+                                widget=ComboWidget(options=("regular", "alternative")),
+                            ),
+                        ),
                     ),
                 ),
                 category="experimental",

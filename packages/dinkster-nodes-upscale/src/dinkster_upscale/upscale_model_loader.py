@@ -11,11 +11,11 @@ from dinkster_api.v1 import (
     UPSCALE_MODEL_TYPE,
     AssetRef,
     AssetWidget,
-    InputSpec,
+    Input,
     LocalAssetRef,
     Node,
     NodeSchema,
-    OutputSpec,
+    Output,
     TypeExpr,
     initialize_inference_process,
     with_identity_replacement,
@@ -29,14 +29,14 @@ class UpscaleModelLoader(Node):
             node_type="dinkster.upscale.upscale_model_loader",
             display_name="Load Upscale Model",
             category="model/loaders",
-            inputs=(
-                InputSpec(
+            body=(
+                Input(
                     "model_name",
                     TypeExpr.concrete(ASSET_TYPE),
                     widget=AssetWidget(accept=("application/octet-stream",), kind="model/upscaler"),
                 ),
+                Output("UPSCALE_MODEL", TypeExpr.concrete(UPSCALE_MODEL_TYPE)),
             ),
-            outputs=(OutputSpec("UPSCALE_MODEL", TypeExpr.concrete(UPSCALE_MODEL_TYPE)),),
         )
         return with_identity_replacement(schema, "UpscaleModelLoader")
 

@@ -10,7 +10,7 @@ from dinkster_api.v1 import (
     CONDITIONING_TYPE,
     Node,
     NodeSchema,
-    OutputSpec,
+    Output,
     TypeExpr,
     initialize_inference_process,
     with_identity_replacement,
@@ -23,7 +23,7 @@ class LotusConditioning(Node):
         schema = NodeSchema(
             node_type="dinkster.misc.models.lotus_conditioning",
             category="model/conditioning/lotus",
-            outputs=(OutputSpec("conditioning", TypeExpr.concrete(CONDITIONING_TYPE)),),
+            body=(Output("conditioning", TypeExpr.concrete(CONDITIONING_TYPE)),),
         )
         return with_identity_replacement(schema, "LotusConditioning")
 

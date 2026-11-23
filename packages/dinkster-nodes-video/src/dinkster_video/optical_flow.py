@@ -10,11 +10,11 @@ from dinkster_api.v1 import (
     OPTICAL_FLOW_TYPE,
     AssetRef,
     AssetWidget,
-    InputSpec,
+    Input,
     LocalAssetRef,
     Node,
     NodeSchema,
-    OutputSpec,
+    Output,
     TypeExpr,
     initialize_inference_process,
     with_identity_replacement,
@@ -28,20 +28,20 @@ class OpticalFlowLoader(Node):
             node_type="dinkster.video.optical_flow_loader",
             display_name="Load Optical Flow Model",
             category="model/loaders",
-            inputs=(
-                InputSpec(
+            body=(
+                Input(
                     "model_name",
                     TypeExpr.concrete(ASSET_TYPE),
                     widget=AssetWidget(
                         accept=("application/octet-stream",), kind="model/optical-flow"
                     ),
-                    doc=(
+                    tooltip=(
                         "Optical flow model to load. Today only torchvision's "
                         "RAFT-large state dict is supported."
                     ),
                 ),
+                Output("OPTICAL_FLOW", TypeExpr.concrete(OPTICAL_FLOW_TYPE)),
             ),
-            outputs=(OutputSpec("OPTICAL_FLOW", TypeExpr.concrete(OPTICAL_FLOW_TYPE)),),
         )
         return with_identity_replacement(schema, "OpticalFlowLoader")
 

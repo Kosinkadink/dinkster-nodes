@@ -6,11 +6,11 @@ import os
 import subprocess
 from collections.abc import Mapping
 from pathlib import Path
-from typing import Any, BinaryIO, cast
+from typing import BinaryIO, cast
 
 import numpy as np
 import pytest
-from dinkster_api.v1 import Curve
+from dinkster_api.v1 import Curve, Item, Members, Named, Record
 from dinkster_image import glsl as glsl_module
 from dinkster_image.glsl import (
     DEFAULT_FRAGMENT_SHADER,
@@ -21,6 +21,12 @@ from dinkster_image.ported import glsl as native_glsl_module
 from dinkster_image.ported.glsl import NativeGlslShader
 from dinkster_schema import use_reporter
 from numpy.lib.format import write_array_header_1_0
+
+from tests.body_rows import choices, groups
+
+
+def _members(values: Mapping[str, object]) -> Members[Item]:
+    return Members(Item(key, value) for key, value in values.items())
 
 
 def _image(batch: int = 1, height: int = 2, width: int = 3) -> np.ndarray:
@@ -56,13 +62,13 @@ def test_glsl_shader_support_schema_is_fixed_and_bounded() -> None:
     assert schema.input("fragment_shader").widget.multiline is True  # type: ignore[union-attr]
     assert [output.id for output in schema.outputs] == ["image0", "image1", "image2", "image3"]
     assert [output.preview for output in schema.outputs] == [True, False, False, False]
-    families = {family.id: family for family in schema.input_families}
-    assert families["images"].member_names == tuple(f"u_image{index}" for index in range(5))
-    assert families["floats"].member_names == tuple(f"u_float{index}" for index in range(20))
-    assert families["ints"].member_names == tuple(f"u_int{index}" for index in range(20))
-    assert families["bools"].member_names == tuple(f"u_bool{index}" for index in range(10))
-    assert families["curves"].member_names == tuple(f"u_curve{index}" for index in range(4))
-    assert [option.key for option in schema.combos[0].options] == ["from_input", "custom"]
+    families = {group.id: cast(Named, group.keys).names for group in groups(schema)}
+    assert families["images"] == tuple(f"u_image{index}" for index in range(5))
+    assert families["floats"] == tuple(f"u_float{index}" for index in range(20))
+    assert families["ints"] == tuple(f"u_int{index}" for index in range(20))
+    assert families["bools"] == tuple(f"u_bool{index}" for index in range(10))
+    assert families["curves"] == tuple(f"u_curve{index}" for index in range(4))
+    assert [option.key for option in choices(schema)[0].options] == ["from_input", "custom"]
 
 
 def test_execute_projects_exact_uniforms_previews_and_child_request(
@@ -91,14 +97,12 @@ def test_execute_projects_exact_uniforms_previews_and_child_request(
     with use_reporter(lambda name, data, blob: reports.append((name, data, blob))):
         result = GlslShader.execute(
             fragment_shader=DEFAULT_FRAGMENT_SHADER,
-            size_mode="custom",
-            width=5,
-            height=4,
-            images={"u_image1": _image(batch=2)},
-            floats={"u_float0": 0.25},
-            ints={"u_int0": 3},
-            bools={"u_bool0": True},
-            curves={"u_curve0": Curve(((0.0, 0.0), (1.0, 1.0)))},
+            size_mode=Record("custom", {"width": 5, "height": 4}),
+            images=_members({"u_image1": _image(batch=2)}),
+            floats=_members({"u_float0": 0.25}),
+            ints=_members({"u_int0": 3}),
+            bools=_members({"u_bool0": True}),
+            curves=_members({"u_curve0": Curve(((0.0, 0.0), (1.0, 1.0)))}),
         )
 
     assert list(result) == ["image0", "image1", "image2", "image3"]
@@ -124,8 +128,12 @@ def test_execute_projects_exact_uniforms_previews_and_child_request(
     }
 
 
-def test_native_execute_accepts_nested_custom_size_keywords(
-    monkeypatch: pytest.MonkeyPatch,
+@pytest.mark.parametrize(
+    ("size_mode", "width", "height"),
+    ((Record("from_input", {}), 512, 512), (Record("custom", {"width": 5, "height": 4}), 5, 4)),
+)
+def test_native_execute_takes_the_size_choice_and_members_in_position_order(
+    monkeypatch: pytest.MonkeyPatch, size_mode: Record, width: int, height: int
 ) -> None:
     captured: dict[str, object] = {}
 
@@ -134,16 +142,20 @@ def test_native_execute_accepts_nested_custom_size_keywords(
         return {f"image{index}": output for index, output in enumerate(_outputs(1, 4, 5))}
 
     monkeypatch.setattr(native_glsl_module, "_execute_glsl", execute_glsl)
-    nested_size_values: dict[str, Any] = {"size_mode.width": 5, "size_mode.height": 4}
-
+    first, second = _image(), _image(height=3)
     result = NativeGlslShader.execute(
-        size_mode="custom",
-        images={"image0": _image()},
-        **nested_size_values,
+        size_mode=size_mode,
+        images=Members((Item("image1", first), Item("image0", second))),
+        floats=Members((Item("u_float3", None), Item("u_float0", 2.5))),
     )
 
-    assert captured["width"] == 5
-    assert captured["height"] == 4
+    assert captured["size_mode"] == size_mode.key
+    assert (captured["width"], captured["height"]) == (width, height)
+    images = cast(dict[str, object], captured["images"])
+    assert list(images) == ["u_image0", "u_image1"]
+    assert images["u_image0"] is first and images["u_image1"] is second
+    assert captured["floats"] == {"u_float0": 0.0, "u_float1": 2.5}
+    assert captured["ints"] == {} and captured["curves"] == {}
     assert list(result) == ["IMAGE0", "IMAGE1", "IMAGE2", "IMAGE3"]
 
 
@@ -156,7 +168,10 @@ def test_native_execute_accepts_nested_custom_size_keywords(
             {"images": {"u_image0": _image(), "u_image1": _image(batch=2)}},
             "matching batch sizes",
         ),
-        ({"images": {"u_image0": _image()}, "size_mode": "future"}, "unknown GLSL size mode"),
+        (
+            {"images": {"u_image0": _image()}, "size_mode": Record("future", {})},
+            "unknown GLSL size mode",
+        ),
         (
             {"images": {"u_image0": _image()}, "floats": {"u_float0": float("nan")}},
             "must be finite",
@@ -174,13 +189,22 @@ def test_native_execute_accepts_nested_custom_size_keywords(
 def test_execute_refuses_malformed_or_unbounded_inputs(
     kwargs: dict[str, object], message: str
 ) -> None:
+    arguments: dict[str, object] = {"size_mode": Record("from_input", {})}
+    for name, value in kwargs.items():
+        arguments[name] = (
+            _members(cast(Mapping[str, object], value)) if name != "size_mode" else value
+        )
     with pytest.raises((TypeError, ValueError), match=message):
-        GlslShader.execute(**kwargs)  # type: ignore[arg-type]
+        GlslShader.execute(**arguments)  # type: ignore[arg-type]
 
 
 def test_execute_refuses_oversized_source_before_starting_child() -> None:
     with pytest.raises(ValueError, match="65536"):
-        GlslShader.execute(fragment_shader="x" * 65_537, images={"u_image0": _image()})
+        GlslShader.execute(
+            fragment_shader="x" * 65_537,
+            size_mode=Record("from_input", {}),
+            images=_members({"u_image0": _image()}),
+        )
 
 
 @pytest.mark.parametrize(

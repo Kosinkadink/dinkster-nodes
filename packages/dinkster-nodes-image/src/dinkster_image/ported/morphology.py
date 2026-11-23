@@ -12,11 +12,11 @@ from dinkster_api.v1 import (
     IMAGE_TYPE,
     ComboOption,
     ComboWidget,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
     TypeExpr,
     materialize_image,
     with_identity_replacement,
@@ -34,21 +34,21 @@ class Morphology(Node):
             display_name="Apply Morphology",
             category="image/filters",
             search_terms=("erode", "dilate"),
-            inputs=(
-                InputSpec("image", _IMAGE),
-                InputSpec(
+            body=(
+                Input("image", _IMAGE),
+                Input(
                     "operation",
                     TypeExpr.concrete(CORE_COMBO),
                     widget=ComboWidget(tuple(ComboOption(value) for value in _OPERATIONS)),
                 ),
-                InputSpec(
+                Input(
                     "kernel_size",
                     TypeExpr.concrete(CORE_INT),
                     default=3,
                     widget=NumberWidget(min=3, max=999, step=1),
                 ),
+                Output("IMAGE", _IMAGE),
             ),
-            outputs=(OutputSpec("IMAGE", _IMAGE),),
         )
         return with_identity_replacement(schema, "Morphology")
 
@@ -87,8 +87,7 @@ class ImageRGBToYUV(Node):
             display_name="Image RGB to YUV",
             category="image/color",
             search_terms=("color space conversion",),
-            inputs=(InputSpec("image", _IMAGE),),
-            outputs=tuple(OutputSpec(name, _IMAGE) for name in ("Y", "U", "V")),
+            body=(Input("image", _IMAGE), *tuple(Output(name, _IMAGE) for name in ("Y", "U", "V"))),
         )
         return with_identity_replacement(schema, "ImageRGBToYUV")
 
@@ -112,8 +111,10 @@ class ImageYUVToRGB(Node):
             display_name="Image YUV to RGB",
             category="image/color",
             search_terms=("color space conversion",),
-            inputs=tuple(InputSpec(name, _IMAGE) for name in ("Y", "U", "V")),
-            outputs=(OutputSpec("IMAGE", _IMAGE),),
+            body=(
+                *tuple(Input(name, _IMAGE) for name in ("Y", "U", "V")),
+                Output("IMAGE", _IMAGE),
+            ),
         )
         return with_identity_replacement(schema, "ImageYUVToRGB")
 

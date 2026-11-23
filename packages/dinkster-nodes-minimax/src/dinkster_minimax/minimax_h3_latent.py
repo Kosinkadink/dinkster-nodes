@@ -14,13 +14,13 @@ from dinkster_api.v1 import (
     IMAGE_TYPE,
     LATENT_TYPE,
     VAE_TYPE,
-    InputSpec,
+    Input,
     LatentStream,
     MultiStreamLatent,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
     StringWidget,
     TypeExpr,
     initialize_inference_process,
@@ -60,31 +60,31 @@ class EmptyMiniMaxH3LatentAV(Node):
                 "Joint video+audio latent for MiniMax H3. Duration snaps to the model's "
                 "17k+5 frame grid at 24 fps."
             ),
-            inputs=(
-                InputSpec(
+            body=(
+                Input(
                     "width",
                     integer,
                     default=1344,
                     widget=NumberWidget(min=32, max=16384, step=32),
                 ),
-                InputSpec(
+                Input(
                     "height",
                     integer,
                     default=768,
                     widget=NumberWidget(min=32, max=16384, step=32),
                 ),
-                InputSpec(
+                Input(
                     "length",
                     integer,
                     default=124,
                     widget=NumberWidget(min=5, max=3600, step=17),
-                    doc=(
+                    tooltip=(
                         "Frame count at 24 fps, snapped up to the model's 17k+5 grid "
                         "(124 = ~5s; trained range is ~124-362, longer is untested)"
                     ),
                 ),
+                Output("LATENT", TypeExpr.concrete(LATENT_TYPE)),
             ),
-            outputs=(OutputSpec("LATENT", TypeExpr.concrete(LATENT_TYPE)),),
         )
         return with_identity_replacement(schema, "EmptyMiniMaxH3LatentAV")
 
@@ -101,21 +101,19 @@ class MiniMaxH3ImageToVideo(Node):
             node_type="dinkster.minimax.mini_max_h3_image_to_video",
             display_name="MiniMax H3 Image to Video",
             category="model/conditioning/minimax",
-            inputs=(
-                InputSpec("clip", TypeExpr.concrete(CLIP_TYPE)),
-                InputSpec("vae", TypeExpr.concrete(VAE_TYPE)),
-                InputSpec(
+            body=(
+                Input("clip", TypeExpr.concrete(CLIP_TYPE)),
+                Input("vae", TypeExpr.concrete(VAE_TYPE)),
+                Input(
                     "prompt",
                     TypeExpr.concrete(CORE_STRING),
                     widget=StringWidget(multiline=True, dynamic_prompts=True),
                 ),
                 *EmptyMiniMaxH3LatentAV.schema().inputs,
-                InputSpec("first_frame", TypeExpr.concrete(IMAGE_TYPE), required=False),
-                InputSpec("last_frame", TypeExpr.concrete(IMAGE_TYPE), required=False),
-            ),
-            outputs=(
-                OutputSpec("positive", TypeExpr.concrete(CONDITIONING_TYPE)),
-                OutputSpec("LATENT", TypeExpr.concrete(LATENT_TYPE)),
+                Input("first_frame", TypeExpr.concrete(IMAGE_TYPE), required=False),
+                Input("last_frame", TypeExpr.concrete(IMAGE_TYPE), required=False),
+                Output("positive", TypeExpr.concrete(CONDITIONING_TYPE)),
+                Output("LATENT", TypeExpr.concrete(LATENT_TYPE)),
             ),
         )
         return with_identity_replacement(schema, "MiniMaxH3ImageToVideo")
@@ -169,52 +167,52 @@ class MiniMaxH3AddGuide(Node):
                 "Anchor an image, a short clip, audio, or a clip with its soundtrack at any "
                 "frame of a MiniMax H3 video. Chain several nodes to anchor several frames."
             ),
-            inputs=(
-                InputSpec("positive", TypeExpr.concrete(CONDITIONING_TYPE)),
-                InputSpec(
+            body=(
+                Input("positive", TypeExpr.concrete(CONDITIONING_TYPE)),
+                Input(
                     "vae",
                     TypeExpr.concrete(VAE_TYPE),
                     required=False,
-                    doc="Video VAE, needed when an image is connected.",
+                    tooltip="Video VAE, needed when an image is connected.",
                 ),
-                InputSpec(
+                Input(
                     "audio_vae",
                     TypeExpr.concrete(VAE_TYPE),
                     required=False,
-                    doc="Audio VAE, needed when an audio is connected.",
+                    tooltip="Audio VAE, needed when an audio is connected.",
                 ),
-                InputSpec("latent", TypeExpr.concrete(LATENT_TYPE)),
-                InputSpec(
+                Input("latent", TypeExpr.concrete(LATENT_TYPE)),
+                Input(
                     "image",
                     TypeExpr.concrete(IMAGE_TYPE),
                     required=False,
-                    doc=(
+                    tooltip=(
                         "Image or video frames to anchor. Multi-frame batches are anchored as a "
                         "clip and cropped down to the model's valid clip lengths: 5, 22, 39... "
                         "(17k + 5) frames. Batches shorter than 5 frames use only the first image."
                     ),
                 ),
-                InputSpec(
+                Input(
                     "audio",
                     TypeExpr.concrete(AUDIO_TYPE),
                     required=False,
-                    doc=(
+                    tooltip=(
                         "Soundtrack to anchor starting at the same frame index, cropped to the "
                         "video's remaining duration."
                     ),
                 ),
-                InputSpec(
+                Input(
                     "frame_idx",
                     TypeExpr.concrete(CORE_INT),
                     default=0,
                     widget=NumberWidget(min=-9999, max=9999),
-                    doc=(
+                    tooltip=(
                         "Frame index to anchor the image or the clip's first frame at. Negative "
                         "values are counted from the end of the video."
                     ),
                 ),
+                Output("positive", TypeExpr.concrete(CONDITIONING_TYPE)),
             ),
-            outputs=(OutputSpec("positive", TypeExpr.concrete(CONDITIONING_TYPE)),),
         )
         return with_identity_replacement(schema, "MiniMaxH3AddGuide")
 

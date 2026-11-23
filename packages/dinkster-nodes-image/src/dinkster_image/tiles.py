@@ -6,7 +6,7 @@ import math
 from collections.abc import Mapping
 
 import numpy as np
-from dinkster_api.v1 import InputSpec, Node, NodeSchema, OutputSpec
+from dinkster_api.v1 import Input, Node, NodeSchema, Output
 
 from .geometry import FLOAT, IMAGE, INT
 from .support import check_output_size, image_array, number_input
@@ -73,20 +73,18 @@ class ImageTileSplit(Node):
             node_type="dinkster.image.tiles.split",
             display_name="Split Image into Tiles",
             category="image/tiles",
-            inputs=(
-                InputSpec("image", IMAGE),
+            body=(
+                Input("image", IMAGE),
                 number_input("rows", INT, 2, minimum=1, maximum=256, step=1),
                 number_input("columns", INT, 2, minimum=1, maximum=256, step=1),
                 number_input("overlap", FLOAT, 0.0, minimum=0.0, maximum=0.5, step=0.01),
                 number_input("overlap_x", INT, 0, minimum=0, maximum=8192, step=1),
                 number_input("overlap_y", INT, 0, minimum=0, maximum=8192, step=1),
-            ),
-            outputs=(
-                OutputSpec("tiles", IMAGE, preview=True),
-                OutputSpec("tile_width", INT),
-                OutputSpec("tile_height", INT),
-                OutputSpec("overlap_x", INT),
-                OutputSpec("overlap_y", INT),
+                Output("tiles", IMAGE, preview=True),
+                Output("tile_width", INT),
+                Output("tile_height", INT),
+                Output("overlap_x", INT),
+                Output("overlap_y", INT),
             ),
             search_terms=("ImageTile", "split image", "tile image"),
         )
@@ -151,14 +149,14 @@ class ImageTileMerge(Node):
             node_type="dinkster.image.tiles.merge",
             display_name="Merge Image Tiles",
             category="image/tiles",
-            inputs=(
-                InputSpec("tiles", IMAGE),
+            body=(
+                Input("tiles", IMAGE),
                 number_input("overlap_x", INT, 0, minimum=0, maximum=8192, step=1),
                 number_input("overlap_y", INT, 0, minimum=0, maximum=8192, step=1),
                 number_input("rows", INT, 2, minimum=1, maximum=256, step=1),
                 number_input("columns", INT, 2, minimum=1, maximum=256, step=1),
+                Output("image", IMAGE, preview=True),
             ),
-            outputs=(OutputSpec("image", IMAGE, preview=True),),
             search_terms=("ImageUntile", "merge image tiles", "stitch tiles"),
         )
 

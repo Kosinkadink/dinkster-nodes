@@ -16,9 +16,12 @@ from dinkster_api.v1 import (
     AssetError,
     AssetRef,
     AssetVault,
-    InputSpec,
+    Choice,
+    Input,
     NodeSchema,
-    OutputSpec,
+    Option,
+    Output,
+    Record,
     TypeExpr,
     digest_bytes,
     schema_signature,
@@ -46,8 +49,11 @@ def remote_schema(node_type: str = "dinkster.remote.image", version: int = 1) ->
         version=version,
         display_name="Remote Image",
         category="remote",
-        inputs=(InputSpec("prompt", STRING), InputSpec("source", IMAGE, required=False)),
-        outputs=(OutputSpec("image", IMAGE),),
+        body=(
+            Input("prompt", STRING),
+            Input("source", IMAGE, required=False),
+            Output("image", IMAGE),
+        ),
         idempotent=False,
         io_bound=True,
         emits_previews=True,
@@ -116,6 +122,7 @@ class FakeGateway:
         self.catalog_scopes: dict[str, tuple[NodeSchema, ...]] | None = None
         self.epoch_headers: list[str | None] = []
         self.download_authorizations: list[str | None] = []
+        self.downloads: list[str] = []
         self.cancelled = asyncio.Event()
         self.submitted = asyncio.Event()
         self.polled = asyncio.Event()
@@ -144,6 +151,7 @@ class FakeGateway:
         app.router.add_get("/v1/jobs/{job_id}", self._poll)
         app.router.add_delete("/v1/jobs/{job_id}", self._cancel)
         app.router.add_get("/download/{kind}", self._download)
+        app.router.add_get("/v1/downloads/{job_id}/{name}", self._download_recorded)
         self._runner = web.AppRunner(app)
         await self._runner.setup()
         site = web.TCPSite(self._runner, "127.0.0.1", 0)
@@ -252,9 +260,8 @@ class FakeGateway:
             )
         )
         if self.recording is not None:
-            return web.json_response(
-                cast("dict[str, object]", self.recording["submit"]), status=202
-            )
+            encoded = json.dumps(self.recording["submit"]).replace("{base_url}", self.base_url)
+            return web.json_response(cast("dict[str, object]", json.loads(encoded)), status=202)
         if self.submit_failures:
             self.submit_failures -= 1
             return web.json_response(
@@ -333,6 +340,16 @@ class FakeGateway:
             data = base64.b64decode(cast("str", assets[kind]))
         return web.Response(body=data, content_type="image/png")
 
+    async def _download_recorded(self, request: web.Request) -> web.Response:
+        self.download_authorizations.append(request.headers.get("Authorization"))
+        self.downloads.append(request.path_qs)
+        assets = cast(
+            "Mapping[str, object]", cast("Mapping[str, object]", self.recording)["assets"]
+        )
+        return web.Response(
+            body=base64.b64decode(cast("str", assets["output"])), content_type="image/png"
+        )
+
 
 def input_asset(root: Path, data: bytes = b"input image") -> AssetRef:
     vault = AssetVault(root)
@@ -373,10 +390,10 @@ def test_catalog_enforces_remote_schema_invariants_and_isolates_bad_entries(
     wrong_entry = cast("dict[str, object]", wrong_nodes[valid.node_type])
     wrong_versions = cast("dict[str, object]", wrong_entry["schemaVersions"])
     wrong_version = cast("dict[str, object]", wrong_versions["1"])
-    wrong_version["schema"] = {**schema_to_wire(valid), "schemaVersion": 2}
+    wrong_version["schema"] = {**schema_to_wire(valid), "schemaVersion": SCHEMA_WIRE_VERSION + 1}
     assert parse_catalog(wrong_entry_wire).schemas == ()
     with pytest.raises(CatalogError, match="unsupported schema wire"):
-        parse_catalog({**catalog_payload(valid), "schemaWire": 2})
+        parse_catalog({**catalog_payload(valid), "schemaWire": SCHEMA_WIRE_VERSION + 1})
 
 
 @pytest.mark.parametrize("input_values", [False, True])
@@ -671,7 +688,12 @@ def test_recorded_gateway_catalog_submit_progress_and_digest_round_trip(
     recording = cast(
         "dict[str, object]", json.loads(RECORDED_GATEWAY_FIXTURE.read_text(encoding="utf-8"))
     )
-    assert recording["sourceCommit"] == "3bbf143bcd193ab508d7bb409b3dc61522d3f412"
+    assert recording["sourceCommit"] == "3e2606cdaca131964a433f729bc1f65d6efd7179"
+    submitted = cast("Mapping[str, object]", recording["submit"])
+    recorded_image = cast(
+        "Mapping[str, object]",
+        cast("list[object]", cast("Mapping[str, object]", submitted["outputs"])["images"])[0],
+    )
 
     async def scenario() -> None:
         async with FakeGateway(recording=recording) as gateway:
@@ -680,7 +702,10 @@ def test_recorded_gateway_catalog_submit_progress_and_digest_round_trip(
             )
             assert [entry.schema.node_type for entry in runtime.snapshot.schemas] == [
                 "dinkster.remote.nanobanana.image",
+                "dinkster.remote.seedance.asset_group",
+                "dinkster.remote.seedance.image_asset",
                 "dinkster.remote.seedance.video",
+                "dinkster.remote.seedance.video_asset",
             ]
             vault = tmp_path / "output-vault"
             monkeypatch.setenv("DINKSTER_ASSET_VAULT", str(vault))
@@ -691,14 +716,66 @@ def test_recorded_gateway_catalog_submit_progress_and_digest_round_trip(
             assert len(gateway.submissions) == 1
             assert gateway.submissions[0]["nodeType"] == "dinkster.remote.nanobanana.image"
             assert gateway.submissions[0]["inputs"] == {"prompt": "hello"}
-            assert [entry[0] for entry in reports] == ["progress", "progress"]
-            assert [entry[1]["step"] for entry in reports] == [1, 2]
-            output = result["image"]
+            # The recorded submit already succeeded, so the runtime takes its progress and
+            # outputs from that answer; the recorded poll repeats the same job document.
+            assert [(entry[0], entry[1]["step"], entry[1]["total"]) for entry in reports] == [
+                ("progress", 100, 100)
+            ]
+            assert not gateway.polled.is_set()
+            assert recording["poll"] == submitted
+            assert gateway.downloads == [
+                cast("str", recorded_image["downloadUrl"]).removeprefix("{base_url}")
+            ]
+            output = cast("list[object]", result["images"])[0]
             assert isinstance(output, AssetRef)
             assets = cast("Mapping[str, object]", recording["assets"])
             assert output.read_bytes() == base64.b64decode(cast("str", assets["output"]))
+            assert output.digest == recorded_image["digest"]
             assert output.digest == digest_bytes(output.read_bytes())
+            assert len(output.read_bytes()) == recorded_image["size"] == 68
             assert AssetVault(vault).has(output.digest)
+
+    asyncio.run(scenario())
+
+
+def test_a_video_output_inside_a_choice_polls_at_the_video_interval(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    video = TypeExpr.asset_of(TypeExpr.concrete("VIDEO"))
+    schema = replace(
+        remote_schema("dinkster.remote.clip"),
+        body=(
+            Input("prompt", STRING),
+            Choice(
+                "result",
+                options=(
+                    Option("still", rows=(Output("image", IMAGE),)),
+                    Option("clip", rows=(Output("video", video),)),
+                ),
+            ),
+        ),
+    )
+
+    async def scenario() -> None:
+        async with FakeGateway(schema) as gateway:
+            # An image poll interval far beyond the wait below: only the video
+            # interval lets the job finish in time.
+            configured = replace(
+                config(gateway.base_url, tmp_path / "catalog.json"),
+                image_poll_interval=60,
+                video_poll_interval=0.01,
+            )
+            runtime = await asyncio.to_thread(RemoteRuntime, configured)
+            monkeypatch.setenv("DINKSTER_ASSET_VAULT", str(tmp_path / "output-vault"))
+            result = await asyncio.wait_for(
+                runtime.invoke(
+                    runtime.snapshot.schemas[0],
+                    {"prompt": "hello", "result": Record("clip", {})},
+                ),
+                timeout=10,
+            )
+            assert gateway.polled.is_set()
+            assert isinstance(result["image"], AssetRef)
 
     asyncio.run(scenario())
 

@@ -10,11 +10,11 @@ from dinkster_api.v1 import (
     CORE_INT,
     LATENT_TYPE,
     VAE_TYPE,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
     TypeExpr,
     initialize_inference_process,
     materialize_latent,
@@ -36,16 +36,16 @@ class LTXVAudioVAEEncode(Node):
             node_type="dinkster.ltx.ltxv_audio_vae_encode",
             display_name="LTXV Audio VAE Encode",
             category="model/latent/ltxv",
-            inputs=(
-                InputSpec("audio", _AUDIO, doc="The audio to be encoded."),
-                InputSpec(
+            body=(
+                Input("audio", _AUDIO, tooltip="The audio to be encoded."),
+                Input(
                     "audio_vae",
                     _VAE,
-                    display_name="Audio VAE",
-                    doc="The Audio VAE model to use for encoding.",
+                    label="Audio VAE",
+                    tooltip="The Audio VAE model to use for encoding.",
                 ),
+                Output("LATENT", _LATENT, label="Audio Latent"),
             ),
-            outputs=(OutputSpec("LATENT", _LATENT, display_name="Audio Latent"),),
         )
         return with_identity_replacement(schema, "LTXVAudioVAEEncode")
 
@@ -61,16 +61,16 @@ class LTXVAudioVAEDecode(Node):
             node_type="dinkster.ltx.ltxv_audio_vae_decode",
             display_name="LTXV Audio VAE Decode",
             category="model/latent/ltxv",
-            inputs=(
-                InputSpec("samples", _LATENT, doc="The latent to be decoded."),
-                InputSpec(
+            body=(
+                Input("samples", _LATENT, tooltip="The latent to be decoded."),
+                Input(
                     "audio_vae",
                     _VAE,
-                    display_name="Audio VAE",
-                    doc="The Audio VAE model used for decoding the latent.",
+                    label="Audio VAE",
+                    tooltip="The Audio VAE model used for decoding the latent.",
                 ),
+                Output("AUDIO", _AUDIO, label="Audio"),
             ),
-            outputs=(OutputSpec("AUDIO", _AUDIO, display_name="Audio"),),
         )
         return with_identity_replacement(schema, "LTXVAudioVAEDecode")
 
@@ -96,36 +96,36 @@ class LTXVEmptyLatentAudio(Node):
             node_type="dinkster.ltx.ltxv_empty_latent_audio",
             display_name="Empty LTXV Latent Audio",
             category="model/latent/ltxv",
-            inputs=(
-                InputSpec(
+            body=(
+                Input(
                     "frames_number",
                     TypeExpr.concrete(CORE_INT),
                     default=97,
                     widget=NumberWidget(min=1, max=1000, step=1, display="number"),
-                    doc="Number of frames.",
+                    tooltip="Number of frames.",
                 ),
-                InputSpec(
+                Input(
                     "frame_rate",
                     TypeExpr.union(CORE_FLOAT, CORE_INT),
                     default=25.0,
                     widget=NumberWidget(min=1.0, max=1000.0, step=0.01, display="number"),
-                    doc="Number of frames per second.",
+                    tooltip="Number of frames per second.",
                 ),
-                InputSpec(
+                Input(
                     "batch_size",
                     TypeExpr.concrete(CORE_INT),
                     default=1,
                     widget=NumberWidget(min=1, max=4096, display="number"),
-                    doc="The number of latent audio samples in the batch.",
+                    tooltip="The number of latent audio samples in the batch.",
                 ),
-                InputSpec(
+                Input(
                     "audio_vae",
                     _VAE,
-                    display_name="Audio VAE",
-                    doc="The Audio VAE model to get configuration from.",
+                    label="Audio VAE",
+                    tooltip="The Audio VAE model to get configuration from.",
                 ),
+                Output("LATENT", _LATENT, label="Latent"),
             ),
-            outputs=(OutputSpec("LATENT", _LATENT, display_name="Latent"),),
         )
         return with_identity_replacement(schema, "LTXVEmptyLatentAudio")
 

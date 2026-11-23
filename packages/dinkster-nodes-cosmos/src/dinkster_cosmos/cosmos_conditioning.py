@@ -9,11 +9,11 @@ from dinkster_api.v1 import (
     IMAGE_TYPE,
     LATENT_TYPE,
     VAE_TYPE,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
     TypeExpr,
     initialize_inference_process,
     materialize_image,
@@ -29,8 +29,8 @@ _LATENT = TypeExpr.concrete(LATENT_TYPE)
 _VAE = TypeExpr.concrete(VAE_TYPE)
 
 
-def _integer(name: str, default: int, step: int) -> InputSpec:
-    return InputSpec(
+def _integer(name: str, default: int, step: int) -> Input:
+    return Input(
         name,
         _INT,
         default=default,
@@ -74,16 +74,16 @@ class _CosmosImageToVideoLatent(Node):
         schema = NodeSchema(
             node_type=cls.node_type,
             category="model/conditioning/cosmos",
-            inputs=(
-                InputSpec("vae", _VAE),
+            body=(
+                Input("vae", _VAE),
                 _integer("width", cls.width_default, 16),
                 _integer("height", cls.height_default, 16),
                 _integer("length", cls.length_default, cls.length_step),
-                InputSpec("batch_size", _INT, default=1, widget=NumberWidget(min=1, max=4096)),
-                InputSpec("start_image", _IMAGE, required=False),
-                InputSpec("end_image", _IMAGE, required=False),
+                Input("batch_size", _INT, default=1, widget=NumberWidget(min=1, max=4096)),
+                Input("start_image", _IMAGE, required=False),
+                Input("end_image", _IMAGE, required=False),
+                Output("LATENT", _LATENT),
             ),
-            outputs=(OutputSpec("LATENT", _LATENT),),
         )
         return with_identity_replacement(schema, cls.source_type)
 

@@ -14,7 +14,7 @@ from dinkster_graph import Graph, GraphNode, graph_to_wire
 from dinkster_schema import (
     Node,
     NodeSchema,
-    OutputSpec,
+    Output,
     TypeExpr,
     build_node_types,
     build_schemas,
@@ -82,7 +82,7 @@ def test_values_endpoint_layer_document_rendition(
         def define_schema(cls) -> NodeSchema:
             return NodeSchema(
                 node_type="test.compat_layers",
-                outputs=(OutputSpec("layers", TypeExpr.concrete("comfy.LAYERS")),),
+                body=(Output("layers", TypeExpr.concrete("comfy.LAYERS")),),
             )
 
         @classmethod
@@ -173,7 +173,10 @@ def test_values_endpoint_layer_document_rendition(
 
 def test_values_endpoint_omits_original_rendition_for_component_video() -> None:
     import numpy as np
-    from dinkster_api.v1 import VIDEO_TYPE
+    from dinkster_api.v1 import (
+        VIDEO_TYPE,
+        Output,
+    )
     from dinkster_video import register_types as register_video_types
     from dinkster_video.video_components import CreateVideo
 
@@ -182,7 +185,7 @@ def test_values_endpoint_omits_original_rendition_for_component_video() -> None:
         def define_schema(cls) -> NodeSchema:
             return NodeSchema(
                 node_type="test.component_video",
-                outputs=(OutputSpec("video", TypeExpr.concrete(VIDEO_TYPE)),),
+                body=(Output("video", TypeExpr.concrete(VIDEO_TYPE)),),
             )
 
         @classmethod

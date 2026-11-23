@@ -11,11 +11,12 @@ from dinkster_api.v1 import (
     CORE_FLOAT,
     CORE_INT,
     CORE_STRING,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
+    Section,
     StringWidget,
     TypeExpr,
     with_identity_replacement,
@@ -29,33 +30,33 @@ class CLIPTextEncodeSDXLRefiner(Node):
             node_type="dinkster.sd.clip_text_encode_sdxl_refiner",
             display_name="CLIP Text Encode (SDXL Refiner)",
             category="model/conditioning/stable diffusion",
-            inputs=(
-                InputSpec(
+            body=(
+                Input(
                     "ascore",
                     TypeExpr.concrete(CORE_FLOAT),
                     default=6.0,
                     widget=NumberWidget(min=0.0, max=1000.0, step=0.01),
                 ),
-                InputSpec(
+                Input(
                     "width",
                     TypeExpr.concrete(CORE_INT),
                     default=1024,
                     widget=NumberWidget(min=0, max=16384),
                 ),
-                InputSpec(
+                Input(
                     "height",
                     TypeExpr.concrete(CORE_INT),
                     default=1024,
                     widget=NumberWidget(min=0, max=16384),
                 ),
-                InputSpec(
+                Input(
                     "text",
                     TypeExpr.concrete(CORE_STRING),
                     widget=StringWidget(multiline=True, dynamic_prompts=True),
                 ),
-                InputSpec("clip", TypeExpr.concrete(CLIP_TYPE)),
+                Input("clip", TypeExpr.concrete(CLIP_TYPE)),
+                Output("CONDITIONING", TypeExpr.concrete(CONDITIONING_TYPE)),
             ),
-            outputs=(OutputSpec("CONDITIONING", TypeExpr.concrete(CONDITIONING_TYPE)),),
         )
         return with_identity_replacement(schema, "CLIPTextEncodeSDXLRefiner")
 
@@ -78,58 +79,63 @@ class CLIPTextEncodeSDXL(Node):
             node_type="dinkster.sd.clip_text_encode_sdxl",
             display_name="CLIP Text Encode (SDXL)",
             category="model/conditioning/stable diffusion",
-            inputs=(
-                InputSpec("clip", TypeExpr.concrete(CLIP_TYPE)),
-                InputSpec(
+            body=(
+                Input("clip", TypeExpr.concrete(CLIP_TYPE)),
+                Input(
                     "width",
                     TypeExpr.concrete(CORE_INT),
                     default=1024,
                     widget=NumberWidget(min=0, max=16384),
                 ),
-                InputSpec(
+                Input(
                     "height",
                     TypeExpr.concrete(CORE_INT),
                     default=1024,
                     widget=NumberWidget(min=0, max=16384),
                 ),
-                InputSpec(
-                    "crop_w",
-                    TypeExpr.concrete(CORE_INT),
-                    default=0,
-                    widget=NumberWidget(min=0, max=16384),
-                    advanced=True,
-                ),
-                InputSpec(
-                    "crop_h",
-                    TypeExpr.concrete(CORE_INT),
-                    default=0,
-                    widget=NumberWidget(min=0, max=16384),
-                    advanced=True,
-                ),
-                InputSpec(
+                Input(
                     "target_width",
                     TypeExpr.concrete(CORE_INT),
                     default=1024,
                     widget=NumberWidget(min=0, max=16384),
                 ),
-                InputSpec(
+                Input(
                     "target_height",
                     TypeExpr.concrete(CORE_INT),
                     default=1024,
                     widget=NumberWidget(min=0, max=16384),
                 ),
-                InputSpec(
+                Input(
                     "text_g",
                     TypeExpr.concrete(CORE_STRING),
                     widget=StringWidget(multiline=True, dynamic_prompts=True),
                 ),
-                InputSpec(
+                Input(
                     "text_l",
                     TypeExpr.concrete(CORE_STRING),
                     widget=StringWidget(multiline=True, dynamic_prompts=True),
                 ),
+                Section(
+                    "advanced",
+                    label="Advanced",
+                    collapsed=True,
+                    rows=(
+                        Input(
+                            "crop_w",
+                            TypeExpr.concrete(CORE_INT),
+                            default=0,
+                            widget=NumberWidget(min=0, max=16384),
+                        ),
+                        Input(
+                            "crop_h",
+                            TypeExpr.concrete(CORE_INT),
+                            default=0,
+                            widget=NumberWidget(min=0, max=16384),
+                        ),
+                    ),
+                ),
+                Output("CONDITIONING", TypeExpr.concrete(CONDITIONING_TYPE)),
             ),
-            outputs=(OutputSpec("CONDITIONING", TypeExpr.concrete(CONDITIONING_TYPE)),),
         )
         return with_identity_replacement(schema, "CLIPTextEncodeSDXL")
 

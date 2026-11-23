@@ -7,10 +7,10 @@ from collections.abc import Mapping
 from dinkster_api.v1 import (
     ABSENT,
     CORE_BOOLEAN,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
-    OutputSpec,
+    Output,
     SelectorSpec,
     TypeExpr,
     with_identity_replacement,
@@ -25,12 +25,12 @@ class ComfySwitchNode(Node):
             node_type="dinkster.utilities.comfy_switch_node",
             display_name="If/Else Switch",
             category="utilities/logic",
-            inputs=(
-                InputSpec("switch", TypeExpr.concrete(CORE_BOOLEAN)),
-                InputSpec("on_false", value_type, required=False, lazy=True, on_absent="skip"),
-                InputSpec("on_true", value_type, required=False, lazy=True, on_absent="skip"),
+            body=(
+                Input("switch", TypeExpr.concrete(CORE_BOOLEAN)),
+                Input("on_false", value_type, required=False, lazy=True, on_absent="skip"),
+                Input("on_true", value_type, required=False, lazy=True, on_absent="skip"),
+                Output("output", value_type, optional=True),
             ),
-            outputs=(OutputSpec("output", value_type, optional=True),),
             selector=SelectorSpec("switch", {"false": "on_false", "true": "on_true"}),
         )
         return with_identity_replacement(schema, "ComfySwitchNode")

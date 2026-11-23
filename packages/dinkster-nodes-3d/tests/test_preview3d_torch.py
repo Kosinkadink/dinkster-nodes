@@ -18,7 +18,7 @@ from dinkster_api.v1 import (
     LOAD3D_CAMERA_TYPE,
     Node,
     NodeSchema,
-    OutputSpec,
+    Output,
     TypeExpr,
     materialize_image,
 )
@@ -44,9 +44,9 @@ class PreviewMetadata(Node):
     def define_schema(cls) -> NodeSchema:
         return NodeSchema(
             "preview-metadata.make",
-            outputs=(
-                OutputSpec("camera", TypeExpr.concrete(LOAD3D_CAMERA_TYPE)),
-                OutputSpec("background", TypeExpr.concrete(IMAGE_TYPE)),
+            body=(
+                Output("camera", TypeExpr.concrete(LOAD3D_CAMERA_TYPE)),
+                Output("background", TypeExpr.concrete(IMAGE_TYPE)),
             ),
         )
 

@@ -8,6 +8,8 @@ from dinkster_sd.stable3d import (
     SV3D_Conditioning,
 )
 
+from tests.body_rows import advanced_ids
+
 STABLE3D_NODES = (
     StableZero123_Conditioning,
     StableZero123_Conditioning_Batched,
@@ -67,7 +69,7 @@ def test_stable3d_interfaces() -> None:
         assert schema_to_wire(node.schema())
     batched = STABLE3D_NODES[1].schema()
     assert batched.display_name == "StableZero123_Conditioning_Batched"
-    assert batched.inputs[-2].advanced and batched.inputs[-1].advanced
+    assert advanced_ids(batched.body) == tuple(input_.id for input_ in batched.inputs[-2:])
 
     angle_names = {
         "elevation",

@@ -17,6 +17,8 @@ from dinkster_hunyuan.hunyuan_text import (
     TextEncodeHunyuanVideo_ImageToVideo,
 )
 
+from tests.body_rows import advanced_ids
+
 
 def test_hunyuan_text_schemas() -> None:
     expected = (
@@ -54,7 +56,8 @@ def test_hunyuan_text_schemas() -> None:
             if item.type.types[0] == CORE_STRING:
                 assert isinstance(item.widget, StringWidget)
                 assert item.widget.multiline and item.widget.dynamic_prompts
-    setting = TextEncodeHunyuanVideo_ImageToVideo.schema().inputs[-1]
-    assert setting.default == 2 and setting.advanced
+    schema = TextEncodeHunyuanVideo_ImageToVideo.schema()
+    setting = schema.inputs[-1]
+    assert setting.default == 2 and advanced_ids(schema.body) == ("image_interleave",)
     assert isinstance(setting.widget, NumberWidget)
     assert (setting.widget.min, setting.widget.max) == (1, 512)

@@ -12,11 +12,11 @@ from dinkster_api.v1 import (
     IMAGE_TYPE,
     LATENT_TYPE,
     VAE_TYPE,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
     TypeExpr,
     initialize_inference_process,
     materialize_image,
@@ -36,23 +36,23 @@ _LATENT = TypeExpr.concrete(LATENT_TYPE)
 _AUDIO = TypeExpr.concrete(AUDIO_ENCODER_OUTPUT_TYPE)
 
 _OUTPUTS = (
-    OutputSpec("positive", _CONDITIONING),
-    OutputSpec("negative", _CONDITIONING),
-    OutputSpec("latent", _LATENT),
+    Output("positive", _CONDITIONING),
+    Output("negative", _CONDITIONING),
+    Output("latent", _LATENT),
 )
 
 
-def _dimensions(length: int) -> tuple[InputSpec, ...]:
+def _dimensions(length: int) -> tuple[Input, ...]:
     return (
-        InputSpec("width", _INT, default=832, widget=NumberWidget(min=16, max=16384, step=16)),
-        InputSpec("height", _INT, default=480, widget=NumberWidget(min=16, max=16384, step=16)),
+        Input("width", _INT, default=832, widget=NumberWidget(min=16, max=16384, step=16)),
+        Input("height", _INT, default=480, widget=NumberWidget(min=16, max=16384, step=16)),
         _length(length),
-        InputSpec("batch_size", _INT, default=1, widget=NumberWidget(min=1, max=4096)),
+        Input("batch_size", _INT, default=1, widget=NumberWidget(min=1, max=4096)),
     )
 
 
-def _length(default: int) -> InputSpec:
-    return InputSpec("length", _INT, default=default, widget=NumberWidget(min=1, max=16384, step=4))
+def _length(default: int) -> Input:
+    return Input("length", _INT, default=default, widget=NumberWidget(min=1, max=16384, step=4))
 
 
 def _runtime() -> tuple[Any, Any, Any]:
@@ -184,17 +184,17 @@ class WanSoundImageToVideo(Node):
         schema = NodeSchema(
             node_type="dinkster.wan.wan_sound_image_to_video",
             category="model/conditioning/wan/sound",
-            inputs=(
-                InputSpec("positive", _CONDITIONING),
-                InputSpec("negative", _CONDITIONING),
-                InputSpec("vae", TypeExpr.concrete(VAE_TYPE)),
+            body=(
+                Input("positive", _CONDITIONING),
+                Input("negative", _CONDITIONING),
+                Input("vae", TypeExpr.concrete(VAE_TYPE)),
                 *_dimensions(77),
-                InputSpec("audio_encoder_output", _AUDIO, required=False),
-                InputSpec("ref_image", _IMAGE, required=False),
-                InputSpec("control_video", _IMAGE, required=False),
-                InputSpec("ref_motion", _IMAGE, required=False),
+                Input("audio_encoder_output", _AUDIO, required=False),
+                Input("ref_image", _IMAGE, required=False),
+                Input("control_video", _IMAGE, required=False),
+                Input("ref_motion", _IMAGE, required=False),
+                *_OUTPUTS,
             ),
-            outputs=_OUTPUTS,
         )
         return with_identity_replacement(schema, "WanSoundImageToVideo")
 
@@ -235,17 +235,17 @@ class WanSoundImageToVideoExtend(Node):
         schema = NodeSchema(
             node_type="dinkster.wan.wan_sound_image_to_video_extend",
             category="model/conditioning/wan/sound",
-            inputs=(
-                InputSpec("positive", _CONDITIONING),
-                InputSpec("negative", _CONDITIONING),
-                InputSpec("vae", TypeExpr.concrete(VAE_TYPE)),
+            body=(
+                Input("positive", _CONDITIONING),
+                Input("negative", _CONDITIONING),
+                Input("vae", TypeExpr.concrete(VAE_TYPE)),
                 _length(77),
-                InputSpec("video_latent", _LATENT),
-                InputSpec("audio_encoder_output", _AUDIO, required=False),
-                InputSpec("ref_image", _IMAGE, required=False),
-                InputSpec("control_video", _IMAGE, required=False),
+                Input("video_latent", _LATENT),
+                Input("audio_encoder_output", _AUDIO, required=False),
+                Input("ref_image", _IMAGE, required=False),
+                Input("control_video", _IMAGE, required=False),
+                *_OUTPUTS,
             ),
-            outputs=_OUTPUTS,
         )
         return with_identity_replacement(schema, "WanSoundImageToVideoExtend")
 
@@ -299,15 +299,15 @@ class WanHuMoImageToVideo(Node):
         schema = NodeSchema(
             node_type="dinkster.wan.wan_hu_mo_image_to_video",
             category="model/conditioning/wan/humo",
-            inputs=(
-                InputSpec("positive", _CONDITIONING),
-                InputSpec("negative", _CONDITIONING),
-                InputSpec("vae", TypeExpr.concrete(VAE_TYPE)),
+            body=(
+                Input("positive", _CONDITIONING),
+                Input("negative", _CONDITIONING),
+                Input("vae", TypeExpr.concrete(VAE_TYPE)),
                 *_dimensions(97),
-                InputSpec("audio_encoder_output", _AUDIO, required=False),
-                InputSpec("ref_image", _IMAGE, required=False),
+                Input("audio_encoder_output", _AUDIO, required=False),
+                Input("ref_image", _IMAGE, required=False),
+                *_OUTPUTS,
             ),
-            outputs=_OUTPUTS,
         )
         return with_identity_replacement(schema, "WanHuMoImageToVideo")
 

@@ -11,6 +11,8 @@ import importlib
 import math
 from typing import Any
 
+from dinkster_api.v1 import Record
+
 from .camera_info import _camera_info
 from .gaussian_splat import _quaternion_matrix, _quaternion_product
 
@@ -88,7 +90,7 @@ def default_camera(center: Any, distance: float, device: Any) -> Any:
     target = [float(center[0]), -float(center[1]), -float(center[2])]
     return _camera_info(
         torch,
-        {"mode": "look_at", **{f"position_{axis}": position[i] for i, axis in enumerate("xyz")}},
+        Record("look_at", {f"position_{axis}": position[i] for i, axis in enumerate("xyz")}),
         target,
         0,
         35,

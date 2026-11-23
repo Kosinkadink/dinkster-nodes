@@ -11,10 +11,11 @@ from dinkster_api.v1 import (
     CORE_COMBO,
     CORE_STRING,
     ComboWidget,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
-    OutputSpec,
+    Output,
+    Section,
     StringWidget,
     TypeExpr,
     with_identity_replacement,
@@ -37,24 +38,30 @@ class CLIPTextEncodeSD3(Node):
             display_name="CLIP Text Encode (SD3)",
             category="model/conditioning/stable diffusion",
             search_terms=("sd3 prompt",),
-            inputs=(
-                InputSpec("clip", _CLIP),
+            body=(
+                Input("clip", _CLIP),
                 *(
-                    InputSpec(
+                    Input(
                         name,
                         _STRING,
                         widget=StringWidget(multiline=True, dynamic_prompts=True),
                     )
                     for name in ("clip_l", "clip_g", "t5xxl")
                 ),
-                InputSpec(
-                    "empty_padding",
-                    _COMBO,
-                    widget=ComboWidget(("none", "empty_prompt")),
-                    advanced=True,
+                Section(
+                    "advanced",
+                    label="Advanced",
+                    collapsed=True,
+                    rows=(
+                        Input(
+                            "empty_padding",
+                            _COMBO,
+                            widget=ComboWidget(("none", "empty_prompt")),
+                        ),
+                    ),
                 ),
+                Output("CONDITIONING", _CONDITIONING),
             ),
-            outputs=(OutputSpec("CONDITIONING", _CONDITIONING),),
         )
         return with_identity_replacement(schema, "CLIPTextEncodeSD3")
 

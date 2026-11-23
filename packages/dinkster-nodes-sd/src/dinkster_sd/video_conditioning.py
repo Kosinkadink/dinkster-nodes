@@ -14,11 +14,12 @@ from dinkster_api.v1 import (
     IMAGE_TYPE,
     LATENT_TYPE,
     VAE_TYPE,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
+    Section,
     TypeExpr,
     initialize_inference_process,
     materialize_image,
@@ -47,14 +48,12 @@ def _integer(
     maximum: int,
     *,
     step: int | None = None,
-    advanced: bool = False,
-) -> InputSpec:
-    return InputSpec(
+) -> Input:
+    return Input(
         name,
         _INT,
         default=default,
         widget=NumberWidget(min=minimum, max=maximum, step=step),
-        advanced=advanced,
     )
 
 
@@ -64,27 +63,36 @@ class SVD_img2vid_Conditioning(Node):
         schema = NodeSchema(
             node_type="dinkster.sd.svd_img2vid_conditioning",
             category="model/conditioning/stable video",
-            inputs=(
-                InputSpec("clip_vision", _CLIP_VISION),
-                InputSpec("init_image", _IMAGE),
-                InputSpec("vae", _VAE),
+            body=(
+                Input("clip_vision", _CLIP_VISION),
+                Input("init_image", _IMAGE),
+                Input("vae", _VAE),
                 _integer("width", 1024, 16, 16384, step=8),
                 _integer("height", 576, 16, 16384, step=8),
                 _integer("video_frames", 14, 1, 4096),
-                _integer("motion_bucket_id", 127, 1, 1023, advanced=True),
                 _integer("fps", 6, 1, 1024),
-                InputSpec(
-                    "augmentation_level",
-                    _FLOAT,
-                    default=0.0,
-                    widget=NumberWidget(min=0.0, max=10.0, step=0.01),
-                    advanced=True,
+                Section(
+                    "advanced",
+                    label="Advanced",
+                    collapsed=True,
+                    rows=(
+                        _integer(
+                            "motion_bucket_id",
+                            127,
+                            1,
+                            1023,
+                        ),
+                        Input(
+                            "augmentation_level",
+                            _FLOAT,
+                            default=0.0,
+                            widget=NumberWidget(min=0.0, max=10.0, step=0.01),
+                        ),
+                    ),
                 ),
-            ),
-            outputs=(
-                OutputSpec("positive", _CONDITIONING),
-                OutputSpec("negative", _CONDITIONING),
-                OutputSpec("latent", _LATENT),
+                Output("positive", _CONDITIONING),
+                Output("negative", _CONDITIONING),
+                Output("latent", _LATENT),
             ),
         )
         return with_identity_replacement(schema, "SVD_img2vid_Conditioning")

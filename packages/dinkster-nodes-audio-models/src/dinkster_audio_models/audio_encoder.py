@@ -11,10 +11,10 @@ from dinkster_api.v1 import (
     CORE_COMBO,
     CORE_STRING,
     ComboWidget,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
-    OutputSpec,
+    Output,
     TypeExpr,
     initialize_inference_process,
     materialize_audio,
@@ -37,20 +37,20 @@ class SheetSage2AudioToABC(Node):
                 "Transcribes vocal and instrumental melodies from music into ABC notation. "
                 "Connect abc output to YuE2 Generate Music node and use the matching mode."
             ),
-            inputs=(
-                InputSpec("audio_encoder", _AUDIO_ENCODER),
-                InputSpec("audio", _AUDIO),
-                InputSpec(
+            body=(
+                Input("audio_encoder", _AUDIO_ENCODER),
+                Input("audio", _AUDIO),
+                Input(
                     "mode",
                     TypeExpr.concrete(CORE_COMBO),
                     widget=ComboWidget(options=("melody", "full")),
-                    doc=(
+                    tooltip=(
                         "full: generates melody and chords; melody: generates melody only, "
                         "recommended for covers."
                     ),
                 ),
+                Output("abc", TypeExpr.list_of(TypeExpr.concrete(CORE_STRING))),
             ),
-            outputs=(OutputSpec("abc", TypeExpr.list_of(TypeExpr.concrete(CORE_STRING))),),
         )
         return with_identity_replacement(schema, "SheetSage2AudioToABC")
 
