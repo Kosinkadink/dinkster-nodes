@@ -38,6 +38,7 @@ from dinkster_api.v1 import (
 )
 
 from .catalog import CatalogClient, RemoteSchema, cache_path_from_env
+from .http import async_http_client
 
 _DEFAULT_GATEWAY_BASE = ""
 _ERROR_MESSAGES = {
@@ -864,7 +865,7 @@ class RemoteRuntime:
         )
         previous_progress: object = None
         seen_previews: set[str] = set()
-        async with httpx.AsyncClient(timeout=self.config.request_timeout) as client:
+        async with async_http_client(timeout=self.config.request_timeout) as client:
             try:
                 prepared = await self._prepare_inputs(client, token, inputs)
                 response = await self._request(

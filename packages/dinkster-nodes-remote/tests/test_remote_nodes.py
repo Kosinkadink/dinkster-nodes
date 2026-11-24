@@ -4,6 +4,8 @@ import asyncio
 import base64
 import hashlib
 import json
+import ssl
+import sys
 import uuid
 from collections.abc import Mapping
 from dataclasses import dataclass, replace
@@ -26,7 +28,7 @@ from dinkster_api.v1 import (
     schema_to_wire,
 )
 from dinkster_graph import Graph, GraphNode
-from dinkster_nodes_remote.catalog import CatalogError, parse_catalog
+from dinkster_nodes_remote.catalog import CatalogClient, CatalogError, parse_catalog
 from dinkster_nodes_remote.runtime import (
     GatewayError,
     RemoteConfig,
@@ -92,7 +94,13 @@ def config(base_url: str, cache: Path, *, token: str = "session-token") -> Remot
 
 
 class FakeGateway:
-    def __init__(self, *schemas: NodeSchema, recording: Mapping[str, object] | None = None) -> None:
+    def __init__(
+        self,
+        *schemas: NodeSchema,
+        recording: Mapping[str, object] | None = None,
+        tls: ssl.SSLContext | None = None,
+    ) -> None:
+        self.tls = tls
         self.schemas = schemas or (remote_schema(),)
         self.recording = recording
         self.epoch = 1
@@ -148,11 +156,12 @@ class FakeGateway:
         app.router.add_get("/download/{kind}", self._download)
         self._runner = web.AppRunner(app)
         await self._runner.setup()
-        site = web.TCPSite(self._runner, "127.0.0.1", 0)
+        site = web.TCPSite(self._runner, "127.0.0.1", 0, ssl_context=self.tls)
         await site.start()
         assert self._runner.addresses
         port = int(self._runner.addresses[0][1])
-        self.base_url = f"http://127.0.0.1:{port}"
+        scheme = "https" if self.tls is not None else "http"
+        self.base_url = f"{scheme}://127.0.0.1:{port}"
         return self
 
     async def __aexit__(self, *_args: object) -> None:
@@ -788,6 +797,134 @@ def test_upload_submit_poll_preview_and_verified_vault_round_trip(
                 "frameCount": 4,
                 "fps": 12.5,
             }
+
+    asyncio.run(scenario())
+
+
+@pytest.mark.parametrize("proxy_kind", ["unix", "tcp"])
+def test_host_proxy_carries_catalog_and_jobs_without_direct_fallback(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, proxy_kind: str
+) -> None:
+    if proxy_kind == "unix" and sys.platform == "win32":
+        pytest.skip("Windows host uses the authenticated TCP proxy")
+    certificate = Path(__file__).resolve().parents[3] / "tests/tls/service-cert.pem"
+    tls = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+    tls.load_cert_chain(certificate, certificate.with_name("service-key.pem"))
+    monkeypatch.setenv("SSL_CERT_FILE", str(certificate))
+    monkeypatch.setenv("NO_PROXY", "*")
+    monkeypatch.setenv("HTTPS_PROXY", "http://127.0.0.1:1")
+    monkeypatch.setenv("DINKSTER_ASSET_VAULT", str(tmp_path / "output-vault"))
+
+    async def scenario() -> None:
+        async with FakeGateway(tls=tls) as gateway:
+            port = int(gateway.base_url.rsplit(":", 1)[1])
+            attempts: list[str] = []
+            denied = False
+
+            async def relay(reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
+                try:
+                    while chunk := await reader.read(65536):
+                        writer.write(chunk)
+                        await writer.drain()
+                finally:
+                    writer.close()
+                    await writer.wait_closed()
+
+            async def connect(reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
+                head = await reader.readuntil(b"\r\n\r\n")
+                method, target, _ = head.split(b"\r\n", 1)[0].decode().split()
+                assert method == "CONNECT"
+                attempts.append(target)
+                if proxy_kind == "tcp":
+                    assert b"Proxy-Authorization: Basic ZGlua3N0ZXI6cHJveHktdGVzdA==" in head
+                if denied or target != f"localhost:{port}":
+                    writer.write(b"HTTP/1.1 403 Forbidden\r\nContent-Length: 0\r\n\r\n")
+                    await writer.drain()
+                    writer.close()
+                    await writer.wait_closed()
+                    return
+                upstream, upstream_writer = await asyncio.open_connection("127.0.0.1", port)
+                writer.write(b"HTTP/1.1 200 Connection Established\r\n\r\n")
+                await writer.drain()
+                await asyncio.gather(relay(reader, upstream_writer), relay(upstream, writer))
+
+            async def exercise() -> None:
+                nonlocal denied
+                gateway.base_url = f"https://localhost:{port}"
+                gateway.submit_failures = 1
+                runtime = await asyncio.to_thread(
+                    RemoteRuntime, config(gateway.base_url, tmp_path / "proxy-catalog.json")
+                )
+                assert len(runtime.snapshot.schemas) == 1
+                public_catalog = CatalogClient(
+                    gateway.base_url, None, timeout=1, auth_token=lambda: ""
+                )
+                assert len((await asyncio.to_thread(public_catalog.startup)).schemas) == 1
+                assert await public_catalog.changed(0)
+                assert gateway.epoch_headers == [None]
+                assert await runtime.catalog.refresh(conditional=False) is not None
+                source = input_asset(tmp_path / "input-vault")
+                result = await runtime.invoke(
+                    runtime.snapshot.schemas[0], {"prompt": "proxied", "source": source}
+                )
+                output = result["image"]
+                assert isinstance(output, AssetRef)
+                assert output.read_bytes() == gateway.output_bytes
+                assert gateway.uploads == [(source.digest, b"input image")]
+                assert len(gateway.submissions) == 2
+                assert gateway.polled.is_set()
+                assert gateway.download_authorizations == [None, None]
+                assert attempts
+                monkeypatch.delenv("SSL_CERT_FILE")
+                untrusted = await asyncio.to_thread(
+                    RemoteRuntime, config(gateway.base_url, tmp_path / "untrusted-catalog.json")
+                )
+                assert untrusted.snapshot.schemas == ()
+                previous = len(gateway.submissions)
+                with pytest.raises(GatewayError):
+                    await runtime.invoke(runtime.snapshot.schemas[0], {"prompt": "untrusted"})
+                assert len(gateway.submissions) == previous
+                monkeypatch.setenv("SSL_CERT_FILE", str(certificate))
+                gateway.run_forever = True
+                gateway.polled.clear()
+                task = asyncio.create_task(
+                    runtime.invoke(runtime.snapshot.schemas[0], {"prompt": "cancel"})
+                )
+                await asyncio.wait_for(gateway.polled.wait(), timeout=5)
+                task.cancel()
+                with pytest.raises(asyncio.CancelledError):
+                    await task
+                assert gateway.cancelled.is_set()
+                denied = True
+                previous = len(gateway.submissions)
+                with pytest.raises(GatewayError):
+                    await runtime.invoke(runtime.snapshot.schemas[0], {"prompt": "denied"})
+                assert len(gateway.submissions) == previous
+                blocked = await asyncio.to_thread(
+                    RemoteRuntime, config(gateway.base_url, tmp_path / "denied-catalog.json")
+                )
+                assert blocked.snapshot.schemas == ()
+                assert set(attempts) == {f"localhost:{port}"}
+
+            if proxy_kind == "unix" and sys.platform != "win32":
+                # Linux limits socket names to 107 bytes, including the pytest root.
+                import tempfile
+
+                with tempfile.TemporaryDirectory(prefix="dk-remote-proxy-") as directory:
+                    socket_path = Path(directory) / "proxy.sock"
+                    server = await asyncio.start_unix_server(connect, socket_path)
+                    monkeypatch.setenv("DINKSTER_EGRESS_PROXY", str(socket_path))
+                    async with server:
+                        await exercise()
+            else:
+                server = await asyncio.start_server(connect, "127.0.0.1", 0)
+                proxy_port = int(server.sockets[0].getsockname()[1])
+                monkeypatch.setenv(
+                    "DINKSTER_EGRESS_PROXY",
+                    f"http://dinkster:proxy-test@127.0.0.1:{proxy_port}",
+                )
+                async with server:
+                    await exercise()
 
     asyncio.run(scenario())
 
