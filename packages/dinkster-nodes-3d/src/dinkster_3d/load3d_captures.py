@@ -45,6 +45,23 @@ NOT_DRAWN = (
 )
 
 
+def _same_model(pictured: object, source: AssetRef | LocalAssetRef | None) -> bool:
+    """Whether the model the pictures were drawn from is the one this run receives.
+
+    The app records model_file as it sent it: a selected name, an asset reference
+    (two files may share a name, so its digest decides), or null for no model.
+    """
+    if source is None:
+        return pictured is None
+    if isinstance(pictured, str):
+        return pictured == source.name
+    if isinstance(pictured, Mapping):
+        return isinstance(source, AssetRef) and (
+            cast("Mapping[str, object]", pictured).get("digest") == source.digest
+        )
+    return False
+
+
 class Load3D(Node):
     @classmethod
     def define_schema(cls) -> NodeSchema:
@@ -121,18 +138,18 @@ class Load3D(Node):
             normal = loaded["normal"]["IMAGE"]
             # The app stores the view its pictures show; a value without it is not known.
             pictured = image.get("pictures_view")
-            current = {
-                "model_file": source.name if source is not None else None,
-                "camera_info": image.get("camera_info"),
-                "model_3d_info": image.get("model_3d_info"),
-                "width": width,
-                "height": height,
-            }
-            if isinstance(pictured, Mapping) and any(
-                cast("Mapping[str, object]", pictured).get(key) != value
-                for key, value in current.items()
-            ):
-                report_log("warning", EARLIER_VIEW)
+            if isinstance(pictured, Mapping):
+                view = cast("Mapping[str, object]", pictured)
+                current = {
+                    "camera_info": image.get("camera_info"),
+                    "model_3d_info": image.get("model_3d_info"),
+                    "width": width,
+                    "height": height,
+                }
+                if not _same_model(view.get("model_file"), source) or any(
+                    view.get(key) != value for key, value in current.items()
+                ):
+                    report_log("warning", EARLIER_VIEW)
         else:
             reason = NO_MODEL if packet is None else NOT_DRAWN
             report_log("warning", reason)

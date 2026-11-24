@@ -154,6 +154,8 @@ NOT_DRAWN = (
     [
         ("earlier view", EARLIER),
         ("same view", None),
+        ("same view, model by reference", None),
+        ("other model of the same name", EARLIER),
         ("no pictures", NOT_DRAWN),
         ("no pictures, no model", "No pictures: no model is chosen."),
     ],
@@ -166,14 +168,17 @@ def test_load3d_run_warns_on_earlier_view_and_gives_nothing_without_pictures(
     root.mkdir()
     (root / "scene.gltf").write_bytes(b'{"asset":{"version":"2.0"}}')
     snapshot = tmp_path / "mounts.json"
-    mounts = MountTable(snapshot)
+    mounts = MountTable(snapshot, index_root=tmp_path / "indexes")
     mounts.add(MountDef("models", root, kind="media/model3d"))
+    mounts.scan("models")
     environment = {
         "DINKSTER_MOUNTS_SNAPSHOT": str(snapshot),
         "DINKSTER_ASSET_VAULT": str(tmp_path / "vault"),
     }
     for key, value in environment.items():
         monkeypatch.setenv(key, value)
+    data = (root / "scene.gltf").read_bytes()
+    reference = AssetRef(digest_bytes(data), "scene.gltf", len(data), "model/gltf+json").to_wire()
     pictured = {
         "model_file": "scene.gltf",
         "camera_info": state["camera_info"],
@@ -192,7 +197,13 @@ def test_load3d_run_warns_on_earlier_view_and_gives_nothing_without_pictures(
     if case.startswith("no pictures"):
         for name in ("image", "mask", "normal", "pictures_view"):
             del value[name]
-    selection = "none" if case.endswith("no model") else "scene.gltf"
+    selection: object = "none" if case.endswith("no model") else "scene.gltf"
+    if "model by reference" in case or "same name" in case:
+        selection = reference
+        pictured["model_file"] = reference
+    if case == "other model of the same name":
+        # The pictures were drawn from another file that has the same name.
+        pictured["model_file"] = {**reference, "digest": digest_bytes(b"another scene")}
     schema = Load3D.define_schema()
     graph, missing = bind_model_names(
         Graph(
