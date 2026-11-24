@@ -2,26 +2,37 @@
 
 from __future__ import annotations
 
+import asyncio
 from collections.abc import Mapping
 from fractions import Fraction
 from io import BytesIO
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import av
 import numpy as np
 import pytest
 import torch
+from dinkster_3d import register_types
 from dinkster_3d.load3d_captures import Load3D
 from dinkster_api.v1 import (
+    LOAD_3D_TYPE,
     AbsentOutput,
     AssetRef,
     AssetVault,
     digest_bytes,
     effective_video_facts,
 )
-from dinkster_assets import LocalAssetRef, MountDef, MountTable
+from dinkster_assets import LibraryStore, LocalAssetRef, MountDef, MountTable
+from dinkster_engine import EngineEvent
+from dinkster_graph import Graph, GraphNode, TypedLiteral
+from dinkster_server.library import ServerLibrary
+from dinkster_server.preflight import bind_model_names
+from dinkster_values import ABSENT_REASON_META_KEY, TypeRegistry, register_core_types
+from geometry_pack_fixtures import geometry_pack_specs
 from PIL import Image
+
+from dinkster.compose import ServingComposer
 
 
 @pytest.fixture
@@ -129,3 +140,112 @@ def test_load3d_retains_recorded_video_source_and_timing(captures) -> None:
     facts = effective_video_facts(result["recording_video"])
     assert (facts["width"], facts["height"], facts["fps"]) == (3, 1, Fraction(7))
     assert recording.read_bytes() == data
+
+
+EARLIER = "These pictures show an earlier view. Queue the run from the editor to take new ones."
+WIRED = "No pictures: the model arrives by a wire, so the view could not be drawn before the run."
+
+
+@pytest.mark.parametrize(
+    ("case", "warning"),
+    [
+        ("earlier view", EARLIER),
+        ("same view", None),
+        ("no pictures", WIRED),
+        ("no pictures, no model", "No pictures: no model is chosen."),
+    ],
+)
+def test_load3d_run_warns_on_earlier_view_and_gives_nothing_without_pictures(
+    captures, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, case: str, warning: str | None
+) -> None:
+    state, pixels, normals, _vault = captures
+    root = tmp_path / "models"
+    root.mkdir()
+    (root / "scene.gltf").write_bytes(b'{"asset":{"version":"2.0"}}')
+    snapshot = tmp_path / "mounts.json"
+    mounts = MountTable(snapshot)
+    mounts.add(MountDef("models", root, kind="media/model3d"))
+    environment = {
+        "DINKSTER_MOUNTS_SNAPSHOT": str(snapshot),
+        "DINKSTER_ASSET_VAULT": str(tmp_path / "vault"),
+    }
+    for key, value in environment.items():
+        monkeypatch.setenv(key, value)
+    pictured = {
+        "model_file": "scene.gltf",
+        "camera_info": state["camera_info"],
+        "model_3d_info": None,
+        "width": 37,
+        "height": 91,
+    }
+    value: dict[str, object] = {
+        **state,
+        **{name: cast(AssetRef, state[name]).to_wire() for name in ("image", "mask", "normal")},
+        "pictures_view": pictured,
+    }
+    if case == "earlier view":
+        # The view was turned after its pictures were taken.
+        value["camera_info"] = {**cast(dict[str, object], state["camera_info"]), "zoom": 2.5}
+    if case.startswith("no pictures"):
+        for name in ("image", "mask", "normal", "pictures_view"):
+            del value[name]
+    selection = "none" if case.endswith("no model") else "scene.gltf"
+    schema = Load3D.define_schema()
+    graph, missing = bind_model_names(
+        Graph(
+            {
+                "load": GraphNode(
+                    schema.node_type,
+                    {
+                        "model_file": selection,
+                        "image": TypedLiteral(LOAD_3D_TYPE, value),
+                        "width": 37,
+                        "height": 91,
+                    },
+                )
+            }
+        ),
+        {schema.node_type: schema},
+        ServerLibrary(
+            AssetVault(tmp_path / "vault"),
+            LibraryStore(tmp_path / "library.sqlite"),
+            resolver=mounts,
+        ),
+    )
+    assert not missing
+    events: list[EngineEvent] = []
+
+    async def scenario() -> None:
+        registry = TypeRegistry()
+        register_core_types(registry)
+        register_types(registry)
+        composer = ServingComposer(registry=registry, worker_env=environment)
+        try:
+            for spec in geometry_pack_specs(in_process=True):
+                await composer.add_pack(spec)
+            result = await composer.composition.make_engine(events.append).run(graph, ["load"])
+            out = result.outputs["load"]
+            if case.startswith("no pictures"):
+                for name in ("image", "mask", "normal"):
+                    assert out[name].type_id == "core.absent"
+                    assert out[name].meta.get(ABSENT_REASON_META_KEY) == warning
+            else:
+                _assert_captures(
+                    {name: out[name].resolve() for name in ("image", "mask", "normal")},
+                    pixels,
+                    normals,
+                )
+            assert out["camera_info"].resolve() == value["camera_info"]
+            assert (out["model_3d"].resolve() is None) == (selection == "none")
+        finally:
+            await composer.close()
+
+    asyncio.run(scenario())
+    warnings = [
+        cast(Mapping[str, object], event.detail["data"])["message"]
+        for event in events
+        if event.kind == "node_event"
+        and event.detail.get("name") == "log"
+        and cast(Mapping[str, object], event.detail["data"])["level"] == "warning"
+    ]
+    assert warnings == ([] if warning is None else [warning])
