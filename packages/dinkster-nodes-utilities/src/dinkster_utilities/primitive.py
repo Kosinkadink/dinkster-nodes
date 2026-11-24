@@ -3,8 +3,9 @@
 They are one implementation found under several names in the add-node
 search. Each holds one value field and a Limits section of ordinary optional
 fields of its own: minimum, maximum, step and default for Int and Float, and
-default for the others. An empty limit is derived by the editor from the
-fields the primitive feeds. Choice takes its options, and Primitive its type,
+default for the others. The output's known value names these fields as its
+limits; an empty limit is derived by the editor from the fields the
+primitive feeds. Choice takes its options, and Primitive its type,
 label and field, from the fields they feed. The value is known before the
 run, so the editor writes it into the fields it feeds instead of running the
 node.
@@ -49,6 +50,9 @@ _TEXT_REPRESENTATIONS = WidgetRepresentations(
 )
 
 
+_LIMIT_KEYS = {"minimum": "min", "maximum": "max", "step": "step", "default": "default"}
+
+
 def _limit(
     id: str, label: str, type_id: str | TypeExpr, widget: NumberWidget | StringWidget | None
 ) -> Input:
@@ -66,12 +70,15 @@ def _primitive_schema(
     comfy_types: tuple[str, ...] = (),
 ) -> NodeSchema:
     section = (Section("limits", limits, label="Limits", collapsed=True),) if limits else ()
+    known_value = OutputKnownValue(
+        "value", limits={_LIMIT_KEYS[limit.id]: limit.id for limit in limits}
+    )
     schema = NodeSchema(
         node_type=node_type,
         display_name=display_name,
         category="utilities/primitive",
         search_terms=search_terms,
-        body=(value, *section, replace(output, known_value=OutputKnownValue("value"))),
+        body=(value, *section, replace(output, known_value=known_value)),
     )
     if not comfy_types:
         return schema
