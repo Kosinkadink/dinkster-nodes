@@ -1,4 +1,4 @@
-"""Native curve editor using the shared curve value and histogram event."""
+"""Native curve editor over the shared curve value, with a histogram beside its curve."""
 
 from __future__ import annotations
 
@@ -14,7 +14,6 @@ from dinkster_api.v1 import (
     NodeSchema,
     Output,
     TypeExpr,
-    report_event,
     with_identity_replacement,
 )
 
@@ -35,7 +34,7 @@ class CurveEditor(Node):
                         "points": [[0.0, 0.0], [1.0, 1.0]],
                         "interpolation": "monotone_cubic",
                     },
-                    widget=CurveWidget(),
+                    widget=CurveWidget(histogram="histogram"),
                 ),
                 Input("histogram", TypeExpr.concrete(HISTOGRAM_TYPE), required=False),
                 Output("curve", TypeExpr.concrete(CURVE_TYPE)),
@@ -48,6 +47,5 @@ class CurveEditor(Node):
     def execute(
         cls, *, curve: Curve, histogram: Sequence[int] | None = None
     ) -> Mapping[str, object]:
-        if histogram is not None:
-            report_event("dinkster.curve.histogram", {"histogram": list(histogram)})
+        # The engine sends the histogram to the curve's editor; the node passes the curve on.
         return cls.outputs(curve=curve)
