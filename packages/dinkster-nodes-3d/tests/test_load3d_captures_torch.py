@@ -143,7 +143,10 @@ def test_load3d_retains_recorded_video_source_and_timing(captures) -> None:
 
 
 EARLIER = "These pictures show an earlier view. Queue the run from the editor to take new ones."
-WIRED = "No pictures: the model arrives by a wire, so the view could not be drawn before the run."
+NOT_DRAWN = (
+    "No pictures: the view was not drawn before this run. That happens when the model "
+    "arrives by a wire, or when the run was not queued from the editor."
+)
 
 
 @pytest.mark.parametrize(
@@ -151,7 +154,7 @@ WIRED = "No pictures: the model arrives by a wire, so the view could not be draw
     [
         ("earlier view", EARLIER),
         ("same view", None),
-        ("no pictures", WIRED),
+        ("no pictures", NOT_DRAWN),
         ("no pictures, no model", "No pictures: no model is chosen."),
     ],
 )

@@ -39,8 +39,9 @@ EARLIER_VIEW = (
     "These pictures show an earlier view. Queue the run from the editor to take new ones."
 )
 NO_MODEL = "No pictures: no model is chosen."
-WIRED_MODEL = (
-    "No pictures: the model arrives by a wire, so the view could not be drawn before the run."
+NOT_DRAWN = (
+    "No pictures: the view was not drawn before this run. That happens when the model "
+    "arrives by a wire, or when the run was not queued from the editor."
 )
 
 
@@ -133,7 +134,7 @@ class Load3D(Node):
             ):
                 report_log("warning", EARLIER_VIEW)
         else:
-            reason = NO_MODEL if packet is None else WIRED_MODEL
+            reason = NO_MODEL if packet is None else NOT_DRAWN
             report_log("warning", reason)
             output_image = output_mask = normal = AbsentOutput(reason)
         recording = image.get("recording")
