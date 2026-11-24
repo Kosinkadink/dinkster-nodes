@@ -26,6 +26,7 @@ from dinkster_api.v1 import (
     NodeSchema,
     NumberWidget,
     Output,
+    Section,
     SourceFilenameSpec,
     TypeExpr,
     admit_video_source,
@@ -84,6 +85,7 @@ class Load3D(Node):
                     TypeExpr.concrete(LOAD_3D_TYPE),
                     widget=CustomWidgetDescriptor(
                         "LOAD_3D",
+                        params={"unfolded": True},
                         reads={"model_file": "model_file", "width": "width", "height": "height"},
                     ),
                 ),
@@ -96,23 +98,34 @@ class Load3D(Node):
                     )
                     for axis in ("width", "height")
                 ),
-                *tuple(
-                    Output(
-                        name,
-                        TypeExpr.concrete(type_id),
-                        preview=name == "model_3d",
-                        optional=name in ("image", "mask", "normal", "recording_video"),
-                    )
+                *(
+                    Output(name, TypeExpr.concrete(type_id), optional=True)
                     for name, type_id in (
                         ("image", IMAGE_TYPE),
                         ("mask", MASK_TYPE),
-                        ("mesh_path", CORE_STRING),
                         ("normal", IMAGE_TYPE),
-                        ("camera_info", LOAD3D_CAMERA_TYPE),
-                        ("recording_video", VIDEO_TYPE),
-                        ("model_3d", FILE_3D_TYPE),
-                        ("model_3d_info", LOAD3D_MODEL_INFO_TYPE),
                     )
+                ),
+                # The pictures lead; what the editor also reports starts closed.
+                Section(
+                    "more_outputs",
+                    label="More outputs",
+                    collapsed=True,
+                    rows=tuple(
+                        Output(
+                            name,
+                            TypeExpr.concrete(type_id),
+                            preview=name == "model_3d",
+                            optional=name == "recording_video",
+                        )
+                        for name, type_id in (
+                            ("mesh_path", CORE_STRING),
+                            ("camera_info", LOAD3D_CAMERA_TYPE),
+                            ("recording_video", VIDEO_TYPE),
+                            ("model_3d", FILE_3D_TYPE),
+                            ("model_3d_info", LOAD3D_MODEL_INFO_TYPE),
+                        )
+                    ),
                 ),
             ),
         )
