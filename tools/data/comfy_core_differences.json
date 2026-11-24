@@ -1679,6 +1679,12 @@
    "node_type": "dinkster.utilities.create_list",
    "difference": "inputs[0].max: 10 vs None",
    "reason": "Create List grows by plugging in, with no limit of 10, and every input takes one value or a list of one matched type, so an INT beside a STRING is refused where ComfyUI joins them; the user wants the types matched (comfy-vibe-station#1092 comments 7096077527 and 7096204259)."
+  },
+  {
+   "class_name": "CreateHookKeyframesFromFloats",
+   "node_type": "dinkster.models.create_hook_keyframes_from_floats",
+   "difference": "inputs[0].type: 'FLOATS' vs 'FLOAT'",
+   "reason": "floats_strength takes a list<FLOAT> or a single FLOAT through a list-accepting FLOAT input; Dinkster has no separate FLOATS type (comfy-vibe-station#1272)."
   }
  ],
  "known": [
