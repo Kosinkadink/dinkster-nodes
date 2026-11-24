@@ -2,10 +2,11 @@ from __future__ import annotations
 
 import asyncio
 import base64
+import hashlib
 import json
 import uuid
 from collections.abc import Mapping
-from dataclasses import replace
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import cast
 
@@ -114,6 +115,7 @@ class FakeGateway:
         self.catalog_headers: list[str | None] = []
         self.catalog_authorizations: list[str | None] = []
         self.catalog_scopes: dict[str, tuple[NodeSchema, ...]] | None = None
+        self.accepted_token = "session-token"
         self.epoch_headers: list[str | None] = []
         self.download_authorizations: list[str | None] = []
         self.cancelled = asyncio.Event()
@@ -167,7 +169,7 @@ class FakeGateway:
         if request.path != "/v1/jobs" or request.method != "POST":
             assert "X-Dinkster-Partner-Mode" not in request.headers
             assert "X-Dinkster-Fake-Outcome" not in request.headers
-        if request.headers.get("Authorization") == "Bearer session-token":
+        if request.headers.get("Authorization") == f"Bearer {self.accepted_token}":
             return None
         return web.json_response(
             {
@@ -872,6 +874,97 @@ def test_logged_out_invocation_fails_before_gateway_submission(
     asyncio.run(scenario())
 
 
+@dataclass(frozen=True)
+class ProjectRunContext(ExecutionContext):
+    job_ref: str | None = None
+
+
+def test_project_run_credentials_isolate_concurrent_jobs_and_refresh_before_polling(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    async def scenario() -> None:
+        directory = tmp_path / "runs"
+        directory.mkdir()
+        files = {
+            run: directory / hashlib.sha256(run.encode()).hexdigest() for run in ("film", "other")
+        }
+        for run, path in files.items():
+            path.write_text(run, encoding="utf-8")
+        authorizations: list[tuple[str, str]] = []
+
+        class ProjectGateway(FakeGateway):
+            def _authorized(self, request: web.Request) -> web.Response | None:
+                bearer = request.headers.get("Authorization", "")
+                authorizations.append((request.method, bearer))
+                assert bearer in {
+                    "Bearer film",
+                    "Bearer other",
+                    "Bearer film-next",
+                    "Bearer other-next",
+                }
+                if request.method == "GET":
+                    assert bearer.endswith("-next")
+                return None
+
+            async def _submit(self, request: web.Request) -> web.Response:
+                body = await request.json()
+                run = body["inputs"]["prompt"]
+                assert request.headers["Authorization"] == f"Bearer {run}"
+                response = await super()._submit(request)
+                files[run].write_text(f"{run}-next", encoding="utf-8")
+                return response
+
+        async with ProjectGateway() as gateway:
+            legacy = tmp_path / "legacy"
+            legacy.write_text("must-not-be-used", encoding="utf-8")
+            selected = replace(
+                config(gateway.base_url, tmp_path / "catalog.json", token="must-not-be-used"),
+                token_file=legacy,
+                run_token_directory=directory,
+            )
+            runtime = await asyncio.to_thread(RemoteRuntime, selected)
+            assert gateway.catalog_authorizations == [None]
+            monkeypatch.setenv("DINKSTER_ASSET_VAULT", str(tmp_path / "vault"))
+            source = input_asset(tmp_path / "inputs")
+
+            async def invoke(run: str) -> Mapping[str, object]:
+                with use_execution_context(ProjectRunContext(None, None, job_ref=run)):
+                    return await runtime.invoke(
+                        runtime.snapshot.schemas[0], {"prompt": run, "source": source}
+                    )
+
+            results = await asyncio.gather(invoke("film"), invoke("other"))
+            for result in results:
+                assert cast(AssetRef, result["image"]).read_bytes() == gateway.output_bytes
+            assert sorted(authorizations) == sorted(
+                [
+                    ("POST", "Bearer film"),
+                    ("POST", "Bearer film"),
+                    ("GET", "Bearer film-next"),
+                    ("POST", "Bearer other"),
+                    ("POST", "Bearer other"),
+                    ("GET", "Bearer other-next"),
+                ]
+            )
+            assert gateway.download_authorizations and not any(gateway.download_authorizations)
+            with pytest.raises(GatewayError, match="project-bound run"):
+                await runtime.invoke(runtime.snapshot.schemas[0], {"prompt": "no context"})
+            for run, empty in (("film", True), ("other", False)):
+                if empty:
+                    files[run].write_text("", encoding="utf-8")
+                else:
+                    files[run].unlink()
+                with pytest.raises(GatewayError, match="token"):
+                    await invoke(run)
+            assert len(gateway.submissions) == 2
+            assert legacy.read_text() == "must-not-be-used"
+            assert selected.auth_token(required=False) == ""
+            parsed = RemoteConfig.from_env({"DINKSTER_REMOTE_RUN_TOKEN_DIRECTORY": str(directory)})
+            assert parsed.run_token_directory == directory
+
+    asyncio.run(scenario())
+
+
 def test_rotated_token_file_is_read_for_each_invocation(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -962,25 +1055,39 @@ def test_production_gateway_cannot_redirect_downloads_to_loopback(
         runtime._download_identity(descriptor, "remote output")  # pyright: ignore[reportPrivateUsage]
 
 
+@pytest.mark.parametrize("project_run", [False, True])
 def test_execution_context_cancellation_deletes_the_remote_job(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, project_run: bool
 ) -> None:
     async def scenario() -> None:
         async with FakeGateway() as gateway:
             gateway.run_forever = True
+            directory = tmp_path / "run-tokens"
+            directory.mkdir()
+            run_token = directory / hashlib.sha256(b"cancel-run").hexdigest()
+            run_token.write_text("session-token", encoding="utf-8")
             runtime = await asyncio.to_thread(
-                RemoteRuntime, config(gateway.base_url, tmp_path / "catalog.json")
+                RemoteRuntime,
+                replace(
+                    config(gateway.base_url, tmp_path / "catalog.json"),
+                    run_token_directory=directory if project_run else None,
+                ),
             )
             monkeypatch.setenv("DINKSTER_ASSET_VAULT", str(tmp_path / "vault"))
             cancel_requested = asyncio.Event()
             with use_execution_context(
-                ExecutionContext("native", None, cancelled=cancel_requested.is_set)
+                ProjectRunContext(
+                    "native", None, cancelled=cancel_requested.is_set, job_ref="cancel-run"
+                )
             ):
                 task = asyncio.create_task(
                     runtime.invoke(runtime.snapshot.schemas[0], {"prompt": "hello"})
                 )
             await asyncio.wait_for(gateway.submitted.wait(), 1)
             await asyncio.wait_for(gateway.polled.wait(), 1)
+            if project_run:
+                gateway.accepted_token = "cancel-token"
+                run_token.write_text("cancel-token", encoding="utf-8")
             cancel_requested.set()
             with pytest.raises(RuntimeError, match="cancelled by the client"):
                 await task

@@ -40,8 +40,12 @@ defaults to one second for image nodes and five seconds for
 video nodes; `DINKSTER_REMOTE_IMAGE_POLL_INTERVAL` and
 `DINKSTER_REMOTE_VIDEO_POLL_INTERVAL` override those intervals. The bearer token
 file is read for each invocation so session rotation does not require
-restarting the pack. Without a token, schemas remain visible and invocation
-fails with a sign-in error.
+restarting the pack. With the host-supplied `DINKSTER_REMOTE_RUN_TOKEN_DIRECTORY`,
+catalog discovery is anonymous and execution reads only the token named by the
+SHA-256 of the host invocation's job reference. Project-run tokens are reread
+before uploads, submissions, retries, polling and cancellation. Missing run
+context or credentials never falls back to an install-wide token. Without a
+token, schemas remain visible and invocation fails with a sign-in error.
 
 `DINKSTER_REMOTE_PARTNER_MODE` optionally selects `fake` or `real` through the
 job submission's `X-Dinkster-Partner-Mode` header. When unset, no override is sent:

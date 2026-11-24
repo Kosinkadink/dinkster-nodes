@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import email.utils
+import hashlib
 import ipaddress
 import math
 import os
@@ -147,6 +148,7 @@ class RemoteConfig:
     environment: str = ""
     partner_mode: str | None = None
     fake_outcome: str | None = None
+    run_token_directory: Path | None = None
 
     @classmethod
     def from_env(cls, environment: Mapping[str, str] | None = None) -> RemoteConfig:
@@ -158,6 +160,7 @@ class RemoteConfig:
             "DINKSTER_REMOTE_GATEWAY_BASE",
         )
         token_file_raw = env.get("DINKSTER_REMOTE_AUTH_TOKEN_FILE", "")
+        run_tokens_raw = env.get("DINKSTER_REMOTE_RUN_TOKEN_DIRECTORY", "")
         selected_environment = env.get("DINKSTER_REMOTE_ENVIRONMENT", "production")
         partner_mode = env.get("DINKSTER_REMOTE_PARTNER_MODE")
         fake_outcome = env.get("DINKSTER_REMOTE_FAKE_OUTCOME")
@@ -180,6 +183,7 @@ class RemoteConfig:
             cache_path=cache_path_from_env(env),
             token="",
             token_file=Path(token_file_raw) if token_file_raw else None,
+            run_token_directory=Path(run_tokens_raw) if run_tokens_raw else None,
             catalog_poll_interval=_positive_float(
                 env.get("DINKSTER_REMOTE_CATALOG_POLL_INTERVAL", "3600"),
                 "DINKSTER_REMOTE_CATALOG_POLL_INTERVAL",
@@ -208,9 +212,19 @@ class RemoteConfig:
         )
 
     def auth_token(self, *, required: bool = True) -> str:
-        if self.token_file is not None:
+        token_file = self.token_file
+        if self.run_token_directory is not None:
+            if not required:
+                return ""
+            job_ref = getattr(current_execution_context(), "job_ref", None)
+            if not isinstance(job_ref, str) or not job_ref:
+                raise GatewayError(
+                    "unauthenticated", "client", False, "Remote nodes require a project-bound run."
+                )
+            token_file = self.run_token_directory / hashlib.sha256(job_ref.encode()).hexdigest()
+        if token_file is not None:
             try:
-                token = self.token_file.read_text(encoding="utf-8").strip()
+                token = token_file.read_text(encoding="utf-8").strip()
             except OSError as exc:
                 if not required:
                     return ""
@@ -428,16 +442,16 @@ class RemoteRuntime:
         client: httpx.AsyncClient,
         method: str,
         url: str,
-        token: str,
+        token: Callable[[], str],
         *,
         json_body: Mapping[str, object] | None = None,
         content: Callable[[], AsyncIterator[bytes]] | None = None,
         extra_headers: Mapping[str, str] | None = None,
         accepted: Sequence[int] = (200,),
     ) -> httpx.Response:
-        headers = {"Authorization": f"Bearer {token}", **dict(extra_headers or {})}
         for attempt in range(self.config.max_retries + 1):
             _ensure_running()
+            headers = {"Authorization": f"Bearer {token()}", **dict(extra_headers or {})}
             try:
                 response = await client.request(
                     method,
@@ -484,7 +498,9 @@ class RemoteRuntime:
         finally:
             await asyncio.to_thread(handle.close)
 
-    async def _upload_asset(self, client: httpx.AsyncClient, token: str, asset: AssetRef) -> None:
+    async def _upload_asset(
+        self, client: httpx.AsyncClient, token: Callable[[], str], asset: AssetRef
+    ) -> None:
         response = await self._request(
             client,
             "POST",
@@ -509,7 +525,7 @@ class RemoteRuntime:
     async def _prepare_inputs(
         self,
         client: httpx.AsyncClient,
-        token: str,
+        token: Callable[[], str],
         inputs: Mapping[str, object],
     ) -> dict[str, object]:
         uploaded: set[str] = set()
@@ -788,11 +804,13 @@ class RemoteRuntime:
             ]
         return value
 
-    async def _cancel_job(self, client: httpx.AsyncClient, token: str, job_id: str) -> None:
+    async def _cancel_job(
+        self, client: httpx.AsyncClient, token: Callable[[], str], job_id: str
+    ) -> None:
         with contextlib.suppress(Exception):
             await client.delete(
                 f"{self.config.gateway_base}/v1/jobs/{job_id}",
-                headers={"Authorization": f"Bearer {token}"},
+                headers={"Authorization": f"Bearer {token()}"},
             )
 
     async def invoke(
@@ -823,7 +841,12 @@ class RemoteRuntime:
                 False,
                 "No remote gateway base URL is configured.",
             )
-        token = self.config.auth_token()
+        initial_token = self.config.auth_token()
+        token = (
+            self.config.auth_token
+            if self.config.run_token_directory is not None
+            else lambda: initial_token
+        )
         vault_root = os.environ.get("DINKSTER_ASSET_VAULT", "")
         if not vault_root:
             raise GatewayError(
