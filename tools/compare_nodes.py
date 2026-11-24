@@ -774,7 +774,8 @@ def compare_registry(
         if key not in moved_owners:
             continue
         for rule in schema.get("replacements", []):
-            if rule.get("migration") is not None or rule["from"] == key:
+            # A same-type migration retires paths; it names no other class.
+            if rule["from"] == key:
                 continue
             if not rule.get("cases") or any(case.get("to") != key for case in rule["cases"]):
                 errors.append(f"{key}: replacement must target its declaring node")

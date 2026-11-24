@@ -1709,6 +1709,90 @@
    "node_type": "dinkster.models.create_hook_keyframes_from_floats",
    "difference": "inputs[0].type: 'FLOATS' vs 'FLOAT'",
    "reason": "floats_strength takes a list<FLOAT> or a single FLOAT through a list-accepting FLOAT input; Dinkster has no separate FLOATS type (comfy-vibe-station#1272)."
+  },
+  {
+   "class_name": "ComfySwitchNode",
+   "node_type": "dinkster.utilities.switch",
+   "difference": "inputs: length 3 vs 2",
+   "reason": "ComfyUI's If/Else Switch opens as the Switch, whose Pick chooses among named branches: switch becomes Pick, on_false the first branch, on_true the second and output Value (comfy-vibe-station#1234 comment 7092430380; comfy-vibe-station#1257)."
+  },
+  {
+   "class_name": "ComfySwitchNode",
+   "node_type": "dinkster.utilities.switch",
+   "difference": "inputs[0].group: 'required' vs 'optional'",
+   "reason": "ComfyUI's If/Else Switch opens as the Switch, whose Pick chooses among named branches: switch becomes Pick, on_false the first branch, on_true the second and output Value (comfy-vibe-station#1234 comment 7092430380; comfy-vibe-station#1257)."
+  },
+  {
+   "class_name": "ComfySwitchNode",
+   "node_type": "dinkster.utilities.switch",
+   "difference": "inputs[0].name: 'switch' vs 'pick'",
+   "reason": "ComfyUI's If/Else Switch opens as the Switch, whose Pick chooses among named branches: switch becomes Pick, on_false the first branch, on_true the second and output Value (comfy-vibe-station#1234 comment 7092430380; comfy-vibe-station#1257)."
+  },
+  {
+   "class_name": "ComfySwitchNode",
+   "node_type": "dinkster.utilities.switch",
+   "difference": "inputs[0].type: 'BOOLEAN' vs 'INT,BOOLEAN,STRING,COMBO'",
+   "reason": "ComfyUI's If/Else Switch opens as the Switch, whose Pick chooses among named branches: switch becomes Pick, on_false the first branch, on_true the second and output Value (comfy-vibe-station#1234 comment 7092430380; comfy-vibe-station#1257)."
+  },
+  {
+   "class_name": "ComfySwitchNode",
+   "node_type": "dinkster.utilities.switch",
+   "difference": "inputs[1].group: missing native field",
+   "reason": "ComfyUI's If/Else Switch opens as the Switch, whose Pick chooses among named branches: switch becomes Pick, on_false the first branch, on_true the second and output Value (comfy-vibe-station#1234 comment 7092430380; comfy-vibe-station#1257)."
+  },
+  {
+   "class_name": "ComfySwitchNode",
+   "node_type": "dinkster.utilities.switch",
+   "difference": "inputs[1].max: missing reference field",
+   "reason": "ComfyUI's If/Else Switch opens as the Switch, whose Pick chooses among named branches: switch becomes Pick, on_false the first branch, on_true the second and output Value (comfy-vibe-station#1234 comment 7092430380; comfy-vibe-station#1257)."
+  },
+  {
+   "class_name": "ComfySwitchNode",
+   "node_type": "dinkster.utilities.switch",
+   "difference": "inputs[1].min: missing reference field",
+   "reason": "ComfyUI's If/Else Switch opens as the Switch, whose Pick chooses among named branches: switch becomes Pick, on_false the first branch, on_true the second and output Value (comfy-vibe-station#1234 comment 7092430380; comfy-vibe-station#1257)."
+  },
+  {
+   "class_name": "ComfySwitchNode",
+   "node_type": "dinkster.utilities.switch",
+   "difference": "inputs[1].prefix: missing reference field",
+   "reason": "ComfyUI's If/Else Switch opens as the Switch, whose Pick chooses among named branches: switch becomes Pick, on_false the first branch, on_true the second and output Value (comfy-vibe-station#1234 comment 7092430380; comfy-vibe-station#1257)."
+  },
+  {
+   "class_name": "ComfySwitchNode",
+   "node_type": "dinkster.utilities.switch",
+   "difference": "inputs[1].template: missing reference field",
+   "reason": "ComfyUI's If/Else Switch opens as the Switch, whose Pick chooses among named branches: switch becomes Pick, on_false the first branch, on_true the second and output Value (comfy-vibe-station#1234 comment 7092430380; comfy-vibe-station#1257)."
+  },
+  {
+   "class_name": "ComfySwitchNode",
+   "node_type": "dinkster.utilities.switch",
+   "difference": "inputs[1].name: 'on_false' vs 'branch'",
+   "reason": "ComfyUI's If/Else Switch opens as the Switch, whose Pick chooses among named branches: switch becomes Pick, on_false the first branch, on_true the second and output Value (comfy-vibe-station#1234 comment 7092430380; comfy-vibe-station#1257)."
+  },
+  {
+   "class_name": "ComfySwitchNode",
+   "node_type": "dinkster.utilities.switch",
+   "difference": "inputs[1].type: {'template_id': 'switch', 'allowed_types': '*'} vs 'inputFamily'",
+   "reason": "ComfyUI's If/Else Switch opens as the Switch, whose Pick chooses among named branches: switch becomes Pick, on_false the first branch, on_true the second and output Value (comfy-vibe-station#1234 comment 7092430380; comfy-vibe-station#1257)."
+  },
+  {
+   "class_name": "ComfySwitchNode",
+   "node_type": "dinkster.utilities.switch",
+   "difference": "outputs[0].name: 'output' vs 'Value'",
+   "reason": "ComfyUI's If/Else Switch opens as the Switch, whose Pick chooses among named branches: switch becomes Pick, on_false the first branch, on_true the second and output Value (comfy-vibe-station#1234 comment 7092430380; comfy-vibe-station#1257)."
+  },
+  {
+   "class_name": "ComfySwitchNode",
+   "node_type": "dinkster.utilities.switch",
+   "difference": "outputs[0].type.template_id: 'switch' vs 'value'",
+   "reason": "ComfyUI's If/Else Switch opens as the Switch, whose Pick chooses among named branches: switch becomes Pick, on_false the first branch, on_true the second and output Value (comfy-vibe-station#1234 comment 7092430380; comfy-vibe-station#1257)."
+  },
+  {
+   "class_name": "ComfySwitchNode",
+   "node_type": "dinkster.utilities.switch",
+   "difference": "display name: 'If/Else Switch' vs 'Switch'",
+   "reason": "ComfyUI's If/Else Switch opens as the Switch, whose Pick chooses among named branches: switch becomes Pick, on_false the first branch, on_true the second and output Value (comfy-vibe-station#1234 comment 7092430380; comfy-vibe-station#1257)."
   }
  ],
  "known": [
