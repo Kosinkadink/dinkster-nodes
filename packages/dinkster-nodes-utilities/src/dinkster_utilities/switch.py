@@ -1,25 +1,56 @@
-"""The Switch, which the engine routes, and ComfyUI's If/Else Switch."""
+"""The Switch, which the engine routes and which ComfyUI's If/Else Switch opens as."""
 
 from __future__ import annotations
 
 from collections.abc import Mapping
 
 from dinkster_api.v1 import (
-    ABSENT,
     CORE_BOOLEAN,
     CORE_COMBO,
     CORE_INT,
     CORE_STRING,
     Group,
     Input,
+    InputFamilyMapping,
+    InputFamilyMember,
+    MappingSource,
     Node,
     NodeSchema,
     Numbered,
     Output,
+    ReplacementCase,
+    ReplacementMigration,
+    ReplacementPredicate,
+    ReplacementRule,
     SelectorSpec,
     TypeExpr,
-    with_identity_replacement,
 )
+
+
+def _if_else_cases() -> tuple[ReplacementCase, ...]:
+    """ComfyUI's If/Else Switch as the Switch: a wired switch picks, a stored
+    true picks the second branch and anything else the first; on_false and
+    on_true become the two branches and output becomes Value."""
+    branches = {
+        "branch": InputFamilyMapping.from_members(
+            InputFamilyMember.build("branch1", inputs={"branch": MappingSource.copy("on_false")}),
+            InputFamilyMember.build("branch2", inputs={"branch": MappingSource.copy("on_true")}),
+        )
+    }
+    return tuple(
+        ReplacementCase.build(
+            "dinkster.utilities.switch",
+            when=when,
+            inputs={"pick": pick},
+            input_families=branches,
+            outputs={"value": "output"},
+        )
+        for when, pick in (
+            (ReplacementPredicate.input_connected("switch"), MappingSource.link("switch")),
+            (ReplacementPredicate.value_equals("switch", True), MappingSource.constant("branch2")),
+            (None, MappingSource.constant("branch1")),
+        )
+    )
 
 
 class Switch(Node):
@@ -65,44 +96,18 @@ class Switch(Node):
             ),
             selector=SelectorSpec("pick", "branch", names="names"),
             search_terms=("If/Else Switch", "If", "Else", "Select", "Route"),
+            # A ComfyUI workflow, and a Dinkster document saved while the If/Else
+            # Switch was its own node. Nothing installed declares either source's inputs.
+            replacements=tuple(
+                ReplacementRule(
+                    source,
+                    _if_else_cases(),
+                    migration=ReplacementMigration(("switch", "on_false", "on_true")),
+                )
+                for source in ("ComfySwitchNode", "dinkster.utilities.comfy_switch_node")
+            ),
         )
 
     @classmethod
     def execute(cls, **_: object) -> Mapping[str, object]:
         raise AssertionError("the engine routes a Switch without running it")
-
-
-class ComfySwitchNode(Node):
-    """ComfyUI's If/Else Switch, kept so its workflows open. Search offers the
-    Switch instead. Only the input the switch names is demanded."""
-
-    @classmethod
-    def define_schema(cls) -> NodeSchema:
-        value_type = TypeExpr.variable("switch")
-        schema = NodeSchema(
-            node_type="dinkster.utilities.comfy_switch_node",
-            display_name="If/Else Switch",
-            category="utilities/logic",
-            body=(
-                Input("switch", TypeExpr.concrete(CORE_BOOLEAN)),
-                Input("on_false", value_type, required=False, lazy=True, on_absent="skip"),
-                Input("on_true", value_type, required=False, lazy=True, on_absent="skip"),
-                Output("output", value_type, optional=True),
-            ),
-            search_visibility="hidden",
-        )
-        return with_identity_replacement(schema, "ComfySwitchNode")
-
-    @classmethod
-    def check_lazy_status(
-        cls, *, switch: bool, on_false: object = ABSENT, on_true: object = ABSENT
-    ) -> tuple[str, ...]:
-        selected = "on_true" if switch else "on_false"
-        return (selected,) if (on_true if switch else on_false) is None else ()
-
-    @classmethod
-    def execute(
-        cls, *, switch: bool, on_false: object = ABSENT, on_true: object = ABSENT
-    ) -> Mapping[str, object]:
-        value = on_true if switch else on_false
-        return cls.outputs(output=ABSENT if value is None else value)
