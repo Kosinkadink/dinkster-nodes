@@ -8,7 +8,7 @@ import pytest
 from dinkster_api.v1 import Item, Members
 from dinkster_caches import MemoryLRUCache
 from dinkster_engine import Engine
-from dinkster_graph import Graph, GraphNode, Link, migrate_node_replacements
+from dinkster_graph import Graph, GraphNode, Link, TypedLiteral, migrate_node_replacements
 from dinkster_schema import build_node_types, build_schemas
 from dinkster_utilities.logic import ComfyAndNode, ComfyNotNode, ComfyOrNode
 from dinkster_utilities.primitive import PrimitiveInt
@@ -84,7 +84,7 @@ def test_an_if_else_switch_opens_as_the_switch_and_demands_only_the_selected_arm
         opened = graph.nodes["switch"]
         assert isinstance(opened, GraphNode)
         assert opened.node_type == "dinkster.utilities.switch"
-        assert opened.inputs["pick"] == ("branch2" if switch else "branch1")
+        assert opened.inputs["pick"] == TypedLiteral("STRING", "branch2" if switch else "branch1")
         for _ in range(2):
             result = await engine.run(graph, ["switch"], cache_enabled=cache_enabled)
             value = result.outputs["switch"]["value"]

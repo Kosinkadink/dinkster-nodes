@@ -102,7 +102,7 @@ def test_an_if_else_switch_opens_as_the_switch_and_demands_only_the_selected_arm
         opened = graph.nodes["switch"]
         assert isinstance(opened, GraphNode)
         assert opened.node_type == "dinkster.utilities.switch"
-        assert opened.inputs["pick"] == ("branch2" if switch else "branch1")
+        assert opened.inputs["pick"] == TypedLiteral("STRING", "branch2" if switch else "branch1")
         for _ in range(2):
             result = await engine.run(graph, ["switch"], cache_enabled=cache_enabled)
             value = result.outputs["switch"]["value"]
