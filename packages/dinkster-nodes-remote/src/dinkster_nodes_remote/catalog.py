@@ -18,6 +18,8 @@ from dinkster_api.v1 import (
     schema_signature,
 )
 
+from .http import async_http_client, http_client
+
 _CACHE_FORMAT = "dinkster.remote.catalog-cache/2"
 
 log = pack_logger("dinkster-nodes-remote")
@@ -275,7 +277,7 @@ class CatalogClient:
         if not self.base_url:
             return self.snapshot
         try:
-            with httpx.Client(timeout=self.timeout) as client:
+            with http_client(timeout=self.timeout) as client:
                 if self.environment:
                     try:
                         self._accept_environment(
@@ -305,7 +307,7 @@ class CatalogClient:
             return None
         previous_token = self._token
         try:
-            async with httpx.AsyncClient(timeout=self.timeout) as client:
+            async with async_http_client(timeout=self.timeout) as client:
                 if self.environment:
                     try:
                         self._accept_environment(
@@ -340,7 +342,7 @@ class CatalogClient:
             return True
         headers = {"If-None-Match": self.epoch_etag} if self.epoch_etag else {}
         try:
-            async with httpx.AsyncClient(timeout=self.timeout) as client:
+            async with async_http_client(timeout=self.timeout) as client:
                 response = await client.get(self.epoch_url, headers=headers)
             if response.status_code == 304:
                 return self.observed_epoch != announced_epoch
