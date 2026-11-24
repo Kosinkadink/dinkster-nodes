@@ -91,7 +91,7 @@ class RecordAudio(LoadAudio):
                 Input(
                     "audio",
                     TypeExpr.concrete(AUDIO_RECORD_TYPE),
-                    widget=CustomWidgetDescriptor("AUDIO_RECORD"),
+                    widget=CustomWidgetDescriptor("AUDIO_RECORD", params={"unfolded": True}),
                 ),
                 Output("AUDIO", _AUDIO),
             ),

@@ -51,6 +51,7 @@ class Load3DAdvanced(Node):
                     "viewport",
                     CustomWidgetDescriptor(
                         "LOAD_3D",
+                        params={"unfolded": True},
                         writes={"state": "viewport_state"},
                         reads={"model_file": "model_file", "width": "width", "height": "height"},
                     ),
