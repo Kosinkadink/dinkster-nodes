@@ -49,7 +49,6 @@ from .primitive import (
     PrimitiveString,
 )
 from .switch import (
-    ComfySwitchNode,
     Switch,
 )
 from .utilities import (
@@ -81,7 +80,6 @@ NODES = (
     PrimitiveBoolean,
     PrimitiveChoice,
     Primitive,
-    ComfySwitchNode,
     Switch,
     ComfyNumberConvert,
     SeedNode,

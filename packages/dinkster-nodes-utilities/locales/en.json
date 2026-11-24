@@ -72,9 +72,6 @@
     "dinkster.utilities.primitive": {
       "displayName": "Primitive"
     },
-    "dinkster.utilities.comfy_switch_node": {
-      "displayName": "If/Else Switch"
-    },
     "dinkster.utilities.switch": {
       "displayName": "Switch"
     },
@@ -182,9 +179,6 @@
     "dinkster.utilities.primitive": [
       "value",
       "constant"
-    ],
-    "dinkster.utilities.comfy_switch_node": [
-      "ComfySwitchNode"
     ],
     "dinkster.utilities.switch": [
       "If/Else Switch",

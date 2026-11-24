@@ -1838,7 +1838,7 @@ def test_image_core_classes_keep_their_native_pack_ownership(name: str) -> None:
 
 @pytest.mark.parametrize(
     "name",
-    ["ComfySwitchNode", "StartLoop", "EndLoop", "LoopIteration", "LoopProgress", "LoopResult"],
+    ["StartLoop", "EndLoop", "LoopIteration", "LoopProgress", "LoopResult"],
 )
 def test_engine_nodes_are_compared_despite_historical_exclusion_metadata(name: str) -> None:
     from tools.compare_nodes import compare_registry
