@@ -96,15 +96,15 @@ class Switch(Node):
             ),
             selector=SelectorSpec("pick", "branch", names="names"),
             search_terms=("If/Else Switch", "If", "Else", "Select", "Route"),
-            replacements=(
-                # A ComfyUI workflow: nothing installed declares the node's inputs.
+            # A ComfyUI workflow, and a Dinkster document saved while the If/Else
+            # Switch was its own node. Nothing installed declares either source's inputs.
+            replacements=tuple(
                 ReplacementRule(
-                    "ComfySwitchNode",
+                    source,
                     _if_else_cases(),
                     migration=ReplacementMigration(("switch", "on_false", "on_true")),
-                ),
-                # A Dinkster document saved while the If/Else Switch was its own node.
-                ReplacementRule("dinkster.utilities.comfy_switch_node", _if_else_cases()),
+                )
+                for source in ("ComfySwitchNode", "dinkster.utilities.comfy_switch_node")
             ),
         )
 
