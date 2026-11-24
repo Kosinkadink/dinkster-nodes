@@ -5,7 +5,6 @@ from dinkster_api.v1 import (
     CLIP_TYPE,
     CLIP_VISION_TYPE,
     CONTROL_NET_TYPE,
-    FLOATS_TYPE,
     HOOK_KEYFRAMES_TYPE,
     HOOKS_TYPE,
     LATENT_UPSCALE_MODEL_TYPE,
@@ -62,10 +61,9 @@ def register_types(registry: TypeRegistry) -> tuple[TypeSpec, ...]:
                 else None,
             )
         )
-    for type_id in (TIMESTEPS_RANGE_TYPE, FLOATS_TYPE):
-        registered.append(
-            registry.spec(type_id)
-            if type_id in registry
-            else register_hook_structural_type(registry, type_id)
-        )
+    registered.append(
+        registry.spec(TIMESTEPS_RANGE_TYPE)
+        if TIMESTEPS_RANGE_TYPE in registry
+        else register_hook_structural_type(registry, TIMESTEPS_RANGE_TYPE)
+    )
     return tuple(registered)

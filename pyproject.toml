@@ -17,10 +17,10 @@ explicit = true
 [tool.uv.sources]
 torch = { index = "pytorch-cpu", marker = "sys_platform != 'darwin'" }
 torchvision = { index = "pytorch-cpu", marker = "sys_platform != 'darwin'" }
-dinkster = { git = "https://github.com/Kosinkadink/Dinkster.git", rev = "031d61ca744cab930bf78806a31b7038ca627758" }
-dinkster-api = { git = "https://github.com/Kosinkadink/Dinkster.git", rev = "031d61ca744cab930bf78806a31b7038ca627758", subdirectory = "packages/dinkster-api" }
-dinkster-engine = { git = "https://github.com/Kosinkadink/Dinkster.git", rev = "031d61ca744cab930bf78806a31b7038ca627758", subdirectory = "packages/dinkster-engine" }
-dinkster-supervisor = { git = "https://github.com/Kosinkadink/Dinkster.git", rev = "031d61ca744cab930bf78806a31b7038ca627758", subdirectory = "packages/dinkster-supervisor" }
+dinkster = { git = "https://github.com/Kosinkadink/Dinkster.git", rev = "aa505413c2374bba35dedd7a0f4760c9950eb8c3" }
+dinkster-api = { git = "https://github.com/Kosinkadink/Dinkster.git", rev = "aa505413c2374bba35dedd7a0f4760c9950eb8c3", subdirectory = "packages/dinkster-api" }
+dinkster-engine = { git = "https://github.com/Kosinkadink/Dinkster.git", rev = "aa505413c2374bba35dedd7a0f4760c9950eb8c3", subdirectory = "packages/dinkster-engine" }
+dinkster-supervisor = { git = "https://github.com/Kosinkadink/Dinkster.git", rev = "aa505413c2374bba35dedd7a0f4760c9950eb8c3", subdirectory = "packages/dinkster-supervisor" }
 
 [tool.uv.workspace]
 members = ["packages/*"]

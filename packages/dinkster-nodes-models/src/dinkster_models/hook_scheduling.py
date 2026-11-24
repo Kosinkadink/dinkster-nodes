@@ -12,7 +12,6 @@ from dinkster_api.v1 import (
     CORE_COMBO,
     CORE_FLOAT,
     CORE_INT,
-    FLOATS_TYPE,
     HOOK_KEYFRAMES_TYPE,
     HOOKS_TYPE,
     ComboOption,
@@ -25,7 +24,6 @@ from dinkster_api.v1 import (
     Section,
     TypeExpr,
     initialize_inference_process,
-    materialize_latent,
     with_identity_replacement,
 )
 
@@ -36,9 +34,6 @@ _COMBO = TypeExpr.concrete(CORE_COMBO)
 
 
 _FLOAT = TypeExpr.concrete(CORE_FLOAT)
-
-
-_FLOATS = TypeExpr.concrete(FLOATS_TYPE)
 
 
 _HOOK_KEYFRAMES = TypeExpr.concrete(HOOK_KEYFRAMES_TYPE)
@@ -97,18 +92,11 @@ def _append_keyframes(
 ) -> Any:
     hooks = _hooks()
     result = _keyframes(previous)
-    if type(strengths) in (int, float):
-        values: Any = (float(strengths),)
-    else:
-        values = materialize_latent(strengths)
-    try:
-        count = len(values)
-    except TypeError as exc:
-        raise TypeError("floats_strength must be a scalar or sized sequence") from exc
+    values = (float(strengths),) if type(strengths) in (int, float) else tuple(strengths)
     percents = hooks.InterpolationMethod.get_weights(
         num_from=start_percent,
         num_to=end_percent,
-        length=count,
+        length=len(values),
         method=hooks.InterpolationMethod.LINEAR,
     )
     for index, (percent, strength) in enumerate(zip(percents, values, strict=True)):
@@ -303,9 +291,10 @@ class CreateHookKeyframesFromFloats(Node):
                 body=(
                     Input(
                         "floats_strength",
-                        _FLOATS,
+                        _FLOAT,
                         default=-1,
                         pin_first=True,
+                        accepts_list=True,
                         widget=NumberWidget(min=-1, step=0.001),
                     ),
                     Input(

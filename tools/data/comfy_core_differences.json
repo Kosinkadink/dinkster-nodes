@@ -1069,6 +1069,30 @@
    "reason": "viewport_state: Becomes a State: no pin, no field and no required mark, kept with the workflow and passed to execute (node master plan section 13, State row; comfy-vibe-station#1101 comment 7058717316). Its editor is an Editor row written where the input stood, and the widget names the rows it writes and reads by today's fixed names, read from the app's editor (node master plan section 2, Editor; comfy-vibe-station#1101 comment 7075165594)."
   },
   {
+   "class_name": "Load3D",
+   "node_type": "dinkster.3d.load3_d",
+   "difference": "outputs[2].name: 'mesh_path' vs 'normal'",
+   "reason": "Outputs: the three pictures, image, mask and normal, come first, and mesh_path, camera_info, recording_video, model_3d and model_3d_info sit in a section, More outputs, that starts closed, so normal moves ahead of mesh_path (comfy-vibe-station#1260, the in-node editors brief, Load 3D outputs). A ComfyUI workflow's links keep their outputs: the importer matches Load3D outputs by name, never by position once an output sits in a section."
+  },
+  {
+   "class_name": "Load3D",
+   "node_type": "dinkster.3d.load3_d",
+   "difference": "outputs[2].type: 'STRING' vs 'IMAGE'",
+   "reason": "Outputs: the three pictures, image, mask and normal, come first, and mesh_path, camera_info, recording_video, model_3d and model_3d_info sit in a section, More outputs, that starts closed, so normal moves ahead of mesh_path (comfy-vibe-station#1260, the in-node editors brief, Load 3D outputs). A ComfyUI workflow's links keep their outputs: the importer matches Load3D outputs by name, never by position once an output sits in a section."
+  },
+  {
+   "class_name": "Load3D",
+   "node_type": "dinkster.3d.load3_d",
+   "difference": "outputs[3].name: 'normal' vs 'mesh_path'",
+   "reason": "Outputs: the three pictures, image, mask and normal, come first, and mesh_path, camera_info, recording_video, model_3d and model_3d_info sit in a section, More outputs, that starts closed, so normal moves ahead of mesh_path (comfy-vibe-station#1260, the in-node editors brief, Load 3D outputs). A ComfyUI workflow's links keep their outputs: the importer matches Load3D outputs by name, never by position once an output sits in a section."
+  },
+  {
+   "class_name": "Load3D",
+   "node_type": "dinkster.3d.load3_d",
+   "difference": "outputs[3].type: 'IMAGE' vs 'STRING'",
+   "reason": "Outputs: the three pictures, image, mask and normal, come first, and mesh_path, camera_info, recording_video, model_3d and model_3d_info sit in a section, More outputs, that starts closed, so normal moves ahead of mesh_path (comfy-vibe-station#1260, the in-node editors brief, Load 3D outputs). A ComfyUI workflow's links keep their outputs: the importer matches Load3D outputs by name, never by position once an output sits in a section."
+  },
+  {
    "class_name": "Preview3DAdvanced",
    "node_type": "dinkster.3d.preview3_d_advanced",
    "difference": "inputs: length 6 vs 5",
@@ -1679,6 +1703,12 @@
    "node_type": "dinkster.utilities.create_list",
    "difference": "inputs[0].max: 10 vs None",
    "reason": "Create List grows by plugging in, with no limit of 10, and every input takes one value or a list of one matched type, so an INT beside a STRING is refused where ComfyUI joins them; the user wants the types matched (comfy-vibe-station#1092 comments 7096077527 and 7096204259)."
+  },
+  {
+   "class_name": "CreateHookKeyframesFromFloats",
+   "node_type": "dinkster.models.create_hook_keyframes_from_floats",
+   "difference": "inputs[0].type: 'FLOATS' vs 'FLOAT'",
+   "reason": "floats_strength takes a list<FLOAT> or a single FLOAT through a list-accepting FLOAT input; Dinkster has no separate FLOATS type (comfy-vibe-station#1272)."
   }
  ],
  "known": [

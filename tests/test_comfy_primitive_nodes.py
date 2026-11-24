@@ -59,7 +59,12 @@ def test_typed_primitive_is_found_by_its_words_and_declares_its_limits(
     assert [row["id"] for row in rows] == limits
     assert all(row["required"] is False and row["type"] == value_type for row in rows)
     output = body[2]
-    assert output["knownValue"] == {"input": "value"}
+    # The known value names its limit fields, so the editor knows which ones to show and pin.
+    names = {"minimum": "min", "maximum": "max", "step": "step", "default": "default"}
+    assert output["knownValue"] == {
+        "input": "value",
+        "limits": {names[limit]: limit for limit in limits},
+    }
     assert output["type"] == value_type
 
 
