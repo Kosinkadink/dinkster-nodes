@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import asyncio
+import json
+import os
 from collections.abc import Mapping
 from fractions import Fraction
 from io import BytesIO
@@ -16,16 +18,23 @@ import torch
 from dinkster_3d import register_types
 from dinkster_3d.load3d_captures import Load3D
 from dinkster_api.v1 import (
+    ASSET_TYPE,
+    CORE_STRING,
     LOAD_3D_TYPE,
     AbsentOutput,
     AssetRef,
     AssetVault,
+    Input,
+    Node,
+    NodeSchema,
+    Output,
+    TypeExpr,
     digest_bytes,
     effective_video_facts,
 )
 from dinkster_assets import LibraryStore, LocalAssetRef, MountDef, MountTable
 from dinkster_engine import EngineEvent
-from dinkster_graph import Graph, GraphNode, TypedLiteral
+from dinkster_graph import Graph, GraphNode, Link, TypedLiteral
 from dinkster_server.library import ServerLibrary
 from dinkster_server.preflight import bind_model_names
 from dinkster_values import ABSENT_REASON_META_KEY, TypeRegistry, register_core_types
@@ -142,6 +151,24 @@ def test_load3d_retains_recorded_video_source_and_timing(captures) -> None:
     assert recording.read_bytes() == data
 
 
+class ModelSource(Node):
+    """Gives a model on a wire during the run, as a producer upstream of Load 3D would."""
+
+    @classmethod
+    def define_schema(cls) -> NodeSchema:
+        return NodeSchema(
+            "model-source.make",
+            body=(
+                Input("reference", TypeExpr.concrete(CORE_STRING)),
+                Output("model", TypeExpr.concrete(ASSET_TYPE)),
+            ),
+        )
+
+    @classmethod
+    def execute(cls, *, reference: str) -> Mapping[str, object]:
+        return cls.outputs(model=AssetRef.from_wire(json.loads(reference)))
+
+
 EARLIER = "These pictures show an earlier view. Queue the run from the editor to take new ones."
 NOT_DRAWN = (
     "No pictures: the view was not drawn before this run. That happens when the model "
@@ -158,6 +185,7 @@ NOT_DRAWN = (
         ("same view, local model by reference", None),
         ("other model of the same name", EARLIER),
         ("no pictures", NOT_DRAWN),
+        ("no pictures, model by a wire", NOT_DRAWN),
         ("no pictures, no model", "No pictures: no model is chosen."),
     ],
 )
@@ -211,21 +239,37 @@ def test_load3d_run_warns_on_earlier_view_and_gives_nothing_without_pictures(
     if case == "other model of the same name":
         # The pictures were drawn from another file that has the same name.
         pictured["model_file"] = {**reference, "digest": digest_bytes(b"another scene")}
+    nodes: dict[str, GraphNode] = {}
+    fixtures: tuple[Path, ...] = ()
+    if case == "no pictures, model by a wire":
+        nodes["model"] = GraphNode("model-source.make", {"reference": json.dumps(reference)})
+        selection = Link("model", "model")
+        (tmp_path / "model_source_pack.py").write_text(
+            "from test_load3d_captures_torch import ModelSource\n"
+            "from dinkster_3d import register_types\n"
+            "NODES=(ModelSource,)\n",
+            encoding="ascii",
+        )
+        fixtures = (tmp_path / "model-source.toml",)
+        fixtures[0].write_text(
+            '[pack]\nname="model-source"\npublisher="dinkster"\n'
+            'namespaces=["model-source"]\n[pack.entry]\n'
+            'nodes="model_source_pack:NODES"\ntypes="model_source_pack:register_types"\n',
+            encoding="ascii",
+        )
+        environment["PYTHONPATH"] = os.pathsep.join((str(tmp_path), str(Path(__file__).parent)))
     schema = Load3D.define_schema()
+    nodes["load"] = GraphNode(
+        schema.node_type,
+        {
+            "model_file": selection,
+            "image": TypedLiteral(LOAD_3D_TYPE, value),
+            "width": 37,
+            "height": 91,
+        },
+    )
     graph, missing = bind_model_names(
-        Graph(
-            {
-                "load": GraphNode(
-                    schema.node_type,
-                    {
-                        "model_file": selection,
-                        "image": TypedLiteral(LOAD_3D_TYPE, value),
-                        "width": 37,
-                        "height": 91,
-                    },
-                )
-            }
-        ),
+        Graph(nodes),
         {schema.node_type: schema},
         ServerLibrary(
             AssetVault(tmp_path / "vault"),
@@ -242,7 +286,7 @@ def test_load3d_run_warns_on_earlier_view_and_gives_nothing_without_pictures(
         register_types(registry)
         composer = ServingComposer(registry=registry, worker_env=environment)
         try:
-            for spec in geometry_pack_specs(in_process=True):
+            for spec in geometry_pack_specs(*fixtures, in_process=True):
                 await composer.add_pack(spec)
             result = await composer.composition.make_engine(events.append).run(graph, ["load"])
             out = result.outputs["load"]
