@@ -1319,16 +1319,18 @@ requires-dist = [
 
 [[package]]
 name = "dinkster-nodes-remote"
-version = "0.0.12"
+version = "0.0.14"
 source = { editable = "packages/dinkster-nodes-remote" }
 dependencies = [
     { name = "dinkster-api" },
+    { name = "httpcore" },
     { name = "httpx" },
 ]
 
 [package.metadata]
 requires-dist = [
     { name = "dinkster-api", git = "https://github.com/Kosinkadink/Dinkster.git?subdirectory=packages%2Fdinkster-api&rev=fc49c917fbba9053fb282e16b009540503434080" },
+    { name = "httpcore", specifier = ">=1.0.9,<2" },
     { name = "httpx", specifier = ">=0.28,<1" },
 ]
 

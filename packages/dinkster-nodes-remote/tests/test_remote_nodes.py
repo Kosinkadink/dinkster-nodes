@@ -2,10 +2,13 @@ from __future__ import annotations
 
 import asyncio
 import base64
+import hashlib
 import json
+import ssl
+import sys
 import uuid
 from collections.abc import Mapping
-from dataclasses import replace
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import cast
 
@@ -28,7 +31,7 @@ from dinkster_api.v1 import (
     schema_to_wire,
 )
 from dinkster_graph import Graph, GraphNode
-from dinkster_nodes_remote.catalog import CatalogError, parse_catalog
+from dinkster_nodes_remote.catalog import CatalogClient, CatalogError, parse_catalog
 from dinkster_nodes_remote.runtime import (
     GatewayError,
     RemoteConfig,
@@ -97,7 +100,13 @@ def config(base_url: str, cache: Path, *, token: str = "session-token") -> Remot
 
 
 class FakeGateway:
-    def __init__(self, *schemas: NodeSchema, recording: Mapping[str, object] | None = None) -> None:
+    def __init__(
+        self,
+        *schemas: NodeSchema,
+        recording: Mapping[str, object] | None = None,
+        tls: ssl.SSLContext | None = None,
+    ) -> None:
+        self.tls = tls
         self.schemas = schemas or (remote_schema(),)
         self.recording = recording
         self.epoch = 1
@@ -120,6 +129,7 @@ class FakeGateway:
         self.catalog_headers: list[str | None] = []
         self.catalog_authorizations: list[str | None] = []
         self.catalog_scopes: dict[str, tuple[NodeSchema, ...]] | None = None
+        self.accepted_token = "session-token"
         self.epoch_headers: list[str | None] = []
         self.download_authorizations: list[str | None] = []
         self.downloads: list[str] = []
@@ -154,11 +164,12 @@ class FakeGateway:
         app.router.add_get("/v1/downloads/{job_id}/{name}", self._download_recorded)
         self._runner = web.AppRunner(app)
         await self._runner.setup()
-        site = web.TCPSite(self._runner, "127.0.0.1", 0)
+        site = web.TCPSite(self._runner, "127.0.0.1", 0, ssl_context=self.tls)
         await site.start()
         assert self._runner.addresses
         port = int(self._runner.addresses[0][1])
-        self.base_url = f"http://127.0.0.1:{port}"
+        scheme = "https" if self.tls is not None else "http"
+        self.base_url = f"{scheme}://127.0.0.1:{port}"
         return self
 
     async def __aexit__(self, *_args: object) -> None:
@@ -175,7 +186,7 @@ class FakeGateway:
         if request.path != "/v1/jobs" or request.method != "POST":
             assert "X-Dinkster-Partner-Mode" not in request.headers
             assert "X-Dinkster-Fake-Outcome" not in request.headers
-        if request.headers.get("Authorization") == "Bearer session-token":
+        if request.headers.get("Authorization") == f"Bearer {self.accepted_token}":
             return None
         return web.json_response(
             {
@@ -867,6 +878,134 @@ def test_upload_submit_poll_preview_and_verified_vault_round_trip(
     asyncio.run(scenario())
 
 
+@pytest.mark.parametrize("proxy_kind", ["unix", "tcp"])
+def test_host_proxy_carries_catalog_and_jobs_without_direct_fallback(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, proxy_kind: str
+) -> None:
+    if proxy_kind == "unix" and sys.platform == "win32":
+        pytest.skip("Windows host uses the authenticated TCP proxy")
+    certificate = Path(__file__).resolve().parents[3] / "tests/tls/service-cert.pem"
+    tls = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+    tls.load_cert_chain(certificate, certificate.with_name("service-key.pem"))
+    monkeypatch.setenv("SSL_CERT_FILE", str(certificate))
+    monkeypatch.setenv("NO_PROXY", "*")
+    monkeypatch.setenv("HTTPS_PROXY", "http://127.0.0.1:1")
+    monkeypatch.setenv("DINKSTER_ASSET_VAULT", str(tmp_path / "output-vault"))
+
+    async def scenario() -> None:
+        async with FakeGateway(tls=tls) as gateway:
+            port = int(gateway.base_url.rsplit(":", 1)[1])
+            attempts: list[str] = []
+            denied = False
+
+            async def relay(reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
+                try:
+                    while chunk := await reader.read(65536):
+                        writer.write(chunk)
+                        await writer.drain()
+                finally:
+                    writer.close()
+                    await writer.wait_closed()
+
+            async def connect(reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
+                head = await reader.readuntil(b"\r\n\r\n")
+                method, target, _ = head.split(b"\r\n", 1)[0].decode().split()
+                assert method == "CONNECT"
+                attempts.append(target)
+                if proxy_kind == "tcp":
+                    assert b"Proxy-Authorization: Basic ZGlua3N0ZXI6cHJveHktdGVzdA==" in head
+                if denied or target != f"localhost:{port}":
+                    writer.write(b"HTTP/1.1 403 Forbidden\r\nContent-Length: 0\r\n\r\n")
+                    await writer.drain()
+                    writer.close()
+                    await writer.wait_closed()
+                    return
+                upstream, upstream_writer = await asyncio.open_connection("127.0.0.1", port)
+                writer.write(b"HTTP/1.1 200 Connection Established\r\n\r\n")
+                await writer.drain()
+                await asyncio.gather(relay(reader, upstream_writer), relay(upstream, writer))
+
+            async def exercise() -> None:
+                nonlocal denied
+                gateway.base_url = f"https://localhost:{port}"
+                gateway.submit_failures = 1
+                runtime = await asyncio.to_thread(
+                    RemoteRuntime, config(gateway.base_url, tmp_path / "proxy-catalog.json")
+                )
+                assert len(runtime.snapshot.schemas) == 1
+                public_catalog = CatalogClient(
+                    gateway.base_url, None, timeout=1, auth_token=lambda: ""
+                )
+                assert len((await asyncio.to_thread(public_catalog.startup)).schemas) == 1
+                assert await public_catalog.changed(0)
+                assert gateway.epoch_headers == [None]
+                assert await runtime.catalog.refresh(conditional=False) is not None
+                source = input_asset(tmp_path / "input-vault")
+                result = await runtime.invoke(
+                    runtime.snapshot.schemas[0], {"prompt": "proxied", "source": source}
+                )
+                output = result["image"]
+                assert isinstance(output, AssetRef)
+                assert output.read_bytes() == gateway.output_bytes
+                assert gateway.uploads == [(source.digest, b"input image")]
+                assert len(gateway.submissions) == 2
+                assert gateway.polled.is_set()
+                assert gateway.download_authorizations == [None, None]
+                assert attempts
+                monkeypatch.delenv("SSL_CERT_FILE")
+                untrusted = await asyncio.to_thread(
+                    RemoteRuntime, config(gateway.base_url, tmp_path / "untrusted-catalog.json")
+                )
+                assert untrusted.snapshot.schemas == ()
+                previous = len(gateway.submissions)
+                with pytest.raises(GatewayError):
+                    await runtime.invoke(runtime.snapshot.schemas[0], {"prompt": "untrusted"})
+                assert len(gateway.submissions) == previous
+                monkeypatch.setenv("SSL_CERT_FILE", str(certificate))
+                gateway.run_forever = True
+                gateway.polled.clear()
+                task = asyncio.create_task(
+                    runtime.invoke(runtime.snapshot.schemas[0], {"prompt": "cancel"})
+                )
+                await asyncio.wait_for(gateway.polled.wait(), timeout=5)
+                task.cancel()
+                with pytest.raises(asyncio.CancelledError):
+                    await task
+                assert gateway.cancelled.is_set()
+                denied = True
+                previous = len(gateway.submissions)
+                with pytest.raises(GatewayError):
+                    await runtime.invoke(runtime.snapshot.schemas[0], {"prompt": "denied"})
+                assert len(gateway.submissions) == previous
+                blocked = await asyncio.to_thread(
+                    RemoteRuntime, config(gateway.base_url, tmp_path / "denied-catalog.json")
+                )
+                assert blocked.snapshot.schemas == ()
+                assert set(attempts) == {f"localhost:{port}"}
+
+            if proxy_kind == "unix" and sys.platform != "win32":
+                # Linux limits socket names to 107 bytes, including the pytest root.
+                import tempfile
+
+                with tempfile.TemporaryDirectory(prefix="dk-remote-proxy-") as directory:
+                    socket_path = Path(directory) / "proxy.sock"
+                    server = await asyncio.start_unix_server(connect, socket_path)
+                    monkeypatch.setenv("DINKSTER_EGRESS_PROXY", str(socket_path))
+                    async with server:
+                        await exercise()
+            else:
+                server = await asyncio.start_server(connect, "127.0.0.1", 0)
+                proxy_port = int(server.sockets[0].getsockname()[1])
+                monkeypatch.setenv(
+                    "DINKSTER_EGRESS_PROXY",
+                    f"http://dinkster:proxy-test@127.0.0.1:{proxy_port}",
+                )
+                async with server:
+                    await exercise()
+
+    asyncio.run(scenario())
+
+
 def test_digest_mismatch_never_enters_the_vault(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -945,6 +1084,97 @@ def test_logged_out_invocation_fails_before_gateway_submission(
                 await runtime.invoke(runtime.snapshot.schemas[0], {"prompt": "hello"})
             assert raised.value.code == "unauthenticated"
             assert gateway.submissions == []
+
+    asyncio.run(scenario())
+
+
+@dataclass(frozen=True)
+class ProjectRunContext(ExecutionContext):
+    job_ref: str | None = None
+
+
+def test_project_run_credentials_isolate_concurrent_jobs_and_refresh_before_polling(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    async def scenario() -> None:
+        directory = tmp_path / "runs"
+        directory.mkdir()
+        files = {
+            run: directory / hashlib.sha256(run.encode()).hexdigest() for run in ("film", "other")
+        }
+        for run, path in files.items():
+            path.write_text(run, encoding="utf-8")
+        authorizations: list[tuple[str, str]] = []
+
+        class ProjectGateway(FakeGateway):
+            def _authorized(self, request: web.Request) -> web.Response | None:
+                bearer = request.headers.get("Authorization", "")
+                authorizations.append((request.method, bearer))
+                assert bearer in {
+                    "Bearer film",
+                    "Bearer other",
+                    "Bearer film-next",
+                    "Bearer other-next",
+                }
+                if request.method == "GET":
+                    assert bearer.endswith("-next")
+                return None
+
+            async def _submit(self, request: web.Request) -> web.Response:
+                body = await request.json()
+                run = body["inputs"]["prompt"]
+                assert request.headers["Authorization"] == f"Bearer {run}"
+                response = await super()._submit(request)
+                files[run].write_text(f"{run}-next", encoding="utf-8")
+                return response
+
+        async with ProjectGateway() as gateway:
+            legacy = tmp_path / "legacy"
+            legacy.write_text("must-not-be-used", encoding="utf-8")
+            selected = replace(
+                config(gateway.base_url, tmp_path / "catalog.json", token="must-not-be-used"),
+                token_file=legacy,
+                run_token_directory=directory,
+            )
+            runtime = await asyncio.to_thread(RemoteRuntime, selected)
+            assert gateway.catalog_authorizations == [None]
+            monkeypatch.setenv("DINKSTER_ASSET_VAULT", str(tmp_path / "vault"))
+            source = input_asset(tmp_path / "inputs")
+
+            async def invoke(run: str) -> Mapping[str, object]:
+                with use_execution_context(ProjectRunContext(None, None, job_ref=run)):
+                    return await runtime.invoke(
+                        runtime.snapshot.schemas[0], {"prompt": run, "source": source}
+                    )
+
+            results = await asyncio.gather(invoke("film"), invoke("other"))
+            for result in results:
+                assert cast(AssetRef, result["image"]).read_bytes() == gateway.output_bytes
+            assert sorted(authorizations) == sorted(
+                [
+                    ("POST", "Bearer film"),
+                    ("POST", "Bearer film"),
+                    ("GET", "Bearer film-next"),
+                    ("POST", "Bearer other"),
+                    ("POST", "Bearer other"),
+                    ("GET", "Bearer other-next"),
+                ]
+            )
+            assert gateway.download_authorizations and not any(gateway.download_authorizations)
+            with pytest.raises(GatewayError, match="project-bound run"):
+                await runtime.invoke(runtime.snapshot.schemas[0], {"prompt": "no context"})
+            for run, empty in (("film", True), ("other", False)):
+                if empty:
+                    files[run].write_text("", encoding="utf-8")
+                else:
+                    files[run].unlink()
+                with pytest.raises(GatewayError, match="token"):
+                    await invoke(run)
+            assert len(gateway.submissions) == 2
+            assert legacy.read_text() == "must-not-be-used"
+            assert selected.auth_token(required=False) == ""
+            parsed = RemoteConfig.from_env({"DINKSTER_REMOTE_RUN_TOKEN_DIRECTORY": str(directory)})
+            assert parsed.run_token_directory == directory
 
     asyncio.run(scenario())
 
@@ -1039,25 +1269,39 @@ def test_production_gateway_cannot_redirect_downloads_to_loopback(
         runtime._download_identity(descriptor, "remote output")  # pyright: ignore[reportPrivateUsage]
 
 
+@pytest.mark.parametrize("project_run", [False, True])
 def test_execution_context_cancellation_deletes_the_remote_job(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, project_run: bool
 ) -> None:
     async def scenario() -> None:
         async with FakeGateway() as gateway:
             gateway.run_forever = True
+            directory = tmp_path / "run-tokens"
+            directory.mkdir()
+            run_token = directory / hashlib.sha256(b"cancel-run").hexdigest()
+            run_token.write_text("session-token", encoding="utf-8")
             runtime = await asyncio.to_thread(
-                RemoteRuntime, config(gateway.base_url, tmp_path / "catalog.json")
+                RemoteRuntime,
+                replace(
+                    config(gateway.base_url, tmp_path / "catalog.json"),
+                    run_token_directory=directory if project_run else None,
+                ),
             )
             monkeypatch.setenv("DINKSTER_ASSET_VAULT", str(tmp_path / "vault"))
             cancel_requested = asyncio.Event()
             with use_execution_context(
-                ExecutionContext("native", None, cancelled=cancel_requested.is_set)
+                ProjectRunContext(
+                    "native", None, cancelled=cancel_requested.is_set, job_ref="cancel-run"
+                )
             ):
                 task = asyncio.create_task(
                     runtime.invoke(runtime.snapshot.schemas[0], {"prompt": "hello"})
                 )
             await asyncio.wait_for(gateway.submitted.wait(), 1)
             await asyncio.wait_for(gateway.polled.wait(), 1)
+            if project_run:
+                gateway.accepted_token = "cancel-token"
+                run_token.write_text("cancel-token", encoding="utf-8")
             cancel_requested.set()
             with pytest.raises(RuntimeError, match="cancelled by the client"):
                 await task
