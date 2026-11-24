@@ -840,7 +840,7 @@ wheels = [
 [[package]]
 name = "dinkster"
 version = "0.0.17"
-source = { git = "https://github.com/Kosinkadink/Dinkster.git?rev=31abbefc0c6440a450b5b1af01c53d398da0cccb#31abbefc0c6440a450b5b1af01c53d398da0cccb" }
+source = { git = "https://github.com/Kosinkadink/Dinkster.git?rev=6e5feddae4516f14f3b361e791c2e44213682c90#6e5feddae4516f14f3b361e791c2e44213682c90" }
 dependencies = [
     { name = "aiohttp" },
     { name = "blake3" },
@@ -886,7 +886,7 @@ numba = [
 
 [package.metadata]
 requires-dist = [
-    { name = "dinkster-api", git = "https://github.com/Kosinkadink/Dinkster.git?subdirectory=packages%2Fdinkster-api&rev=31abbefc0c6440a450b5b1af01c53d398da0cccb" },
+    { name = "dinkster-api", git = "https://github.com/Kosinkadink/Dinkster.git?subdirectory=packages%2Fdinkster-api&rev=6e5feddae4516f14f3b361e791c2e44213682c90" },
     { name = "dinkster-image", editable = "packages/dinkster-nodes-image" },
     { name = "dinkster-inference" },
     { name = "numba", marker = "extra == 'numba'", specifier = ">=0.67" },
@@ -913,7 +913,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "dinkster-api", git = "https://github.com/Kosinkadink/Dinkster.git?subdirectory=packages%2Fdinkster-api&rev=31abbefc0c6440a450b5b1af01c53d398da0cccb" },
+    { name = "dinkster-api", git = "https://github.com/Kosinkadink/Dinkster.git?subdirectory=packages%2Fdinkster-api&rev=6e5feddae4516f14f3b361e791c2e44213682c90" },
     { name = "dinkster-inference" },
     { name = "pillow", specifier = ">=10" },
     { name = "torch", marker = "sys_platform != 'darwin'", index = "https://download.pytorch.org/whl/cpu" },
@@ -923,7 +923,7 @@ requires-dist = [
 [[package]]
 name = "dinkster-api"
 version = "0.0.17"
-source = { git = "https://github.com/Kosinkadink/Dinkster.git?subdirectory=packages%2Fdinkster-api&rev=31abbefc0c6440a450b5b1af01c53d398da0cccb#31abbefc0c6440a450b5b1af01c53d398da0cccb" }
+source = { git = "https://github.com/Kosinkadink/Dinkster.git?subdirectory=packages%2Fdinkster-api&rev=6e5feddae4516f14f3b361e791c2e44213682c90#6e5feddae4516f14f3b361e791c2e44213682c90" }
 dependencies = [
     { name = "aiohttp" },
     { name = "alembic" },
@@ -957,7 +957,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "av", specifier = ">=14" },
-    { name = "dinkster-api", git = "https://github.com/Kosinkadink/Dinkster.git?subdirectory=packages%2Fdinkster-api&rev=31abbefc0c6440a450b5b1af01c53d398da0cccb" },
+    { name = "dinkster-api", git = "https://github.com/Kosinkadink/Dinkster.git?subdirectory=packages%2Fdinkster-api&rev=6e5feddae4516f14f3b361e791c2e44213682c90" },
     { name = "dinkster-inference" },
     { name = "numpy", specifier = ">=1.26" },
     { name = "torch", marker = "sys_platform != 'darwin'", index = "https://download.pytorch.org/whl/cpu" },
@@ -978,7 +978,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "dinkster-api", git = "https://github.com/Kosinkadink/Dinkster.git?subdirectory=packages%2Fdinkster-api&rev=31abbefc0c6440a450b5b1af01c53d398da0cccb" },
+    { name = "dinkster-api", git = "https://github.com/Kosinkadink/Dinkster.git?subdirectory=packages%2Fdinkster-api&rev=6e5feddae4516f14f3b361e791c2e44213682c90" },
     { name = "dinkster-inference" },
     { name = "dinkster-pack-helpers", editable = "packages/dinkster-pack-helpers" },
     { name = "torch", marker = "sys_platform != 'darwin'", index = "https://download.pytorch.org/whl/cpu" },
@@ -1001,7 +1001,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "dinkster-api", git = "https://github.com/Kosinkadink/Dinkster.git?subdirectory=packages%2Fdinkster-api&rev=31abbefc0c6440a450b5b1af01c53d398da0cccb" },
+    { name = "dinkster-api", git = "https://github.com/Kosinkadink/Dinkster.git?subdirectory=packages%2Fdinkster-api&rev=6e5feddae4516f14f3b361e791c2e44213682c90" },
     { name = "dinkster-inference" },
     { name = "dinkster-latent", editable = "packages/dinkster-nodes-latent" },
     { name = "dinkster-pack-helpers", editable = "packages/dinkster-pack-helpers" },
@@ -1024,7 +1024,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "dinkster-api", git = "https://github.com/Kosinkadink/Dinkster.git?subdirectory=packages%2Fdinkster-api&rev=31abbefc0c6440a450b5b1af01c53d398da0cccb" },
+    { name = "dinkster-api", git = "https://github.com/Kosinkadink/Dinkster.git?subdirectory=packages%2Fdinkster-api&rev=6e5feddae4516f14f3b361e791c2e44213682c90" },
     { name = "dinkster-inference" },
     { name = "dinkster-pack-helpers", editable = "packages/dinkster-pack-helpers" },
     { name = "torch", marker = "sys_platform != 'darwin'", index = "https://download.pytorch.org/whl/cpu" },
@@ -1034,7 +1034,7 @@ requires-dist = [
 [[package]]
 name = "dinkster-engine"
 version = "0.0.17"
-source = { git = "https://github.com/Kosinkadink/Dinkster.git?subdirectory=packages%2Fdinkster-engine&rev=31abbefc0c6440a450b5b1af01c53d398da0cccb#31abbefc0c6440a450b5b1af01c53d398da0cccb" }
+source = { git = "https://github.com/Kosinkadink/Dinkster.git?subdirectory=packages%2Fdinkster-engine&rev=6e5feddae4516f14f3b361e791c2e44213682c90#6e5feddae4516f14f3b361e791c2e44213682c90" }
 dependencies = [
     { name = "dinkster-api" },
 ]
@@ -1053,7 +1053,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "dinkster-api", git = "https://github.com/Kosinkadink/Dinkster.git?subdirectory=packages%2Fdinkster-api&rev=31abbefc0c6440a450b5b1af01c53d398da0cccb" },
+    { name = "dinkster-api", git = "https://github.com/Kosinkadink/Dinkster.git?subdirectory=packages%2Fdinkster-api&rev=6e5feddae4516f14f3b361e791c2e44213682c90" },
     { name = "dinkster-inference" },
     { name = "dinkster-pack-helpers", editable = "packages/dinkster-pack-helpers" },
     { name = "torch", marker = "sys_platform != 'darwin'", index = "https://download.pytorch.org/whl/cpu" },
@@ -1074,7 +1074,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "dinkster-api", git = "https://github.com/Kosinkadink/Dinkster.git?subdirectory=packages%2Fdinkster-api&rev=31abbefc0c6440a450b5b1af01c53d398da0cccb" },
+    { name = "dinkster-api", git = "https://github.com/Kosinkadink/Dinkster.git?subdirectory=packages%2Fdinkster-api&rev=6e5feddae4516f14f3b361e791c2e44213682c90" },
     { name = "dinkster-inference" },
     { name = "dinkster-pack-helpers", editable = "packages/dinkster-pack-helpers" },
     { name = "torch", marker = "sys_platform != 'darwin'", index = "https://download.pytorch.org/whl/cpu" },
@@ -1095,7 +1095,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "dinkster-api", git = "https://github.com/Kosinkadink/Dinkster.git?subdirectory=packages%2Fdinkster-api&rev=31abbefc0c6440a450b5b1af01c53d398da0cccb" },
+    { name = "dinkster-api", git = "https://github.com/Kosinkadink/Dinkster.git?subdirectory=packages%2Fdinkster-api&rev=6e5feddae4516f14f3b361e791c2e44213682c90" },
     { name = "dinkster-inference" },
     { name = "dinkster-pack-helpers", editable = "packages/dinkster-pack-helpers" },
     { name = "torch", marker = "sys_platform != 'darwin'", index = "https://download.pytorch.org/whl/cpu" },
@@ -1127,7 +1127,7 @@ dependencies = [
 requires-dist = [
     { name = "av", specifier = "==18.1.0" },
     { name = "comfy-angle", marker = "platform_machine == 'arm64' or sys_platform != 'darwin'", specifier = "==0.1.1" },
-    { name = "dinkster-api", git = "https://github.com/Kosinkadink/Dinkster.git?subdirectory=packages%2Fdinkster-api&rev=31abbefc0c6440a450b5b1af01c53d398da0cccb" },
+    { name = "dinkster-api", git = "https://github.com/Kosinkadink/Dinkster.git?subdirectory=packages%2Fdinkster-api&rev=6e5feddae4516f14f3b361e791c2e44213682c90" },
     { name = "dinkster-inference" },
     { name = "kornia" },
     { name = "numpy", specifier = ">=1.26" },
@@ -1197,7 +1197,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "dinkster-api", git = "https://github.com/Kosinkadink/Dinkster.git?subdirectory=packages%2Fdinkster-api&rev=31abbefc0c6440a450b5b1af01c53d398da0cccb" },
+    { name = "dinkster-api", git = "https://github.com/Kosinkadink/Dinkster.git?subdirectory=packages%2Fdinkster-api&rev=6e5feddae4516f14f3b361e791c2e44213682c90" },
     { name = "dinkster-inference" },
     { name = "safetensors" },
     { name = "torch", marker = "sys_platform != 'darwin'", index = "https://download.pytorch.org/whl/cpu" },
@@ -1216,7 +1216,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "dinkster-api", git = "https://github.com/Kosinkadink/Dinkster.git?subdirectory=packages%2Fdinkster-api&rev=31abbefc0c6440a450b5b1af01c53d398da0cccb" },
+    { name = "dinkster-api", git = "https://github.com/Kosinkadink/Dinkster.git?subdirectory=packages%2Fdinkster-api&rev=6e5feddae4516f14f3b361e791c2e44213682c90" },
     { name = "torch", marker = "sys_platform != 'darwin'", index = "https://download.pytorch.org/whl/cpu" },
     { name = "torch", marker = "sys_platform == 'darwin'" },
 ]
@@ -1240,7 +1240,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "av", specifier = ">=14" },
-    { name = "dinkster-api", git = "https://github.com/Kosinkadink/Dinkster.git?subdirectory=packages%2Fdinkster-api&rev=31abbefc0c6440a450b5b1af01c53d398da0cccb" },
+    { name = "dinkster-api", git = "https://github.com/Kosinkadink/Dinkster.git?subdirectory=packages%2Fdinkster-api&rev=6e5feddae4516f14f3b361e791c2e44213682c90" },
     { name = "dinkster-inference" },
     { name = "dinkster-latent", editable = "packages/dinkster-nodes-latent" },
     { name = "dinkster-llm", editable = "packages/dinkster-nodes-llm" },
@@ -1264,7 +1264,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "dinkster-api", git = "https://github.com/Kosinkadink/Dinkster.git?subdirectory=packages%2Fdinkster-api&rev=31abbefc0c6440a450b5b1af01c53d398da0cccb" },
+    { name = "dinkster-api", git = "https://github.com/Kosinkadink/Dinkster.git?subdirectory=packages%2Fdinkster-api&rev=6e5feddae4516f14f3b361e791c2e44213682c90" },
     { name = "dinkster-inference" },
     { name = "dinkster-pack-helpers", editable = "packages/dinkster-pack-helpers" },
     { name = "torch", marker = "sys_platform != 'darwin'", index = "https://download.pytorch.org/whl/cpu" },
@@ -1286,7 +1286,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "dinkster-api", git = "https://github.com/Kosinkadink/Dinkster.git?subdirectory=packages%2Fdinkster-api&rev=31abbefc0c6440a450b5b1af01c53d398da0cccb" },
+    { name = "dinkster-api", git = "https://github.com/Kosinkadink/Dinkster.git?subdirectory=packages%2Fdinkster-api&rev=6e5feddae4516f14f3b361e791c2e44213682c90" },
     { name = "dinkster-inference" },
     { name = "dinkster-pack-helpers", editable = "packages/dinkster-pack-helpers" },
     { name = "dinkster-qwen", editable = "packages/dinkster-nodes-qwen" },
@@ -1310,7 +1310,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "comfy-kitchen" },
-    { name = "dinkster-api", git = "https://github.com/Kosinkadink/Dinkster.git?subdirectory=packages%2Fdinkster-api&rev=31abbefc0c6440a450b5b1af01c53d398da0cccb" },
+    { name = "dinkster-api", git = "https://github.com/Kosinkadink/Dinkster.git?subdirectory=packages%2Fdinkster-api&rev=6e5feddae4516f14f3b361e791c2e44213682c90" },
     { name = "dinkster-inference" },
     { name = "dinkster-pack-helpers", editable = "packages/dinkster-pack-helpers" },
     { name = "torch", marker = "sys_platform != 'darwin'", index = "https://download.pytorch.org/whl/cpu" },
@@ -1328,7 +1328,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "dinkster-api", git = "https://github.com/Kosinkadink/Dinkster.git?subdirectory=packages%2Fdinkster-api&rev=31abbefc0c6440a450b5b1af01c53d398da0cccb" },
+    { name = "dinkster-api", git = "https://github.com/Kosinkadink/Dinkster.git?subdirectory=packages%2Fdinkster-api&rev=6e5feddae4516f14f3b361e791c2e44213682c90" },
     { name = "httpx", specifier = ">=0.28,<1" },
 ]
 
@@ -1358,9 +1358,9 @@ dev = [
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "dinkster", git = "https://github.com/Kosinkadink/Dinkster.git?rev=31abbefc0c6440a450b5b1af01c53d398da0cccb" },
-    { name = "dinkster-engine", git = "https://github.com/Kosinkadink/Dinkster.git?subdirectory=packages%2Fdinkster-engine&rev=31abbefc0c6440a450b5b1af01c53d398da0cccb" },
-    { name = "dinkster-supervisor", git = "https://github.com/Kosinkadink/Dinkster.git?subdirectory=packages%2Fdinkster-supervisor&rev=31abbefc0c6440a450b5b1af01c53d398da0cccb" },
+    { name = "dinkster", git = "https://github.com/Kosinkadink/Dinkster.git?rev=6e5feddae4516f14f3b361e791c2e44213682c90" },
+    { name = "dinkster-engine", git = "https://github.com/Kosinkadink/Dinkster.git?subdirectory=packages%2Fdinkster-engine&rev=6e5feddae4516f14f3b361e791c2e44213682c90" },
+    { name = "dinkster-supervisor", git = "https://github.com/Kosinkadink/Dinkster.git?subdirectory=packages%2Fdinkster-supervisor&rev=6e5feddae4516f14f3b361e791c2e44213682c90" },
     { name = "hypothesis", specifier = ">=6" },
     { name = "numba", specifier = ">=0.67" },
     { name = "pyright", specifier = ">=1.1.390" },
@@ -1410,7 +1410,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "dinkster-api", git = "https://github.com/Kosinkadink/Dinkster.git?subdirectory=packages%2Fdinkster-api&rev=31abbefc0c6440a450b5b1af01c53d398da0cccb" },
+    { name = "dinkster-api", git = "https://github.com/Kosinkadink/Dinkster.git?subdirectory=packages%2Fdinkster-api&rev=6e5feddae4516f14f3b361e791c2e44213682c90" },
     { name = "dinkster-inference" },
     { name = "numpy", specifier = ">=1.26" },
     { name = "pillow", specifier = ">=10" },
@@ -1432,7 +1432,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "dinkster-api", git = "https://github.com/Kosinkadink/Dinkster.git?subdirectory=packages%2Fdinkster-api&rev=31abbefc0c6440a450b5b1af01c53d398da0cccb" },
+    { name = "dinkster-api", git = "https://github.com/Kosinkadink/Dinkster.git?subdirectory=packages%2Fdinkster-api&rev=6e5feddae4516f14f3b361e791c2e44213682c90" },
     { name = "dinkster-inference" },
     { name = "dinkster-pack-helpers", editable = "packages/dinkster-pack-helpers" },
     { name = "torch", marker = "sys_platform != 'darwin'", index = "https://download.pytorch.org/whl/cpu" },
@@ -1455,7 +1455,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "dinkster-api", git = "https://github.com/Kosinkadink/Dinkster.git?subdirectory=packages%2Fdinkster-api&rev=31abbefc0c6440a450b5b1af01c53d398da0cccb" },
+    { name = "dinkster-api", git = "https://github.com/Kosinkadink/Dinkster.git?subdirectory=packages%2Fdinkster-api&rev=6e5feddae4516f14f3b361e791c2e44213682c90" },
     { name = "dinkster-inference" },
     { name = "dinkster-pack-helpers", editable = "packages/dinkster-pack-helpers" },
     { name = "numpy" },
@@ -1480,7 +1480,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "dinkster-api", git = "https://github.com/Kosinkadink/Dinkster.git?subdirectory=packages%2Fdinkster-api&rev=31abbefc0c6440a450b5b1af01c53d398da0cccb" },
+    { name = "dinkster-api", git = "https://github.com/Kosinkadink/Dinkster.git?subdirectory=packages%2Fdinkster-api&rev=6e5feddae4516f14f3b361e791c2e44213682c90" },
     { name = "dinkster-conditioning", editable = "packages/dinkster-nodes-conditioning" },
     { name = "dinkster-inference" },
     { name = "dinkster-pack-helpers", editable = "packages/dinkster-pack-helpers" },
@@ -1503,7 +1503,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "dinkster-api", git = "https://github.com/Kosinkadink/Dinkster.git?subdirectory=packages%2Fdinkster-api&rev=31abbefc0c6440a450b5b1af01c53d398da0cccb" },
+    { name = "dinkster-api", git = "https://github.com/Kosinkadink/Dinkster.git?subdirectory=packages%2Fdinkster-api&rev=6e5feddae4516f14f3b361e791c2e44213682c90" },
     { name = "dinkster-inference" },
     { name = "numpy" },
     { name = "torch", marker = "sys_platform != 'darwin'", index = "https://download.pytorch.org/whl/cpu" },
@@ -1513,7 +1513,7 @@ requires-dist = [
 [[package]]
 name = "dinkster-supervisor"
 version = "0.0.14"
-source = { git = "https://github.com/Kosinkadink/Dinkster.git?subdirectory=packages%2Fdinkster-supervisor&rev=31abbefc0c6440a450b5b1af01c53d398da0cccb#31abbefc0c6440a450b5b1af01c53d398da0cccb" }
+source = { git = "https://github.com/Kosinkadink/Dinkster.git?subdirectory=packages%2Fdinkster-supervisor&rev=6e5feddae4516f14f3b361e791c2e44213682c90#6e5feddae4516f14f3b361e791c2e44213682c90" }
 dependencies = [
     { name = "aiohttp" },
     { name = "blake3" },
@@ -1534,7 +1534,7 @@ dependencies = [
 ]
 
 [package.metadata]
-requires-dist = [{ name = "dinkster-api", git = "https://github.com/Kosinkadink/Dinkster.git?subdirectory=packages%2Fdinkster-api&rev=31abbefc0c6440a450b5b1af01c53d398da0cccb" }]
+requires-dist = [{ name = "dinkster-api", git = "https://github.com/Kosinkadink/Dinkster.git?subdirectory=packages%2Fdinkster-api&rev=6e5feddae4516f14f3b361e791c2e44213682c90" }]
 
 [[package]]
 name = "dinkster-token-verifier"
@@ -1565,7 +1565,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "dinkster-api", git = "https://github.com/Kosinkadink/Dinkster.git?subdirectory=packages%2Fdinkster-api&rev=31abbefc0c6440a450b5b1af01c53d398da0cccb" },
+    { name = "dinkster-api", git = "https://github.com/Kosinkadink/Dinkster.git?subdirectory=packages%2Fdinkster-api&rev=6e5feddae4516f14f3b361e791c2e44213682c90" },
     { name = "dinkster-inference" },
     { name = "spandrel" },
     { name = "torch", marker = "sys_platform != 'darwin'", index = "https://download.pytorch.org/whl/cpu" },
@@ -1583,7 +1583,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "dinkster-api", git = "https://github.com/Kosinkadink/Dinkster.git?subdirectory=packages%2Fdinkster-api&rev=31abbefc0c6440a450b5b1af01c53d398da0cccb" },
+    { name = "dinkster-api", git = "https://github.com/Kosinkadink/Dinkster.git?subdirectory=packages%2Fdinkster-api&rev=6e5feddae4516f14f3b361e791c2e44213682c90" },
     { name = "simpleeval", specifier = "==1.0.8" },
 ]
 
@@ -1605,7 +1605,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "av", specifier = ">=14" },
-    { name = "dinkster-api", git = "https://github.com/Kosinkadink/Dinkster.git?subdirectory=packages%2Fdinkster-api&rev=31abbefc0c6440a450b5b1af01c53d398da0cccb" },
+    { name = "dinkster-api", git = "https://github.com/Kosinkadink/Dinkster.git?subdirectory=packages%2Fdinkster-api&rev=6e5feddae4516f14f3b361e791c2e44213682c90" },
     { name = "dinkster-inference" },
     { name = "numpy", specifier = ">=1.26" },
     { name = "torch", marker = "sys_platform != 'darwin'", index = "https://download.pytorch.org/whl/cpu" },
@@ -1627,7 +1627,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "dinkster-api", git = "https://github.com/Kosinkadink/Dinkster.git?subdirectory=packages%2Fdinkster-api&rev=31abbefc0c6440a450b5b1af01c53d398da0cccb" },
+    { name = "dinkster-api", git = "https://github.com/Kosinkadink/Dinkster.git?subdirectory=packages%2Fdinkster-api&rev=6e5feddae4516f14f3b361e791c2e44213682c90" },
     { name = "dinkster-inference" },
     { name = "torch", marker = "sys_platform != 'darwin'", index = "https://download.pytorch.org/whl/cpu" },
     { name = "torch", marker = "sys_platform == 'darwin'" },
@@ -1646,7 +1646,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "dinkster-api", git = "https://github.com/Kosinkadink/Dinkster.git?subdirectory=packages%2Fdinkster-api&rev=31abbefc0c6440a450b5b1af01c53d398da0cccb" },
+    { name = "dinkster-api", git = "https://github.com/Kosinkadink/Dinkster.git?subdirectory=packages%2Fdinkster-api&rev=6e5feddae4516f14f3b361e791c2e44213682c90" },
     { name = "dinkster-inference" },
     { name = "torch", marker = "sys_platform != 'darwin'", index = "https://download.pytorch.org/whl/cpu" },
     { name = "torch", marker = "sys_platform == 'darwin'" },
@@ -1665,7 +1665,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "dinkster-api", git = "https://github.com/Kosinkadink/Dinkster.git?subdirectory=packages%2Fdinkster-api&rev=31abbefc0c6440a450b5b1af01c53d398da0cccb" },
+    { name = "dinkster-api", git = "https://github.com/Kosinkadink/Dinkster.git?subdirectory=packages%2Fdinkster-api&rev=6e5feddae4516f14f3b361e791c2e44213682c90" },
     { name = "dinkster-inference" },
     { name = "torch", marker = "sys_platform != 'darwin'", index = "https://download.pytorch.org/whl/cpu" },
     { name = "torch", marker = "sys_platform == 'darwin'" },
@@ -1686,7 +1686,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "dinkster-api", git = "https://github.com/Kosinkadink/Dinkster.git?subdirectory=packages%2Fdinkster-api&rev=31abbefc0c6440a450b5b1af01c53d398da0cccb" },
+    { name = "dinkster-api", git = "https://github.com/Kosinkadink/Dinkster.git?subdirectory=packages%2Fdinkster-api&rev=6e5feddae4516f14f3b361e791c2e44213682c90" },
     { name = "dinkster-inference" },
     { name = "numpy", specifier = ">=1.26" },
     { name = "pillow", specifier = ">=10" },
@@ -1707,7 +1707,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "dinkster-api", git = "https://github.com/Kosinkadink/Dinkster.git?subdirectory=packages%2Fdinkster-api&rev=31abbefc0c6440a450b5b1af01c53d398da0cccb" },
+    { name = "dinkster-api", git = "https://github.com/Kosinkadink/Dinkster.git?subdirectory=packages%2Fdinkster-api&rev=6e5feddae4516f14f3b361e791c2e44213682c90" },
     { name = "dinkster-inference" },
     { name = "torch", marker = "sys_platform != 'darwin'", index = "https://download.pytorch.org/whl/cpu" },
     { name = "torch", marker = "sys_platform == 'darwin'" },
@@ -1729,7 +1729,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "dinkster-api", git = "https://github.com/Kosinkadink/Dinkster.git?subdirectory=packages%2Fdinkster-api&rev=31abbefc0c6440a450b5b1af01c53d398da0cccb" },
+    { name = "dinkster-api", git = "https://github.com/Kosinkadink/Dinkster.git?subdirectory=packages%2Fdinkster-api&rev=6e5feddae4516f14f3b361e791c2e44213682c90" },
     { name = "dinkster-inference" },
     { name = "pillow", specifier = ">=10" },
     { name = "torch", marker = "sys_platform != 'darwin'", index = "https://download.pytorch.org/whl/cpu" },
@@ -1753,7 +1753,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "av", specifier = ">=14" },
-    { name = "dinkster-api", git = "https://github.com/Kosinkadink/Dinkster.git?subdirectory=packages%2Fdinkster-api&rev=31abbefc0c6440a450b5b1af01c53d398da0cccb" },
+    { name = "dinkster-api", git = "https://github.com/Kosinkadink/Dinkster.git?subdirectory=packages%2Fdinkster-api&rev=6e5feddae4516f14f3b361e791c2e44213682c90" },
     { name = "dinkster-inference" },
     { name = "torch", marker = "sys_platform != 'darwin'", index = "https://download.pytorch.org/whl/cpu" },
     { name = "torch", marker = "sys_platform == 'darwin'" },
@@ -1777,7 +1777,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "dinkster-api", git = "https://github.com/Kosinkadink/Dinkster.git?subdirectory=packages%2Fdinkster-api&rev=31abbefc0c6440a450b5b1af01c53d398da0cccb" },
+    { name = "dinkster-api", git = "https://github.com/Kosinkadink/Dinkster.git?subdirectory=packages%2Fdinkster-api&rev=6e5feddae4516f14f3b361e791c2e44213682c90" },
     { name = "dinkster-inference" },
     { name = "dinkster-pack-helpers", editable = "packages/dinkster-pack-helpers" },
     { name = "dinkster-vision-sam3", editable = "packages/dinkster-nodes-vision-sam3" },
@@ -1804,7 +1804,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "dinkster-api", git = "https://github.com/Kosinkadink/Dinkster.git?subdirectory=packages%2Fdinkster-api&rev=31abbefc0c6440a450b5b1af01c53d398da0cccb" },
+    { name = "dinkster-api", git = "https://github.com/Kosinkadink/Dinkster.git?subdirectory=packages%2Fdinkster-api&rev=6e5feddae4516f14f3b361e791c2e44213682c90" },
     { name = "dinkster-inference" },
     { name = "dinkster-misc-models", editable = "packages/dinkster-nodes-misc-models" },
     { name = "dinkster-pack-helpers", editable = "packages/dinkster-pack-helpers" },
@@ -1829,7 +1829,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "dinkster-api", git = "https://github.com/Kosinkadink/Dinkster.git?subdirectory=packages%2Fdinkster-api&rev=31abbefc0c6440a450b5b1af01c53d398da0cccb" },
+    { name = "dinkster-api", git = "https://github.com/Kosinkadink/Dinkster.git?subdirectory=packages%2Fdinkster-api&rev=6e5feddae4516f14f3b361e791c2e44213682c90" },
     { name = "dinkster-inference" },
     { name = "dinkster-pack-helpers", editable = "packages/dinkster-pack-helpers" },
     { name = "dinkster-video", editable = "packages/dinkster-nodes-video" },
@@ -1857,7 +1857,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "dinkster-api", git = "https://github.com/Kosinkadink/Dinkster.git?subdirectory=packages%2Fdinkster-api&rev=31abbefc0c6440a450b5b1af01c53d398da0cccb" },
+    { name = "dinkster-api", git = "https://github.com/Kosinkadink/Dinkster.git?subdirectory=packages%2Fdinkster-api&rev=6e5feddae4516f14f3b361e791c2e44213682c90" },
     { name = "dinkster-inference" },
     { name = "dinkster-models", editable = "packages/dinkster-nodes-models" },
     { name = "dinkster-pack-helpers", editable = "packages/dinkster-pack-helpers" },
