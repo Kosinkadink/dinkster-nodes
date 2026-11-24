@@ -48,17 +48,19 @@ NOT_DRAWN = (
 def _same_model(pictured: object, source: AssetRef | LocalAssetRef | None) -> bool:
     """Whether the model the pictures were drawn from is the one this run receives.
 
-    The app records model_file as it sent it: a selected name, an asset reference
-    (two files may share a name, so its digest decides), or null for no model.
+    The app records model_file as it sent it: a selected name, an asset reference,
+    or null for no model. Two files may share a name, so a reference is matched by
+    its digest, or by its binding when it names a granted local file.
     """
     if source is None:
         return pictured is None
     if isinstance(pictured, str):
         return pictured == source.name
     if isinstance(pictured, Mapping):
-        return isinstance(source, AssetRef) and (
-            cast("Mapping[str, object]", pictured).get("digest") == source.digest
-        )
+        reference = cast("Mapping[str, object]", pictured)
+        if isinstance(source, AssetRef):
+            return reference.get("digest") == source.digest
+        return reference.get("localBinding") == source.binding
     return False
 
 

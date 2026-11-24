@@ -155,6 +155,7 @@ NOT_DRAWN = (
         ("earlier view", EARLIER),
         ("same view", None),
         ("same view, model by reference", None),
+        ("same view, local model by reference", None),
         ("other model of the same name", EARLIER),
         ("no pictures", NOT_DRAWN),
         ("no pictures, no model", "No pictures: no model is chosen."),
@@ -201,6 +202,12 @@ def test_load3d_run_warns_on_earlier_view_and_gives_nothing_without_pictures(
     if "model by reference" in case or "same name" in case:
         selection = reference
         pictured["model_file"] = reference
+    if case == "same view, local model by reference":
+        # A file added after the folder was indexed is granted by binding, not digest.
+        (root / "later.gltf").write_bytes(data)
+        local = mounts.bind_name("later.gltf", "media/model3d")
+        assert isinstance(local, LocalAssetRef)
+        selection = pictured["model_file"] = local.to_wire()
     if case == "other model of the same name":
         # The pictures were drawn from another file that has the same name.
         pictured["model_file"] = {**reference, "digest": digest_bytes(b"another scene")}
