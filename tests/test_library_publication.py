@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from collections.abc import Callable
 from pathlib import Path
 
 import pytest
@@ -53,14 +54,9 @@ def test_published_engine_uses_indexed_provenance_not_a_local_version(
         published_engine(tmp_path, tag)
 
 
-def test_incompatible_publication_control_reaches_publisher_refusal(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    from scripts.check_publication_controls import CONSUMER, HELPER, prepare_fixture
-    from scripts.publish_official_packs import publish_official_packs
+def _engine_and_base(tmp_path: Path) -> tuple[Path, Path]:
     from tests.registry_fixtures import _wheel
 
-    monkeypatch.setenv("UV_NO_INDEX", "1")
     base = {
         "format": "dinkster.base/1",
         "variant": "linux-cpu",
@@ -104,8 +100,19 @@ def test_incompatible_publication_control_reaches_publisher_refusal(
             }
         )
     )
+    return engine, bases.parent
+
+
+def test_incompatible_publication_control_reaches_publisher_refusal(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from scripts.check_publication_controls import CONSUMER, HELPER, prepare_fixture
+    from scripts.publish_official_packs import publish_official_packs
+
+    monkeypatch.setenv("UV_NO_INDEX", "1")
+    engine, bases = _engine_and_base(tmp_path)
     output = tmp_path / "broken"
-    prepare_fixture(bases.parent, output, incompatible=True, engine=engine)
+    prepare_fixture(bases, output, incompatible=True, engine=engine)
     with pytest.raises(ValueError, match=f"{CONSUMER}: selected {HELPER} excludes >=2"):
         publish_official_packs(
             output / "engine",
@@ -114,6 +121,79 @@ def test_incompatible_publication_control_reaches_publisher_refusal(
             list((output / "locks").glob("*.pack-lock.json")),
             output / "publication",
         )
+
+
+def test_preflight_accepts_versions_published_by_the_bound_owner(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from blake3 import blake3
+    from dinkster_registry import artifact_digest
+
+    from dinkster.registries import RegistryPublishError
+    from scripts.check_publication_controls import prepare_fixture
+    from scripts.publish_official_packs import publish_official_packs
+    from tests.registry_fixtures import _serve_artifacts
+
+    monkeypatch.setenv("UV_NO_INDEX", "1")
+    engine, bases = _engine_and_base(tmp_path)
+    fixture = tmp_path / "fixture"
+    prepare_fixture(bases, fixture)
+    inputs = (
+        engine,
+        fixture / "sources",
+        list((fixture / "bases").glob("*/manifest.json")),
+        list((fixture / "locks").glob("*.pack-lock.json")),
+    )
+    publish_official_packs(*inputs, tmp_path / "prepared")
+    records: dict[str, dict] = {}
+    files: dict[str, bytes | Callable[[], bytes]] = {}
+    for prepared in (tmp_path / "prepared").glob("dinkster-*.json"):
+        pack, version = prepared.stem.rsplit("-", 1)
+        path = f"/v1/packs/{pack}/versions/{version}"
+        archive = fixture / "sources" / f"{pack.replace('-', '_')}-{version}-py3-none-any.whl"
+        locks = {}
+        for variant, binding in json.loads(prepared.read_bytes()).items():
+            payload = json.dumps(binding["lock"], sort_keys=True, separators=(",", ":")).encode()
+            files[f"{path}/locks/{variant}?baseId={binding['baseId'].replace(':', '%3A')}"] = (
+                payload
+            )
+            locks[variant] = {
+                "baseId": binding["baseId"],
+                "artifactDigest": binding["artifactDigest"],
+                "digest": "blake3:" + blake3(payload).hexdigest(),
+                "size": len(payload),
+                "url": f"{path}/locks/{variant}",
+            }
+        records[path] = {
+            "state": "active",
+            "packName": pack,
+            "version": version,
+            "artifact": {
+                "digest": artifact_digest(archive.read_bytes()),
+                "size": archive.stat().st_size,
+            },
+            "installLocks": locks,
+        }
+        files[path] = lambda path=path: json.dumps(records[path]).encode()
+    server = _serve_artifacts(files, [])
+    endpoint = f"http://127.0.0.1:{server.server_port}"
+
+    def preflight(name: str, principal: str) -> None:
+        for record in records.values():
+            record["publishedBy"] = {"kind": "interactive", "principalId": principal}
+        publish_official_packs(*inputs, tmp_path / name, preflight_registry=endpoint)
+
+    try:
+        preflight("owner", "u_01a192bb-a823-7cc0-9a96-4d49ecfd7d5a")
+        preflight("operator", "dinkster")
+        with pytest.raises(RegistryPublishError, match="published by 'u_other', not by publisher"):
+            preflight("other", "u_other")
+        next(iter(records.values()))["artifact"]["digest"] = "blake3:" + "0" * 64
+        with pytest.raises(RegistryPublishError, match="bump the pack version"):
+            preflight("changed", "u_01a192bb-a823-7cc0-9a96-4d49ecfd7d5a")
+    finally:
+        server.shutdown()
+        server.server_close()
 
 
 def test_scanner_runtime_stages_unpublished_locked_candidate(

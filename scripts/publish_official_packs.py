@@ -38,6 +38,12 @@ from scripts.base_manifest import read_base_manifest
 from scripts.build_official_packs import library_metadata
 from tools.upstream_node_prerequisites import verify_pack_prerequisites
 
+# Principals the registry records as publishing versions of publisher "dinkster": the
+# operator itself, and since the token change of Kosinkadink/comfy-vibe-station#734 the
+# account bound as that publisher's owner. The registry's public API does not expose the
+# binding, so it is pinned here.
+OFFICIAL_PRINCIPALS = frozenset({"dinkster", "u_01a192bb-a823-7cc0-9a96-4d49ecfd7d5a"})
+
 
 def _wait_active(
     registry: NamedRegistry,
@@ -315,11 +321,16 @@ def publish_official_packs(
                 ) from exc
             bindings = json.loads((output / f"{pack.pack}-{pack.version}.json").read_bytes())
             actual = published.get("installLocks", {})
+            principal = published.get("publishedBy", {}).get("principalId")
+            if principal not in OFFICIAL_PRINCIPALS:
+                raise RegistryPublishError(
+                    f"{pack.pack}@{pack.version}: published by {principal!r}, "
+                    f"not by publisher {pack.publisher} or its bound owner"
+                )
             if (
                 published.get("state") != "active"
                 or published.get("packName") != pack.pack
                 or published.get("version") != pack.version
-                or published.get("publishedBy", {}).get("principalId") != pack.publisher
                 or published.get("artifact", {}).get("digest") != pack.artifact_digest
                 or published.get("artifact", {}).get("size")
                 != (sources / f"{pack.pack.replace('-', '_')}-{pack.version}-py3-none-any.whl")
