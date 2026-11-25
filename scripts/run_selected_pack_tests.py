@@ -532,6 +532,7 @@ if __name__ == "__main__":
         "--snapshot-python",
         "--generation-python",
         dest="generation_python",
+        metavar="SNAPSHOT_PYTHON",
         type=Path,
         required=True,
     )

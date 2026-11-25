@@ -359,7 +359,11 @@ if __name__ == "__main__":
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--variant")
     parser.add_argument(
-        "--snapshot-python", "--generation-python", dest="generation_python", type=Path
+        "--snapshot-python",
+        "--generation-python",
+        dest="generation_python",
+        metavar="SNAPSHOT_PYTHON",
+        type=Path,
     )
     parser.add_argument("--constraints", type=Path)
     parser.add_argument("--index", action="append", default=[])
