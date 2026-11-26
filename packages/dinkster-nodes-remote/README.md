@@ -56,3 +56,9 @@ fake mode (explicit fake, or an unset mode under QA). Invalid values fail pack
 configuration. Both controls are read at process startup, not from node inputs,
 and are sent only on job submissions, including retries. They do not change the
 catalog, project or saved workflow and never grant real-partner permission.
+
+## Upstream compatibility
+
+- `ByteDanceSeedNode`: Partner API node needs the remote gateway catalog and credential contract. No identity replacement exists; add the node to this pack. Review related schemas before folding it into a consolidated node. [Upstream source](https://github.com/Comfy-Org/ComfyUI/blob/8b0f107157b58f9ec79a19fb3182e78cb30f0a23/comfy_api_nodes/nodes_bytedance_llm.py).
+- `OpenRouterImageNode`: Partner API node needs the remote gateway catalog and credential contract. No identity replacement exists; add the node to this pack. Review related schemas before folding it into a consolidated node. [Upstream source](https://github.com/Comfy-Org/ComfyUI/blob/8b0f107157b58f9ec79a19fb3182e78cb30f0a23/comfy_api_nodes/nodes_openrouter.py).
+- `OpenRouterLLMNode`: Partner API node needs the remote gateway catalog and credential contract. No identity replacement exists; add the node to this pack. Review related schemas before folding it into a consolidated node. [Upstream source](https://github.com/Comfy-Org/ComfyUI/blob/8b0f107157b58f9ec79a19fb3182e78cb30f0a23/comfy_api_nodes/nodes_openrouter.py).
