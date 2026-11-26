@@ -3,7 +3,7 @@ an input only when they need it."""
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from typing import ClassVar
 
 import pytest
@@ -19,10 +19,10 @@ from dinkster_api.v1 import (
     TypeExpr,
 )
 from dinkster_caches import MemoryLRUCache
-from dinkster_engine import Engine, ExecutionError, GraphValidationError, RunResult
-from dinkster_graph import Graph, GraphNode, Link
+from dinkster_engine import Engine, EngineEvent, ExecutionError, GraphValidationError, RunResult
+from dinkster_graph import AbsentInput, Graph, GraphNode, Link, TypedLiteral
 from dinkster_schema import build_node_types, build_schemas
-from dinkster_utilities.flow import HasValue, OnlyIf, OrElse
+from dinkster_utilities.flow import HasValue, OnlyIf, OrElse, Unpack
 from dinkster_values import TypeRegistry, is_absent, register_core_types
 from dinkster_workers import InProcessWorker
 
@@ -125,7 +125,7 @@ class Literal(Node):
         return cls.outputs(**values)
 
 
-NODES = (OrElse, HasValue, OnlyIf, Produce, Nothing, Fail, Inpaint, Literal)
+NODES = (OrElse, HasValue, OnlyIf, Unpack, Produce, Nothing, Fail, Inpaint, Literal)
 
 
 @pytest.fixture(autouse=True)
@@ -134,7 +134,7 @@ def _reset_runs() -> None:
     Inpaint.ran.clear()
 
 
-def _engine() -> Engine:
+def _engine(on_event: Callable[[EngineEvent], None] | None = None) -> Engine:
     registry = TypeRegistry()
     register_core_types(registry)
     return Engine(
@@ -142,6 +142,7 @@ def _engine() -> Engine:
         registry=registry,
         worker=InProcessWorker(build_node_types(NODES), registry),
         cache=MemoryLRUCache(),
+        on_event=on_event,
     )
 
 
@@ -213,6 +214,22 @@ def test_or_else_follows_the_stored_order_not_the_key_numbers() -> None:
     )
     assert result.outputs["or_else"]["value"].resolve() == 20
     assert Produce.ran == ["b"]
+
+
+def test_or_else_refuses_different_wire_types_before_any_producer_runs() -> None:
+    with pytest.raises(GraphValidationError, match="type-variable-conflict"):
+        _run(
+            {
+                "first": _produce("first", 11),
+                "text": GraphNode("test.literal", {"kind": "text"}),
+                "or_else": GraphNode(
+                    "dinkster.utilities.or_else",
+                    {"values.1": Link("first", "value"), "values.2": Link("text", "text")},
+                ),
+            },
+            ["or_else"],
+        )
+    assert Produce.ran == []
 
 
 def test_a_losing_input_still_runs_for_another_node_that_needs_it() -> None:
@@ -476,3 +493,97 @@ def test_a_stage_behind_a_switch(condition: bool, expected: int, upscaled: list[
     )
     assert result.outputs["or_else"]["value"].resolve() == expected
     assert Inpaint.ran == upscaled
+
+
+@pytest.mark.parametrize(
+    ("count", "values", "expected"),
+    [
+        (3, [11, 27, 49], [11, 27, 49]),
+        (3, [11], [11, None, None]),
+        (1, [11, 27, 49], [11]),
+        (3, [], [None, None, None]),
+        (0, [11, 27], []),
+        (0, [], []),
+        (512, [11], [11, *[None] * 511]),
+    ],
+)
+def test_unpack_keeps_its_count_and_reports_a_mismatch_even_on_a_cached_run(
+    count: int, values: list[int], expected: list[int | None]
+) -> None:
+    events: list[EngineEvent] = []
+    engine = _engine(events.append)
+    node = GraphNode(
+        "dinkster.utilities.unpack",
+        {"list": TypedLiteral("list<INT>", values), "count": count},
+        output_members={"items": tuple(str(index) for index in range(count))},
+    )
+    graph = Graph({"unpack": node})
+    for cached in (False, True):
+        events.clear()
+        result = run_scenario(engine.run(graph, ["unpack"]))
+        assert set(result.outputs["unpack"]) == {f"items.{i}" for i in range(count)}
+        for index, value in enumerate(expected):
+            output = result.outputs["unpack"][f"items.{index}"]
+            if value is None:
+                assert is_absent(output)
+            else:
+                assert output.resolve() == value
+        warnings = [
+            event.detail["data"]["message"]
+            for event in events
+            if event.kind == "node_event" and event.detail.get("name") == "log"
+        ]
+        assert warnings == (
+            [f"Expected {count} items; received {len(values)}"] if count != len(values) else []
+        )
+        assert ("unpack" in result.cached) is cached
+        assert node.inputs == {"list": TypedLiteral("list<INT>", values), "count": count}
+        assert node.output_members == {"items": tuple(str(index) for index in range(count))}
+
+
+def test_unpack_missing_items_skip_their_consumer_and_no_list_skips_unpack() -> None:
+    result = _run(
+        {
+            "unpack": GraphNode(
+                "dinkster.utilities.unpack",
+                {"list": TypedLiteral("list<INT>", [11]), "count": 3},
+                output_members={"items": ("0", "1", "2")},
+            ),
+            "inpaint": GraphNode(
+                "test.inpaint",
+                {"image": Link("unpack", "items.0"), "mask": Link("unpack", "items.2")},
+            ),
+        },
+        ["inpaint"],
+    )
+    assert result.skipped == ("inpaint",)
+    assert Inpaint.ran == []
+    absent = _run(
+        {
+            "unpack": GraphNode(
+                "dinkster.utilities.unpack",
+                {"list": AbsentInput(), "count": 2},
+                output_members={"items": ("0", "1")},
+            )
+        },
+        ["unpack"],
+    )
+    assert absent.skipped == ("unpack",)
+    assert set(absent.outputs["unpack"]) == {"items.0", "items.1"}
+    assert all(is_absent(value) for value in absent.outputs["unpack"].values())
+
+
+@pytest.mark.parametrize("count", [-1, 513])
+def test_unpack_refuses_a_count_outside_the_output_limit_before_running(count: int) -> None:
+    with pytest.raises(GraphValidationError, match="Count must be from 0 to 512"):
+        _run(
+            {
+                "first": _produce("first", 11),
+                "unpack": GraphNode(
+                    "dinkster.utilities.unpack",
+                    {"list": TypedLiteral("list<INT>", [11]), "count": count},
+                ),
+            },
+            ["first", "unpack"],
+        )
+    assert Produce.ran == []
