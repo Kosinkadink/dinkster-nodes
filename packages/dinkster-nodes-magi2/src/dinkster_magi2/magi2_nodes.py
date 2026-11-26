@@ -52,13 +52,28 @@ from dinkster_pack_helpers.model_file_loaders import (
 )
 
 DEFAULT_NEGATIVE_PROMPT = (
-    "Bright tones, overexposed, static, blurred details, subtitles, style, works, paintings, "
-    "images, static, overall gray, worst quality, low quality, JPEG compression residue, ugly, "
-    "incomplete, extra fingers, poorly drawn hands, poorly drawn faces, deformed, disfigured, "
-    "misshapen limbs, fused fingers, still picture, messy background, three legs, many people in "
-    "the background, walking backwards, noise, background noise, hiss, hum, buzz, crackle, "
-    "compression artifacts, digital clipping, distortion, muffled, muddy, unclear, echo, "
-    "emotionless, flat delivery, robotic, mechanical, monotone, synthetic, text-to-speech"
+    "Bright tones, overexposed, static, blurred details, subtitles, style, works, "
+    "paintings, images, static, overall gray, worst quality, low quality, JPEG "
+    "compression residue, ugly, incomplete, extra fingers, poorly drawn hands, poorly "
+    "drawn faces, deformed, disfigured, misshapen limbs, fused fingers, still picture, "
+    "messy background, three legs, many people in the background, walking backwards, low "
+    "quality, worst quality, poor quality, noise, background noise, hiss, hum, buzz, "
+    "crackle, static, compression artifacts, MP3 artifacts, digital clipping, distortion,"
+    " muffled, muddy, unclear, echo, reverb, room echo, over-reverberated, hollow sound, "
+    "distant, washed out, harsh, shrill, piercing, grating, tinny, thin sound, boomy, "
+    "bass-heavy, flat EQ, over-compressed, abrupt cut, jarring transition, sudden "
+    "silence, looping artifact, music, instrumental, sirens, alarms, crowd noise, "
+    "unrelated sound effects, chaotic, disorganized, messy, cheap sound, emotionless, "
+    "flat delivery, deadpan, lifeless, apathetic, robotic, mechanical, monotone, flat "
+    "intonation, undynamic, boring, reading from a script, AI voice, synthetic, "
+    "text-to-speech, TTS, insincere, fake emotion, exaggerated, overly dramatic, "
+    "melodramatic, cheesy, cringey, hesitant, unconfident, tired, weak voice, stuttering,"
+    " stammering, mumbling, slurred speech, mispronounced, bad articulation, lisp, vocal "
+    "fry, creaky voice, mouth clicks, lip smacks, wet mouth sounds, heavy breathing, "
+    "audible inhales, plosives, p-pops, coughing, clearing throat, sneezing, speaking too"
+    " fast, rushed, speaking too slow, dragged out, unnatural pauses, awkward silence, "
+    "choppy, disconnected, multiple speakers, two voices, background talking, out of "
+    "tune, off-key, autotune artifacts"
 )
 
 
@@ -336,10 +351,9 @@ class Magi2DualCFGGuider(Node):
 
             def sample(self, noise: Any, latent_image: Any, *args: Any, **kwargs: Any) -> Any:
                 self._v_numel: int | None = None
-                if getattr(latent_image, "is_nested", False):
-                    parts = latent_image.unbind()
-                    if len(parts) >= 2:
-                        self._v_numel = math.prod(parts[0].shape[1:])
+                v_part, a_part = _extract_av_streams(latent_image)
+                if a_part is not None:
+                    self._v_numel = math.prod(v_part.shape[1:])
                 parent: Any = super()
                 return parent.sample(noise, latent_image, *args, **kwargs)
 
@@ -483,7 +497,9 @@ class Magi2AudioDecode(Node):
         if audio_lat is None:
             raise ValueError("No audio latent stream found in input.")
 
-        decoded = audio_vae.decode(audio_lat).movedim(-1, 1)  # [B, C, samples]
+        decoded = audio_vae.decode(audio_lat)
+        if decoded.ndim == 3 and decoded.shape[1] != 2 and decoded.shape[-1] == 2:
+            decoded = decoded.movedim(-1, 1)
         std = decoded.std(dim=(1, 2), keepdim=True) * 5.0
         std = std.clamp(min=1.0)
         decoded = decoded / std
