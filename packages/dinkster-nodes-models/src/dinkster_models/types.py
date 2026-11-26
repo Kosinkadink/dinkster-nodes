@@ -10,6 +10,7 @@ from dinkster_api.v1 import (
     LATENT_UPSCALE_MODEL_TYPE,
     MODEL_PATCH_TYPE,
     MODEL_TYPE,
+    MOUNT_TYPE,
     STYLE_MODEL_TYPE,
     TIMESTEPS_RANGE_TYPE,
     VAE_TYPE,
@@ -19,6 +20,7 @@ from dinkster_api.v1 import (
     default_pool,
     register_asset_type,
     register_inference_types,
+    register_mount_type,
     register_resident_type,
     resolver_from_env,
 )
@@ -30,6 +32,8 @@ from dinkster_inference_wire.hook_values import (
 
 
 def register_types(registry: TypeRegistry) -> tuple[TypeSpec, ...]:
+    if MOUNT_TYPE not in registry:
+        register_mount_type(registry)
     register_inference_types(registry)
     if ASSET_TYPE not in registry:
         register_asset_type(registry, resolver_from_env())

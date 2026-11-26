@@ -7,6 +7,7 @@ from dinkster_api.v1 import (
     BOUNDING_BOXES_TYPE,
     COLOR_TYPE,
     LAYERS_TYPE,
+    MOUNT_TYPE,
     WEBCAM_TYPE,
     TypeRegistry,
     decode_latent,
@@ -17,6 +18,7 @@ from dinkster_api.v1 import (
     register_box_types,
     register_compositor_type,
     register_media_types,
+    register_mount_type,
     resolver_from_env,
     validate_latent_encoded,
 )
@@ -37,6 +39,8 @@ NODES = (
 
 
 def register_types(registry: TypeRegistry) -> None:
+    if MOUNT_TYPE not in registry:
+        register_mount_type(registry)
     if ASSET_TYPE not in registry:
         register_asset_type(registry, resolver_from_env())
     if WEBCAM_TYPE not in registry:
