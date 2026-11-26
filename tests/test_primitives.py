@@ -65,6 +65,8 @@ def test_first_party_primitives_execute_and_feed_preview() -> None:
             ("c", "primitive_choice", "COMBO", "COMBO", "Detailed"),
             ("g", "primitive", "value", "FLOAT", 0.5),
             ("k", "primitive", "value", api.COLOR_TYPE, "#3366cc80"),
+            ("mount", "mount", "mount", api.MOUNT_TYPE, "render-37"),
+            ("default_mount", "mount", "mount", api.MOUNT_TYPE, None),
         )
         nodes = {
             key: GraphNode(
@@ -74,12 +76,17 @@ def test_first_party_primitives_execute_and_feed_preview() -> None:
             for key, leaf, _output, type_id, value in cases
         }
         nodes["p"] = GraphNode("dinkster.utilities.preview_any", {"source": Link("i", "INT")})
+        nodes["mount_copy"] = GraphNode(
+            "dinkster.utilities.mount", {"value": Link("mount", "mount")}
+        )
         result = await engine.run(Graph(nodes=nodes), list(nodes))
         for key, _leaf, output, type_id, value in cases:
             actual = result.outputs[key][output]
             assert actual.type_id == type_id
             assert actual.resolve() == value
         assert result.outputs["p"]["STRING"].resolve() == "7"
+        assert result.outputs["mount_copy"]["mount"].type_id == api.MOUNT_TYPE
+        assert result.outputs["mount_copy"]["mount"].resolve() == "render-37"
 
     run_scenario(scenario())
 
