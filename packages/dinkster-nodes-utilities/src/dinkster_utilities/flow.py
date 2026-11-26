@@ -223,7 +223,7 @@ class Unpack(Node):
                     keys=Numbered("", start=0),
                     grows=Count(Formula("count")),
                     member_label=Formula('"Item " + str(index())'),
-                    open_name=False,
+                    label="Items",
                 ),
             ),
             input_values=True,
