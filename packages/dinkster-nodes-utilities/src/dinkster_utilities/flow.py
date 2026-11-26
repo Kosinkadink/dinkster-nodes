@@ -201,7 +201,11 @@ class Unpack(Node):
             body=(
                 Input("list", TypeExpr.list_of(T), required=False, on_absent="skip", label="List"),
                 Input("count", integer, default=0, widget=limits, hidden=True, pin=False),
-                Note("empty", "Connect a list or record", visible=Formula("count == 0")),
+                Note(
+                    "empty",
+                    "Connect a list or record",
+                    visible=Formula("not linked(list) or count == 0"),
+                ),
                 Button(
                     "set_count",
                     "Set count",
