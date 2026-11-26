@@ -9,7 +9,7 @@ from pathlib import Path
 
 import pytest
 from aiohttp.test_utils import TestClient, TestServer
-from dinkster_api.v1 import ComboWidget, StringWidget
+from dinkster_api.v1 import MOUNT_TYPE, ComboWidget, StringWidget
 from dinkster_assets import (
     AssetError,
     AssetVault,
@@ -20,7 +20,7 @@ from dinkster_assets import (
 )
 from dinkster_caches import MemoryLRUCache
 from dinkster_engine import Engine, ExecutionError
-from dinkster_graph import Graph, GraphNode, Link, graph_to_wire
+from dinkster_graph import Graph, GraphNode, Link, TypedLiteral, graph_to_wire
 from dinkster_protocol import AssetFolderContext
 from dinkster_schema import build_node_types, build_schemas
 from dinkster_server import ServerLibrary, create_app
@@ -168,18 +168,27 @@ def test_save_text_accepts_shared_mount_and_name_wires_without_changing_legacy_s
                 ),
                 "typed": GraphNode(
                     "dinkster.text.save_text",
-                    {"text": "typed", "mount": "alternate", "filename_prefix": "chosen"},
+                    {
+                        "text": "typed",
+                        "mount": TypedLiteral(MOUNT_TYPE, "alternate"),
+                        "filename_prefix": "chosen",
+                    },
+                ),
+                "saved": GraphNode(
+                    "SaveText",
+                    {"text": "saved", "mount": "alternate", "filename_prefix": "restored"},
                 ),
                 "default": GraphNode("dinkster.text.save_text", {"text": "default"}),
             }
         )
-        targets = ("first", "second", "legacy", "typed", "default")
+        targets = ("first", "second", "legacy", "typed", "saved", "default")
         result = await engine.run(graph, list(targets))
         expected = {
             "first": ("alternate", "wired/a", b"first"),
             "second": ("alternate", "b", b"second"),
             "legacy": ("alternate", "old", b"legacy"),
             "typed": ("alternate", "chosen", b"typed"),
+            "saved": ("alternate", "restored", b"saved"),
             "default": ("default", "ComfyUI", b"default"),
         }
         for node_id, (mount, prefix, data) in expected.items():
@@ -261,7 +270,11 @@ def test_save_text_executes_through_the_ordinary_manifest(
                 nodes={
                     "save": GraphNode(
                         "dinkster.text.save_text",
-                        {"text": "", "filename_prefix": "empty", "mount": "alternate"},
+                        {
+                            "text": "",
+                            "filename_prefix": "empty",
+                            "mount": TypedLiteral(MOUNT_TYPE, "alternate"),
+                        },
                     )
                 }
             )
