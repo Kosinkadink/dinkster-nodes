@@ -14,6 +14,7 @@ from .color_resolution import (
 )
 from .curve_editor import (
     CurveEditor,
+    SampleCurve,
 )
 from .flow import HasValue, OnlyIf, OrElse
 from .image_crop import (
@@ -61,6 +62,7 @@ NODES = (
     ColorToRGBInt,
     ResolutionSelector,
     CurveEditor,
+    SampleCurve,
     PrimitiveBoundingBox,
     CreateList,
     GetItemFromList,

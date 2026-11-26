@@ -15,6 +15,9 @@
     "dinkster.utilities.curve_editor": {
       "displayName": "Curve Editor"
     },
+    "dinkster.utilities.sample_curve": {
+      "displayName": "Sample curve"
+    },
     "dinkster.utilities.primitive_bounding_box": {
       "displayName": "Bounding Box"
     },

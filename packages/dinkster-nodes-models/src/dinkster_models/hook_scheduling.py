@@ -12,10 +12,13 @@ from dinkster_api.v1 import (
     CORE_COMBO,
     CORE_FLOAT,
     CORE_INT,
+    CURVE_TYPE,
     HOOK_KEYFRAMES_TYPE,
     HOOKS_TYPE,
     ComboOption,
     ComboWidget,
+    Curve,
+    CurveWidget,
     Input,
     Node,
     NodeSchema,
@@ -110,6 +113,40 @@ def _append_keyframes(
         if print_keyframes:
             logging.info("Hook Keyframe - start_percent:%s = %s", percent, strength)
     return result
+
+
+class HookKeyframesFromCurve(Node):
+    @classmethod
+    def define_schema(cls) -> NodeSchema:
+        return NodeSchema(
+            node_type="dinkster.models.hook_keyframes_from_curve",
+            display_name="Hook keyframes from curve",
+            category=_CATEGORY,
+            body=(
+                Input(
+                    "curve",
+                    TypeExpr.concrete(CURVE_TYPE),
+                    default={"points": [[0.0, 1.0], [1.0, 1.0]], "interpolation": "step"},
+                    widget=CurveWidget(),
+                ),
+                Input("prev_hook_kf", _HOOK_KEYFRAMES, required=False),
+                Output("HOOK_KF", _HOOK_KEYFRAMES),
+            ),
+        )
+
+    @classmethod
+    def execute(cls, *, curve: Curve, prev_hook_kf: Any | None = None) -> Mapping[str, object]:
+        hooks = _hooks()
+        result = _keyframes(prev_hook_kf)
+        for index, (position, strength) in enumerate(curve.points):
+            result.add(
+                hooks.HookKeyframe(
+                    strength=strength,
+                    start_percent=position,
+                    guarantee_steps=1 if index == 0 else 0,
+                )
+            )
+        return cls.outputs(HOOK_KF=result)
 
 
 class SetHookKeyframes(Node):

@@ -7,6 +7,7 @@ from dinkster_api.v1 import (
     CORE_FLOAT,
     HOOK_KEYFRAMES_TYPE,
     HOOKS_TYPE,
+    Curve,
     NumberWidget,
     TypeExpr,
     TypeRegistry,
@@ -22,10 +23,12 @@ from dinkster_models.hook_scheduling import (
     CreateHookKeyframe,
     CreateHookKeyframesFromFloats,
     CreateHookKeyframesInterpolated,
+    HookKeyframesFromCurve,
     SetHookKeyframes,
 )
 from dinkster_models.types import register_types
 from dinkster_schema import build_node_types, build_schemas
+from dinkster_utilities.curve_editor import SampleCurve
 from dinkster_utilities.list_utilities import CreateList
 from dinkster_values import register_core_types
 from dinkster_workers import InProcessWorker
@@ -160,3 +163,84 @@ def test_keyframes_from_floats_take_a_wired_float_list_or_one_float() -> None:
         (-1.0, pytest.approx(0.8), 0),
     ]
     assert keyframes["single"] == [(0.75, pytest.approx(0.1), 1)]
+
+
+def test_curve_nodes_drive_hook_keyframe_schedules() -> None:
+    async def run() -> dict[str, Any]:
+        registry = TypeRegistry()
+        register_core_types(registry)
+        register_types(registry)
+        nodes = (SampleCurve, CreateHookKeyframesFromFloats, HookKeyframesFromCurve)
+        engine = Engine(
+            schemas=build_schemas(nodes),
+            registry=registry,
+            worker=InProcessWorker(build_node_types(nodes), registry),
+            cache=MemoryLRUCache(),
+        )
+        graph = Graph(
+            nodes={
+                "sample": GraphNode(
+                    "dinkster.utilities.sample_curve",
+                    {
+                        "curve": Curve(((0.2, 1), (0.5, 4), (0.8, -2)), "linear").to_record(),
+                        "count": 5,
+                    },
+                ),
+                "sampled": GraphNode(
+                    "dinkster.models.create_hook_keyframes_from_floats",
+                    {
+                        "floats_strength": Link("sample", "values"),
+                        "start_percent": 0.2,
+                        "end_percent": 0.8,
+                    },
+                ),
+                "points": GraphNode(
+                    "dinkster.models.hook_keyframes_from_curve",
+                    {"curve": Curve(((0.8, -2), (0.2, 1), (0.5, 4)), "step").to_record()},
+                ),
+                "append": GraphNode(
+                    "dinkster.models.hook_keyframes_from_curve",
+                    {
+                        "curve": Curve(((0.9, 7),), "step").to_record(),
+                        "prev_hook_kf": Link("points", "HOOK_KF"),
+                    },
+                ),
+            }
+        )
+        result = await engine.run(graph, ["sampled", "points", "append"])
+        return {name: result.outputs[name]["HOOK_KF"].resolve() for name in result.outputs}
+
+    groups = run_scenario(run())
+    expected = {
+        "sampled": [(0.2, 1), (0.35, 2.5), (0.5, 4), (0.65, 1), (0.8, -2)],
+        "points": [(0.2, 1), (0.5, 4), (0.8, -2)],
+        "append": [(0.2, 1), (0.5, 4), (0.8, -2), (0.9, 7)],
+    }
+    for name, pairs in expected.items():
+        actual = [(key.start_percent, key.strength) for key in groups[name].keyframes]
+        assert len(actual) == len(pairs)
+        for pair, wanted in zip(actual, pairs, strict=True):
+            assert pair == pytest.approx(wanted)
+
+    import importlib
+    from types import SimpleNamespace
+
+    import torch
+
+    sampling = importlib.import_module("dinkster_inference.model_sampling").ModelSamplingDiscrete()
+    sigmas = torch.tensor([sampling.percent_to_sigma(percent) for percent in (0.1, 0.4, 0.7, 0.9)])
+    for name, strengths in (("sampled", [1, 2.5, 1, -2]), ("points", [1, 1, 4, -2])):
+        group = groups[name]
+        group.initialize_timesteps(SimpleNamespace(model_sampling=sampling))
+        actual_strengths = []
+        for sigma in sigmas:
+            group.prepare_current_keyframe(float(sigma), {"sample_sigmas": sigmas})
+            actual_strengths.append(group.strength)
+        assert actual_strengths == pytest.approx(strengths)
+
+    from dinkster_api.v1 import CurveWidget
+
+    for node in (SampleCurve, HookKeyframesFromCurve):
+        widget = node.schema().inputs[0].widget
+        assert isinstance(widget, CurveWidget)
+        assert widget.histogram == ""

@@ -58,6 +58,7 @@ from .hook_scheduling import (
     CreateHookKeyframe,
     CreateHookKeyframesFromFloats,
     CreateHookKeyframesInterpolated,
+    HookKeyframesFromCurve,
     SetHookKeyframes,
 )
 from .hypernetwork import (
@@ -216,6 +217,7 @@ NODES = (
     CreateHookKeyframe,
     CreateHookKeyframesInterpolated,
     CreateHookKeyframesFromFloats,
+    HookKeyframesFromCurve,
     CombineHooks2,
     CombineHooks4,
     CombineHooks8,
