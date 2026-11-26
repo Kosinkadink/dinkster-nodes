@@ -529,12 +529,14 @@ def test_unpack_keeps_its_count_and_reports_a_mismatch_even_on_a_cached_run(
             else:
                 assert output.resolve() == value
         warnings = [
-            event.detail["data"]["message"]
+            (event.detail["data"]["message"], event.detail["data"].get("code"))
             for event in events
             if event.kind == "node_event" and event.detail.get("name") == "log"
         ]
         assert warnings == (
-            [f"Expected {count} items; received {len(values)}"] if count != len(values) else []
+            [(f"Expected {count} items; received {len(values)}", "unpack_count_mismatch")]
+            if count != len(values)
+            else []
         )
         assert ("unpack" in result.cached) is cached
         assert node.inputs == {"list": TypedLiteral("list<INT>", values), "count": count}
