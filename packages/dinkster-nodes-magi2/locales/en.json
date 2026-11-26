@@ -1,0 +1,65 @@
+{
+  "nodes": {
+    "dinkster.magi2.empty_magi2_latent_av": {
+      "displayName": "Empty MAGI-2 AV Latent"
+    },
+    "dinkster.magi2.magi2_conditioning": {
+      "displayName": "MAGI-2 Text and Image Conditioning"
+    },
+    "dinkster.magi2.magi2_dual_cfg_guider": {
+      "displayName": "MAGI-2 Dual CFG Guider"
+    },
+    "dinkster.magi2.magi2_refiner_upscale_latent": {
+      "displayName": "MAGI-2 Refiner Upscale Latent"
+    },
+    "dinkster.magi2.magi2_audio_decode": {
+      "displayName": "MAGI-2 Audio VAE Decode"
+    },
+    "dinkster.magi2.magi2_text_encoder_loader": {
+      "displayName": "Load MAGI-2 Text Encoder"
+    },
+    "dinkster.magi2.magi2_flow_unipc_sampler": {
+      "displayName": "MAGI-2 Flow UniPC Sampler"
+    },
+    "dinkster.magi2.magi2_flow_schedule": {
+      "displayName": "MAGI-2 Flow Sigma Schedule"
+    }
+  },
+  "searchTerms": {
+    "dinkster.magi2.empty_magi2_latent_av": [
+      "magi2",
+      "magi-2",
+      "EmptyMagi2LatentAV"
+    ],
+    "dinkster.magi2.magi2_conditioning": [
+      "magi2 i2v",
+      "magi2 t2v",
+      "Magi2Conditioning"
+    ],
+    "dinkster.magi2.magi2_dual_cfg_guider": [
+      "magi2 cfg",
+      "Magi2DualCFGGuider"
+    ],
+    "dinkster.magi2.magi2_refiner_upscale_latent": [
+      "magi2 refiner",
+      "Magi2RefinerUpscaleLatent"
+    ],
+    "dinkster.magi2.magi2_audio_decode": [
+      "magi2 audio",
+      "oobleck resample",
+      "Magi2AudioDecode"
+    ],
+    "dinkster.magi2.magi2_text_encoder_loader": [
+      "magi2 qwen3.5",
+      "Magi2TextEncoderLoader"
+    ],
+    "dinkster.magi2.magi2_flow_unipc_sampler": [
+      "flow unipc",
+      "Magi2FlowUniPCSampler"
+    ],
+    "dinkster.magi2.magi2_flow_schedule": [
+      "magi2 sigmas",
+      "Magi2FlowSchedule"
+    ]
+  }
+}

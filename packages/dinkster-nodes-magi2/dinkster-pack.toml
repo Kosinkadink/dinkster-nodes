@@ -1,0 +1,18 @@
+[pack]
+name = "dinkster-magi2"
+version = "0.0.1"
+engine = ">=0.0.3,<0.1"
+publisher = "dinkster"
+namespaces = ["dinkster.magi2"]
+requires = ["torch", "dinkster-inference", "dinkster-pack-helpers>=0.0.2,<1"]
+
+[pack.sandbox]
+gpu = true
+
+[pack.contracts]
+host = "dinkster-pack-host/1"
+api = "dinkster-api/v1"
+
+[pack.entry]
+nodes = "dinkster_magi2:NODES"
+types = "dinkster_magi2:register_types"

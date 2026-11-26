@@ -82,6 +82,7 @@ exclude = [
     "packages/dinkster-nodes-cosmos/tests",
     "packages/dinkster-nodes-hunyuan/tests",
     "packages/dinkster-nodes-ltx/tests",
+    "packages/dinkster-nodes-magi2/tests",
     "packages/dinkster-nodes-minimax/tests",
     "packages/dinkster-nodes-seedvr/tests",
     "packages/dinkster-nodes-void/tests",

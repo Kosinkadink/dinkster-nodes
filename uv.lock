@@ -21,6 +21,7 @@ members = [
     "dinkster-latent",
     "dinkster-llm",
     "dinkster-ltx",
+    "dinkster-magi2",
     "dinkster-minimax",
     "dinkster-misc-models",
     "dinkster-models",
@@ -1300,6 +1301,27 @@ requires-dist = [
     { name = "dinkster-latent", editable = "packages/dinkster-nodes-latent" },
     { name = "dinkster-llm", editable = "packages/dinkster-nodes-llm" },
     { name = "dinkster-models", editable = "packages/dinkster-nodes-models" },
+    { name = "dinkster-pack-helpers", editable = "packages/dinkster-pack-helpers" },
+    { name = "torch", marker = "sys_platform != 'darwin'", index = "https://download.pytorch.org/whl/cpu" },
+    { name = "torch", marker = "sys_platform == 'darwin'" },
+]
+
+[[package]]
+name = "dinkster-magi2"
+version = "0.0.1"
+source = { editable = "packages/dinkster-nodes-magi2" }
+dependencies = [
+    { name = "dinkster-api" },
+    { name = "dinkster-inference" },
+    { name = "dinkster-pack-helpers" },
+    { name = "torch", version = "2.15.0", source = { registry = "https://pypi.org/simple" }, marker = "sys_platform == 'darwin'" },
+    { name = "torch", version = "2.15.0+cpu", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "sys_platform != 'darwin'" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "dinkster-api", url = "https://github.com/Kosinkadink/Dinkster/releases/download/main-2026-11-14-0.0.4.dev45-7df4251d/dinkster_api-0.0.4.dev45%2Bg24a34e6ef5eff7c986aba25a665dc42bda6b9a43-py3-none-any.whl" },
+    { name = "dinkster-inference" },
     { name = "dinkster-pack-helpers", editable = "packages/dinkster-pack-helpers" },
     { name = "torch", marker = "sys_platform != 'darwin'", index = "https://download.pytorch.org/whl/cpu" },
     { name = "torch", marker = "sys_platform == 'darwin'" },
