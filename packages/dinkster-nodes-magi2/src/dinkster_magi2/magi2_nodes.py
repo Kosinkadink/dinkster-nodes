@@ -20,6 +20,7 @@ from dinkster_api.v1 import (
     SAMPLER_TYPE,
     SIGMAS_TYPE,
     VAE_TYPE,
+    InputFamilySpec,
     InputSpec,
     LatentStream,
     MultiStreamLatent,
@@ -30,6 +31,7 @@ from dinkster_api.v1 import (
     StringWidget,
     TypeExpr,
     initialize_inference_process,
+    materialize_audio,
     materialize_image,
     materialize_latent,
     with_identity_replacement,
@@ -188,6 +190,11 @@ class EmptyMagi2LatentAV(Node):
         )
 
 
+def _family_index(member_name: str) -> int:
+    suffix = member_name.rsplit("_", 1)[-1]
+    return int(suffix) if suffix.isdigit() else 0
+
+
 class Magi2Conditioning(Node):
     @classmethod
     def define_schema(cls) -> NodeSchema:
@@ -198,7 +205,7 @@ class Magi2Conditioning(Node):
             category="model/conditioning/magi2",
             description=(
                 "Encode positive and negative Qwen3.5-27B conditioning for MAGI-2, "
-                "with optional `<Figure 1>` letterboxed Wan 2.2 VAE reference image conditioning."
+                "with optional `<Figure 1..N>` letterboxed Wan 2.2 VAE reference images."
             ),
             inputs=(
                 InputSpec("clip", TypeExpr.concrete(CLIP_TYPE)),
@@ -215,6 +222,7 @@ class Magi2Conditioning(Node):
                 ),
                 InputSpec("vae", TypeExpr.concrete(VAE_TYPE), required=False),
                 InputSpec("reference_image", TypeExpr.concrete(IMAGE_TYPE), required=False),
+                _combo("resize_type", ("original", "square"), "original"),
                 InputSpec(
                     "width",
                     integer,
@@ -232,10 +240,32 @@ class Magi2Conditioning(Node):
                     TypeExpr.concrete(CORE_BOOLEAN),
                     default=True,
                     doc=(
-                        "Keep the reference image on the unconditional branch "
+                        "Keep reference images on the unconditional branch "
                         "so CFG steers text alone."
                     ),
                 ),
+            ),
+            input_families=(
+                InputFamilySpec(
+                    "extra_reference_images",
+                    (InputSpec("ref_image", TypeExpr.concrete(IMAGE_TYPE), required=False),),
+                    min_members=0,
+                    max_members=9,
+                    member_prefix="ref_image_",
+                    required=False,
+                ),
+            ),
+            input_order=(
+                "clip",
+                "prompt",
+                "negative_prompt",
+                "vae",
+                "reference_image",
+                "extra_reference_images",
+                "resize_type",
+                "width",
+                "height",
+                "use_ref_for_uncond",
             ),
             outputs=(
                 OutputSpec("positive", TypeExpr.concrete(CONDITIONING_TYPE)),
@@ -253,51 +283,247 @@ class Magi2Conditioning(Node):
         negative_prompt: str = DEFAULT_NEGATIVE_PROMPT,
         vae: Any = None,
         reference_image: object = None,
+        resize_type: str = "original",
         width: int = 896,
         height: int = 512,
         use_ref_for_uncond: bool = True,
+        extra_reference_images: Mapping[str, object] | None = None,
     ) -> Mapping[str, object]:
         initialize_inference_process()
         torch = importlib.import_module("torch")
-        has_ref = reference_image is not None
-        fig_ids = [1] if has_ref else None
+
+        raw_images: list[object] = []
+        if reference_image is not None:
+            raw_images.append(reference_image)
+        for _, extra_img in sorted(
+            (extra_reference_images or {}).items(), key=lambda kv: _family_index(kv[0])
+        ):
+            if extra_img is not None:
+                raw_images.append(extra_img)
+
+        fig_ids = list(range(1, len(raw_images) + 1)) if raw_images else None
 
         pos_tokens = clip.tokenize(prompt, magi2_figure_ids=fig_ids)
         pos_cond = clip.encode_from_tokens_scheduled(pos_tokens)
         neg_tokens = clip.tokenize(negative_prompt)
         neg_cond = clip.encode_from_tokens_scheduled(neg_tokens)
 
-        if has_ref:
+        if raw_images:
             if vae is None:
                 raise ValueError(
                     "Magi2Conditioning requires `vae` (Wan 2.2 VAE) "
-                    "when `reference_image` is connected."
+                    "when reference images are connected."
                 )
             sampling_mod = importlib.import_module("dinkster_inference.ldm.magi2.sampling")
-            pixels = materialize_image(reference_image)
-            letterboxed = sampling_mod.letterbox_reference_image(
-                pixels, target_height=height, target_width=width, vae_scale_factor=32
-            )
-            ref_latent = vae.encode(letterboxed.float())
-            if ref_latent.ndim == 4:
-                ref_latent = ref_latent.unsqueeze(2)
-
             fig_tokens = pos_cond[0][1].get("magi2_figure_tokens", {})
-            special_tok = fig_tokens.get(1)
-            pos_ref = [{"latent": ref_latent, "special_token": special_tok}]
-            neg_ref = [
-                {"latent": ref_latent, "special_token": special_tok}
-                if use_ref_for_uncond
-                else {
-                    "latent": torch.zeros_like(ref_latent),
-                    "special_token": special_tok,
-                    "normalized": True,
-                }
-            ]
+            pos_ref: list[dict[str, Any]] = []
+            neg_ref: list[dict[str, Any]] = []
+
+            for idx, img_obj in enumerate(raw_images):
+                fid = idx + 1
+                pixels = materialize_image(img_obj)
+                letterboxed = sampling_mod.letterbox_reference_image(
+                    pixels,
+                    target_height=height,
+                    target_width=width,
+                    vae_scale_factor=32,
+                    resize_type=resize_type,
+                )
+                ref_latent = vae.encode(letterboxed.float())
+                if ref_latent.ndim == 4:
+                    ref_latent = ref_latent.unsqueeze(2)
+
+                special_tok = fig_tokens.get(fid)
+                pos_ref.append({"latent": ref_latent, "special_token": special_tok})
+                neg_ref.append(
+                    {"latent": ref_latent, "special_token": special_tok}
+                    if use_ref_for_uncond
+                    else {
+                        "latent": torch.zeros_like(ref_latent),
+                        "special_token": special_tok,
+                        "normalized": True,
+                    }
+                )
+
             pos_cond = conditioning_set_values(pos_cond, {"magi2_ref_images": pos_ref})
             neg_cond = conditioning_set_values(neg_cond, {"magi2_ref_images": neg_ref})
 
         return cls.outputs(positive=pos_cond, negative=neg_cond)
+
+
+class Magi2AddAVGuide(Node):
+    @classmethod
+    def define_schema(cls) -> NodeSchema:
+        schema = NodeSchema(
+            node_type="dinkster.magi2.magi2_add_av_guide",
+            display_name="MAGI-2 Add AV Guide",
+            category="model/conditioning/magi2",
+            description=(
+                "Anchor video frames and/or audio into a MAGI-2 AV latent with per-token "
+                "diffusion-time (`denoise_mask`) conditioning for keyframes, continuation, "
+                "video-to-audio foley, or audio-to-video."
+            ),
+            inputs=(
+                InputSpec("av_latent", TypeExpr.concrete(LATENT_TYPE)),
+                InputSpec("vae", TypeExpr.concrete(VAE_TYPE), required=False),
+                InputSpec("audio_vae", TypeExpr.concrete(VAE_TYPE), required=False),
+                InputSpec("image", TypeExpr.concrete(IMAGE_TYPE), required=False),
+                InputSpec("audio", TypeExpr.concrete(AUDIO_TYPE), required=False),
+                InputSpec(
+                    "frame_idx",
+                    TypeExpr.concrete(CORE_INT),
+                    default=0,
+                    widget=NumberWidget(min=-9999, max=9999, step=1),
+                    doc=(
+                        "25 fps frame index to anchor the guide at "
+                        "(negative values count from the end of the clip)."
+                    ),
+                ),
+                _combo("video_fps", ("25fps", "12.5fps"), "25fps"),
+                InputSpec(
+                    "strength",
+                    TypeExpr.concrete(CORE_FLOAT),
+                    default=1.0,
+                    widget=NumberWidget(min=0.0, max=1.0, step=0.05, round=0.01),
+                    doc=(
+                        "Guide strength (`1.0` sets `denoise_mask = 0.0` so anchored tokens "
+                        "run clean at diffusion time `t = 0`)."
+                    ),
+                ),
+            ),
+            outputs=(OutputSpec("LATENT", TypeExpr.concrete(LATENT_TYPE)),),
+        )
+        return with_identity_replacement(schema, "Magi2AddAVGuide")
+
+    @classmethod
+    def execute(
+        cls,
+        *,
+        av_latent: object,
+        vae: Any = None,
+        audio_vae: Any = None,
+        image: object = None,
+        audio: object = None,
+        frame_idx: int = 0,
+        video_fps: str = "25fps",
+        strength: float = 1.0,
+    ) -> Mapping[str, object]:
+        initialize_inference_process()
+        torch = importlib.import_module("torch")
+        latent_formats = importlib.import_module("dinkster_inference.latent_formats")
+
+        if image is None and audio is None:
+            raise ValueError("Magi2AddAVGuide requires at least `image` or `audio` to anchor.")
+
+        mat = cast("Mapping[str, Any]", materialize_latent(av_latent))
+        video_raw, audio_raw = _extract_av_streams(mat["samples"])
+        if (
+            video_raw.ndim != 5
+            or video_raw.shape[1] != 48
+            or audio_raw is None
+            or audio_raw.ndim != 3
+            or audio_raw.shape[1] != 64
+        ):
+            raise ValueError("Magi2AddAVGuide expects a joint MAGI-2 AV latent.")
+
+        fmt = latent_formats.Magi2AV()
+        if int(torch.count_nonzero(video_raw).item()) == 0:
+            video = fmt.process_video_out(torch.zeros_like(video_raw))
+        else:
+            video = video_raw.clone()
+        audio_samples = audio_raw.clone()
+
+        prior_mask = mat.get("noise_mask")
+        if prior_mask is not None:
+            vm_in, am_in = _extract_av_streams(prior_mask)
+            video_mask = (
+                vm_in[:, :1].clone() if vm_in is not None else torch.ones_like(video[:, :1])
+            )
+            audio_mask = (
+                am_in[:, :1].clone() if am_in is not None else torch.ones_like(audio_samples[:, :1])
+            )
+        else:
+            video_mask = torch.ones_like(video[:, :1])
+            audio_mask = torch.ones_like(audio_samples[:, :1])
+
+        mask_val = float(max(0.0, min(1.0, 1.0 - float(strength))))
+        v_len = int(video.shape[2])
+        a_len = int(audio_samples.shape[2])
+        total_frames_25 = (v_len - 1) * 8 + 1
+
+        if image is not None:
+            if vae is None:
+                raise ValueError("Magi2AddAVGuide requires `vae` when `image` is connected.")
+            utils = importlib.import_module("dinkster_inference.utils")
+            pixels = materialize_image(image)
+            frames = pixels[::2] if video_fps == "25fps" and pixels.shape[0] > 1 else pixels
+            target_h = int(video.shape[3]) * 16
+            target_w = int(video.shape[4]) * 16
+            if frames.shape[1] != target_h or frames.shape[2] != target_w:
+                frames = utils.common_upscale(
+                    frames[..., :3].movedim(-1, 1), target_w, target_h, "lanczos", "center"
+                ).movedim(1, -1)
+            else:
+                frames = frames[..., :3]
+            guide_v = vae.encode(frames.float())
+            if guide_v.ndim == 4:
+                guide_v = guide_v.unsqueeze(2)
+            guide_v = guide_v.to(device=video.device, dtype=video.dtype)
+
+            resolved_v25 = frame_idx if frame_idx >= 0 else total_frames_25 + frame_idx
+            v_start = resolved_v25 // 8
+            if v_start < 0 or v_start >= v_len:
+                raise ValueError(
+                    f"frame_idx {frame_idx} maps to latent frame {v_start}, "
+                    f"outside video latent length {v_len}."
+                )
+            n_v = min(int(guide_v.shape[2]), v_len - v_start)
+            video[:, :, v_start : v_start + n_v] = guide_v[:, :, :n_v]
+            video_mask[:, :, v_start : v_start + n_v] = mask_val
+
+        if audio is not None:
+            if audio_vae is None:
+                raise ValueError("Magi2AddAVGuide requires `audio_vae` when `audio` is connected.")
+            sampling_mod = importlib.import_module("dinkster_inference.ldm.magi2.sampling")
+            src = materialize_audio(audio)
+            waveform = cast("Any", src["waveform"])[:1].float()
+            sr = int(cast("Any", src["sample_rate"]))
+            vae_sr = int(getattr(audio_vae, "audio_sample_rate", 44100))
+            if sr != vae_sr:
+                waveform = importlib.import_module("dinkster_inference.audio").resample(
+                    waveform, sr, vae_sr
+                )
+            if waveform.shape[1] == 1:
+                waveform = waveform.repeat(1, 2, 1)
+            elif waveform.shape[1] > 2:
+                waveform = waveform[:, :2]
+
+            # Inverse of Magi2AudioDecode (441/512): stretch by 512/441 so Oobleck 21.533 Hz
+            # hop produces exact 25.0 Hz MAGI-2 audio tokens.
+            stretched = sampling_mod.resample_magi2_audio(waveform, ratio=512.0 / 441.0)
+            guide_a = audio_vae.encode(stretched.movedim(1, -1))
+            if guide_a.ndim == 3 and guide_a.shape[1] != 64 and guide_a.shape[-1] == 64:
+                guide_a = guide_a.movedim(-1, 1)
+            guide_a = guide_a.to(device=audio_samples.device, dtype=audio_samples.dtype)
+
+            a_start = frame_idx if frame_idx >= 0 else a_len + frame_idx
+            if a_start < 0 or a_start >= a_len:
+                raise ValueError(
+                    f"frame_idx {frame_idx} maps to audio token {a_start}, "
+                    f"outside audio latent length {a_len}."
+                )
+            n_a = min(int(guide_a.shape[2]), a_len - a_start)
+            audio_samples[:, :, a_start : a_start + n_a] = guide_a[:, :, :n_a]
+            audio_mask[:, :, a_start : a_start + n_a] = mask_val
+
+        out = dict(mat)
+        out["samples"] = MultiStreamLatent(
+            (LatentStream("video", video), LatentStream("audio", audio_samples))
+        )
+        out["noise_mask"] = MultiStreamLatent(
+            (LatentStream("video", video_mask), LatentStream("audio", audio_mask))
+        )
+        return cls.outputs(LATENT=out)
 
 
 class Magi2DualCFGGuider(Node):

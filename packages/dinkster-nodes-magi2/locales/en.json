@@ -23,6 +23,9 @@
     },
     "dinkster.magi2.magi2_flow_schedule": {
       "displayName": "MAGI-2 Flow Sigma Schedule"
+    },
+    "dinkster.magi2.magi2_add_av_guide": {
+      "displayName": "MAGI-2 Add AV Guide"
     }
   },
   "searchTerms": {
@@ -34,6 +37,7 @@
     "dinkster.magi2.magi2_conditioning": [
       "magi2 i2v",
       "magi2 t2v",
+      "magi2 reference",
       "Magi2Conditioning"
     ],
     "dinkster.magi2.magi2_dual_cfg_guider": [
@@ -60,6 +64,14 @@
     "dinkster.magi2.magi2_flow_schedule": [
       "magi2 sigmas",
       "Magi2FlowSchedule"
+    ],
+    "dinkster.magi2.magi2_add_av_guide": [
+      "magi2 guide",
+      "magi2 keyframe",
+      "magi2 v2a",
+      "magi2 a2v",
+      "magi2 continuation",
+      "Magi2AddAVGuide"
     ]
   }
 }

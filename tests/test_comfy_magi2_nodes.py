@@ -5,9 +5,11 @@ from dinkster_api.v1 import (
     CLIP_TYPE,
     CONDITIONING_TYPE,
     GUIDER_TYPE,
+    IMAGE_TYPE,
     LATENT_TYPE,
     MODEL_TYPE,
     VAE_TYPE,
+    InputSpec,
     OutputSpec,
     TypeExpr,
     schema_from_wire,
@@ -16,6 +18,7 @@ from dinkster_api.v1 import (
 from dinkster_magi2 import NODES
 from dinkster_magi2.magi2_nodes import (
     EmptyMagi2LatentAV,
+    Magi2AddAVGuide,
     Magi2AudioDecode,
     Magi2Conditioning,
     Magi2DualCFGGuider,
@@ -38,6 +41,7 @@ def test_magi2_pack_schemas_and_cold_discovery() -> None:
     expected = (
         (EmptyMagi2LatentAV, "dinkster.magi2.empty_magi2_latent_av", "model/latent/magi2"),
         (Magi2Conditioning, "dinkster.magi2.magi2_conditioning", "model/conditioning/magi2"),
+        (Magi2AddAVGuide, "dinkster.magi2.magi2_add_av_guide", "model/conditioning/magi2"),
         (Magi2DualCFGGuider, "dinkster.magi2.magi2_dual_cfg_guider", "model/sampling/guiders"),
         (
             Magi2RefinerUpscaleLatent,
@@ -69,10 +73,26 @@ def test_magi2_pack_schemas_and_cold_discovery() -> None:
         assert schema.category == category
         assert schema_from_wire(schema_to_wire(schema)) == schema
 
-    assert Magi2Conditioning.schema().outputs == (
+    cond_schema = Magi2Conditioning.schema()
+    assert cond_schema.outputs == (
         OutputSpec("positive", TypeExpr.concrete(CONDITIONING_TYPE)),
         OutputSpec("negative", TypeExpr.concrete(CONDITIONING_TYPE)),
     )
+    assert len(cond_schema.input_families) == 1
+    fam = cond_schema.input_families[0]
+    assert (fam.id, fam.member_prefix, fam.min_members, fam.max_members) == (
+        "extra_reference_images",
+        "ref_image_",
+        0,
+        9,
+    )
+    assert not fam.required
+    assert fam.template == (InputSpec("ref_image", TypeExpr.concrete(IMAGE_TYPE), required=False),)
+
+    guide_schema = Magi2AddAVGuide.schema()
+    assert guide_schema.outputs == (OutputSpec("LATENT", TypeExpr.concrete(LATENT_TYPE)),)
+    assert guide_schema.inputs[0].type == TypeExpr.concrete(LATENT_TYPE)
+
     assert Magi2DualCFGGuider.schema().inputs[0].type == TypeExpr.concrete(MODEL_TYPE)
     assert Magi2DualCFGGuider.schema().outputs == (
         OutputSpec("GUIDER", TypeExpr.concrete(GUIDER_TYPE)),
@@ -85,7 +105,7 @@ def test_magi2_pack_schemas_and_cold_discovery() -> None:
     assert Magi2RefinerUpscaleLatent.schema().outputs[0].type == TypeExpr.concrete(LATENT_TYPE)
     assert EmptyMagi2LatentAV.schema().inputs[0].default == 896
     assert EmptyMagi2LatentAV.schema().inputs[1].default == 512
-    assert Magi2Conditioning.schema().inputs[0].type == TypeExpr.concrete(CLIP_TYPE)
+    assert cond_schema.inputs[0].type == TypeExpr.concrete(CLIP_TYPE)
     assert Magi2TextEncoderLoader.schema().outputs == (
         OutputSpec("CLIP", TypeExpr.concrete(CLIP_TYPE)),
     )

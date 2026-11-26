@@ -24,6 +24,7 @@ from dinkster_inference_wire.sampling_wire import register_sampling_type
 
 from .magi2_nodes import (
     EmptyMagi2LatentAV,
+    Magi2AddAVGuide,
     Magi2AudioDecode,
     Magi2Conditioning,
     Magi2DualCFGGuider,
@@ -35,6 +36,7 @@ from .magi2_nodes import (
 
 NODES = (
     EmptyMagi2LatentAV,
+    Magi2AddAVGuide,
     Magi2AudioDecode,
     Magi2Conditioning,
     Magi2DualCFGGuider,
