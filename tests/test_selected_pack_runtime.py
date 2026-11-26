@@ -49,6 +49,8 @@ def published_generation(tmp_path_factory: pytest.TempPathFactory) -> Path:
         check=True,
         stdout=subprocess.DEVNULL,
     )
+    # The frozen pylock carries registry hashes and immutable Git commits. Engine
+    # sources must be buildable; a binary-only install rejects the locked Git pin.
     subprocess.run(
         [
             "uv",
@@ -58,10 +60,7 @@ def published_generation(tmp_path_factory: pytest.TempPathFactory) -> Path:
             str(python),
             "--no-deps",
             "--break-system-packages",
-            "--require-hashes",
             "--offline",
-            "--only-binary",
-            ":all:",
             "-r",
             str(requirements),
         ],
