@@ -17,8 +17,10 @@ from dinkster_api.v1 import (
     CORE_STRING,
     ENCODED_MEDIA_LIMIT_BYTES,
     IMAGE_TYPE,
+    MOUNT_TYPE,
     Choice,
     ComboWidget,
+    Editor,
     Input,
     MountWidget,
     Node,
@@ -28,6 +30,7 @@ from dinkster_api.v1 import (
     Output,
     Record,
     Row,
+    SaveTargetWidget,
     Section,
     StringWidget,
     TypeExpr,
@@ -76,12 +79,16 @@ class SaveImageAdvanced(Node):
                         ),
                         Input(
                             "mount",
-                            _STRING,
+                            TypeExpr.union(MOUNT_TYPE, CORE_STRING),
                             required=False,
                             default=None,
                             widget=MountWidget(),
                         ),
                     )
+                ),
+                Editor(
+                    "target",
+                    SaveTargetWidget(writes={"mount": "mount", "name": "filename_prefix"}),
                 ),
                 Choice(
                     "format",

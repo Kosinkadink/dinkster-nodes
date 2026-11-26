@@ -18,10 +18,17 @@ from dinkster_assets import (
     MountSnapshotWriter,
     digest_bytes,
 )
-from dinkster_graph import Graph, GraphNode, graph_to_wire
+from dinkster_caches import MemoryLRUCache
+from dinkster_engine import Engine, ExecutionError
+from dinkster_graph import Graph, GraphNode, Link, graph_to_wire
 from dinkster_protocol import AssetFolderContext
+from dinkster_schema import build_node_types, build_schemas
 from dinkster_server import ServerLibrary, create_app
 from dinkster_text.save_text import SaveText
+from dinkster_utilities import register_types
+from dinkster_utilities.primitive import Mount, PrimitiveString
+from dinkster_values import TypeRegistry, register_core_types
+from dinkster_workers import InProcessWorker
 
 from dinkster.compose import PackSpec, ServingComposer
 from tests.async_scenarios import run_scenario
@@ -114,6 +121,97 @@ def test_save_text_collisions_and_security_boundaries(
     roots["snapshot"].write_text(json.dumps({"mounts": [], "outputMount": "default"}), "utf-8")
     with pytest.raises(AssetError, match="no ready mount"):
         SaveText.execute(text="revoked")
+
+
+def test_save_text_accepts_shared_mount_and_name_wires_without_changing_legacy_saves(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    roots = _snapshot(tmp_path, monkeypatch)
+
+    async def scenario() -> None:
+        registry = TypeRegistry()
+        register_core_types(registry)
+        register_types(registry)
+        node_types = (SaveText, Mount, PrimitiveString)
+        engine = Engine(
+            schemas=build_schemas(node_types),
+            registry=registry,
+            worker=InProcessWorker(build_node_types(node_types), registry),
+            cache=MemoryLRUCache(),
+        )
+        graph = Graph(
+            nodes={
+                "mount": GraphNode("dinkster.utilities.mount", {"value": "alternate"}),
+                "name": GraphNode("dinkster.utilities.primitive_string", {"value": "wired/a"}),
+                "legacy_mount": GraphNode(
+                    "dinkster.utilities.primitive_string", {"value": "alternate"}
+                ),
+                "first": GraphNode(
+                    "dinkster.text.save_text",
+                    {
+                        "text": "first",
+                        "mount": Link("mount", "mount"),
+                        "filename_prefix": Link("name", "STRING"),
+                    },
+                ),
+                "second": GraphNode(
+                    "dinkster.text.save_text",
+                    {"text": "second", "mount": Link("mount", "mount"), "filename_prefix": "b"},
+                ),
+                "legacy": GraphNode(
+                    "dinkster.text.save_text",
+                    {
+                        "text": "legacy",
+                        "mount": Link("legacy_mount", "STRING"),
+                        "filename_prefix": "old",
+                    },
+                ),
+                "typed": GraphNode(
+                    "dinkster.text.save_text",
+                    {"text": "typed", "mount": "alternate", "filename_prefix": "chosen"},
+                ),
+                "default": GraphNode("dinkster.text.save_text", {"text": "default"}),
+            }
+        )
+        targets = ("first", "second", "legacy", "typed", "default")
+        result = await engine.run(graph, list(targets))
+        expected = {
+            "first": ("alternate", "wired/a", b"first"),
+            "second": ("alternate", "b", b"second"),
+            "legacy": ("alternate", "old", b"legacy"),
+            "typed": ("alternate", "chosen", b"typed"),
+            "default": ("default", "ComfyUI", b"default"),
+        }
+        for node_id, (mount, prefix, data) in expected.items():
+            assert result.outputs[node_id]["text"].resolve() == data.decode()
+            assert (roots[mount] / f"{prefix}_00001.txt").read_bytes() == data
+        assert {artifact.virtual_path for artifact in result.artifacts} == {
+            f"mounts/{mount}/{prefix}_00001.txt" for mount, prefix, _data in expected.values()
+        }
+        for mount, name, message in (
+            ("alternate", "../escape", "prefix"),
+            ("readonly", "denied", "read-only"),
+        ):
+            refused = Graph(
+                nodes={
+                    "mount": GraphNode("dinkster.utilities.mount", {"value": mount}),
+                    "name": GraphNode("dinkster.utilities.primitive_string", {"value": name}),
+                    "save": GraphNode(
+                        "dinkster.text.save_text",
+                        {
+                            "text": "blocked",
+                            "mount": Link("mount", "mount"),
+                            "filename_prefix": Link("name", "STRING"),
+                        },
+                    ),
+                }
+            )
+            with pytest.raises(ExecutionError, match=message):
+                await engine.run(refused, ["save"])
+        assert not list(roots["readonly"].rglob("*.txt"))
+        assert not (tmp_path / "escape_00001.txt").exists()
+
+    run_scenario(scenario())
 
 
 @pytest.mark.parametrize("in_process", (True, False))

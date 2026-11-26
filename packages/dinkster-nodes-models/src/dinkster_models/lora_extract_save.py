@@ -18,9 +18,11 @@ from dinkster_api.v1 import (
     CORE_INT,
     CORE_STRING,
     MODEL_TYPE,
+    MOUNT_TYPE,
     AssetError,
     AssetWriter,
     ComboWidget,
+    Editor,
     Input,
     MountSnapshotWriter,
     MountWidget,
@@ -28,6 +30,7 @@ from dinkster_api.v1 import (
     NodeSchema,
     NumberWidget,
     Row,
+    SaveTargetWidget,
     Section,
     StringWidget,
     TypeExpr,
@@ -182,12 +185,16 @@ class LoraSave(Node):
                             ),
                             Input(
                                 "mount",
-                                _STRING,
+                                TypeExpr.union(MOUNT_TYPE, CORE_STRING),
                                 required=False,
                                 default=None,
                                 widget=MountWidget(),
                             ),
                         )
+                    ),
+                    Editor(
+                        "target",
+                        SaveTargetWidget(writes={"mount": "mount", "name": "filename_prefix"}),
                     ),
                     Input(
                         "model_diff",

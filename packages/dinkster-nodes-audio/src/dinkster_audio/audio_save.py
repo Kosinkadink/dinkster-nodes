@@ -13,11 +13,13 @@ from dinkster_api.v1 import (
     CORE_COMBO,
     CORE_STRING,
     MEBIBYTE,
+    MOUNT_TYPE,
     AssetError,
     AssetWriter,
     Choice,
     ComboWidget,
     Deprecation,
+    Editor,
     Input,
     MountSnapshotWriter,
     MountWidget,
@@ -27,6 +29,7 @@ from dinkster_api.v1 import (
     Output,
     Record,
     Row,
+    SaveTargetWidget,
     StringWidget,
     TypeExpr,
     Use,
@@ -144,7 +147,7 @@ def _save_audio(
 def _mount_input() -> Input:
     return Input(
         "mount",
-        _STRING,
+        TypeExpr.union(MOUNT_TYPE, CORE_STRING),
         required=False,
         default=None,
         widget=MountWidget(),
@@ -177,6 +180,10 @@ class SaveAudio(Node):
                         ),
                         _mount_input(),
                     )
+                ),
+                Editor(
+                    "target",
+                    SaveTargetWidget(writes={"mount": "mount", "name": "filename_prefix"}),
                 ),
                 *_audio_output(),
             ),
@@ -219,6 +226,10 @@ class SaveAudioMP3(Node):
                         ),
                         _mount_input(),
                     )
+                ),
+                Editor(
+                    "target",
+                    SaveTargetWidget(writes={"mount": "mount", "name": "filename_prefix"}),
                 ),
                 Input("quality", _COMBO, default="V0", widget=ComboWidget(options=_MP3_QUALITIES)),
                 *_audio_output(),
@@ -269,6 +280,10 @@ class SaveAudioOpus(Node):
                         ),
                         _mount_input(),
                     )
+                ),
+                Editor(
+                    "target",
+                    SaveTargetWidget(writes={"mount": "mount", "name": "filename_prefix"}),
                 ),
                 Input(
                     "quality", _COMBO, default="128k", widget=ComboWidget(options=_OPUS_QUALITIES)
@@ -333,6 +348,10 @@ class SaveAudioAdvanced(Node):
                         ),
                         _mount_input(),
                     )
+                ),
+                Editor(
+                    "target",
+                    SaveTargetWidget(writes={"mount": "mount", "name": "filename_prefix"}),
                 ),
                 Choice(
                     "format",

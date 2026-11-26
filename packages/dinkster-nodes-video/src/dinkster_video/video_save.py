@@ -10,10 +10,12 @@ from dinkster_api.v1 import (
     CORE_FLOAT,
     CORE_STRING,
     ENCODED_MEDIA_LIMIT_BYTES,
+    MOUNT_TYPE,
     VIDEO_TYPE,
     AssetError,
     AssetWriter,
     Choice,
+    Editor,
     Input,
     MountSnapshotWriter,
     MountWidget,
@@ -24,6 +26,7 @@ from dinkster_api.v1 import (
     Output,
     Record,
     Row,
+    SaveTargetWidget,
     StringWidget,
     TypeExpr,
     Use,
@@ -132,12 +135,16 @@ class SaveVideo(Node):
                         ),
                         Input(
                             "mount",
-                            _STRING,
+                            TypeExpr.union(MOUNT_TYPE, CORE_STRING),
                             required=False,
                             default=None,
                             widget=MountWidget(),
                         ),
                     )
+                ),
+                Editor(
+                    "target",
+                    SaveTargetWidget(writes={"mount": "mount", "name": "filename_prefix"}),
                 ),
                 Choice(
                     "format",
