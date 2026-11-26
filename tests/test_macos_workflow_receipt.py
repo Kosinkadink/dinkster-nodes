@@ -428,7 +428,7 @@ class MacWorkflowReceiptTests(unittest.TestCase):
                 self.assertFalse(job["cacheEnabled"])
                 self.assertEqual(
                     job["graph"]["nodes"]["save"]["inputs"]["mount"],
-                    "mac-readiness-comfy-output",
+                    {"$typed": {"type": "MOUNT", "value": "mac-readiness-comfy-output"}},
                 )
                 self.assertEqual(
                     next(row for row in grants if row["id"] == "mac-readiness-output"),

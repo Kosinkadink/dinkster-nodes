@@ -20,6 +20,7 @@ from dinkster_api.v1 import (
     CORE_STRING,
     IMAGE_TYPE,
     MASK_TYPE,
+    MOUNT_TYPE,
     AssetError,
     AssetRef,
     ExportSnapshot,
@@ -32,7 +33,7 @@ from dinkster_api.v1 import (
     materialize_image,
 )
 from dinkster_assets import AssetVault, MountDef, MountTable, digest_file
-from dinkster_graph import Graph, GraphNode, Link
+from dinkster_graph import Graph, GraphNode, Link, TypedLiteral
 from dinkster_image.ported import image_file_tools
 from dinkster_image.ported.image_file_tools import (
     LoadImage,
@@ -1054,7 +1055,7 @@ def test_save_image_attaches_every_batch_file_on_repeated_host_execution(
                         {
                             "images": Link("source", "images"),
                             "filename_prefix": "chosen/item-%batch_num%",
-                            "mount": "alternate",
+                            "mount": TypedLiteral(MOUNT_TYPE, "alternate"),
                         },
                     ),
                 }
@@ -1170,7 +1171,7 @@ def test_advanced_exports_attach_every_published_file_on_repeated_host_execution
                     "filename_prefix": f"files/{node}-%batch_num%",
                 }
                 if mount == "alternate":
-                    options["mount"] = mount
+                    options["mount"] = TypedLiteral(MOUNT_TYPE, mount)
                 if fmt == "png":
                     options["format.bit_depth"] = "16-bit"
                 elif fmt == "exr":
@@ -1409,7 +1410,9 @@ def test_exr_exports_associate_lazy_optional_previews(
                     {
                         "images": Link("source", name),
                         "filename_prefix": name,
-                        "mount": "alternate" if name == "rgba" else "default",
+                        "mount": TypedLiteral(
+                            MOUNT_TYPE, "alternate" if name == "rgba" else "default"
+                        ),
                         "format.bit_depth": "32-bit float",
                         "format.input_color_space": "linear",
                     },
@@ -1537,7 +1540,7 @@ def test_animated_exports_attach_exact_mounted_files_on_each_execution(
                         {
                             "images": Link("source", "images"),
                             "filename_prefix": "chosen/webp",
-                            "mount": "alternate",
+                            "mount": TypedLiteral(MOUNT_TYPE, "alternate"),
                             "method": "fastest",
                             "lossless": True,
                         },
