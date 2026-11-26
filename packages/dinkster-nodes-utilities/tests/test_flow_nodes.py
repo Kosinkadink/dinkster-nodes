@@ -20,7 +20,7 @@ from dinkster_api.v1 import (
 )
 from dinkster_caches import MemoryLRUCache
 from dinkster_engine import Engine, EngineEvent, ExecutionError, GraphValidationError, RunResult
-from dinkster_graph import AbsentInput, Graph, GraphNode, Link, TypedLiteral
+from dinkster_graph import Graph, GraphNode, Link, TypedLiteral
 from dinkster_schema import build_node_types, build_schemas
 from dinkster_utilities.flow import HasValue, OnlyIf, OrElse, Unpack
 from dinkster_values import TypeRegistry, is_absent, register_core_types
@@ -541,7 +541,7 @@ def test_unpack_keeps_its_count_and_reports_a_mismatch_even_on_a_cached_run(
         assert node.output_members == {"items": tuple(str(index) for index in range(count))}
 
 
-def test_unpack_missing_items_skip_their_consumer_and_no_list_skips_unpack() -> None:
+def test_unpack_missing_items_skip_their_consumer_and_absent_list_skips_unpack() -> None:
     result = _run(
         {
             "unpack": GraphNode(
@@ -560,17 +560,39 @@ def test_unpack_missing_items_skip_their_consumer_and_no_list_skips_unpack() -> 
     assert Inpaint.ran == []
     absent = _run(
         {
+            "producer": GraphNode("test.literal", {"kind": "int"}),
             "unpack": GraphNode(
                 "dinkster.utilities.unpack",
-                {"list": AbsentInput(), "count": 2},
+                {"list": Link("producer", "list"), "count": 2},
                 output_members={"items": ("0", "1")},
-            )
+            ),
         },
         ["unpack"],
     )
     assert absent.skipped == ("unpack",)
     assert set(absent.outputs["unpack"]) == {"items.0", "items.1"}
     assert all(is_absent(value) for value in absent.outputs["unpack"].values())
+
+
+def test_unpack_without_a_list_wire_runs_and_caches_nothing_with_a_reason() -> None:
+    engine = _engine()
+    graph = Graph(
+        {
+            "unpack": GraphNode(
+                "dinkster.utilities.unpack",
+                {"count": 2},
+                output_members={"items": ("0", "1")},
+            )
+        }
+    )
+    for cached in (False, True):
+        result = run_scenario(engine.run(graph, ["unpack"]))
+        assert result.skipped == ()
+        assert set(result.outputs["unpack"]) == {"items.0", "items.1"}
+        assert all(
+            _reason(result, "unpack", f"items.{i}") == "No list is connected" for i in range(2)
+        )
+        assert ("unpack" in result.cached) is cached
 
 
 @pytest.mark.parametrize("count", [-1, 513])

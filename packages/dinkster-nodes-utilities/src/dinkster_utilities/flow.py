@@ -199,7 +199,7 @@ class Unpack(Node):
             category="utilities/flow",
             description="Gives one item of a list on each output, using the count you set.",
             body=(
-                Input("list", TypeExpr.list_of(T), label="List"),
+                Input("list", TypeExpr.list_of(T), required=False, on_absent="skip", label="List"),
                 Input("count", integer, default=0, widget=limits, hidden=True, pin=False),
                 Note("empty", "Connect a list or record", visible=Formula("count == 0")),
                 Button(
@@ -231,6 +231,10 @@ class Unpack(Node):
     def execute(
         cls, *, count: int, items: Members[Item], input_values: Mapping[str, Value]
     ) -> Mapping[str, object]:
+        if "list" not in input_values:
+            return cls.outputs(
+                items={member.key: AbsentOutput("No list is connected") for member in items}
+            )
         children = list_children(input_values["list"])
         assert children is not None
         if len(children) != count:
