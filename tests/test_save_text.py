@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 
 import pytest
@@ -19,9 +20,9 @@ from dinkster_assets import (
     digest_bytes,
 )
 from dinkster_caches import MemoryLRUCache
-from dinkster_engine import Engine, ExecutionError
+from dinkster_engine import Engine, ExecutionError, ExecutionRuntime
 from dinkster_graph import Graph, GraphNode, Link, TypedLiteral, graph_to_wire
-from dinkster_protocol import AssetFolderContext
+from dinkster_protocol import AssetFolderContext, SavedArtifact
 from dinkster_schema import build_node_types, build_schemas
 from dinkster_server import ServerLibrary, create_app
 from dinkster_text.save_text import SaveText
@@ -29,6 +30,7 @@ from dinkster_utilities import register_types
 from dinkster_utilities.primitive import Mount, PrimitiveString
 from dinkster_values import TypeRegistry, register_core_types
 from dinkster_workers import InProcessWorker
+from dinkster_workers.saved_artifacts import SavedArtifactAuthority
 
 from dinkster.compose import PackSpec, ServingComposer
 from tests.async_scenarios import run_scenario
@@ -133,10 +135,21 @@ def test_save_text_accepts_shared_mount_and_name_wires_without_changing_legacy_s
         register_core_types(registry)
         register_types(registry)
         node_types = (SaveText, Mount, PrimitiveString)
+        worker = InProcessWorker(build_node_types(node_types), registry)
+
+        async def validate_saved(
+            node_id: str, claims: Sequence[Mapping[str, object]], started_at_ns: int
+        ) -> tuple[SavedArtifact, ...]:
+            return SavedArtifactAuthority(roots["snapshot"]).capture_mounted(
+                claims, node_id, started_at_ns
+            )
+
+        runtime = ExecutionRuntime(worker=worker, validate_saved_artifacts=validate_saved)
         engine = Engine(
             schemas=build_schemas(node_types),
             registry=registry,
-            worker=InProcessWorker(build_node_types(node_types), registry),
+            worker=worker,
+            pin_execution=lambda: runtime,
             cache=MemoryLRUCache(),
         )
         graph = Graph(

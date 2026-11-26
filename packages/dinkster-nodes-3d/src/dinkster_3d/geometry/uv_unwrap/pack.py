@@ -29,7 +29,7 @@ except ImportError:
     _HAVE_NUMBA_PACK = False
     _prange = range
 
-    def _nb_threads():
+    def _nb_threads() -> int:
         return 1
 
     def _njit(*args, **kwargs):
