@@ -81,9 +81,9 @@ def test_magi2_conditioning_reference_image_and_uncond_toggle() -> None:
         height=512,
         use_ref_for_uncond=False,
     )
-    assert (
-        float(res_zero["negative"][0][1]["magi2_ref_images"][0]["latent"].abs().max().item()) == 0.0
-    )
+    neg_zero_entry = res_zero["negative"][0][1]["magi2_ref_images"][0]
+    assert neg_zero_entry.get("normalized") is True
+    assert float(neg_zero_entry["latent"].abs().max().item()) == 0.0
 
 
 @pytest.mark.parametrize("video_cfg,audio_cfg", [(5.0, 7.0), (2.0, 0.0)])

@@ -286,9 +286,12 @@ class Magi2Conditioning(Node):
             special_tok = fig_tokens.get(1)
             pos_ref = [{"latent": ref_latent, "special_token": special_tok}]
             neg_ref = [
-                {
-                    "latent": ref_latent if use_ref_for_uncond else torch.zeros_like(ref_latent),
+                {"latent": ref_latent, "special_token": special_tok}
+                if use_ref_for_uncond
+                else {
+                    "latent": torch.zeros_like(ref_latent),
                     "special_token": special_tok,
+                    "normalized": True,
                 }
             ]
             pos_cond = conditioning_set_values(pos_cond, {"magi2_ref_images": pos_ref})
@@ -500,9 +503,6 @@ class Magi2AudioDecode(Node):
         decoded = audio_vae.decode(audio_lat)
         if decoded.ndim == 3 and decoded.shape[1] != 2 and decoded.shape[-1] == 2:
             decoded = decoded.movedim(-1, 1)
-        std = decoded.std(dim=(1, 2), keepdim=True) * 5.0
-        std = std.clamp(min=1.0)
-        decoded = decoded / std
         resampled = sampling_mod.resample_magi2_audio(decoded, ratio=441.0 / 512.0)
         sample_rate = int(getattr(audio_vae, "audio_sample_rate", 44100))
         return cls.outputs(AUDIO={"waveform": resampled, "sample_rate": sample_rate})
