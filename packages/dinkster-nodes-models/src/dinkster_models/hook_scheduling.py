@@ -127,7 +127,7 @@ class HookKeyframesFromCurve(Node):
                     "curve",
                     TypeExpr.concrete(CURVE_TYPE),
                     default={"points": [[0.0, 1.0], [1.0, 1.0]], "interpolation": "step"},
-                    widget=CurveWidget(),
+                    widget=CurveWidget(interpolations=("step",)),
                 ),
                 Input("prev_hook_kf", _HOOK_KEYFRAMES, required=False),
                 Output("HOOK_KF", _HOOK_KEYFRAMES),
