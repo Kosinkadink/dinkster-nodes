@@ -2,7 +2,6 @@
 
 from dinkster_api.v1 import (
     COLOR_TYPE,
-    RESOLUTION_PREVIEW_TYPE,
     TypeRegistry,
     inference_nodes,
     register_box_types,
@@ -94,9 +93,8 @@ NODES = (
 
 def register_types(registry: TypeRegistry) -> None:
     register_box_types(registry)
-    for type_id in (COLOR_TYPE, RESOLUTION_PREVIEW_TYPE):
-        if type_id not in registry:
-            registry.register(type_id)
+    if COLOR_TYPE not in registry:
+        registry.register(COLOR_TYPE)
 
 
 __all__ = ["NODES", "register_types"]
