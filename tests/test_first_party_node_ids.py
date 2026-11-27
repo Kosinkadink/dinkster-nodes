@@ -9,8 +9,9 @@ from pathlib import Path
 
 import pytest
 from dinkster_api.v1 import with_identity_replacement
+from dinkster_graph import Graph, GraphNode, migrate_pure_node_type_replacements
 from dinkster_schema import Node, NodeSchema
-from dinkster_schema.replace import rule_to_wire, validate_replacement_references
+from dinkster_schema.replace import ReplacementRule, rule_to_wire, validate_replacement_references
 from dinkster_schema.wire import schema_from_wire, schema_to_wire
 from dinkster_text.text import StringConcatenate, StringFormat
 from dinkster_workers import load_manifest
@@ -69,6 +70,47 @@ def test_retained_image_classes_have_ordinary_identity_rules() -> None:
         "ImageCompare",
         "GLSLShader",
     }
+
+
+def test_first_party_rules_preserve_flat_graphs_and_leave_families_frontend_owned() -> None:
+    schema = StringConcatenate.schema()
+    original = replace(schema, node_type="StringConcatenate", replacements=(), search_terms=())
+    family = StringFormat.schema()
+    graph = Graph(
+        {
+            "flat": GraphNode(
+                "StringConcatenate", {"string_a": "left", "string_b": "RIGHT", "delimiter": "/"}
+            ),
+            "dynamic": GraphNode("StringFormat", {"values.z": "last", "f_string": "{z}"}),
+        }
+    )
+    migrated = migrate_pure_node_type_replacements(
+        graph, {schema.node_type: schema, family.node_type: family}
+    )
+    assert migrated.nodes["flat"] == GraphNode(
+        "dinkster.text.string_concatenate",
+        {"string_a": "left", "string_b": "RIGHT", "delimiter": "/"},
+    )
+    assert migrated.nodes["dynamic"] == graph.nodes["dynamic"]
+    assert schema.inputs == original.inputs
+    assert schema.outputs == original.outputs
+    assert schema.aliases == ()
+    assert schema.search_terms == (*original.search_terms, "StringConcatenate")
+    assert family.replacements[0].cases[0].input_families[0][1].source_template == ("value",)
+    duplicate = replace(schema, node_type="other.node")
+    duplicate = replace(
+        duplicate,
+        replacements=(
+            ReplacementRule(
+                "StringConcatenate",
+                (replace(schema.replacements[0].cases[0], to="other.node"),),
+            ),
+        ),
+    )
+    with pytest.raises(ValueError, match="conflicting pure replacements"):
+        migrate_pure_node_type_replacements(
+            graph, {schema.node_type: schema, duplicate.node_type: duplicate}
+        )
 
 
 def test_translation_interfaces_retain_positional_order_after_json_round_trip() -> None:
