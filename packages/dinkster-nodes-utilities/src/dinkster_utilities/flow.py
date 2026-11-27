@@ -212,7 +212,7 @@ class Unpack(Node):
                 Note(
                     "empty",
                     "Connect a list or record",
-                    visible=Formula("not linked(list) or count == 0"),
+                    visible=Formula("not linked(list)"),
                 ),
                 Group(
                     "items",
