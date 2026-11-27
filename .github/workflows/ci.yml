@@ -296,7 +296,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: Kosinkadink/dinkster-registry-service
-          ref: d5bbcfb6eb439b9a1defddaed507ac06049e3d12
+          ref: c18a919663cb92f4820e98d2edc7b3d43ab6a8f3
           persist-credentials: false
           path: .disposable-registry-source
       - uses: actions/download-artifact@v4
