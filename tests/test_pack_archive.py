@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import io
 import json
+import sys
 import tarfile
 from pathlib import Path
 
@@ -131,6 +132,79 @@ def test_official_publication_uses_selected_manifest_versions(
         assert manifest.compatibility is not None
         assert manifest.compatibility.version == expected[pack.pack]
         assert manifest.compatibility.engine == ">=0.0.2,<0.1"
+
+
+def test_native_publication_lock_includes_transitive_helper_requirements(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from dinkster_registry import artifact_digest, unpack_artifact
+    from dinkster_workers import load_manifest
+    from dinkster_workers.pack_lock import PackLock
+
+    from tests.registry_fixtures import _wheel
+
+    tracked = io.BytesIO()
+    declarations = {
+        "consumer": ('requires = ["direct-runtime>=1"]\n', "middle"),
+        "middle": ("", "leaf"),
+        "leaf": ('requires = ["helper-runtime>=2"]\n', None),
+        "unrelated": ('requires = ["unrelated-runtime>=3"]\n', None),
+    }
+    with tarfile.open(fileobj=tracked, mode="w") as archive:
+        for name, (requirements, helper) in declarations.items():
+            pack = f"dinkster-{name}"
+            module = pack.replace("-", "_")
+            manifest = (
+                f'[pack]\nname = "{pack}"\nversion = "0.0.1"\n'
+                'engine = ">=0.0.2,<0.1"\npublisher = "dinkster"\n'
+                + requirements
+                + f'[pack.entry]\nnodes = "{module}:NODES"\n'
+            )
+            if helper:
+                manifest += f'[pack.dependencies]\ndinkster-{helper} = ">=0.0.1"\n'
+            files = {
+                "dinkster-pack.toml": manifest,
+                "pyproject.toml": f'[project]\nname = "{pack}"\nrequires-python = ">=3.12"\n',
+                f"src/{module}/__init__.py": "NODES = []\n",
+            }
+            for filename, text in files.items():
+                payload = text.encode()
+                entry = tarfile.TarInfo(f"packages/dinkster-nodes-{name}/{filename}")
+                entry.size = len(payload)
+                archive.addfile(entry, io.BytesIO(payload))
+
+    def read_git(command, **kwargs):
+        return "a" * 40 if "rev-parse" in command else tracked.getvalue()
+
+    monkeypatch.setattr("scripts.build_official_packs.subprocess.check_output", read_git)
+    wheelhouse = tmp_path / "wheelhouse"
+    wheelhouse.mkdir()
+    for name, version in (("direct-runtime", "1.4"), ("helper-runtime", "2.7")):
+        _wheel(wheelhouse, name, version, name.replace("-", "_"), "VALUE = 1\n")
+    constraints = tmp_path / "constraints.txt"
+    constraints.write_text("")
+    output = tmp_path / "publication"
+    build_official_packs(
+        tmp_path,
+        output,
+        packs=("dinkster-consumer",),
+        variant="linux-cpu",
+        python=Path(sys.executable),
+        constraints=constraints,
+        find_links=(wheelhouse,),
+        accelerator="cpu",
+    )
+    lock = PackLock.read(output / "dinkster-consumer-0.0.1-linux-cpu.pack-lock.json")
+    assert {package.name: package.version for package in lock.packages} == {
+        "direct-runtime": "1.4",
+        "helper-runtime": "2.7",
+    }
+    assert set(lock.requirements) == {"direct-runtime>=1", "helper-runtime>=2"}
+    wheel = output / "dinkster_consumer-0.0.1-py3-none-any.whl"
+    tree = unpack_artifact(wheel, tmp_path / "unpacked", artifact_digest(wheel.read_bytes()))
+    manifest = load_manifest(tree / "dinkster_consumer/dinkster-pack.toml")
+    assert manifest.requires == ("direct-runtime>=1",)
+    assert [dependency.pack for dependency in manifest.dependencies] == ["dinkster-middle"]
 
 
 def test_catch_up_selects_only_missing_declared_official_versions(
