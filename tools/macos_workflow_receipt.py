@@ -289,6 +289,9 @@ def main() -> None:
                 "$link": {"node": link["from"]["node"], "output": link["from"]["port"]},
             }
         nodes["checkpoint"]["inputs"]["ckpt_name"] = resolved["asset"]
+        nodes["save"]["inputs"]["mount"] = {
+            "$typed": {"type": "MOUNT", "value": nodes["save"]["inputs"]["mount"]}
+        }
         job = {
             "clientId": "mac-readiness",
             "jobId": str(uuid.uuid4()),

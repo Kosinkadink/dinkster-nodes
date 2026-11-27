@@ -15,6 +15,7 @@ import torch
 from dinkster_api.v1 import (
     CORE_STRING,
     LATENT_TYPE,
+    MOUNT_TYPE,
     AssetRef,
     ExportSnapshot,
     Input,
@@ -25,7 +26,7 @@ from dinkster_api.v1 import (
     materialize_latent,
 )
 from dinkster_assets import MountDef, MountTable, digest_file
-from dinkster_graph import Graph, GraphNode, Link
+from dinkster_graph import Graph, GraphNode, Link, TypedLiteral
 from dinkster_latent.latent_file_tools import LoadLatent, SaveLatent
 from dinkster_schema.reporting import capture_saved_artifacts
 from safetensors import safe_open
@@ -339,7 +340,7 @@ def test_latent_exports_attach_exact_mounted_files_on_each_execution(
                         {
                             "samples": Link("load", "LATENT"),
                             "filename_prefix": "chosen/asymmetric",
-                            "mount": "alternate",
+                            "mount": TypedLiteral(MOUNT_TYPE, "alternate"),
                         },
                     ),
                 }

@@ -11,6 +11,7 @@ from pathlib import Path
 import pytest
 from dinkster_api.v1 import (
     CORE_STRING,
+    MOUNT_TYPE,
     SVG_TYPE,
     ExportSnapshot,
     Input,
@@ -21,7 +22,7 @@ from dinkster_api.v1 import (
     materialize_svg,
 )
 from dinkster_assets import MountDef, MountTable, digest_bytes
-from dinkster_graph import Graph, GraphNode, Link
+from dinkster_graph import Graph, GraphNode, Link, TypedLiteral
 from dinkster_image.ported.svg_save import SaveSVGNode
 
 from dinkster.compose import PackSpec, ServingComposer
@@ -143,7 +144,7 @@ def test_svg_save_publishes_ordered_streams_and_submission_metadata(
                         {
                             "svg": Link("source", "svg"),
                             "filename_prefix": "chosen/vector_%batch_num%",
-                            "mount": "alternate",
+                            "mount": TypedLiteral(MOUNT_TYPE, "alternate"),
                         },
                     ),
                     "inspect": GraphNode("svg-save-fixture.inspect", {"svg": Link("save", "svg")}),

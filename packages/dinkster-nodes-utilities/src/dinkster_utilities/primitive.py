@@ -23,7 +23,9 @@ from dinkster_api.v1 import (
     CORE_FLOAT,
     CORE_INT,
     CORE_STRING,
+    MOUNT_TYPE,
     Input,
+    MountWidget,
     Node,
     NodeSchema,
     NumberWidget,
@@ -163,6 +165,28 @@ class PrimitiveBoolean(_Primitive):
             ("bool", "toggle"),
             ("PrimitiveBoolean",),
         )
+
+
+class Mount(Node):
+    """A reusable mount identity, resolved against the project when saving."""
+
+    @classmethod
+    def define_schema(cls) -> NodeSchema:
+        mount_type = TypeExpr.concrete(MOUNT_TYPE)
+        return NodeSchema(
+            node_type="dinkster.utilities.mount",
+            display_name="Mount",
+            category="utilities/primitive",
+            search_terms=("output mount", "save destination"),
+            body=(
+                Input("value", mount_type, required=False, default=None, widget=MountWidget()),
+                Output("mount", mount_type),
+            ),
+        )
+
+    @classmethod
+    def execute(cls, *, value: str | None = None) -> Mapping[str, object]:
+        return cls.outputs(mount=value)
 
 
 class PrimitiveChoice(_Primitive):

@@ -11,9 +11,11 @@ from io import BytesIO
 from dinkster_api.v1 import (
     CORE_STRING,
     ENCODED_MEDIA_LIMIT_BYTES,
+    MOUNT_TYPE,
     SVG_TYPE,
     AssetError,
     AssetWriter,
+    Editor,
     Input,
     MountSnapshotWriter,
     MountWidget,
@@ -21,6 +23,7 @@ from dinkster_api.v1 import (
     NodeSchema,
     Output,
     Row,
+    SaveTargetWidget,
     StringWidget,
     TypeExpr,
     attach_saved_artifact,
@@ -58,12 +61,16 @@ class SaveSVGNode(Node):
                         ),
                         Input(
                             "mount",
-                            TypeExpr.concrete(CORE_STRING),
+                            TypeExpr.union(MOUNT_TYPE, CORE_STRING),
                             required=False,
                             default=None,
                             widget=MountWidget(),
                         ),
                     )
+                ),
+                Editor(
+                    "target",
+                    SaveTargetWidget(writes={"mount": "mount", "name": "filename_prefix"}),
                 ),
                 Output("svg", TypeExpr.concrete(SVG_TYPE)),
             ),

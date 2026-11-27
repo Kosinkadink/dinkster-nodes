@@ -27,6 +27,7 @@ from dinkster_api.v1 import (
     LOAD3D_CAMERA_TYPE,
     LOAD3D_MODEL_INFO_TYPE,
     LOAD_3D_TYPE,
+    MOUNT_TYPE,
     AssetError,
     AssetRef,
     AssetWriter,
@@ -41,6 +42,7 @@ from dinkster_api.v1 import (
     NumberWidget,
     Output,
     Row,
+    SaveTargetWidget,
     Section,
     State,
     StringWidget,
@@ -81,11 +83,15 @@ class _Save3D(Node):
                         ),
                         Input(
                             "mount",
-                            TypeExpr.concrete(CORE_STRING),
+                            TypeExpr.union(MOUNT_TYPE, CORE_STRING),
                             required=False,
                             widget=MountWidget(),
                         ),
                     )
+                ),
+                Editor(
+                    "target",
+                    SaveTargetWidget(writes={"mount": "mount", "name": "filename_prefix"}),
                 ),
                 State("viewport_state", TypeExpr.concrete(LOAD_3D_TYPE)),
                 Editor(

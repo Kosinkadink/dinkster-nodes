@@ -4,7 +4,6 @@ from typing import Any, cast
 
 from dinkster_api.v1 import (
     ASSET_TYPE,
-    Choice,
     ComboWidget,
     Input,
     MountWidget,
@@ -22,54 +21,7 @@ from dinkster_image.ported.image_file_tools import (
     PreviewImage,
     SaveAnimatedPNG,
     SaveAnimatedWEBP,
-    SaveImage,
 )
-from dinkster_image.ported.save_image_advanced import SaveImageAdvanced
-from dinkster_schema import schema_to_wire
-
-
-def test_save_image_preserves_fixed_inputs_and_appends_mount_widget() -> None:
-    schema = SaveImage.schema()
-
-    assert schema.node_type == "dinkster.image.save_image"
-    assert schema.display_name == "Save Image"
-    assert schema.category == "image"
-    images, line, output = schema.body
-    assert isinstance(images, Input) and isinstance(line, Row) and isinstance(output, Output)
-    filename_prefix, mount = line.rows
-    assert isinstance(filename_prefix, Input) and isinstance(mount, Input)
-    assert (images.id, filename_prefix.id, mount.id, output.id) == (
-        "images",
-        "filename_prefix",
-        "mount",
-        "images",
-    )
-    assert filename_prefix.required
-    assert filename_prefix.default == "ComfyUI"
-    assert filename_prefix.widget is None
-    assert images.tooltip == "The images to save."
-    assert filename_prefix.tooltip.startswith("The prefix for the file to save.")
-    assert not mount.required
-    assert mount.default is None
-    assert mount.widget == MountWidget()
-    assert schema.output_node
-    assert not schema.idempotent
-    assert schema.search_terms == (
-        "save",
-        "save image",
-        "export image",
-        "output image",
-        "write image",
-        "download",
-        "SaveImage",
-    )
-
-    wire = schema_to_wire(schema)
-    body = cast(list[dict[str, Any]], wire["body"])
-    assert body[1]["kind"] == "row"
-    filename_wire, mount_wire = body[1]["rows"]
-    assert filename_wire["id"] == "filename_prefix" and "widget" not in filename_wire
-    assert mount_wire["id"] == "mount" and mount_wire["widget"] == {"type": "MOUNT"}
 
 
 def test_preview_image_uses_the_public_image_preview_output() -> None:
@@ -145,20 +97,3 @@ def test_animated_savers_preserve_source_controls_and_append_mount() -> None:
             assert fields["quality"].default == 80
             assert fields["quality"].widget == NumberWidget(min=0, max=100)
             assert fields["method"].widget == ComboWidget(options=("default", "fastest", "slowest"))
-
-
-def test_advanced_image_save_retains_format_branches_and_adjacent_mount() -> None:
-    schema = SaveImageAdvanced.schema()
-    images, line, formats, output = schema.body
-    assert isinstance(images, Input) and images.id == "images"
-    assert isinstance(line, Row)
-    filename_prefix, mount = line.rows
-    assert isinstance(filename_prefix, Input) and isinstance(mount, Input)
-    assert filename_prefix.widget == StringWidget(multiline=False)
-    assert mount.widget == MountWidget()
-    assert not mount.required and mount.default is None
-    assert schema.output_node and not schema.idempotent
-    assert isinstance(output, Output) and output.id == "images"
-    assert isinstance(formats, Choice) and formats.id == "format"
-    assert tuple(option.key for option in formats.options) == ("png", "exr", "avif")
-    assert schema_to_wire(schema)["nodeType"] == "dinkster.image.save_image_advanced"

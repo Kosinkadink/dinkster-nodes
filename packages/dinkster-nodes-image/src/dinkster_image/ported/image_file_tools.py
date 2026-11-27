@@ -22,6 +22,7 @@ from dinkster_api.v1 import (
     IMAGE_TYPE,
     IMAGE_WORKING_SET_LIMIT_BYTES,
     MASK_TYPE,
+    MOUNT_TYPE,
     AssetError,
     AssetRef,
     AssetWidget,
@@ -39,6 +40,7 @@ from dinkster_api.v1 import (
     NumberWidget,
     Output,
     Row,
+    SaveTargetWidget,
     Section,
     SourceFilenameSpec,
     StringWidget,
@@ -292,12 +294,16 @@ class SaveImage(Node):
                         ),
                         Input(
                             "mount",
-                            _STRING,
+                            TypeExpr.union(MOUNT_TYPE, CORE_STRING),
                             required=False,
                             default=None,
                             widget=MountWidget(),
                         ),
                     )
+                ),
+                Editor(
+                    "target",
+                    SaveTargetWidget(writes={"mount": "mount", "name": "filename_prefix"}),
                 ),
                 Output("images", _IMAGE),
             ),
@@ -412,12 +418,16 @@ class SaveAnimatedWEBP(Node):
                         ),
                         Input(
                             "mount",
-                            _STRING,
+                            TypeExpr.union(MOUNT_TYPE, CORE_STRING),
                             required=False,
                             default=None,
                             widget=MountWidget(),
                         ),
                     )
+                ),
+                Editor(
+                    "target",
+                    SaveTargetWidget(writes={"mount": "mount", "name": "filename_prefix"}),
                 ),
                 Input(
                     "fps",
@@ -488,12 +498,16 @@ class SaveAnimatedPNG(Node):
                         ),
                         Input(
                             "mount",
-                            _STRING,
+                            TypeExpr.union(MOUNT_TYPE, CORE_STRING),
                             required=False,
                             default=None,
                             widget=MountWidget(),
                         ),
                     )
+                ),
+                Editor(
+                    "target",
+                    SaveTargetWidget(writes={"mount": "mount", "name": "filename_prefix"}),
                 ),
                 Input(
                     "fps",

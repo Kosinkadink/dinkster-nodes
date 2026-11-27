@@ -16,15 +16,18 @@ from dinkster_api.v1 import (
     CLIP_TYPE,
     CORE_STRING,
     MODEL_TYPE,
+    MOUNT_TYPE,
     VAE_TYPE,
     AssetError,
     AssetWriter,
+    Editor,
     Input,
     MountSnapshotWriter,
     MountWidget,
     Node,
     NodeSchema,
     Row,
+    SaveTargetWidget,
     TypeExpr,
     attach_saved_artifact,
     current_export_snapshot,
@@ -37,7 +40,7 @@ _STRING = TypeExpr.concrete(CORE_STRING)
 
 _MOUNT = Input(
     "mount",
-    _STRING,
+    TypeExpr.union(MOUNT_TYPE, CORE_STRING),
     required=False,
     default=None,
     widget=MountWidget(),
@@ -158,6 +161,10 @@ class CheckpointSave(Node):
                             _MOUNT,
                         )
                     ),
+                    Editor(
+                        "target",
+                        SaveTargetWidget(writes={"mount": "mount", "name": "filename_prefix"}),
+                    ),
                 ),
                 output_node=True,
                 idempotent=False,
@@ -195,6 +202,10 @@ class ModelSave(Node):
                             _MOUNT,
                         )
                     ),
+                    Editor(
+                        "target",
+                        SaveTargetWidget(writes={"mount": "mount", "name": "filename_prefix"}),
+                    ),
                 ),
                 output_node=True,
                 idempotent=False,
@@ -229,6 +240,10 @@ class CLIPSave(Node):
                             Input("filename_prefix", _STRING, default="clip/ComfyUI"),
                             _MOUNT,
                         )
+                    ),
+                    Editor(
+                        "target",
+                        SaveTargetWidget(writes={"mount": "mount", "name": "filename_prefix"}),
                     ),
                 ),
                 output_node=True,
@@ -289,6 +304,10 @@ class VAESave(Node):
                             Input("filename_prefix", _STRING, default="vae/ComfyUI_vae"),
                             _MOUNT,
                         )
+                    ),
+                    Editor(
+                        "target",
+                        SaveTargetWidget(writes={"mount": "mount", "name": "filename_prefix"}),
                     ),
                 ),
                 output_node=True,
