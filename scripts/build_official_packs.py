@@ -140,22 +140,10 @@ def build(
             roots.append(pack_root)
         manifests = [(path, load_manifest(path / "dinkster-pack.toml")) for path in roots]
         libraries = []
-        manifests_by_name = {manifest.name: manifest for _, manifest in manifests}
-        requirements_by_name: dict[str, tuple[str, ...]] = {}
-        for _, manifest in manifests:
-            pending = [manifest]
-            included: set[str] = set()
-            requirements = []
-            while pending:
-                helper = pending.pop()
-                if helper.name in included:
-                    continue
-                included.add(helper.name)
-                requirements.extend(
-                    helper.requires_for(accelerator) if accelerator else helper.requires
-                )
-                pending.extend(manifests_by_name[item.pack] for item in helper.dependencies)
-            requirements_by_name[manifest.name] = tuple(dict.fromkeys(requirements))
+        requirements_by_name = {
+            manifest.name: manifest.requires_for(accelerator) if accelerator else manifest.requires
+            for _, manifest in manifests
+        }
         for path in sorted(packages.glob("*/pyproject.toml")):
             project = tomllib.loads(path.read_text(encoding="utf-8"))
             if identity := official_library(project):
@@ -290,7 +278,7 @@ def build(
                 )
             )
             payloads.append(payload)
-            requirements = requirements_by_name[manifest.name]
+            requirements = manifest.requires_for(accelerator) if accelerator else manifest.requires
             for requirement in requirements:
                 if canonicalize_name(Requirement(requirement).name) in pack_names:
                     raise ValueError("wheel.requires-pack: Requires-Dist names a node pack")
