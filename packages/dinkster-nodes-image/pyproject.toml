@@ -1,6 +1,6 @@
 [project]
 name = "dinkster-image"
-version = "0.0.15"
+version = "0.0.16"
 description = "Dinkster first-party image and mask operation nodes"
 requires-python = ">=3.12"
 dependencies = [
@@ -10,7 +10,7 @@ dependencies = [
     "opencv-contrib-python-headless>=5.0,<5.1",
     "pillow>=10",
     "PyOpenGL>=3.1.8,<4",
-    "av==18.1.0",
+    "av>=18.1,<18.2",
     "torch",
     "torchvision",
     "scipy",
