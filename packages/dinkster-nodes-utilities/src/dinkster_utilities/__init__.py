@@ -15,7 +15,7 @@ from .curve_editor import (
     CurveEditor,
     SampleCurve,
 )
-from .flow import HasValue, OnlyIf, OrElse
+from .flow import HasValue, OnlyIf, OrElse, Unpack
 from .image_crop import (
     PrimitiveBoundingBox,
 )
@@ -90,6 +90,7 @@ NODES = (
     OrElse,
     HasValue,
     OnlyIf,
+    Unpack,
 )
 
 

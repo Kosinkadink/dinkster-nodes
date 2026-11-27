@@ -11,8 +11,12 @@ from collections.abc import Mapping
 from dinkster_api.v1 import (
     ABSENT,
     CORE_BOOLEAN,
+    CORE_INT,
     AbsentOutput,
+    Ask,
     BooleanWidget,
+    Button,
+    Count,
     Formula,
     Group,
     Input,
@@ -20,11 +24,17 @@ from dinkster_api.v1 import (
     Members,
     Node,
     NodeSchema,
+    Note,
     Numbered,
+    NumberWidget,
     Output,
+    Rule,
+    Set,
     TypeExpr,
     Value,
+    list_children,
     member_id,
+    report_log,
 )
 
 T = TypeExpr.variable("T")
@@ -174,3 +184,76 @@ class OnlyIf(Node):
         if _has_value(input_values, "value"):
             return cls.outputs(value=input_values["value"])
         return cls.outputs(value=ABSENT)
+
+
+class Unpack(Node):
+    """Take a list apart without letting a run change the stored output count."""
+
+    @classmethod
+    def define_schema(cls) -> NodeSchema:
+        integer = TypeExpr.concrete(CORE_INT)
+        limits = NumberWidget(min=0, max=512, step=1)
+        return NodeSchema(
+            node_type="dinkster.utilities.unpack",
+            display_name="Unpack",
+            category="utilities/flow",
+            description="Gives one item of a list on each output, using the count you set.",
+            body=(
+                Input("list", TypeExpr.list_of(T), required=False, on_absent="skip", label="List"),
+                Input("count", integer, default=0, widget=limits, hidden=True, pin=False),
+                Note(
+                    "empty",
+                    "Connect a list or record",
+                    visible=Formula("not linked(list) or count == 0"),
+                ),
+                Button(
+                    "set_count",
+                    "Set count",
+                    (
+                        Ask(
+                            "Set count",
+                            (Input("new_count", integer, default=0, widget=limits, label="Count"),),
+                        ),
+                        Set("count", Formula("new_count")),
+                    ),
+                ),
+                Group(
+                    "items",
+                    value=Output("item", T, optional=True),
+                    keys=Numbered("", start=0),
+                    grows=Count(Formula("count")),
+                    member_label=Formula('"Item " + str(index())'),
+                    label="Items",
+                ),
+            ),
+            input_values=True,
+            search_terms=("split list", "items"),
+            validate=(Rule(Formula("0 <= count <= 512"), "Count must be from 0 to 512."),),
+        )
+
+    @classmethod
+    def execute(
+        cls, *, count: int, items: Members[Item], input_values: Mapping[str, Value]
+    ) -> Mapping[str, object]:
+        if "list" not in input_values:
+            return cls.outputs(
+                items={member.key: AbsentOutput("No list is connected") for member in items}
+            )
+        children = list_children(input_values["list"])
+        assert children is not None
+        if len(children) != count:
+            report_log(
+                "warning",
+                f"Expected {count} items; received {len(children)}",
+                data={
+                    "code": "unpack_count_mismatch",
+                    "expected": count,
+                    "received": len(children),
+                },
+            )
+        return cls.outputs(
+            items={
+                member.key: children[index] if index < len(children) else ABSENT
+                for index, member in enumerate(items)
+            }
+        )
