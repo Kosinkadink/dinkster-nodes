@@ -15,6 +15,7 @@ from dinkster_api.v1 import (
     NodeSchema,
     Numbered,
     Output,
+    OutputListCount,
     TypeExpr,
     Value,
     list_children,
@@ -56,7 +57,11 @@ class CreateList(Node):
                     optional_after_minimum=True,
                     keys=Numbered("input", start=0),
                 ),
-                Output("list", TypeExpr.list_of(_JOINED)),
+                Output(
+                    "list",
+                    TypeExpr.list_of(_JOINED),
+                    list_count=OutputListCount(input="input", group="inputs"),
+                ),
             ),
             search_terms=(
                 "Image Iterator",

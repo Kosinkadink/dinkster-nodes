@@ -200,7 +200,15 @@ class Unpack(Node):
             description="Gives one item of a list on each output, using the count you set.",
             body=(
                 Input("list", TypeExpr.list_of(T), required=False, on_absent="skip", label="List"),
-                Input("count", integer, default=0, widget=limits, hidden=True, pin=False),
+                Input(
+                    "count",
+                    integer,
+                    default=0,
+                    widget=limits,
+                    hidden=True,
+                    pin=False,
+                    list_count_of="list",
+                ),
                 Note(
                     "empty",
                     "Connect a list or record",
