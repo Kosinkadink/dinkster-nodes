@@ -8,8 +8,8 @@ from dataclasses import replace
 from pathlib import Path
 
 import pytest
-from dinkster_graph import Graph, GraphNode, Link, migrate_pure_node_type_replacements
-from dinkster_schema import MappingSource, schema_from_wire, schema_to_wire
+from dinkster_graph import Graph, GraphNode, Link, migrate_node_replacements
+from dinkster_schema import MappingSource, schema_from_wire, schema_signature, schema_to_wire
 from dinkster_workers import load_manifest
 from dinkster_workers.host import load_pack
 
@@ -72,9 +72,11 @@ def test_core_class_pure_rename_preserves_graph_state(
     consumer = GraphNode("unrelated.consumer", {"value": Link("ported", schema.outputs[-1].id)})
     graph = Graph({"ported": old, "consumer": consumer})
     schemas = {target: schema}
-    migrated = migrate_pure_node_type_replacements(graph, schemas)
-    assert migrated.nodes["ported"] == replace(old, node_type=target)
-    assert migrated.nodes["consumer"] is consumer
+    migrated = migrate_node_replacements(graph, schemas)
+    assert migrated.nodes["ported"] == replace(
+        old, node_type=target, schema_signature=schema_signature(schema)
+    )
+    assert migrated.nodes["consumer"] == consumer
     assert graph.nodes["ported"] is old
     assert old.node_type == source
-    assert migrate_pure_node_type_replacements(migrated, schemas) is migrated
+    assert migrate_node_replacements(migrated, schemas) == migrated
