@@ -56,3 +56,7 @@ fake mode (explicit fake, or an unset mode under QA). Invalid values fail pack
 configuration. Both controls are read at process startup, not from node inputs,
 and are sent only on job submissions, including retries. They do not change the
 catalog, project or saved workflow and never grant real-partner permission.
+
+## Upstream compatibility
+
+- `PrunaPVideoUpscaleNode`: Partner API node needs the remote gateway catalog and credential contract. No identity replacement exists; add the node to this pack. Review related schemas before folding it into a consolidated node. [Upstream source](https://github.com/Comfy-Org/ComfyUI/blob/7c78b5641ab2d6cb7f7766a183a8a43a59de0a8b/comfy_api_nodes/nodes_pruna.py).
