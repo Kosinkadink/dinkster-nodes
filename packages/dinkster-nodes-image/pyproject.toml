@@ -10,7 +10,7 @@ dependencies = [
     "opencv-contrib-python-headless>=5.0,<5.1",
     "pillow>=10",
     "PyOpenGL>=3.1.8,<4",
-    "av==18.1.0",
+    "av>=18.1,<18.2",
     "torch",
     "torchvision",
     "scipy",
