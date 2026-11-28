@@ -5,21 +5,22 @@ from __future__ import annotations
 import importlib
 import math
 from collections.abc import Mapping
-from typing import Any
+from typing import Any, cast
 
 from dinkster_api.v1 import (
     CORE_COMBO,
     CORE_FLOAT,
     IMAGE_TYPE,
+    Choice,
     ComboOption,
     ComboWidget,
-    DynamicComboOption,
-    DynamicComboSpec,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Option,
+    Output,
+    Record,
     TypeExpr,
     initialize_inference_process,
     materialize_image,
@@ -93,8 +94,8 @@ _LOTTES_HDR_PARAMETERS = (
 _COLOR_SPACES = ("sRGB", "HDR", "HDR ACEScct", "HDR LogC3", "HDR PQ", "linear", "linear ACEScg")
 
 
-def _combo(name: str, options: tuple[str, ...], default: str) -> InputSpec:
-    return InputSpec(
+def _combo(name: str, options: tuple[str, ...], default: str) -> Input:
+    return Input(
         name,
         _COMBO,
         default=default,
@@ -190,20 +191,20 @@ class ImageSDRToHDR(Node):
                 "Expand sRGB brightness into Rec.2020 HLG HDR. Save the result with the HDR "
                 "color space selected. Alpha is preserved."
             ),
-            inputs=(InputSpec("image", _IMAGE, doc="SDR image(s) in sRGB."),),
-            combos=(
-                DynamicComboSpec(
+            body=(
+                Input("image", _IMAGE, tooltip="SDR image(s) in sRGB."),
+                Choice(
                     "algorithm",
-                    (
-                        DynamicComboOption(
+                    options=(
+                        Option(
                             "lottes",
-                            (
-                                InputSpec(
+                            rows=(
+                                Input(
                                     "target_luminance",
                                     _FLOAT,
                                     default=650.0,
                                     widget=NumberWidget(min=0.0, max=10000.0, step=1.0),
-                                    doc=(
+                                    tooltip=(
                                         "Peak-white target in nits. 0 keeps the calibrated "
                                         "rendering. Dark "
                                         "images are not normalized to this peak."
@@ -212,22 +213,26 @@ class ImageSDRToHDR(Node):
                             ),
                         ),
                     ),
-                    doc=(
+                    tooltip=(
                         "Lottes-style rational expansion blended with a calibrated monotonic "
                         "log-gain curve."
                     ),
                 ),
+                Output("IMAGE", _IMAGE),
             ),
-            outputs=(OutputSpec("IMAGE", _IMAGE),),
-            input_order=("image", "algorithm"),
         )
         return with_identity_replacement(schema, "ImageSDRToHDR")
 
     @classmethod
-    def execute(cls, *, image: Any, algorithm: str, **inputs: Any) -> Mapping[str, object]:
-        if algorithm != "lottes":
-            raise ValueError(f"Unsupported HDR algorithm: {algorithm}")
-        target_luminance = inputs["algorithm.target_luminance"] or None
+    def execute(
+        cls,
+        *,
+        image: Any,
+        algorithm: Record,
+    ) -> Mapping[str, object]:
+        if algorithm.key != "lottes":
+            raise ValueError(f"Unsupported HDR algorithm: {algorithm.key}")
+        target_luminance = cast("float", algorithm["target_luminance"]) or None
         initialize_inference_process()
         torch = importlib.import_module("torch")
         management = importlib.import_module("dinkster_inference.model_management")
@@ -258,12 +263,12 @@ class ImageColorSpace(Node):
                 "HDR LogC3, linear ACEScg, and HDR ACEScct. Straight alpha is not "
                 "color-transformed."
             ),
-            inputs=(
-                InputSpec("image", _IMAGE),
+            body=(
+                Input("image", _IMAGE),
                 _combo("source", _COLOR_SPACES, "sRGB"),
                 _combo("destination", _COLOR_SPACES, "sRGB"),
+                Output("IMAGE", _IMAGE),
             ),
-            outputs=(OutputSpec("IMAGE", _IMAGE),),
         )
         return with_identity_replacement(schema, "ImageColorSpace")
 

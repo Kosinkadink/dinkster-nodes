@@ -4,6 +4,8 @@ from dinkster_api.v1 import CORE_FLOAT, MODEL_TYPE, NumberWidget, TypeExpr
 from dinkster_models import NODES
 from dinkster_models.rope_and_mask import DifferentialDiffusion, ScaleROPE
 
+from tests.body_rows import advanced_ids
+
 
 def test_rope_and_mask_schemas_match_core_interfaces() -> None:
     assert ScaleROPE in NODES
@@ -22,7 +24,7 @@ def test_rope_and_mask_schemas_match_core_interfaces() -> None:
     ]
     assert [item.default for item in rope.inputs[1:]] == [1.0, 0.0, 1.0, 0.0, 1.0, 0.0]
     for index, item in enumerate(rope.inputs[1:]):
-        assert item.advanced
+        assert item.id in advanced_ids(rope.body)
         assert item.type == TypeExpr.concrete(CORE_FLOAT)
         assert item.widget == (
             NumberWidget(min=-256.0, max=256.0, step=0.1)

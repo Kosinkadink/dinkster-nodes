@@ -16,11 +16,11 @@ from dinkster_api.v1 import (
     ColorWidget,
     ComboOption,
     ComboWidget,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
     StringWidget,
     TypeExpr,
     materialize_image,
@@ -46,36 +46,36 @@ class TextOverlay(Node):
                 "addlabel",
                 "overlay",
             ),
-            inputs=(
-                InputSpec("images", TypeExpr.concrete(IMAGE_TYPE)),
-                InputSpec(
+            body=(
+                Input("images", TypeExpr.concrete(IMAGE_TYPE)),
+                Input(
                     "text",
                     TypeExpr.concrete(CORE_STRING),
                     default="",
                     widget=StringWidget(multiline=True),
                 ),
-                InputSpec(
+                Input(
                     "font_size",
                     TypeExpr.concrete(CORE_FLOAT),
                     default=5.0,
-                    doc="Font size as a percentage of the image height.",
+                    tooltip="Font size as a percentage of the image height.",
                     widget=NumberWidget(min=0.5, max=50.0, step=0.5),
                 ),
-                InputSpec(
+                Input(
                     "color",
                     TypeExpr.concrete(COLOR_TYPE),
                     default="#ffffff",
-                    doc="Color of the text.",
-                    widget=ColorWidget(),
-                    socketless=True,
+                    tooltip="Color of the text.",
+                    widget=ColorWidget(alpha=True),
+                    pin=False,
                 ),
-                InputSpec(
+                Input(
                     "position",
                     TypeExpr.concrete(CORE_COMBO),
                     default="top",
                     widget=ComboWidget((ComboOption("top"), ComboOption("bottom"))),
                 ),
-                InputSpec(
+                Input(
                     "align",
                     TypeExpr.concrete(CORE_COMBO),
                     default="left",
@@ -83,14 +83,14 @@ class TextOverlay(Node):
                         tuple(ComboOption(value) for value in ("left", "center", "right"))
                     ),
                 ),
-                InputSpec(
+                Input(
                     "outline",
                     TypeExpr.concrete(CORE_BOOLEAN),
                     default=True,
-                    doc="Draw a black outline around the text.",
+                    tooltip="Draw a black outline around the text.",
                 ),
+                Output("images", TypeExpr.concrete(IMAGE_TYPE)),
             ),
-            outputs=(OutputSpec("images", TypeExpr.concrete(IMAGE_TYPE)),),
         )
         return with_identity_replacement(schema, "TextOverlay")
 

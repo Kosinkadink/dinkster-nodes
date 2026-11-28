@@ -6,6 +6,7 @@ from typing import Any
 
 from dinkster_api.v1 import (
     NodeSchema,
+    Record,
     with_identity_replacement,
 )
 from dinkster_llm.text_generation import TextGenerate
@@ -159,7 +160,7 @@ class TextGenerateLTX2Prompt(TextGenerate):
         clip: Any,
         prompt: str,
         max_length: int,
-        sampling_mode: str | Mapping[str, Any],
+        sampling_mode: Record,
         image: object = None,
         thinking: bool = False,
         use_default_template: bool = True,
@@ -167,7 +168,6 @@ class TextGenerateLTX2Prompt(TextGenerate):
         audio: object = None,
         mtp: str = "auto",
         system_prompt: str = "",
-        **inputs: Any,
     ) -> Mapping[str, object]:
         is_gemma4 = "gemma4" in getattr(clip.tokenizer, "clip_name", "")
         if is_gemma4:
@@ -207,6 +207,5 @@ class TextGenerateLTX2Prompt(TextGenerate):
             video=video,
             audio=audio,
             mtp=mtp,
-            **inputs,
         )
         return cls.outputs(generated_text=out["generated_text"] or prompt, thinking=out["thinking"])

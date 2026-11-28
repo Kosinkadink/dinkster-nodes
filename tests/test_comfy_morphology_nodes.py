@@ -44,6 +44,7 @@ def test_morphology_nodes_preserve_image_ports_and_operation_choices() -> None:
     schema = Morphology.schema()
     widget = schema.inputs[1].widget
     assert isinstance(widget, ComboWidget)
+    assert isinstance(widget.options, tuple)
     assert tuple(
         option.value if isinstance(option, ComboOption) else option for option in widget.options
     ) == (

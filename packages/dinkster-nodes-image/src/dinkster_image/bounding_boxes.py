@@ -15,14 +15,15 @@ from dinkster_api.v1 import (
     CORE_INT,
     CORE_STRING,
     IMAGE_TYPE,
-    InputSpec,
+    Input,
     MappingSource,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
     ReplacementCase,
     ReplacementRule,
+    State,
     TypeExpr,
 )
 from PIL import Image, ImageDraw, ImageEnhance, ImageFont
@@ -328,64 +329,51 @@ class CreateBoundingBoxes(Node):
             ),
             search_terms=("CreateBoundingBoxes",),
             output_node=True,
-            inputs=(
-                InputSpec(
+            body=(
+                Input(
                     "background",
                     TypeExpr.concrete(IMAGE_TYPE),
                     required=False,
-                    doc="Optional image used as background in the canvas and preview.",
+                    tooltip="Optional image used as background in the canvas and preview.",
                 ),
-                InputSpec(
+                Input(
                     "bboxes",
                     TypeExpr.union(BOUNDING_BOX_TYPE, ARRAY_TYPE, CORE_STRING),
                     required=False,
-                    force_input=True,
-                    doc=(
+                    pin_first=True,
+                    tooltip=(
                         "Bounding boxes, elements, or a JSON string to initialize the canvas. "
                         "A new upstream value initializes the canvas; edits made on the canvas "
                         "take priority and are kept until the upstream value changes again."
                     ),
                 ),
-                InputSpec(
+                Input(
                     "width",
                     TypeExpr.concrete(CORE_INT),
                     default=1024,
                     widget=NumberWidget(min=64, max=16_384, step=16),
-                    doc="Width of the canvas and the pixel grid for the bounding boxes.",
+                    tooltip="Width of the canvas and the pixel grid for the bounding boxes.",
                 ),
-                InputSpec(
+                Input(
                     "height",
                     TypeExpr.concrete(CORE_INT),
                     default=1024,
                     widget=NumberWidget(min=64, max=16_384, step=16),
-                    doc="Height of the canvas and the pixel grid for the bounding boxes.",
+                    tooltip="Height of the canvas and the pixel grid for the bounding boxes.",
                 ),
-                InputSpec(
+                Input(
                     "editor_state",
                     TypeExpr.concrete(BOUNDING_BOXES_TYPE),
                     default=[],
-                    doc=(
+                    tooltip=(
                         "Draw bounding boxes and set each box type, text, description, color "
                         "palette. Start with background element first and foreground last."
                     ),
                 ),
-                InputSpec(
-                    "last_incoming",
-                    TypeExpr.concrete(BOUNDING_BOXES_TYPE),
-                    required=False,
-                    default=[],
-                    socketless=True,
-                    doc=(
-                        "Internal state managed by the canvas: the upstream bboxes value that "
-                        "last initialized it. Leave empty to re-initialize the canvas from "
-                        "the bboxes input on the next run."
-                    ),
-                ),
-            ),
-            outputs=(
-                OutputSpec("preview", TypeExpr.concrete(IMAGE_TYPE), display_name="preview"),
-                OutputSpec("bboxes", TypeExpr.concrete(BOUNDING_BOX_TYPE), display_name="bboxes"),
-                OutputSpec("elements", TypeExpr.concrete(ARRAY_TYPE), display_name="elements"),
+                State("last_incoming", TypeExpr.concrete(BOUNDING_BOXES_TYPE), default=[]),
+                Output("preview", TypeExpr.concrete(IMAGE_TYPE), label="preview"),
+                Output("bboxes", TypeExpr.concrete(BOUNDING_BOX_TYPE), label="bboxes"),
+                Output("elements", TypeExpr.concrete(ARRAY_TYPE), label="elements"),
             ),
         )
         return replace(

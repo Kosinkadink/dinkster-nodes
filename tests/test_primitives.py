@@ -3,86 +3,32 @@
 from __future__ import annotations
 
 import dataclasses
-import json
-from collections.abc import Mapping
-from pathlib import Path
 
 import dinkster_api.v1 as api
-import pytest
 from dinkster_caches import MemoryLRUCache
 from dinkster_engine import Engine, Invocation
-from dinkster_graph import Graph, GraphNode, Link
+from dinkster_graph import Graph, GraphNode, Link, TypedLiteral
 from dinkster_schema import build_node_types, build_schemas
 from dinkster_utilities import NODES, register_types
 from dinkster_utilities.utilities import PreviewAny
 from dinkster_values import EncodedPayload, TypeRegistry, register_core_types
 from dinkster_workers import InProcessWorker
 
-from dinkster.compose import PackSpec, ServingComposer
 from tests.async_scenarios import run_scenario
 
 
-class ColorSource(api.Node):
-    @classmethod
-    def define_schema(cls) -> api.NodeSchema:
-        return api.NodeSchema(
-            node_type="color-fixture.source",
-            outputs=(
-                api.OutputSpec("color", api.TypeExpr.concrete(api.COLOR_TYPE)),
-                api.OutputSpec("palette", api.TypeExpr.concrete(api.COLORS_TYPE)),
-                api.OutputSpec("preview", api.TypeExpr.concrete(api.RESOLUTION_PREVIEW_TYPE)),
-            ),
-        )
-
-    @classmethod
-    def execute(cls) -> Mapping[str, object]:
-        return cls.outputs(
-            color="#aB12f080",
-            palette=["#1200ff", "red", "#1200ff"],
-            preview={"width": 832, "height": 1216, "extra": {"enabled": False}},
-        )
-
-
-class ColorInspect(api.Node):
-    @classmethod
-    def define_schema(cls) -> api.NodeSchema:
-        return api.NodeSchema(
-            node_type="color-fixture.inspect",
-            inputs=(
-                api.InputSpec("color", api.TypeExpr.concrete(api.COLOR_TYPE)),
-                api.InputSpec("palette", api.TypeExpr.concrete(api.COLORS_TYPE)),
-                api.InputSpec(
-                    "preview", api.TypeExpr.concrete(api.RESOLUTION_PREVIEW_TYPE), required=False
-                ),
-            ),
-            outputs=(api.OutputSpec("text", api.TypeExpr.concrete(api.CORE_STRING)),),
-        )
-
-    @classmethod
-    def execute(
-        cls, *, color: str, palette: list[str], preview: dict[str, object] | None = None
-    ) -> Mapping[str, object]:
-        return cls.outputs(text=json.dumps([color, palette, preview]))
-
-
-COLOR_FIXTURES = (ColorSource, ColorInspect)
-
-
-def test_color_preview_registration_is_portable_and_idempotent() -> None:
+def test_color_registration_is_portable_and_idempotent() -> None:
     registry = TypeRegistry()
     api.register_inference_types(registry)
     api.register_inference_types(registry)
-    assert (api.COLOR_TYPE, api.COLORS_TYPE, api.RESOLUTION_PREVIEW_TYPE) == (
+    assert (api.COLOR_TYPE, api.COLORS_TYPE) == (
         "COLOR",
         "COLORS",
-        "RESOLUTION_PREVIEW",
     )
     for type_id, source in (
         (api.COLOR_TYPE, "#ff001280"),
         (api.COLORS_TYPE, []),
         (api.COLORS_TYPE, ["blue", "#00ff00", "blue"]),
-        (api.RESOLUTION_PREVIEW_TYPE, {}),
-        (api.RESOLUTION_PREVIEW_TYPE, {"width": 832, "height": 1216}),
     ):
         spec = registry.spec(type_id)
         encoded = spec.encode(source)
@@ -99,59 +45,6 @@ def test_color_preview_registration_is_portable_and_idempotent() -> None:
     )
 
 
-@pytest.mark.parametrize("in_process", (True, False))
-def test_color_and_resolution_preview_types_cross_pack_hosts(
-    tmp_path: Path, in_process: bool
-) -> None:
-    async def scenario() -> None:
-        composer = ServingComposer(worker_env={"PYTHONPATH": str(Path(__file__).parent)})
-        try:
-            (tmp_path / "color_fixture.py").write_text(
-                "from test_primitives import COLOR_FIXTURES as NODES\n"
-                "from dinkster_api.v1 import register_inference_types\n",
-                encoding="ascii",
-            )
-            manifest = tmp_path / "dinkster-pack.toml"
-            manifest.write_text(
-                '[pack]\nname = "color-fixture"\npublisher = "dinkster"\n'
-                'namespaces = ["color-fixture"]\n'
-                '[pack.sandbox]\n[pack.contracts]\nhost = "dinkster-pack-host/1"\n'
-                'api = "dinkster-api/v1"\n[pack.entry]\nnodes = "color_fixture:NODES"\n'
-                'types = "color_fixture:register_inference_types"\n',
-                encoding="ascii",
-            )
-            await composer.add_pack(PackSpec(manifest=manifest, in_process=in_process))
-            engine = composer.composition.make_engine(lambda _event: None)
-            for linked_preview in (True, False):
-                inputs: dict[str, Link] = {
-                    "color": Link("source", "color"),
-                    "palette": Link("source", "palette"),
-                }
-                if linked_preview:
-                    inputs["preview"] = Link("source", "preview")
-                graph = Graph(
-                    nodes={
-                        "source": GraphNode("color-fixture.source"),
-                        "inspect": GraphNode("color-fixture.inspect", inputs),
-                    }
-                )
-                for _ in range(2):
-                    result = await engine.run(graph, ["inspect"])
-                    text = result.outputs["inspect"]["text"].resolve()
-                    assert isinstance(text, str)
-                    assert json.loads(text) == [
-                        "#aB12f080",
-                        ["#1200ff", "red", "#1200ff"],
-                        {"width": 832, "height": 1216, "extra": {"enabled": False}}
-                        if linked_preview
-                        else None,
-                    ]
-        finally:
-            await composer.close()
-
-    run_scenario(scenario())
-
-
 def test_first_party_primitives_execute_and_feed_preview() -> None:
     async def scenario() -> None:
         registry = TypeRegistry()
@@ -164,23 +57,36 @@ def test_first_party_primitives_execute_and_feed_preview() -> None:
             cache=MemoryLRUCache(),
         )
         cases = (
-            ("i", "primitive_int", "INT", 7),
-            ("f", "primitive_float", "FLOAT", 0.25),
-            ("s", "primitive_string", "STRING", "hello"),
-            ("m", "primitive_string_multiline", "STRING", "a\nb"),
-            ("b", "primitive_boolean", "BOOLEAN", True),
+            ("i", "primitive_int", "INT", "INT", 7),
+            ("f", "primitive_float", "FLOAT", "FLOAT", 0.25),
+            ("s", "primitive_string", "STRING", "STRING", "hello"),
+            ("m", "primitive_string", "STRING", "STRING", "a\nb"),
+            ("b", "primitive_boolean", "BOOLEAN", "BOOLEAN", True),
+            ("c", "primitive_choice", "COMBO", "COMBO", "Detailed"),
+            ("g", "primitive", "value", "FLOAT", 0.5),
+            ("k", "primitive", "value", api.COLOR_TYPE, "#3366cc80"),
+            ("mount", "mount", "mount", api.MOUNT_TYPE, "render-37"),
+            ("default_mount", "mount", "mount", api.MOUNT_TYPE, None),
         )
         nodes = {
-            key: GraphNode(f"dinkster.utilities.{leaf}", {"value": value})
-            for key, leaf, _output, value in cases
+            key: GraphNode(
+                f"dinkster.utilities.{leaf}",
+                {"value": TypedLiteral(type_id, value) if leaf == "primitive" else value},
+            )
+            for key, leaf, _output, type_id, value in cases
         }
         nodes["p"] = GraphNode("dinkster.utilities.preview_any", {"source": Link("i", "INT")})
+        nodes["mount_copy"] = GraphNode(
+            "dinkster.utilities.mount", {"value": Link("mount", "mount")}
+        )
         result = await engine.run(Graph(nodes=nodes), list(nodes))
-        for key, _leaf, output, value in cases:
+        for key, _leaf, output, type_id, value in cases:
             actual = result.outputs[key][output]
-            assert actual.type_id == output
+            assert actual.type_id == type_id
             assert actual.resolve() == value
         assert result.outputs["p"]["STRING"].resolve() == "7"
+        assert result.outputs["mount_copy"]["mount"].type_id == api.MOUNT_TYPE
+        assert result.outputs["mount_copy"]["mount"].resolve() == "render-37"
 
     run_scenario(scenario())
 

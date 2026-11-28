@@ -9,11 +9,11 @@ from dinkster_api.v1 import (
     CORE_FLOAT,
     CORE_INT,
     LATENT_TYPE,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
     TypeExpr,
     initialize_inference_process,
     with_identity_replacement,
@@ -22,20 +22,20 @@ from dinkster_api.v1 import (
 
 def _duration_inputs(
     seconds: float, step: float, *, minimum: float = 1.0, batch_doc: str = ""
-) -> tuple[InputSpec, ...]:
+) -> tuple[Input, ...]:
     return (
-        InputSpec(
+        Input(
             "seconds",
             TypeExpr.concrete(CORE_FLOAT),
             default=seconds,
             widget=NumberWidget(min=minimum, max=1000.0, step=step),
         ),
-        InputSpec(
+        Input(
             "batch_size",
             TypeExpr.concrete(CORE_INT),
             default=1,
             widget=NumberWidget(min=1, max=4096),
-            doc=batch_doc,
+            tooltip=batch_doc,
         ),
     )
 
@@ -47,10 +47,12 @@ class EmptyAceStepLatentAudio(Node):
             node_type="dinkster.audio.models.empty_ace_step_latent_audio",
             display_name="Empty Ace Step 1.0 Latent Audio",
             category="model/latent/ace",
-            inputs=_duration_inputs(
-                120.0, 0.1, batch_doc="The number of latent images in the batch."
+            body=(
+                *_duration_inputs(
+                    120.0, 0.1, batch_doc="The number of latent images in the batch."
+                ),
+                Output("LATENT", TypeExpr.concrete(LATENT_TYPE)),
             ),
-            outputs=(OutputSpec("LATENT", TypeExpr.concrete(LATENT_TYPE)),),
         )
         return with_identity_replacement(schema, "EmptyAceStepLatentAudio")
 
@@ -75,10 +77,12 @@ class EmptyAceStep15LatentAudio(Node):
             node_type="dinkster.audio.models.empty_ace_step1_5_latent_audio",
             display_name="Empty Ace Step 1.5 Latent Audio",
             category="model/latent/ace",
-            inputs=_duration_inputs(
-                120.0, 0.01, batch_doc="The number of latent images in the batch."
+            body=(
+                *_duration_inputs(
+                    120.0, 0.01, batch_doc="The number of latent images in the batch."
+                ),
+                Output("LATENT", TypeExpr.concrete(LATENT_TYPE)),
             ),
-            outputs=(OutputSpec("LATENT", TypeExpr.concrete(LATENT_TYPE)),),
         )
         return with_identity_replacement(schema, "EmptyAceStep1.5LatentAudio")
 
@@ -105,8 +109,10 @@ class EmptyYuE2LatentAudio(Node):
             node_type="dinkster.audio.models.empty_yu_e2_latent_audio",
             display_name="Empty YuE2 Latent Audio",
             category="model/latent/yue2",
-            inputs=_duration_inputs(120.0, 0.04, minimum=0.04),
-            outputs=(OutputSpec("LATENT", TypeExpr.concrete(LATENT_TYPE)),),
+            body=(
+                *_duration_inputs(120.0, 0.04, minimum=0.04),
+                Output("LATENT", TypeExpr.concrete(LATENT_TYPE)),
+            ),
         )
         return with_identity_replacement(schema, "EmptyYuE2LatentAudio")
 

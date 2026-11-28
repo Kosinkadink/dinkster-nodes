@@ -10,11 +10,11 @@ from dinkster_api.v1 import (
     CORE_INT,
     IMAGE_TYPE,
     INTERP_MODEL_TYPE,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
     TypeExpr,
     initialize_inference_process,
     materialize_image,
@@ -38,17 +38,17 @@ class FrameInterpolate(Node):
                 "interpolate frames",
                 "vfi",
             ),
-            inputs=(
-                InputSpec("interp_model", TypeExpr.concrete(INTERP_MODEL_TYPE)),
-                InputSpec("images", TypeExpr.concrete(IMAGE_TYPE)),
-                InputSpec(
+            body=(
+                Input("interp_model", TypeExpr.concrete(INTERP_MODEL_TYPE)),
+                Input("images", TypeExpr.concrete(IMAGE_TYPE)),
+                Input(
                     "multiplier",
                     TypeExpr.concrete(CORE_INT),
                     default=2,
                     widget=NumberWidget(min=2, max=16),
                 ),
+                Output("IMAGE", TypeExpr.concrete(IMAGE_TYPE)),
             ),
-            outputs=(OutputSpec("IMAGE", TypeExpr.concrete(IMAGE_TYPE)),),
         )
         return with_identity_replacement(schema, "FrameInterpolate")
 

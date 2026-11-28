@@ -26,6 +26,7 @@ from dinkster_api.v1 import (
     AssetVault,
     Node,
     NodeSchema,
+    Output,
     TypeExpr,
     TypeRegistry,
     current_execution_context,
@@ -375,6 +376,18 @@ def _type_expressions(value: object) -> Iterator[TypeExpr]:
             yield from _type_expressions(getattr(value, descriptor.name))
 
 
+def _outputs(value: object) -> Iterator[Output]:
+    """Every output row in a schema's rows, at any depth of groups, choices and sections."""
+    if isinstance(value, Output):
+        yield value
+    elif isinstance(value, tuple):
+        for item in cast("tuple[object, ...]", value):
+            yield from _outputs(item)
+    elif is_dataclass(value) and not isinstance(value, type):
+        for descriptor in fields(value):
+            yield from _outputs(getattr(value, descriptor.name))
+
+
 def _asset_target_atoms(expression: TypeExpr, *, inside_asset: bool = False) -> Iterator[str]:
     inside_asset = inside_asset or expression.kind == "asset"
     if inside_asset:
@@ -567,11 +580,8 @@ class RemoteRuntime:
 
     @staticmethod
     def _is_video(schema: NodeSchema) -> bool:
-        choices = () if schema.output_descriptors is None else schema.output_descriptors.choices
         output_types = (
-            *(output.type.runtime_type_id() for output in schema.outputs),
-            *(family.type.runtime_type_id() for family in schema.output_families),
-            *(choice.type.runtime_type_id() for choice in choices),
+            output.type.runtime_type_id() for output in _outputs((schema.outputs, schema.body))
         )
         return any(
             type_id is not None and "video" in type_id.casefold() for type_id in output_types

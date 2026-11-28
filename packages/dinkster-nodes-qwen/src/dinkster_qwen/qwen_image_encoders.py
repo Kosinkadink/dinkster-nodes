@@ -19,12 +19,15 @@ from dinkster_api.v1 import (
     VAE_TYPE,
     ComboOption,
     ComboWidget,
-    InputFamilySpec,
-    InputSpec,
+    Group,
+    Input,
+    Item,
+    Members,
+    Named,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
     StringWidget,
     TypeExpr,
     initialize_inference_process,
@@ -50,8 +53,8 @@ _STRING = TypeExpr.concrete(CORE_STRING)
 _VAE = TypeExpr.concrete(VAE_TYPE)
 
 
-def _text(name: str) -> InputSpec:
-    return InputSpec(name, _STRING, widget=StringWidget(multiline=True, dynamic_prompts=True))
+def _text(name: str) -> Input:
+    return Input(name, _STRING, widget=StringWidget(multiline=True, dynamic_prompts=True))
 
 
 def _upscale(image: Any, width: int, height: int, method: str) -> Any:
@@ -84,13 +87,13 @@ class TextEncodeQwenImageEdit(Node):
             node_type="dinkster.qwen.text_encode_qwen_image_edit",
             display_name="Text Encode Qwen Image Edit",
             category="model/conditioning/qwen image",
-            inputs=(
-                InputSpec("clip", _CLIP),
+            body=(
+                Input("clip", _CLIP),
                 _text("prompt"),
-                InputSpec("vae", _VAE, required=False),
-                InputSpec("image", _IMAGE, required=False),
+                Input("vae", _VAE, required=False),
+                Input("image", _IMAGE, required=False),
+                Output("CONDITIONING", _CONDITIONING),
             ),
-            outputs=(OutputSpec("CONDITIONING", _CONDITIONING),),
         )
         return with_identity_replacement(schema, "TextEncodeQwenImageEdit")
 
@@ -128,13 +131,13 @@ class TextEncodeQwenImageEditPlus(Node):
             node_type="dinkster.qwen.text_encode_qwen_image_edit_plus",
             display_name="Text Encode Qwen Image Edit Plus",
             category="model/conditioning/qwen image",
-            inputs=(
-                InputSpec("clip", _CLIP),
+            body=(
+                Input("clip", _CLIP),
                 _text("prompt"),
-                InputSpec("vae", _VAE, required=False),
-                *(InputSpec(f"image{i}", _IMAGE, required=False) for i in range(1, 4)),
+                Input("vae", _VAE, required=False),
+                *(Input(f"image{i}", _IMAGE, required=False) for i in range(1, 4)),
+                Output("CONDITIONING", _CONDITIONING),
             ),
-            outputs=(OutputSpec("CONDITIONING", _CONDITIONING),),
         )
         return with_identity_replacement(schema, "TextEncodeQwenImageEditPlus")
 
@@ -177,29 +180,24 @@ class TextEncodeQwenImage21(Node):
             node_type="dinkster.qwen.text_encode_qwen_image21",
             display_name="Text Encode Qwen Image 2.1",
             category="model/conditioning/qwen image",
-            inputs=(
-                InputSpec("clip", _CLIP),
+            body=(
+                Input("clip", _CLIP),
                 _text("prompt"),
                 _text("negative_prompt"),
-                InputSpec("vae", _VAE, required=False),
-                InputSpec(
+                Input("vae", _VAE, required=False),
+                Input(
                     "resolution", _INT, default=1024, widget=NumberWidget(min=0, max=4096, step=32)
                 ),
-            ),
-            input_families=(
-                InputFamilySpec(
+                Group(
                     "images",
-                    (InputSpec("image", _IMAGE, required=False),),
+                    value=Input("image", _IMAGE, required=False),
                     min_members=0,
-                    member_names=tuple(f"image_{index}" for index in range(1, 17)),
+                    keys=Named(tuple(f"image_{index}" for index in range(1, 17))),
                 ),
+                Output("positive", _CONDITIONING),
+                Output("negative", _CONDITIONING),
+                Output("latent", _LATENT),
             ),
-            outputs=(
-                OutputSpec("positive", _CONDITIONING),
-                OutputSpec("negative", _CONDITIONING),
-                OutputSpec("latent", _LATENT),
-            ),
-            input_order=("clip", "prompt", "negative_prompt", "vae", "resolution", "images"),
         )
         return with_identity_replacement(schema, "TextEncodeQwenImage21")
 
@@ -212,14 +210,13 @@ class TextEncodeQwenImage21(Node):
         negative_prompt: str,
         vae: Any = None,
         resolution: int = 1024,
-        images: Mapping[str, object] | None = None,
+        images: Members[Item] = Members[Item](),
     ) -> Mapping[str, object]:
         vision: list[Any] = []
         references: list[Any] = []
         latent_width = latent_height = resolution or 1024
-        for _, raw_image in sorted(
-            (images or {}).items(), key=lambda item: int(item[0].rsplit("_", 1)[-1])
-        ):
+        for member in images:
+            raw_image = member.value
             if raw_image is None:
                 continue
             image = materialize_image(raw_image)[:1]
@@ -269,9 +266,9 @@ class QwenImage21Cache(Node):
             node_type="dinkster.qwen.qwen_image21_cache",
             display_name="Qwen Image 2.1 Cache",
             category="model/conditioning/qwen image",
-            inputs=(
-                InputSpec("model", _MODEL),
-                InputSpec(
+            body=(
+                Input("model", _MODEL),
+                Input(
                     "device",
                     combo,
                     default="auto",
@@ -279,14 +276,14 @@ class QwenImage21Cache(Node):
                         tuple(ComboOption(x) for x in ("auto", "gpu", "cpu", "off"))
                     ),
                 ),
-                InputSpec(
+                Input(
                     "dtype",
                     combo,
                     default="default",
                     widget=ComboWidget(tuple(ComboOption(x) for x in ("default", "int8", "int4"))),
                 ),
+                Output("MODEL", _MODEL),
             ),
-            outputs=(OutputSpec("MODEL", _MODEL),),
         )
         return with_identity_replacement(schema, "QwenImage21Cache")
 

@@ -15,11 +15,11 @@ from dinkster_api.v1 import (
     PHOTOMAKER_TYPE,
     AssetRef,
     AssetWidget,
-    InputSpec,
+    Input,
     LocalAssetRef,
     Node,
     NodeSchema,
-    OutputSpec,
+    Output,
     StringWidget,
     TypeExpr,
     initialize_inference_process,
@@ -143,14 +143,14 @@ class PhotoMakerLoader(Node):
             node_type="dinkster.sd.photo_maker_loader",
             display_name="Load PhotoMaker Model",
             category="model/loaders",
-            inputs=(
-                InputSpec(
+            body=(
+                Input(
                     "photomaker_model_name",
                     TypeExpr.concrete(ASSET_TYPE),
                     widget=AssetWidget(kind="model/photomaker"),
                 ),
+                Output("PHOTOMAKER", TypeExpr.concrete(PHOTOMAKER_TYPE)),
             ),
-            outputs=(OutputSpec("PHOTOMAKER", TypeExpr.concrete(PHOTOMAKER_TYPE)),),
         )
         return with_identity_replacement(schema, "PhotoMakerLoader")
 
@@ -176,18 +176,18 @@ class PhotoMakerEncode(Node):
             node_type="dinkster.sd.photo_maker_encode",
             display_name="PhotoMaker Encode",
             category="model/conditioning/photomaker",
-            inputs=(
-                InputSpec("photomaker", TypeExpr.concrete(PHOTOMAKER_TYPE)),
-                InputSpec("image", TypeExpr.concrete(IMAGE_TYPE)),
-                InputSpec("clip", TypeExpr.concrete(CLIP_TYPE)),
-                InputSpec(
+            body=(
+                Input("photomaker", TypeExpr.concrete(PHOTOMAKER_TYPE)),
+                Input("image", TypeExpr.concrete(IMAGE_TYPE)),
+                Input("clip", TypeExpr.concrete(CLIP_TYPE)),
+                Input(
                     "text",
                     TypeExpr.concrete(CORE_STRING),
                     default="photograph of photomaker",
                     widget=StringWidget(multiline=True, dynamic_prompts=True),
                 ),
+                Output("CONDITIONING", TypeExpr.concrete(CONDITIONING_TYPE)),
             ),
-            outputs=(OutputSpec("CONDITIONING", TypeExpr.concrete(CONDITIONING_TYPE)),),
         )
         return with_identity_replacement(schema, "PhotoMakerEncode")
 

@@ -14,11 +14,12 @@ from dinkster_api.v1 import (
     SIGMAS_TYPE,
     ComboOption,
     ComboWidget,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
+    Section,
     TypeExpr,
     initialize_inference_process,
     with_identity_replacement,
@@ -55,8 +56,8 @@ SCHEDULER_NAMES = (
 )
 
 
-def _integer(name: str, default: int, minimum: int, maximum: int) -> InputSpec:
-    return InputSpec(
+def _integer(name: str, default: int, minimum: int, maximum: int) -> Input:
+    return Input(
         name,
         _INT,
         default=default,
@@ -71,14 +72,12 @@ def _float(
     maximum: float,
     step: float,
     *,
-    advanced: bool = True,
     round: bool | None = None,
-) -> InputSpec:
-    return InputSpec(
+) -> Input:
+    return Input(
         name,
         _FLOAT,
         default=default,
-        advanced=advanced,
         widget=NumberWidget(min=minimum, max=maximum, step=step, round=round),
     )
 
@@ -90,17 +89,23 @@ class BasicScheduler(Node):
             NodeSchema(
                 node_type="dinkster.sampling.basic_scheduler",
                 category=_CATEGORY,
-                inputs=(
-                    InputSpec("model", _MODEL),
-                    InputSpec(
+                body=(
+                    Input("model", _MODEL),
+                    Input(
                         "scheduler",
                         _COMBO,
                         widget=ComboWidget(tuple(ComboOption(value) for value in SCHEDULER_NAMES)),
                     ),
                     _integer("steps", 20, 1, 10_000),
-                    _float("denoise", 1.0, 0.0, 1.0, 0.01, advanced=False),
+                    _float(
+                        "denoise",
+                        1.0,
+                        0.0,
+                        1.0,
+                        0.01,
+                    ),
+                    Output("SIGMAS", _SIGMAS),
                 ),
-                outputs=(OutputSpec("SIGMAS", _SIGMAS),),
             ),
             "BasicScheduler",
         )
@@ -128,13 +133,20 @@ class KarrasScheduler(Node):
             NodeSchema(
                 node_type="dinkster.sampling.karras_scheduler",
                 category=_CATEGORY,
-                inputs=(
+                body=(
                     _integer("steps", 20, 1, 10_000),
-                    _float("sigma_max", 14.614642, 0.0, 5000.0, 0.01, round=False),
-                    _float("sigma_min", 0.0291675, 0.0, 5000.0, 0.01, round=False),
-                    _float("rho", 7.0, 0.0, 100.0, 0.01, round=False),
+                    Section(
+                        "advanced",
+                        label="Advanced",
+                        collapsed=True,
+                        rows=(
+                            _float("sigma_max", 14.614642, 0.0, 5000.0, 0.01, round=False),
+                            _float("sigma_min", 0.0291675, 0.0, 5000.0, 0.01, round=False),
+                            _float("rho", 7.0, 0.0, 100.0, 0.01, round=False),
+                        ),
+                    ),
+                    Output("SIGMAS", _SIGMAS),
                 ),
-                outputs=(OutputSpec("SIGMAS", _SIGMAS),),
             ),
             "KarrasScheduler",
         )
@@ -155,12 +167,19 @@ class ExponentialScheduler(Node):
             NodeSchema(
                 node_type="dinkster.sampling.exponential_scheduler",
                 category=_CATEGORY,
-                inputs=(
+                body=(
                     _integer("steps", 20, 1, 10_000),
-                    _float("sigma_max", 14.614642, 0.0, 5000.0, 0.01, round=False),
-                    _float("sigma_min", 0.0291675, 0.0, 5000.0, 0.01, round=False),
+                    Section(
+                        "advanced",
+                        label="Advanced",
+                        collapsed=True,
+                        rows=(
+                            _float("sigma_max", 14.614642, 0.0, 5000.0, 0.01, round=False),
+                            _float("sigma_min", 0.0291675, 0.0, 5000.0, 0.01, round=False),
+                        ),
+                    ),
+                    Output("SIGMAS", _SIGMAS),
                 ),
-                outputs=(OutputSpec("SIGMAS", _SIGMAS),),
             ),
             "ExponentialScheduler",
         )
@@ -179,13 +198,20 @@ class PolyexponentialScheduler(Node):
             NodeSchema(
                 node_type="dinkster.sampling.polyexponential_scheduler",
                 category=_CATEGORY,
-                inputs=(
+                body=(
                     _integer("steps", 20, 1, 10_000),
-                    _float("sigma_max", 14.614642, 0.0, 5000.0, 0.01, round=False),
-                    _float("sigma_min", 0.0291675, 0.0, 5000.0, 0.01, round=False),
-                    _float("rho", 1.0, 0.0, 100.0, 0.01, round=False),
+                    Section(
+                        "advanced",
+                        label="Advanced",
+                        collapsed=True,
+                        rows=(
+                            _float("sigma_max", 14.614642, 0.0, 5000.0, 0.01, round=False),
+                            _float("sigma_min", 0.0291675, 0.0, 5000.0, 0.01, round=False),
+                            _float("rho", 1.0, 0.0, 100.0, 0.01, round=False),
+                        ),
+                    ),
+                    Output("SIGMAS", _SIGMAS),
                 ),
-                outputs=(OutputSpec("SIGMAS", _SIGMAS),),
             ),
             "PolyexponentialScheduler",
         )
@@ -208,14 +234,21 @@ class LaplaceScheduler(Node):
             NodeSchema(
                 node_type="dinkster.sampling.laplace_scheduler",
                 category=_CATEGORY,
-                inputs=(
+                body=(
                     _integer("steps", 20, 1, 10_000),
-                    _float("sigma_max", 14.614642, 0.0, 5000.0, 0.01, round=False),
-                    _float("sigma_min", 0.0291675, 0.0, 5000.0, 0.01, round=False),
-                    _float("mu", 0.0, -10.0, 10.0, 0.1, round=False),
-                    _float("beta", 0.5, 0.0, 10.0, 0.1, round=False),
+                    Section(
+                        "advanced",
+                        label="Advanced",
+                        collapsed=True,
+                        rows=(
+                            _float("sigma_max", 14.614642, 0.0, 5000.0, 0.01, round=False),
+                            _float("sigma_min", 0.0291675, 0.0, 5000.0, 0.01, round=False),
+                            _float("mu", 0.0, -10.0, 10.0, 0.1, round=False),
+                            _float("beta", 0.5, 0.0, 10.0, 0.1, round=False),
+                        ),
+                    ),
+                    Output("SIGMAS", _SIGMAS),
                 ),
-                outputs=(OutputSpec("SIGMAS", _SIGMAS),),
             ),
             "LaplaceScheduler",
         )
@@ -238,13 +271,20 @@ class VPScheduler(Node):
             NodeSchema(
                 node_type="dinkster.sampling.vp_scheduler",
                 category=_CATEGORY,
-                inputs=(
+                body=(
                     _integer("steps", 20, 1, 10_000),
-                    _float("beta_d", 19.9, 0.0, 5000.0, 0.01, round=False),
-                    _float("beta_min", 0.1, 0.0, 5000.0, 0.01, round=False),
-                    _float("eps_s", 0.001, 0.0, 1.0, 0.0001, round=False),
+                    Section(
+                        "advanced",
+                        label="Advanced",
+                        collapsed=True,
+                        rows=(
+                            _float("beta_d", 19.9, 0.0, 5000.0, 0.01, round=False),
+                            _float("beta_min", 0.1, 0.0, 5000.0, 0.01, round=False),
+                            _float("eps_s", 0.001, 0.0, 1.0, 0.0001, round=False),
+                        ),
+                    ),
+                    Output("SIGMAS", _SIGMAS),
                 ),
-                outputs=(OutputSpec("SIGMAS", _SIGMAS),),
             ),
             "VPScheduler",
         )
@@ -267,13 +307,20 @@ class BetaSamplingScheduler(Node):
             NodeSchema(
                 node_type="dinkster.sampling.beta_sampling_scheduler",
                 category=_CATEGORY,
-                inputs=(
-                    InputSpec("model", _MODEL),
+                body=(
+                    Input("model", _MODEL),
                     _integer("steps", 20, 1, 10_000),
-                    _float("alpha", 0.6, 0.0, 50.0, 0.01, round=False),
-                    _float("beta", 0.6, 0.0, 50.0, 0.01, round=False),
+                    Section(
+                        "advanced",
+                        label="Advanced",
+                        collapsed=True,
+                        rows=(
+                            _float("alpha", 0.6, 0.0, 50.0, 0.01, round=False),
+                            _float("beta", 0.6, 0.0, 50.0, 0.01, round=False),
+                        ),
+                    ),
+                    Output("SIGMAS", _SIGMAS),
                 ),
-                outputs=(OutputSpec("SIGMAS", _SIGMAS),),
             ),
             "BetaSamplingScheduler",
         )
@@ -296,12 +343,18 @@ class SDTurboScheduler(Node):
             NodeSchema(
                 node_type="dinkster.sampling.sd_turbo_scheduler",
                 category=_CATEGORY,
-                inputs=(
-                    InputSpec("model", _MODEL),
+                body=(
+                    Input("model", _MODEL),
                     _integer("steps", 1, 1, 10),
-                    _float("denoise", 1.0, 0.0, 1.0, 0.01, advanced=False),
+                    _float(
+                        "denoise",
+                        1.0,
+                        0.0,
+                        1.0,
+                        0.01,
+                    ),
+                    Output("SIGMAS", _SIGMAS),
                 ),
-                outputs=(OutputSpec("SIGMAS", _SIGMAS),),
             ),
             "SDTurboScheduler",
         )

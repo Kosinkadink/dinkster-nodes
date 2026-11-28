@@ -19,6 +19,6 @@ def test_ltx_video_preprocess_schema() -> None:
     assert schema.inputs[1].widget.min == 0
     assert schema.inputs[1].widget.max == 100
     assert schema.outputs[0].id == "IMAGE"
-    assert schema.outputs[0].display_name == "output_image"
+    assert schema.outputs[0].label == "output_image"
     assert schema_from_wire(schema_to_wire(schema)) == schema
     assert NODES.count(LTXVPreprocess) == 1

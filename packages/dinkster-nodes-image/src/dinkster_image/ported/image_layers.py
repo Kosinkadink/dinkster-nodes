@@ -16,11 +16,11 @@ from dinkster_api.v1 import (
     LAYERS_TYPE,
     MASK_TYPE,
     ComboWidget,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
     StringWidget,
     TypeExpr,
     with_identity_replacement,
@@ -67,123 +67,122 @@ class AddLayer(Node):
             "dinkster.image.add_layer",
             display_name="Add Layer",
             category="image",
-            inputs=(
-                InputSpec(
+            body=(
+                Input(
                     "layers",
                     _LAYERS,
                     required=False,
-                    doc="Layer stack to append to. Leave unconnected to start a new stack.",
+                    tooltip="Layer stack to append to. Leave unconnected to start a new stack.",
                 ),
-                InputSpec(
+                Input(
                     "image",
                     TypeExpr.concrete(IMAGE_TYPE),
-                    doc="Layer content at its native size. A batch expands to consecutive layers.",
+                    tooltip="Layer content at its native size. A batch expands to consecutive "
+                    "layers.",
                 ),
-                InputSpec(
+                Input(
                     "mask",
                     TypeExpr.concrete(MASK_TYPE),
                     required=False,
-                    doc=(
+                    tooltip=(
                         "Transparency mask for this layer. Masked areas (value 1) become "
                         "transparent, multiplying with any alpha channel the image already carries."
                     ),
                 ),
-                InputSpec(
+                Input(
                     "name",
                     TypeExpr.concrete(CORE_STRING),
                     required=False,
                     default="",
                     widget=StringWidget(multiline=False),
-                    doc="Layer name shown in the compositor editor.",
+                    tooltip="Layer name shown in the compositor editor.",
                 ),
-                InputSpec(
+                Input(
                     "x",
                     _INT,
                     required=False,
                     default=0,
                     widget=NumberWidget(min=-_MAX_RESOLUTION, max=_MAX_RESOLUTION),
-                    doc="Initial horizontal placement on the canvas.",
+                    tooltip="Initial horizontal placement on the canvas.",
                 ),
-                InputSpec(
+                Input(
                     "y",
                     _INT,
                     required=False,
                     default=0,
                     widget=NumberWidget(min=-_MAX_RESOLUTION, max=_MAX_RESOLUTION),
-                    doc="Initial vertical placement on the canvas.",
+                    tooltip="Initial vertical placement on the canvas.",
                 ),
-                InputSpec(
+                Input(
                     "opacity",
                     _FLOAT,
                     required=False,
                     default=1.0,
                     widget=NumberWidget(min=0.0, max=1.0, step=0.01),
-                    doc="Initial layer opacity.",
+                    tooltip="Initial layer opacity.",
                 ),
-                InputSpec(
+                Input(
                     "blend_mode",
                     TypeExpr.concrete(CORE_COMBO),
                     required=False,
                     default="normal",
                     widget=ComboWidget(options=_BLEND_MODES),
-                    doc=(
+                    tooltip=(
                         "Initial blend mode, applied against the layers below. On the bottom layer "
                         "over the default transparent background, non-normal modes produce "
                         "transparency."
                     ),
                 ),
-                InputSpec(
+                Input(
                     "rotation",
                     _FLOAT,
                     required=False,
                     default=0.0,
                     widget=NumberWidget(min=-360.0, max=360.0, step=1.0),
-                    doc="Initial rotation in degrees, clockwise.",
+                    tooltip="Initial rotation in degrees, clockwise.",
                 ),
-                InputSpec(
+                Input(
                     "width",
                     _INT,
                     required=False,
                     default=0,
                     widget=NumberWidget(min=0, max=_MAX_RESOLUTION),
-                    doc="Initial display width. 0 keeps the image's native width.",
+                    tooltip="Initial display width. 0 keeps the image's native width.",
                 ),
-                InputSpec(
+                Input(
                     "height",
                     _INT,
                     required=False,
                     default=0,
                     widget=NumberWidget(min=0, max=_MAX_RESOLUTION),
-                    doc="Initial display height. 0 keeps the image's native height.",
+                    tooltip="Initial display height. 0 keeps the image's native height.",
                 ),
-                InputSpec(
+                Input(
                     "z_index",
                     _INT,
                     required=False,
                     default=0,
                     widget=NumberWidget(min=-1000, max=1000),
-                    doc=(
+                    tooltip=(
                         "Stacking override. Layers are stable-sorted by z_index; "
                         "equal values keep their list order."
                     ),
                 ),
-                InputSpec(
+                Input(
                     "flip_h",
                     TypeExpr.concrete(CORE_BOOLEAN),
                     required=False,
                     default=False,
-                    doc="Flip the layer horizontally.",
+                    tooltip="Flip the layer horizontally.",
                 ),
-                InputSpec(
+                Input(
                     "flip_v",
                     TypeExpr.concrete(CORE_BOOLEAN),
                     required=False,
                     default=False,
-                    doc="Flip the layer vertically.",
+                    tooltip="Flip the layer vertically.",
                 ),
-            ),
-            outputs=(
-                OutputSpec("LAYERS", _LAYERS, doc="The layer stack with this layer appended."),
+                Output("LAYERS", _LAYERS, tooltip="The layer stack with this layer appended."),
             ),
         )
         return with_identity_replacement(schema, "AddLayer")

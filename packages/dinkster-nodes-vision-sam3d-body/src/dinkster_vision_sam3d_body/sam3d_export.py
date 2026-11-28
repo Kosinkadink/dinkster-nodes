@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import importlib
 from collections.abc import Mapping
-from typing import Any
+from typing import Any, cast
 
 from dinkster_api.v1 import (
     CORE_BOOLEAN,
@@ -16,15 +16,18 @@ from dinkster_api.v1 import (
     MHR_POSE_DATA_TYPE,
     SAM3D_BODY_MODEL_TYPE,
     AssetRef,
+    Choice,
     ComboWidget,
-    DynamicComboOption,
-    DynamicComboSpec,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Option,
+    Output,
+    Record,
+    Section,
     TypeExpr,
+    Use,
     digest_bytes,
     initialize_inference_process,
     materialize_vision_packet,
@@ -38,23 +41,38 @@ class BuildPoseFile(Node):
     def define_schema(cls) -> NodeSchema:
         floating = TypeExpr.concrete(CORE_FLOAT)
         combo = TypeExpr.concrete(CORE_COMBO)
-        bone_options = (
-            InputSpec(
-                "bone_vis_radius_m",
-                floating,
-                default=0.02,
-                widget=NumberWidget(min=0.005, max=0.5, step=0.005),
-                advanced=True,
-            ),
-            InputSpec(
-                "bone_vis_color",
-                combo,
-                default="rainbow_y",
-                widget=ComboWidget(("white", "rainbow_y")),
+        bone_vis = Choice(
+            "bone_vis",
+            options=(
+                Option("off"),
+                Option(
+                    "octahedrons",
+                    rows=(
+                        Input(
+                            "bone_vis_color",
+                            combo,
+                            default="rainbow_y",
+                            widget=ComboWidget(("white", "rainbow_y")),
+                        ),
+                        Section(
+                            "advanced",
+                            label="Advanced",
+                            collapsed=True,
+                            rows=(
+                                Input(
+                                    "bone_vis_radius_m",
+                                    floating,
+                                    default=0.02,
+                                    widget=NumberWidget(min=0.005, max=0.5, step=0.005),
+                                ),
+                            ),
+                        ),
+                    ),
+                ),
             ),
         )
         tilts = tuple(
-            InputSpec(
+            Input(
                 f"rainbow_tilt_{axis}",
                 floating,
                 default=value,
@@ -62,15 +80,15 @@ class BuildPoseFile(Node):
             )
             for axis, value in (("z", -35.0), ("x", 0.0))
         ) + (
-            InputSpec(
+            Input(
                 "person_palette_falloff",
                 floating,
                 default=0.6,
                 widget=NumberWidget(min=0.1, max=1.0, step=0.05),
             ),
         )
-        include_hands = InputSpec("include_hands", TypeExpr.concrete(CORE_BOOLEAN), default=False)
-        face = InputSpec(
+        include_hands = Input("include_hands", TypeExpr.concrete(CORE_BOOLEAN), default=False)
+        face = Input(
             "face_style",
             combo,
             default="disabled",
@@ -89,54 +107,31 @@ class BuildPoseFile(Node):
                 "save pose file",
             ),
             category="3d",
-            inputs=(
-                InputSpec("pose_data", TypeExpr.union(MHR_POSE_DATA_TYPE, KIMODO_POSE_DATA_TYPE)),
-                InputSpec(
-                    "sam3d_body_model", TypeExpr.concrete(SAM3D_BODY_MODEL_TYPE), required=False
-                ),
-                InputSpec(
-                    "fps", floating, default=24.0, widget=NumberWidget(min=1.0, max=240.0, step=1.0)
-                ),
-                InputSpec(
-                    "camera_translation",
-                    combo,
-                    default="off",
-                    widget=ComboWidget(("off", "centered", "absolute")),
-                ),
-                InputSpec(
-                    "track_index",
-                    TypeExpr.concrete(CORE_INT),
-                    default=-1,
-                    widget=NumberWidget(min=-1, max=15),
-                ),
-            ),
-            combos=(
-                DynamicComboSpec(
+            body=(
+                Input("pose_data", TypeExpr.union(MHR_POSE_DATA_TYPE, KIMODO_POSE_DATA_TYPE)),
+                Choice(
                     "format",
-                    (
-                        DynamicComboOption(
+                    options=(
+                        Option(
                             "glb",
-                            (
-                                DynamicComboSpec(
+                            rows=(
+                                Choice(
                                     "mesh_style",
-                                    (
-                                        DynamicComboOption(
+                                    options=(
+                                        Option(
                                             "body_mesh",
-                                            (
-                                                DynamicComboSpec(
-                                                    "bone_vis",
-                                                    (
-                                                        DynamicComboOption("off"),
-                                                        DynamicComboOption(
-                                                            "octahedrons", bone_options
-                                                        ),
-                                                    ),
-                                                ),
-                                                DynamicComboSpec(
+                                            rows=(
+                                                Use("bone_vis"),
+                                                Choice(
                                                     "shader",
-                                                    tuple(
-                                                        DynamicComboOption(
-                                                            name, () if name == "default" else tilts
+                                                    options=tuple(
+                                                        Option(
+                                                            name,
+                                                            rows=()
+                                                            if name == "default"
+                                                            else tuple(
+                                                                Use(row.id) for row in tilts
+                                                            ),
                                                         )
                                                         for name in (
                                                             "default",
@@ -145,129 +140,115 @@ class BuildPoseFile(Node):
                                                             "rainbow_face_semantic",
                                                         )
                                                     ),
+                                                    shared=tilts,
                                                 ),
                                             ),
                                         ),
-                                        DynamicComboOption(
+                                        Option(
                                             "bones_only",
-                                            (
-                                                DynamicComboSpec(
-                                                    "bone_vis",
-                                                    (
-                                                        DynamicComboOption(
-                                                            "octahedrons", bone_options
+                                            rows=(Use("bone_vis", only=("octahedrons",)),),
+                                        ),
+                                        Option(
+                                            "openpose",
+                                            rows=(
+                                                Use("include_hands"),
+                                                Use("face_style"),
+                                                Section(
+                                                    "advanced",
+                                                    label="Advanced",
+                                                    collapsed=True,
+                                                    rows=(
+                                                        Use("marker_radius_m"),
+                                                        Use("stick_radius_m"),
+                                                        Use("hand_marker_radius_m"),
+                                                        Use("hand_stick_radius_m"),
+                                                        Input(
+                                                            "face_marker_radius_m",
+                                                            floating,
+                                                            default=0.0,
+                                                            widget=NumberWidget(
+                                                                min=0.0, max=0.05, step=0.0005
+                                                            ),
                                                         ),
                                                     ),
                                                 ),
                                             ),
                                         ),
-                                        DynamicComboOption(
-                                            "openpose",
-                                            (
-                                                InputSpec(
-                                                    "marker_radius_m",
-                                                    floating,
-                                                    default=0.010,
-                                                    widget=NumberWidget(
-                                                        min=0.005, max=0.1, step=0.001
-                                                    ),
-                                                    advanced=True,
-                                                ),
-                                                InputSpec(
-                                                    "stick_radius_m",
-                                                    floating,
-                                                    default=0.008,
-                                                    widget=NumberWidget(
-                                                        min=0.002, max=0.05, step=0.001
-                                                    ),
-                                                    advanced=True,
-                                                ),
-                                                include_hands,
-                                                InputSpec(
-                                                    "hand_marker_radius_m",
-                                                    floating,
-                                                    default=0.005,
-                                                    widget=NumberWidget(
-                                                        min=0.001, max=0.1, step=0.001
-                                                    ),
-                                                    advanced=True,
-                                                ),
-                                                InputSpec(
-                                                    "hand_stick_radius_m",
-                                                    floating,
-                                                    default=0.003,
-                                                    widget=NumberWidget(
-                                                        min=0.001, max=0.05, step=0.001
-                                                    ),
-                                                    advanced=True,
-                                                ),
-                                                face,
-                                                InputSpec(
-                                                    "face_marker_radius_m",
-                                                    floating,
-                                                    default=0.0,
-                                                    widget=NumberWidget(
-                                                        min=0.0, max=0.05, step=0.0005
-                                                    ),
-                                                    advanced=True,
-                                                ),
-                                            ),
-                                        ),
-                                        DynamicComboOption(
+                                        Option(
                                             "scail",
-                                            (
-                                                InputSpec(
-                                                    "stick_radius_m",
-                                                    floating,
-                                                    default=0.022,
-                                                    widget=NumberWidget(
-                                                        min=0.002, max=0.1, step=0.001
+                                            rows=(
+                                                Use("include_hands"),
+                                                Use("face_style"),
+                                                Section(
+                                                    "advanced",
+                                                    label="Advanced",
+                                                    collapsed=True,
+                                                    rows=(
+                                                        Use(
+                                                            "stick_radius_m",
+                                                            default=0.022,
+                                                            widget=NumberWidget(
+                                                                min=0.002, max=0.1, step=0.001
+                                                            ),
+                                                        ),
+                                                        Use(
+                                                            "marker_radius_m",
+                                                            default=0.0,
+                                                            widget=NumberWidget(
+                                                                min=0.0, max=0.1, step=0.001
+                                                            ),
+                                                        ),
+                                                        Input(
+                                                            "material_roughness",
+                                                            floating,
+                                                            default=0.3,
+                                                            widget=NumberWidget(
+                                                                min=0.0, max=1.0, step=0.05
+                                                            ),
+                                                        ),
+                                                        Use(
+                                                            "hand_marker_radius_m",
+                                                            widget=NumberWidget(
+                                                                min=0.001, max=0.05, step=0.001
+                                                            ),
+                                                        ),
+                                                        Use("hand_stick_radius_m"),
                                                     ),
-                                                    advanced=True,
                                                 ),
-                                                InputSpec(
-                                                    "marker_radius_m",
-                                                    floating,
-                                                    default=0.0,
-                                                    widget=NumberWidget(
-                                                        min=0.0, max=0.1, step=0.001
-                                                    ),
-                                                    advanced=True,
-                                                ),
-                                                InputSpec(
-                                                    "material_roughness",
-                                                    floating,
-                                                    default=0.3,
-                                                    widget=NumberWidget(
-                                                        min=0.0, max=1.0, step=0.05
-                                                    ),
-                                                    advanced=True,
-                                                ),
-                                                include_hands,
-                                                InputSpec(
-                                                    "hand_marker_radius_m",
-                                                    floating,
-                                                    default=0.005,
-                                                    widget=NumberWidget(
-                                                        min=0.001, max=0.05, step=0.001
-                                                    ),
-                                                    advanced=True,
-                                                ),
-                                                InputSpec(
-                                                    "hand_stick_radius_m",
-                                                    floating,
-                                                    default=0.003,
-                                                    widget=NumberWidget(
-                                                        min=0.001, max=0.05, step=0.001
-                                                    ),
-                                                    advanced=True,
-                                                ),
-                                                face,
                                             ),
                                         ),
                                     ),
+                                    shared=(
+                                        bone_vis,
+                                        include_hands,
+                                        face,
+                                        Input(
+                                            "marker_radius_m",
+                                            floating,
+                                            default=0.010,
+                                            widget=NumberWidget(min=0.005, max=0.1, step=0.001),
+                                        ),
+                                        Input(
+                                            "stick_radius_m",
+                                            floating,
+                                            default=0.008,
+                                            widget=NumberWidget(min=0.002, max=0.05, step=0.001),
+                                        ),
+                                        Input(
+                                            "hand_marker_radius_m",
+                                            floating,
+                                            default=0.005,
+                                            widget=NumberWidget(min=0.001, max=0.1, step=0.001),
+                                        ),
+                                        Input(
+                                            "hand_stick_radius_m",
+                                            floating,
+                                            default=0.003,
+                                            widget=NumberWidget(min=0.001, max=0.05, step=0.001),
+                                        ),
+                                    ),
                                 ),
-                                InputSpec(
+                                Input(
                                     "bone_smooth_window",
                                     TypeExpr.concrete(CORE_INT),
                                     default=0,
@@ -275,26 +256,34 @@ class BuildPoseFile(Node):
                                 ),
                             ),
                         ),
-                        DynamicComboOption(
+                        Option(
                             "bvh",
-                            (
-                                InputSpec(
+                            rows=(
+                                Input(
                                     "units", combo, default="cm", widget=ComboWidget(("cm", "m"))
                                 ),
                             ),
                         ),
                     ),
                 ),
+                Input("sam3d_body_model", TypeExpr.concrete(SAM3D_BODY_MODEL_TYPE), required=False),
+                Input(
+                    "fps", floating, default=24.0, widget=NumberWidget(min=1.0, max=240.0, step=1.0)
+                ),
+                Input(
+                    "camera_translation",
+                    combo,
+                    default="off",
+                    widget=ComboWidget(("off", "centered", "absolute")),
+                ),
+                Input(
+                    "track_index",
+                    TypeExpr.concrete(CORE_INT),
+                    default=-1,
+                    widget=NumberWidget(min=-1, max=15),
+                ),
+                Output("model_3d", TypeExpr.concrete(FILE_3D_TYPE)),
             ),
-            input_order=(
-                "pose_data",
-                "format",
-                "sam3d_body_model",
-                "fps",
-                "camera_translation",
-                "track_index",
-            ),
-            outputs=(OutputSpec("model_3d", TypeExpr.concrete(FILE_3D_TYPE)),),
         )
         return with_identity_replacement(schema, "BuildPoseFile")
 
@@ -303,20 +292,20 @@ class BuildPoseFile(Node):
         cls,
         *,
         pose_data: Any,
-        format: str = "glb",
+        format: Record,
         sam3d_body_model: Any = None,
         fps: float = 24.0,
         camera_translation: str = "off",
         track_index: int = -1,
-        **inputs: Any,
     ) -> Mapping[str, object]:
         pose = materialize_vision_packet(pose_data)
-        options = {key.removeprefix("format."): value for key, value in inputs.items()}
-        mode = str(options.get("mesh_style", "body_mesh"))
+        file_format = format.key
+        style = cast("Record | None", format.get("mesh_style"))
+        mode = style.key if style is not None else ""
         external = "_skeleton_override" in pose
-        if format == "bvh" or mode in ("body_mesh", "bones_only"):
+        if file_format == "bvh" or mode in ("body_mesh", "bones_only"):
             if sam3d_body_model is None and not external:
-                if format == "bvh":
+                if file_format == "bvh":
                     raise ValueError(
                         "Create 3D Animation: 'bvh' format needs the `sam3d_body_model` input OR a "
                         "`_skeleton_override` dict in pose_data (e.g. from KimodoSample)."
@@ -334,37 +323,45 @@ class BuildPoseFile(Node):
         common = dict(
             fps=float(fps), camera_translation=str(camera_translation), track_index=int(track_index)
         )
-        if format == "bvh":
+        if file_format == "bvh":
             serializer = importlib.import_module(".sam3d_bvh", __package__)
             common["track_index"] = max(0, int(track_index))
             data = serializer.build_bvh(
-                pose, sam3d_body_model, units=str(options.get("units", "cm")), **common
+                pose, sam3d_body_model, units=str(format["units"]), **common
             )
-        elif format == "glb":
-            smooth = int(options.get("bone_smooth_window", 0))
-            style = {key.removeprefix("mesh_style."): value for key, value in options.items()}
+        elif file_format == "glb" and style is not None:
+            smooth = int(cast("int", format["bone_smooth_window"]))
             if mode in ("body_mesh", "bones_only"):
                 serializer = importlib.import_module(".sam3d_skeletal", __package__)
-                default_shape = "off" if mode == "body_mesh" else "octahedrons"
+                bone_vis = cast("Record", style["bone_vis"])
+                shader = cast("Record | None", style.get("shader"))
                 data = serializer.build_glb_skeletal(
                     pose,
                     sam3d_body_model,
                     **common,
                     bone_smooth_window=smooth,
-                    bone_vis=str(style.get("bone_vis", default_shape)),
-                    bone_vis_radius_m=float(style.get("bone_vis.bone_vis_radius_m", 0.04)),
-                    bone_vis_color=str(style.get("bone_vis.bone_vis_color", "white")),
+                    bone_vis=bone_vis.key,
+                    bone_vis_radius_m=float(cast("float", bone_vis.get("bone_vis_radius_m", 0.04))),
+                    bone_vis_color=str(bone_vis.get("bone_vis_color", "white")),
                     include_body_mesh=mode == "body_mesh",
-                    shader=str(style.get("shader", "default")),
-                    rainbow_tilt_x_deg=float(style.get("shader.rainbow_tilt_x", 0.0)),
-                    rainbow_tilt_z_deg=float(style.get("shader.rainbow_tilt_z", 0.0)),
-                    person_palette_falloff=float(style.get("shader.person_palette_falloff", 0.6)),
+                    shader=shader.key if shader is not None else "default",
+                    rainbow_tilt_x_deg=float(
+                        cast("float", shader.get("rainbow_tilt_x", 0.0) if shader else 0.0)
+                    ),
+                    rainbow_tilt_z_deg=float(
+                        cast("float", shader.get("rainbow_tilt_z", 0.0) if shader else 0.0)
+                    ),
+                    person_palette_falloff=float(
+                        cast("float", shader.get("person_palette_falloff", 0.6) if shader else 0.6)
+                    ),
                 )
             elif mode in ("openpose", "scail"):
                 serializer = importlib.import_module(".sam3d_openpose_glb", __package__)
                 scail = mode == "scail"
-                radius = float(style.get("stick_radius_m", 0.022 if scail else 0.008))
-                marker = float(style.get("marker_radius_m", 0.0 if scail else 0.025))
+                radius = float(
+                    cast("float", style.get("stick_radius_m", 0.022 if scail else 0.008))
+                )
+                marker = float(cast("float", style.get("marker_radius_m", 0.0 if scail else 0.025)))
                 if scail and marker <= 0.0:
                     marker = radius
                 data = serializer.build_glb_openpose(
@@ -374,16 +371,20 @@ class BuildPoseFile(Node):
                     marker_radius_m=marker,
                     stick_radius_m=radius,
                     include_hands=bool(style.get("include_hands", False)),
-                    hand_marker_radius_m=float(style.get("hand_marker_radius_m", 0.005)),
-                    hand_stick_radius_m=float(style.get("hand_stick_radius_m", 0.003)),
+                    hand_marker_radius_m=float(
+                        cast("float", style.get("hand_marker_radius_m", 0.005))
+                    ),
+                    hand_stick_radius_m=float(
+                        cast("float", style.get("hand_stick_radius_m", 0.003))
+                    ),
                     face_style=str(style.get("face_style", "disabled")),
                     face_marker_radius_m=0.0
                     if scail
-                    else float(style.get("face_marker_radius_m", 0.0)),
+                    else float(cast("float", style.get("face_marker_radius_m", 0.0))),
                     palette="scail" if scail else "openpose",
                     shape="capsule" if scail else "ellipsoid",
                     smooth_shade=scail,
-                    material_roughness=float(style.get("material_roughness", 0.3))
+                    material_roughness=float(cast("float", style.get("material_roughness", 0.3)))
                     if scail
                     else 0.85,
                     material_double_sided=scail,
@@ -391,7 +392,7 @@ class BuildPoseFile(Node):
             else:
                 raise ValueError(f"BuildPoseGLB: unknown mesh_style {mode!r}")
         else:
-            raise ValueError(f"Unsupported pose file format: {format!r}")
+            raise ValueError(f"Unsupported pose file format: {file_format!r}")
         vault = produced_output_scratch()
         if vault is None:
             raise RuntimeError("BuildPoseFile requires a produced-output store")
@@ -401,9 +402,9 @@ class BuildPoseFile(Node):
             writer.commit()
         source = AssetRef(
             digest,
-            f"pose.{format}",
+            f"pose.{file_format}",
             len(data),
-            "model/gltf-binary" if format == "glb" else "application/octet-stream",
+            "model/gltf-binary" if file_format == "glb" else "application/octet-stream",
             resolver=vault,
         )
-        return cls.outputs(model_3d={"format": format, "source": source})
+        return cls.outputs(model_3d={"format": file_format, "source": source})

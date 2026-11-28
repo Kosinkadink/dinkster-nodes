@@ -12,10 +12,10 @@ from dinkster_api.v1 import (
     VAE_TYPE,
     VOXEL_TYPE,
     ComboWidget,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
-    OutputSpec,
+    Output,
     TypeExpr,
     initialize_inference_process,
     materialize_latent,
@@ -30,17 +30,17 @@ class VaeDecodeStructureTrellis2(Node):
             node_type="dinkster.3d.models.vae_decode_structure_trellis2",
             display_name="Trellis2 VAE Decode Structure",
             category="model/latent/trellis",
-            inputs=(
-                InputSpec("samples", TypeExpr.concrete(LATENT_TYPE)),
-                InputSpec("vae", TypeExpr.concrete(VAE_TYPE)),
-                InputSpec(
+            body=(
+                Input("samples", TypeExpr.concrete(LATENT_TYPE)),
+                Input("vae", TypeExpr.concrete(VAE_TYPE)),
+                Input(
                     "resolution",
                     TypeExpr.concrete(CORE_COMBO),
                     default="32",
                     widget=ComboWidget(options=("32", "64")),
                 ),
+                Output("voxel", TypeExpr.concrete(VOXEL_TYPE)),
             ),
-            outputs=(OutputSpec("voxel", TypeExpr.concrete(VOXEL_TYPE)),),
         )
         return with_identity_replacement(schema, "VaeDecodeStructureTrellis2")
 

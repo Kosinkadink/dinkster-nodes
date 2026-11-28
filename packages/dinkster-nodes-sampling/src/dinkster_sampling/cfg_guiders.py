@@ -15,11 +15,11 @@ from dinkster_api.v1 import (
     MODEL_TYPE,
     ComboOption,
     ComboWidget,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
     TypeExpr,
     initialize_inference_process,
     prepare_sampling_model,
@@ -54,7 +54,7 @@ def _inference_modules() -> tuple[Any, Any, Any, Any]:
 def _guider_schema(
     node_type: str,
     display_name: str,
-    inputs: tuple[InputSpec, ...],
+    inputs: tuple[Input, ...],
     *,
     search_terms: tuple[str, ...] = (),
 ) -> NodeSchema:
@@ -63,13 +63,15 @@ def _guider_schema(
         display_name=display_name,
         category="model/sampling/guiders",
         search_terms=search_terms,
-        inputs=inputs,
-        outputs=(OutputSpec("GUIDER", _GUIDER),),
+        body=(
+            *inputs,
+            Output("GUIDER", _GUIDER),
+        ),
     )
 
 
-def _cfg_input(default: float) -> InputSpec:
-    return InputSpec(
+def _cfg_input(default: float) -> Input:
+    return Input(
         "cfg",
         _FLOAT,
         default=default,
@@ -77,8 +79,8 @@ def _cfg_input(default: float) -> InputSpec:
     )
 
 
-def _dual_cfg_input(name: str) -> InputSpec:
-    return InputSpec(
+def _dual_cfg_input(name: str) -> Input:
+    return Input(
         name,
         _FLOAT,
         default=8.0,
@@ -93,7 +95,7 @@ class BasicGuider(Node):
             _guider_schema(
                 "dinkster.sampling.basic_guider",
                 "Basic Guider",
-                (InputSpec("model", _MODEL), InputSpec("conditioning", _CONDITIONING)),
+                (Input("model", _MODEL), Input("conditioning", _CONDITIONING)),
             ),
             "BasicGuider",
         )
@@ -120,9 +122,9 @@ class CFGGuider(Node):
                 "dinkster.sampling.cfg_guider",
                 "CFG Guider",
                 (
-                    InputSpec("model", _MODEL),
-                    InputSpec("positive", _CONDITIONING),
-                    InputSpec("negative", _CONDITIONING),
+                    Input("model", _MODEL),
+                    Input("positive", _CONDITIONING),
+                    Input("negative", _CONDITIONING),
                     _cfg_input(8.0),
                 ),
             ),
@@ -148,13 +150,13 @@ class DualCFGGuider(Node):
                 "dinkster.sampling.dual_cfg_guider",
                 "Dual CFG Guider",
                 (
-                    InputSpec("model", _MODEL),
-                    InputSpec("cond1", _CONDITIONING),
-                    InputSpec("cond2", _CONDITIONING),
-                    InputSpec("negative", _CONDITIONING),
+                    Input("model", _MODEL),
+                    Input("cond1", _CONDITIONING),
+                    Input("cond2", _CONDITIONING),
+                    Input("negative", _CONDITIONING),
                     _dual_cfg_input("cfg_conds"),
                     _dual_cfg_input("cfg_cond2_negative"),
-                    InputSpec(
+                    Input(
                         "style",
                         _COMBO,
                         default="regular",
@@ -264,11 +266,11 @@ class DualModelGuider(Node):
                 "dinkster.sampling.dual_model_guider",
                 "Dual Model CFG Guider",
                 (
-                    InputSpec("model", _MODEL),
-                    InputSpec("model_negative", _MODEL, required=False),
-                    InputSpec("positive", _CONDITIONING),
+                    Input("model", _MODEL),
+                    Input("model_negative", _MODEL, required=False),
+                    Input("positive", _CONDITIONING),
                     _cfg_input(4.0),
-                    InputSpec("negative", _CONDITIONING, required=False),
+                    Input("negative", _CONDITIONING, required=False),
                 ),
             ),
             "DualModelGuider",
@@ -447,23 +449,23 @@ class CFGOverride(Node):
                     "Override cfg to a fixed value over a [start, end] percent (sigma) range. "
                     "With multiple overrides, the one nearest the sampler wins on overlap."
                 ),
-                inputs=(
-                    InputSpec("model", _MODEL),
+                body=(
+                    Input("model", _MODEL),
                     _cfg_input(1.0),
-                    InputSpec(
+                    Input(
                         "start_percent",
                         _FLOAT,
                         default=0.0,
                         widget=NumberWidget(min=0.0, max=1.0, step=0.001),
                     ),
-                    InputSpec(
+                    Input(
                         "end_percent",
                         _FLOAT,
                         default=1.0,
                         widget=NumberWidget(min=0.0, max=1.0, step=0.001),
                     ),
+                    Output("MODEL", _MODEL),
                 ),
-                outputs=(OutputSpec("MODEL", _MODEL),),
             ),
             "CFGOverride",
         )

@@ -20,18 +20,20 @@ from dinkster_api.v1 import (
     CORE_STRING,
     IMAGE_TYPE,
     MASK_TYPE,
+    MOUNT_TYPE,
     AssetError,
     AssetRef,
     ExportSnapshot,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
-    OutputSpec,
+    Output,
+    Record,
     TypeExpr,
     materialize_image,
 )
 from dinkster_assets import AssetVault, MountDef, MountTable, digest_file
-from dinkster_graph import Graph, GraphNode, Link
+from dinkster_graph import Graph, GraphNode, Link, TypedLiteral
 from dinkster_image.ported import image_file_tools
 from dinkster_image.ported.image_file_tools import (
     LoadImage,
@@ -399,7 +401,6 @@ void main() { fragColor0 = texture(u_image0, v_texCoord); }
                         {
                             "image_a": Link("load", "IMAGE"),
                             "image_b": Link("shader", "IMAGE0"),
-                            "compare_view": {},
                         },
                     ),
                 }
@@ -473,14 +474,14 @@ class _FileHostInspect(Node):
     def define_schema(cls) -> NodeSchema:
         return NodeSchema(
             "image-file-fixture.inspect",
-            inputs=(
+            body=(
                 *(
-                    InputSpec(name, TypeExpr.concrete(IMAGE_TYPE))
+                    Input(name, TypeExpr.concrete(IMAGE_TYPE))
                     for name in ("loaded", "output_loaded", "saved", "preview", "png", "webp")
                 ),
-                InputSpec("mask", TypeExpr.concrete(MASK_TYPE)),
+                Input("mask", TypeExpr.concrete(MASK_TYPE)),
+                Output("summary", TypeExpr.concrete(CORE_STRING)),
             ),
-            outputs=(OutputSpec("summary", TypeExpr.concrete(CORE_STRING)),),
         )
 
     @classmethod
@@ -658,7 +659,7 @@ def test_advanced_image_png_keeps_depth_alpha_counters_and_mount(
             images=images,
             filename_prefix="sample",
             mount="alternate",
-            format={"format": "png", "bit_depth": depth, "input_color_space": "sRGB"},
+            format=Record("png", {"bit_depth": depth, "input_color_space": "sRGB"}),
         )
     assert result["images"] is images
     assert torch.equal(images, before)
@@ -691,7 +692,7 @@ def test_advanced_image_exr_preserves_range_scene_light_and_alpha(
         SaveImageAdvanced.execute(
             images=images,
             filename_prefix="scene",
-            format={"format": "exr", "bit_depth": depth, "input_color_space": colorspace},
+            format=Record("exr", {"bit_depth": depth, "input_color_space": colorspace}),
         )
     # Derive the scene-light RGB independently, leaving straight alpha untouched.
     rgb = images[0, 0, 0, :3].numpy()
@@ -739,11 +740,9 @@ def test_advanced_image_exr_metadata_flag_controls_chromaticities(
         SaveImageAdvanced.execute(
             images=torch.full((1, 17, 19, 3), 0.23),
             filename_prefix="aces",
-            format={
-                "format": "exr",
-                "bit_depth": "32-bit float",
-                "input_color_space": "linear ACEScg",
-            },
+            format=Record(
+                "exr", {"bit_depth": "32-bit float", "input_color_space": "linear ACEScg"}
+            ),
         )
     encoded = (default / "aces_00001.exr").read_bytes()
     attribute = (
@@ -768,13 +767,17 @@ def test_advanced_image_avif_retains_mode_frame_order_and_hdr_auto(
         result = SaveImageAdvanced.execute(
             images=images,
             filename_prefix="movie-%batch_num%",
-            format={
-                "format": "avif",
-                "bit_depth": "auto",
-                "input_color_space": "HDR PQ",
-                "crf": 18,
-                "save_mode": {"save_mode": mode, "fps": 7.0, "loop_count": 2},
-            },
+            format=Record(
+                "avif",
+                {
+                    "bit_depth": "auto",
+                    "input_color_space": "HDR PQ",
+                    "crf": 18,
+                    "save_mode": Record(
+                        mode, {"fps": 7.0, "loop_count": 2} if mode == "animated" else {}
+                    ),
+                },
+            ),
         )
     assert result["images"] is images
     files = sorted(default.glob("movie-*.avif"))
@@ -819,7 +822,7 @@ def test_advanced_image_grayscale_width_four_converts_every_column(
         result = SaveImageAdvanced.execute(
             images=images,
             filename_prefix="gray",
-            format={"format": "exr", "bit_depth": "32-bit float", "input_color_space": colorspace},
+            format=Record("exr", {"bit_depth": "32-bit float", "input_color_space": colorspace}),
         )
     assert result["images"] is images
     assert torch.equal(images, before)
@@ -843,7 +846,7 @@ class _AdvancedAVIFHostSource(Node):
     def define_schema(cls) -> NodeSchema:
         return NodeSchema(
             "advanced-avif-fixture.source",
-            outputs=(OutputSpec("images", TypeExpr.concrete(IMAGE_TYPE)),),
+            body=(Output("images", TypeExpr.concrete(IMAGE_TYPE)),),
         )
 
     @classmethod
@@ -976,7 +979,7 @@ class _ImageBatchAttachmentSource(Node):
     def define_schema(cls) -> NodeSchema:
         return NodeSchema(
             "image-batch-attachment.source",
-            outputs=(OutputSpec("images", TypeExpr.concrete(IMAGE_TYPE)),),
+            body=(Output("images", TypeExpr.concrete(IMAGE_TYPE)),),
         )
 
     @classmethod
@@ -1052,7 +1055,7 @@ def test_save_image_attaches_every_batch_file_on_repeated_host_execution(
                         {
                             "images": Link("source", "images"),
                             "filename_prefix": "chosen/item-%batch_num%",
-                            "mount": "alternate",
+                            "mount": TypedLiteral(MOUNT_TYPE, "alternate"),
                         },
                     ),
                 }
@@ -1168,7 +1171,7 @@ def test_advanced_exports_attach_every_published_file_on_repeated_host_execution
                     "filename_prefix": f"files/{node}-%batch_num%",
                 }
                 if mount == "alternate":
-                    options["mount"] = mount
+                    options["mount"] = TypedLiteral(MOUNT_TYPE, mount)
                 if fmt == "png":
                     options["format.bit_depth"] = "16-bit"
                 elif fmt == "exr":
@@ -1268,11 +1271,7 @@ def test_exr_previews_apply_input_transfer_before_srgb_quantization(
             images=images,
             filename_prefix="transfer",
             mount="alternate",
-            format={
-                "format": "exr",
-                "bit_depth": "32-bit float",
-                "input_color_space": colorspace,
-            },
+            format=Record("exr", {"bit_depth": "32-bit float", "input_color_space": colorspace}),
         )
     assert result["images"] is images and torch.equal(images, before)
     assert len(saved) == len(previews) == 1
@@ -1310,8 +1309,10 @@ class _EXRPreviewSource(Node):
     def define_schema(cls) -> NodeSchema:
         return NodeSchema(
             "exr-preview-fixture.source",
-            outputs=tuple(
-                OutputSpec(name, TypeExpr.concrete(IMAGE_TYPE)) for name in ("rgb", "rgba", "gray")
+            body=(
+                *tuple(
+                    Output(name, TypeExpr.concrete(IMAGE_TYPE)) for name in ("rgb", "rgba", "gray")
+                ),
             ),
         )
 
@@ -1409,7 +1410,9 @@ def test_exr_exports_associate_lazy_optional_previews(
                     {
                         "images": Link("source", name),
                         "filename_prefix": name,
-                        "mount": "alternate" if name == "rgba" else "default",
+                        "mount": TypedLiteral(
+                            MOUNT_TYPE, "alternate" if name == "rgba" else "default"
+                        ),
                         "format.bit_depth": "32-bit float",
                         "format.input_color_space": "linear",
                     },
@@ -1537,7 +1540,7 @@ def test_animated_exports_attach_exact_mounted_files_on_each_execution(
                         {
                             "images": Link("source", "images"),
                             "filename_prefix": "chosen/webp",
-                            "mount": "alternate",
+                            "mount": TypedLiteral(MOUNT_TYPE, "alternate"),
                             "method": "fastest",
                             "lossless": True,
                         },

@@ -17,6 +17,7 @@ from typing import Any
 
 import numpy as np
 import pytest
+from dinkster_api.v1 import Record
 from dinkster_assets import (
     AssetRef,
     AssetVault,
@@ -139,10 +140,11 @@ def test_advanced_save_replay(
     refs = _save(
         SaveAudioAdvanced,
         audio=audio,
-        format=case["format"],
+        format=Record(
+            case["format"], {} if case["format"] == "flac" else {"quality": case["quality"]}
+        ),
         filename_prefix="aliases/receipt",
         mount="comfy-output",
-        quality=case["quality"],
     )
     np.testing.assert_array_equal(audio["waveform"], original)
     assert len(refs) == len(case["outputs"]) == 2

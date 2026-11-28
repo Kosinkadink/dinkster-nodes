@@ -12,10 +12,10 @@ import torch
 from dinkster_api.v1 import (
     CORE_FLOAT,
     MODEL_TYPE,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
-    OutputSpec,
+    Output,
     TypeExpr,
 )
 from dinkster_models.model_advanced import (
@@ -211,7 +211,7 @@ class AdvancedModelSource(Node):
     def define_schema(cls) -> NodeSchema:
         return NodeSchema(
             node_type="advanced-model-fixture.source",
-            outputs=(OutputSpec("MODEL", TypeExpr.concrete(MODEL_TYPE)),),
+            body=(Output("MODEL", TypeExpr.concrete(MODEL_TYPE)),),
         )
 
     @classmethod
@@ -224,8 +224,10 @@ class AdvancedModelResult(Node):
     def define_schema(cls) -> NodeSchema:
         return NodeSchema(
             node_type="advanced-model-fixture.result",
-            inputs=(InputSpec("model", TypeExpr.concrete(MODEL_TYPE)),),
-            outputs=(OutputSpec("value", TypeExpr.concrete(CORE_FLOAT)),),
+            body=(
+                Input("model", TypeExpr.concrete(MODEL_TYPE)),
+                Output("value", TypeExpr.concrete(CORE_FLOAT)),
+            ),
         )
 
     @classmethod

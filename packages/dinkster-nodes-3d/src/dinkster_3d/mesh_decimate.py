@@ -4,20 +4,21 @@ from __future__ import annotations
 
 import importlib
 from collections.abc import Mapping
-from typing import Any
+from typing import Any, cast
 
 from dinkster_api.v1 import (
     CORE_BOOLEAN,
     CORE_FLOAT,
     CORE_INT,
     MESH_TYPE,
-    DynamicComboOption,
-    DynamicComboSpec,
-    InputSpec,
+    Choice,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Option,
+    Output,
+    Record,
     TypeExpr,
     initialize_inference_process,
     report_progress,
@@ -40,63 +41,60 @@ class DecimateMesh(Node):
                 "features / hair); 'qem' places vertices at the QEM optimum with line/feature-edge "
                 "controls. Output stays welded."
             ),
-            inputs=(
-                InputSpec("mesh", TypeExpr.concrete(MESH_TYPE)),
-                InputSpec(
+            body=(
+                Input("mesh", TypeExpr.concrete(MESH_TYPE)),
+                Input(
                     "target_face_count",
                     TypeExpr.concrete(CORE_INT),
                     default=200_000,
                     widget=NumberWidget(min=0, max=50_000_000),
-                    doc="Target max faces. 0 disables.",
+                    tooltip="Target max faces. 0 disables.",
                 ),
-            ),
-            combos=(
-                DynamicComboSpec(
+                Choice(
                     "placement_mode",
-                    (
-                        DynamicComboOption("midpoint", ()),
-                        DynamicComboOption(
+                    options=(
+                        Option("midpoint", rows=()),
+                        Option(
                             "qem",
-                            (
-                                InputSpec(
+                            rows=(
+                                Input(
                                     "line_quadric_weight",
                                     TypeExpr.concrete(CORE_FLOAT),
                                     default=0.0,
                                     widget=NumberWidget(min=0.0, max=100.0, step=0.1),
-                                    doc="Per-edge line-quadric weight; preserves sharp "
+                                    tooltip="Per-edge line-quadric weight; preserves sharp "
                                     "ridges/valleys. 0 = off.",
                                 ),
-                                InputSpec(
+                                Input(
                                     "feature_edge_quadric_weight",
                                     TypeExpr.concrete(CORE_FLOAT),
                                     default=0.0,
                                     widget=NumberWidget(min=0.0, max=1000.0, step=1.0),
-                                    doc="Extra quadric weight on dihedral feature edges "
+                                    tooltip="Extra quadric weight on dihedral feature edges "
                                     "(creases). 0 = off.",
                                 ),
-                                InputSpec(
+                                Input(
                                     "feature_edge_min_dihedral_deg",
                                     TypeExpr.concrete(CORE_FLOAT),
                                     default=30.0,
                                     widget=NumberWidget(min=0.0, max=180.0, step=1.0),
-                                    doc="Minimum dihedral angle (degree) to count an edge "
+                                    tooltip="Minimum dihedral angle (degree) to count an edge "
                                     "as a feature edge.",
                                 ),
-                                InputSpec(
+                                Input(
                                     "clamp_v_to_edge",
                                     TypeExpr.concrete(CORE_BOOLEAN),
                                     default=True,
-                                    doc="Project the QEM-optimal position onto the "
+                                    tooltip="Project the QEM-optimal position onto the "
                                     "collapsed edge segment.",
                                 ),
                             ),
                         ),
                     ),
-                    doc="midpoint: cumesh-faithful (recommended). qem: QEM-optimal placement.",
+                    tooltip="midpoint: cumesh-faithful (recommended). qem: QEM-optimal placement.",
                 ),
+                Output("mesh", TypeExpr.concrete(MESH_TYPE)),
             ),
-            input_order=("mesh", "target_face_count", "placement_mode"),
-            outputs=(OutputSpec("mesh", TypeExpr.concrete(MESH_TYPE)),),
         )
         return with_identity_replacement(schema, "DecimateMesh")
 
@@ -106,24 +104,25 @@ class DecimateMesh(Node):
         *,
         mesh: object,
         target_face_count: int,
-        placement_mode: str,
-        **inputs: Any,
+        placement_mode: Record,
     ) -> Mapping[str, object]:
         initialize_inference_process()
         management = importlib.import_module("dinkster_inference.model_management")
         from .mesh_qem import QEMConfig, qem_simplify
 
-        if placement_mode == "qem":
+        if placement_mode.key == "qem":
             config = QEMConfig(
                 placement_mode="qem",
-                line_quadric_weight=float(inputs.get("placement_mode.line_quadric_weight", 0.0)),
+                line_quadric_weight=float(
+                    cast("float", placement_mode.get("line_quadric_weight", 0.0))
+                ),
                 feature_edge_quadric_weight=float(
-                    inputs.get("placement_mode.feature_edge_quadric_weight", 0.0)
+                    cast("float", placement_mode.get("feature_edge_quadric_weight", 0.0))
                 ),
                 feature_edge_min_dihedral_deg=float(
-                    inputs.get("placement_mode.feature_edge_min_dihedral_deg", 30.0)
+                    cast("float", placement_mode.get("feature_edge_min_dihedral_deg", 30.0))
                 ),
-                clamp_v_to_edge=bool(inputs.get("placement_mode.clamp_v_to_edge", True)),
+                clamp_v_to_edge=bool(placement_mode.get("clamp_v_to_edge", True)),
             )
         else:
             config = QEMConfig()

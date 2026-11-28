@@ -15,11 +15,12 @@ from dinkster_api.v1 import (
     CORE_STRING,
     IMAGE_TYPE,
     ComboWidget,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
+    Section,
     StringWidget,
     TypeExpr,
     materialize_image,
@@ -49,24 +50,22 @@ class CLIPTextEncode(Node):
                     "Encodes a text prompt using a CLIP model into an embedding that can be "
                     "used to guide the diffusion model towards generating specific images."
                 ),
-                inputs=(
-                    InputSpec(
+                body=(
+                    Input(
                         "text",
                         TypeExpr.concrete(CORE_STRING),
-                        doc="The text to be encoded.",
+                        tooltip="The text to be encoded.",
                         widget=StringWidget(multiline=True, dynamic_prompts=True),
                     ),
-                    InputSpec(
+                    Input(
                         "clip",
                         TypeExpr.concrete(CLIP_TYPE),
-                        doc="The CLIP model used for encoding the text.",
+                        tooltip="The CLIP model used for encoding the text.",
                     ),
-                ),
-                outputs=(
-                    OutputSpec(
+                    Output(
                         "CONDITIONING",
                         TypeExpr.concrete(CONDITIONING_TYPE),
-                        doc=(
+                        tooltip=(
                             "A conditioning containing the embedded text used to guide "
                             "the diffusion model towards generating specific images."
                         ),
@@ -96,17 +95,23 @@ class CLIPSetLastLayer(Node):
                 node_type="dinkster.conditioning.clip_set_last_layer",
                 display_name="CLIP Set Last Layer",
                 category="model/conditioning",
-                inputs=(
-                    InputSpec("clip", TypeExpr.concrete(CLIP_TYPE)),
-                    InputSpec(
-                        "stop_at_clip_layer",
-                        TypeExpr.concrete(CORE_INT),
-                        default=-1,
-                        widget=NumberWidget(min=-24, max=-1, step=1),
-                        advanced=True,
+                body=(
+                    Input("clip", TypeExpr.concrete(CLIP_TYPE)),
+                    Section(
+                        "advanced",
+                        label="Advanced",
+                        collapsed=True,
+                        rows=(
+                            Input(
+                                "stop_at_clip_layer",
+                                TypeExpr.concrete(CORE_INT),
+                                default=-1,
+                                widget=NumberWidget(min=-24, max=-1, step=1),
+                            ),
+                        ),
                     ),
+                    Output("CLIP", TypeExpr.concrete(CLIP_TYPE)),
                 ),
-                outputs=(OutputSpec("CLIP", TypeExpr.concrete(CLIP_TYPE)),),
             ),
             "CLIPSetLastLayer",
         )
@@ -126,18 +131,16 @@ class CLIPVisionEncode(Node):
                 node_type="dinkster.conditioning.clip_vision_encode",
                 display_name="CLIP Vision Encode",
                 category="model/conditioning",
-                inputs=(
-                    InputSpec("clip_vision", TypeExpr.concrete(CLIP_VISION_TYPE)),
-                    InputSpec("image", TypeExpr.concrete(IMAGE_TYPE)),
-                    InputSpec(
+                body=(
+                    Input("clip_vision", TypeExpr.concrete(CLIP_VISION_TYPE)),
+                    Input("image", TypeExpr.concrete(IMAGE_TYPE)),
+                    Input(
                         "crop",
                         TypeExpr.concrete(CORE_COMBO),
                         default="center",
                         widget=ComboWidget(("center", "none")),
                     ),
-                ),
-                outputs=(
-                    OutputSpec("CLIP_VISION_OUTPUT", TypeExpr.concrete(CLIP_VISION_OUTPUT_TYPE)),
+                    Output("CLIP_VISION_OUTPUT", TypeExpr.concrete(CLIP_VISION_OUTPUT_TYPE)),
                 ),
             ),
             "CLIPVisionEncode",

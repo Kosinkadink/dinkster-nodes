@@ -1,0 +1,1820 @@
+{
+ "differences": [
+  {
+   "class_name": "ModelMergeBlocks",
+   "node_type": "dinkster.models.model_merge_blocks",
+   "difference": "inputs: length 5 vs 3",
+   "reason": "Model Merge Blocks shares the block merge helper and takes the same fixed ratios group, so input, middle and out become ratios.input, ratios.middle and ratios.out (comfy-vibe-station#1101 comment 7075206073, item 4)."
+  },
+  {
+   "class_name": "ModelMergeBlocks",
+   "node_type": "dinkster.models.model_merge_blocks",
+   "difference": "inputs[2].default: missing native field",
+   "reason": "Model Merge Blocks shares the block merge helper and takes the same fixed ratios group, so input, middle and out become ratios.input, ratios.middle and ratios.out (comfy-vibe-station#1101 comment 7075206073, item 4)."
+  },
+  {
+   "class_name": "ModelMergeBlocks",
+   "node_type": "dinkster.models.model_merge_blocks",
+   "difference": "inputs[2].group: missing native field",
+   "reason": "Model Merge Blocks shares the block merge helper and takes the same fixed ratios group, so input, middle and out become ratios.input, ratios.middle and ratios.out (comfy-vibe-station#1101 comment 7075206073, item 4)."
+  },
+  {
+   "class_name": "ModelMergeBlocks",
+   "node_type": "dinkster.models.model_merge_blocks",
+   "difference": "inputs[2].max: missing native field",
+   "reason": "Model Merge Blocks shares the block merge helper and takes the same fixed ratios group, so input, middle and out become ratios.input, ratios.middle and ratios.out (comfy-vibe-station#1101 comment 7075206073, item 4)."
+  },
+  {
+   "class_name": "ModelMergeBlocks",
+   "node_type": "dinkster.models.model_merge_blocks",
+   "difference": "inputs[2].names: missing reference field",
+   "reason": "Model Merge Blocks shares the block merge helper and takes the same fixed ratios group, so input, middle and out become ratios.input, ratios.middle and ratios.out (comfy-vibe-station#1101 comment 7075206073, item 4)."
+  },
+  {
+   "class_name": "ModelMergeBlocks",
+   "node_type": "dinkster.models.model_merge_blocks",
+   "difference": "inputs[2].step: missing native field",
+   "reason": "Model Merge Blocks shares the block merge helper and takes the same fixed ratios group, so input, middle and out become ratios.input, ratios.middle and ratios.out (comfy-vibe-station#1101 comment 7075206073, item 4)."
+  },
+  {
+   "class_name": "ModelMergeBlocks",
+   "node_type": "dinkster.models.model_merge_blocks",
+   "difference": "inputs[2].template: missing reference field",
+   "reason": "Model Merge Blocks shares the block merge helper and takes the same fixed ratios group, so input, middle and out become ratios.input, ratios.middle and ratios.out (comfy-vibe-station#1101 comment 7075206073, item 4)."
+  },
+  {
+   "class_name": "ModelMergeBlocks",
+   "node_type": "dinkster.models.model_merge_blocks",
+   "difference": "inputs[2].min: 0.0 vs 3",
+   "reason": "Model Merge Blocks shares the block merge helper and takes the same fixed ratios group, so input, middle and out become ratios.input, ratios.middle and ratios.out (comfy-vibe-station#1101 comment 7075206073, item 4)."
+  },
+  {
+   "class_name": "ModelMergeBlocks",
+   "node_type": "dinkster.models.model_merge_blocks",
+   "difference": "inputs[2].name: 'input' vs 'ratios'",
+   "reason": "Model Merge Blocks shares the block merge helper and takes the same fixed ratios group, so input, middle and out become ratios.input, ratios.middle and ratios.out (comfy-vibe-station#1101 comment 7075206073, item 4)."
+  },
+  {
+   "class_name": "ModelMergeBlocks",
+   "node_type": "dinkster.models.model_merge_blocks",
+   "difference": "inputs[2].type: 'FLOAT' vs 'inputFamily'",
+   "reason": "Model Merge Blocks shares the block merge helper and takes the same fixed ratios group, so input, middle and out become ratios.input, ratios.middle and ratios.out (comfy-vibe-station#1101 comment 7075206073, item 4)."
+  },
+  {
+   "class_name": "ModelMergeSD1",
+   "node_type": "dinkster.models.model_merge_sd1",
+   "difference": "inputs: length 32 vs 3",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeSD1",
+   "node_type": "dinkster.models.model_merge_sd1",
+   "difference": "inputs[2].default: missing native field",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeSD1",
+   "node_type": "dinkster.models.model_merge_sd1",
+   "difference": "inputs[2].group: missing native field",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeSD1",
+   "node_type": "dinkster.models.model_merge_sd1",
+   "difference": "inputs[2].max: missing native field",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeSD1",
+   "node_type": "dinkster.models.model_merge_sd1",
+   "difference": "inputs[2].names: missing reference field",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeSD1",
+   "node_type": "dinkster.models.model_merge_sd1",
+   "difference": "inputs[2].step: missing native field",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeSD1",
+   "node_type": "dinkster.models.model_merge_sd1",
+   "difference": "inputs[2].template: missing reference field",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeSD1",
+   "node_type": "dinkster.models.model_merge_sd1",
+   "difference": "inputs[2].min: 0.0 vs 30",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeSD1",
+   "node_type": "dinkster.models.model_merge_sd1",
+   "difference": "inputs[2].name: 'time_embed.' vs 'ratios'",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeSD1",
+   "node_type": "dinkster.models.model_merge_sd1",
+   "difference": "inputs[2].type: 'FLOAT' vs 'inputFamily'",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeSD2",
+   "node_type": "dinkster.models.model_merge_sd2",
+   "difference": "inputs: length 32 vs 3",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeSD2",
+   "node_type": "dinkster.models.model_merge_sd2",
+   "difference": "inputs[2].default: missing native field",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeSD2",
+   "node_type": "dinkster.models.model_merge_sd2",
+   "difference": "inputs[2].group: missing native field",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeSD2",
+   "node_type": "dinkster.models.model_merge_sd2",
+   "difference": "inputs[2].max: missing native field",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeSD2",
+   "node_type": "dinkster.models.model_merge_sd2",
+   "difference": "inputs[2].names: missing reference field",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeSD2",
+   "node_type": "dinkster.models.model_merge_sd2",
+   "difference": "inputs[2].step: missing native field",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeSD2",
+   "node_type": "dinkster.models.model_merge_sd2",
+   "difference": "inputs[2].template: missing reference field",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeSD2",
+   "node_type": "dinkster.models.model_merge_sd2",
+   "difference": "inputs[2].min: 0.0 vs 30",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeSD2",
+   "node_type": "dinkster.models.model_merge_sd2",
+   "difference": "inputs[2].name: 'time_embed.' vs 'ratios'",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeSD2",
+   "node_type": "dinkster.models.model_merge_sd2",
+   "difference": "inputs[2].type: 'FLOAT' vs 'inputFamily'",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeSDXL",
+   "node_type": "dinkster.models.model_merge_sdxl",
+   "difference": "inputs: length 26 vs 3",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeSDXL",
+   "node_type": "dinkster.models.model_merge_sdxl",
+   "difference": "inputs[2].default: missing native field",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeSDXL",
+   "node_type": "dinkster.models.model_merge_sdxl",
+   "difference": "inputs[2].group: missing native field",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeSDXL",
+   "node_type": "dinkster.models.model_merge_sdxl",
+   "difference": "inputs[2].max: missing native field",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeSDXL",
+   "node_type": "dinkster.models.model_merge_sdxl",
+   "difference": "inputs[2].names: missing reference field",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeSDXL",
+   "node_type": "dinkster.models.model_merge_sdxl",
+   "difference": "inputs[2].step: missing native field",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeSDXL",
+   "node_type": "dinkster.models.model_merge_sdxl",
+   "difference": "inputs[2].template: missing reference field",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeSDXL",
+   "node_type": "dinkster.models.model_merge_sdxl",
+   "difference": "inputs[2].min: 0.0 vs 24",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeSDXL",
+   "node_type": "dinkster.models.model_merge_sdxl",
+   "difference": "inputs[2].name: 'time_embed.' vs 'ratios'",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeSDXL",
+   "node_type": "dinkster.models.model_merge_sdxl",
+   "difference": "inputs[2].type: 'FLOAT' vs 'inputFamily'",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeSD3_2B",
+   "node_type": "dinkster.models.model_merge_sd3_2_b",
+   "difference": "inputs: length 32 vs 3",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeSD3_2B",
+   "node_type": "dinkster.models.model_merge_sd3_2_b",
+   "difference": "inputs[2].default: missing native field",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeSD3_2B",
+   "node_type": "dinkster.models.model_merge_sd3_2_b",
+   "difference": "inputs[2].group: missing native field",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeSD3_2B",
+   "node_type": "dinkster.models.model_merge_sd3_2_b",
+   "difference": "inputs[2].max: missing native field",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeSD3_2B",
+   "node_type": "dinkster.models.model_merge_sd3_2_b",
+   "difference": "inputs[2].names: missing reference field",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeSD3_2B",
+   "node_type": "dinkster.models.model_merge_sd3_2_b",
+   "difference": "inputs[2].step: missing native field",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeSD3_2B",
+   "node_type": "dinkster.models.model_merge_sd3_2_b",
+   "difference": "inputs[2].template: missing reference field",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeSD3_2B",
+   "node_type": "dinkster.models.model_merge_sd3_2_b",
+   "difference": "inputs[2].min: 0.0 vs 30",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeSD3_2B",
+   "node_type": "dinkster.models.model_merge_sd3_2_b",
+   "difference": "inputs[2].name: 'pos_embed.' vs 'ratios'",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeSD3_2B",
+   "node_type": "dinkster.models.model_merge_sd3_2_b",
+   "difference": "inputs[2].type: 'FLOAT' vs 'inputFamily'",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeAuraflow",
+   "node_type": "dinkster.models.model_merge_auraflow",
+   "difference": "inputs: length 45 vs 3",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeAuraflow",
+   "node_type": "dinkster.models.model_merge_auraflow",
+   "difference": "inputs[2].default: missing native field",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeAuraflow",
+   "node_type": "dinkster.models.model_merge_auraflow",
+   "difference": "inputs[2].group: missing native field",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeAuraflow",
+   "node_type": "dinkster.models.model_merge_auraflow",
+   "difference": "inputs[2].max: missing native field",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeAuraflow",
+   "node_type": "dinkster.models.model_merge_auraflow",
+   "difference": "inputs[2].names: missing reference field",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeAuraflow",
+   "node_type": "dinkster.models.model_merge_auraflow",
+   "difference": "inputs[2].step: missing native field",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeAuraflow",
+   "node_type": "dinkster.models.model_merge_auraflow",
+   "difference": "inputs[2].template: missing reference field",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeAuraflow",
+   "node_type": "dinkster.models.model_merge_auraflow",
+   "difference": "inputs[2].min: 0.0 vs 43",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeAuraflow",
+   "node_type": "dinkster.models.model_merge_auraflow",
+   "difference": "inputs[2].name: 'init_x_linear.' vs 'ratios'",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeAuraflow",
+   "node_type": "dinkster.models.model_merge_auraflow",
+   "difference": "inputs[2].type: 'FLOAT' vs 'inputFamily'",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeFlux1",
+   "node_type": "dinkster.models.model_merge_flux1",
+   "difference": "inputs: length 65 vs 3",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeFlux1",
+   "node_type": "dinkster.models.model_merge_flux1",
+   "difference": "inputs[2].default: missing native field",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeFlux1",
+   "node_type": "dinkster.models.model_merge_flux1",
+   "difference": "inputs[2].group: missing native field",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeFlux1",
+   "node_type": "dinkster.models.model_merge_flux1",
+   "difference": "inputs[2].max: missing native field",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeFlux1",
+   "node_type": "dinkster.models.model_merge_flux1",
+   "difference": "inputs[2].names: missing reference field",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeFlux1",
+   "node_type": "dinkster.models.model_merge_flux1",
+   "difference": "inputs[2].step: missing native field",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeFlux1",
+   "node_type": "dinkster.models.model_merge_flux1",
+   "difference": "inputs[2].template: missing reference field",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeFlux1",
+   "node_type": "dinkster.models.model_merge_flux1",
+   "difference": "inputs[2].min: 0.0 vs 63",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeFlux1",
+   "node_type": "dinkster.models.model_merge_flux1",
+   "difference": "inputs[2].name: 'img_in.' vs 'ratios'",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeFlux1",
+   "node_type": "dinkster.models.model_merge_flux1",
+   "difference": "inputs[2].type: 'FLOAT' vs 'inputFamily'",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeSD35_Large",
+   "node_type": "dinkster.models.model_merge_sd35_large",
+   "difference": "inputs: length 46 vs 3",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeSD35_Large",
+   "node_type": "dinkster.models.model_merge_sd35_large",
+   "difference": "inputs[2].default: missing native field",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeSD35_Large",
+   "node_type": "dinkster.models.model_merge_sd35_large",
+   "difference": "inputs[2].group: missing native field",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeSD35_Large",
+   "node_type": "dinkster.models.model_merge_sd35_large",
+   "difference": "inputs[2].max: missing native field",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeSD35_Large",
+   "node_type": "dinkster.models.model_merge_sd35_large",
+   "difference": "inputs[2].names: missing reference field",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeSD35_Large",
+   "node_type": "dinkster.models.model_merge_sd35_large",
+   "difference": "inputs[2].step: missing native field",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeSD35_Large",
+   "node_type": "dinkster.models.model_merge_sd35_large",
+   "difference": "inputs[2].template: missing reference field",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeSD35_Large",
+   "node_type": "dinkster.models.model_merge_sd35_large",
+   "difference": "inputs[2].min: 0.0 vs 44",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeSD35_Large",
+   "node_type": "dinkster.models.model_merge_sd35_large",
+   "difference": "inputs[2].name: 'pos_embed.' vs 'ratios'",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeSD35_Large",
+   "node_type": "dinkster.models.model_merge_sd35_large",
+   "difference": "inputs[2].type: 'FLOAT' vs 'inputFamily'",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeMochiPreview",
+   "node_type": "dinkster.models.model_merge_mochi_preview",
+   "difference": "inputs: length 55 vs 3",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeMochiPreview",
+   "node_type": "dinkster.models.model_merge_mochi_preview",
+   "difference": "inputs[2].default: missing native field",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeMochiPreview",
+   "node_type": "dinkster.models.model_merge_mochi_preview",
+   "difference": "inputs[2].group: missing native field",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeMochiPreview",
+   "node_type": "dinkster.models.model_merge_mochi_preview",
+   "difference": "inputs[2].max: missing native field",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeMochiPreview",
+   "node_type": "dinkster.models.model_merge_mochi_preview",
+   "difference": "inputs[2].names: missing reference field",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeMochiPreview",
+   "node_type": "dinkster.models.model_merge_mochi_preview",
+   "difference": "inputs[2].step: missing native field",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeMochiPreview",
+   "node_type": "dinkster.models.model_merge_mochi_preview",
+   "difference": "inputs[2].template: missing reference field",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeMochiPreview",
+   "node_type": "dinkster.models.model_merge_mochi_preview",
+   "difference": "inputs[2].min: 0.0 vs 53",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeMochiPreview",
+   "node_type": "dinkster.models.model_merge_mochi_preview",
+   "difference": "inputs[2].name: 'pos_frequencies.' vs 'ratios'",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeMochiPreview",
+   "node_type": "dinkster.models.model_merge_mochi_preview",
+   "difference": "inputs[2].type: 'FLOAT' vs 'inputFamily'",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeLTXV",
+   "node_type": "dinkster.models.model_merge_ltxv",
+   "difference": "inputs: length 35 vs 3",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeLTXV",
+   "node_type": "dinkster.models.model_merge_ltxv",
+   "difference": "inputs[2].default: missing native field",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeLTXV",
+   "node_type": "dinkster.models.model_merge_ltxv",
+   "difference": "inputs[2].group: missing native field",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeLTXV",
+   "node_type": "dinkster.models.model_merge_ltxv",
+   "difference": "inputs[2].max: missing native field",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeLTXV",
+   "node_type": "dinkster.models.model_merge_ltxv",
+   "difference": "inputs[2].names: missing reference field",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeLTXV",
+   "node_type": "dinkster.models.model_merge_ltxv",
+   "difference": "inputs[2].step: missing native field",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeLTXV",
+   "node_type": "dinkster.models.model_merge_ltxv",
+   "difference": "inputs[2].template: missing reference field",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeLTXV",
+   "node_type": "dinkster.models.model_merge_ltxv",
+   "difference": "inputs[2].min: 0.0 vs 33",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeLTXV",
+   "node_type": "dinkster.models.model_merge_ltxv",
+   "difference": "inputs[2].name: 'patchify_proj.' vs 'ratios'",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeLTXV",
+   "node_type": "dinkster.models.model_merge_ltxv",
+   "difference": "inputs[2].type: 'FLOAT' vs 'inputFamily'",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeCosmos7B",
+   "node_type": "dinkster.models.model_merge_cosmos7_b",
+   "difference": "inputs: length 36 vs 3",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeCosmos7B",
+   "node_type": "dinkster.models.model_merge_cosmos7_b",
+   "difference": "inputs[2].default: missing native field",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeCosmos7B",
+   "node_type": "dinkster.models.model_merge_cosmos7_b",
+   "difference": "inputs[2].group: missing native field",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeCosmos7B",
+   "node_type": "dinkster.models.model_merge_cosmos7_b",
+   "difference": "inputs[2].max: missing native field",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeCosmos7B",
+   "node_type": "dinkster.models.model_merge_cosmos7_b",
+   "difference": "inputs[2].names: missing reference field",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeCosmos7B",
+   "node_type": "dinkster.models.model_merge_cosmos7_b",
+   "difference": "inputs[2].step: missing native field",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeCosmos7B",
+   "node_type": "dinkster.models.model_merge_cosmos7_b",
+   "difference": "inputs[2].template: missing reference field",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeCosmos7B",
+   "node_type": "dinkster.models.model_merge_cosmos7_b",
+   "difference": "inputs[2].min: 0.0 vs 34",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeCosmos7B",
+   "node_type": "dinkster.models.model_merge_cosmos7_b",
+   "difference": "inputs[2].name: 'pos_embedder.' vs 'ratios'",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeCosmos7B",
+   "node_type": "dinkster.models.model_merge_cosmos7_b",
+   "difference": "inputs[2].type: 'FLOAT' vs 'inputFamily'",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeCosmos14B",
+   "node_type": "dinkster.models.model_merge_cosmos14_b",
+   "difference": "inputs: length 44 vs 3",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeCosmos14B",
+   "node_type": "dinkster.models.model_merge_cosmos14_b",
+   "difference": "inputs[2].default: missing native field",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeCosmos14B",
+   "node_type": "dinkster.models.model_merge_cosmos14_b",
+   "difference": "inputs[2].group: missing native field",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeCosmos14B",
+   "node_type": "dinkster.models.model_merge_cosmos14_b",
+   "difference": "inputs[2].max: missing native field",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeCosmos14B",
+   "node_type": "dinkster.models.model_merge_cosmos14_b",
+   "difference": "inputs[2].names: missing reference field",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeCosmos14B",
+   "node_type": "dinkster.models.model_merge_cosmos14_b",
+   "difference": "inputs[2].step: missing native field",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeCosmos14B",
+   "node_type": "dinkster.models.model_merge_cosmos14_b",
+   "difference": "inputs[2].template: missing reference field",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeCosmos14B",
+   "node_type": "dinkster.models.model_merge_cosmos14_b",
+   "difference": "inputs[2].min: 0.0 vs 42",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeCosmos14B",
+   "node_type": "dinkster.models.model_merge_cosmos14_b",
+   "difference": "inputs[2].name: 'pos_embedder.' vs 'ratios'",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeCosmos14B",
+   "node_type": "dinkster.models.model_merge_cosmos14_b",
+   "difference": "inputs[2].type: 'FLOAT' vs 'inputFamily'",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeWAN2_1",
+   "node_type": "dinkster.models.model_merge_wan2_1",
+   "difference": "inputs: length 48 vs 3",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeWAN2_1",
+   "node_type": "dinkster.models.model_merge_wan2_1",
+   "difference": "inputs[2].default: missing native field",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeWAN2_1",
+   "node_type": "dinkster.models.model_merge_wan2_1",
+   "difference": "inputs[2].group: missing native field",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeWAN2_1",
+   "node_type": "dinkster.models.model_merge_wan2_1",
+   "difference": "inputs[2].max: missing native field",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeWAN2_1",
+   "node_type": "dinkster.models.model_merge_wan2_1",
+   "difference": "inputs[2].names: missing reference field",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeWAN2_1",
+   "node_type": "dinkster.models.model_merge_wan2_1",
+   "difference": "inputs[2].step: missing native field",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeWAN2_1",
+   "node_type": "dinkster.models.model_merge_wan2_1",
+   "difference": "inputs[2].template: missing reference field",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeWAN2_1",
+   "node_type": "dinkster.models.model_merge_wan2_1",
+   "difference": "inputs[2].min: 0.0 vs 46",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeWAN2_1",
+   "node_type": "dinkster.models.model_merge_wan2_1",
+   "difference": "inputs[2].name: 'patch_embedding.' vs 'ratios'",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeWAN2_1",
+   "node_type": "dinkster.models.model_merge_wan2_1",
+   "difference": "inputs[2].type: 'FLOAT' vs 'inputFamily'",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeCosmosPredict2_2B",
+   "node_type": "dinkster.models.model_merge_cosmos_predict2_2_b",
+   "difference": "inputs: length 35 vs 3",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeCosmosPredict2_2B",
+   "node_type": "dinkster.models.model_merge_cosmos_predict2_2_b",
+   "difference": "inputs[2].default: missing native field",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeCosmosPredict2_2B",
+   "node_type": "dinkster.models.model_merge_cosmos_predict2_2_b",
+   "difference": "inputs[2].group: missing native field",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeCosmosPredict2_2B",
+   "node_type": "dinkster.models.model_merge_cosmos_predict2_2_b",
+   "difference": "inputs[2].max: missing native field",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeCosmosPredict2_2B",
+   "node_type": "dinkster.models.model_merge_cosmos_predict2_2_b",
+   "difference": "inputs[2].names: missing reference field",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeCosmosPredict2_2B",
+   "node_type": "dinkster.models.model_merge_cosmos_predict2_2_b",
+   "difference": "inputs[2].step: missing native field",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeCosmosPredict2_2B",
+   "node_type": "dinkster.models.model_merge_cosmos_predict2_2_b",
+   "difference": "inputs[2].template: missing reference field",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeCosmosPredict2_2B",
+   "node_type": "dinkster.models.model_merge_cosmos_predict2_2_b",
+   "difference": "inputs[2].min: 0.0 vs 33",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeCosmosPredict2_2B",
+   "node_type": "dinkster.models.model_merge_cosmos_predict2_2_b",
+   "difference": "inputs[2].name: 'pos_embedder.' vs 'ratios'",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeCosmosPredict2_2B",
+   "node_type": "dinkster.models.model_merge_cosmos_predict2_2_b",
+   "difference": "inputs[2].type: 'FLOAT' vs 'inputFamily'",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeCosmosPredict2_14B",
+   "node_type": "dinkster.models.model_merge_cosmos_predict2_14_b",
+   "difference": "inputs: length 43 vs 3",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeCosmosPredict2_14B",
+   "node_type": "dinkster.models.model_merge_cosmos_predict2_14_b",
+   "difference": "inputs[2].default: missing native field",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeCosmosPredict2_14B",
+   "node_type": "dinkster.models.model_merge_cosmos_predict2_14_b",
+   "difference": "inputs[2].group: missing native field",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeCosmosPredict2_14B",
+   "node_type": "dinkster.models.model_merge_cosmos_predict2_14_b",
+   "difference": "inputs[2].max: missing native field",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeCosmosPredict2_14B",
+   "node_type": "dinkster.models.model_merge_cosmos_predict2_14_b",
+   "difference": "inputs[2].names: missing reference field",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeCosmosPredict2_14B",
+   "node_type": "dinkster.models.model_merge_cosmos_predict2_14_b",
+   "difference": "inputs[2].step: missing native field",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeCosmosPredict2_14B",
+   "node_type": "dinkster.models.model_merge_cosmos_predict2_14_b",
+   "difference": "inputs[2].template: missing reference field",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeCosmosPredict2_14B",
+   "node_type": "dinkster.models.model_merge_cosmos_predict2_14_b",
+   "difference": "inputs[2].min: 0.0 vs 41",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeCosmosPredict2_14B",
+   "node_type": "dinkster.models.model_merge_cosmos_predict2_14_b",
+   "difference": "inputs[2].name: 'pos_embedder.' vs 'ratios'",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeCosmosPredict2_14B",
+   "node_type": "dinkster.models.model_merge_cosmos_predict2_14_b",
+   "difference": "inputs[2].type: 'FLOAT' vs 'inputFamily'",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeQwenImage",
+   "node_type": "dinkster.models.model_merge_qwen_image",
+   "difference": "inputs: length 68 vs 3",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeQwenImage",
+   "node_type": "dinkster.models.model_merge_qwen_image",
+   "difference": "inputs[2].default: missing native field",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeQwenImage",
+   "node_type": "dinkster.models.model_merge_qwen_image",
+   "difference": "inputs[2].group: missing native field",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeQwenImage",
+   "node_type": "dinkster.models.model_merge_qwen_image",
+   "difference": "inputs[2].max: missing native field",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeQwenImage",
+   "node_type": "dinkster.models.model_merge_qwen_image",
+   "difference": "inputs[2].names: missing reference field",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeQwenImage",
+   "node_type": "dinkster.models.model_merge_qwen_image",
+   "difference": "inputs[2].step: missing native field",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeQwenImage",
+   "node_type": "dinkster.models.model_merge_qwen_image",
+   "difference": "inputs[2].template: missing reference field",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeQwenImage",
+   "node_type": "dinkster.models.model_merge_qwen_image",
+   "difference": "inputs[2].min: 0.0 vs 66",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeQwenImage",
+   "node_type": "dinkster.models.model_merge_qwen_image",
+   "difference": "inputs[2].name: 'pos_embeds.' vs 'ratios'",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeQwenImage",
+   "node_type": "dinkster.models.model_merge_qwen_image",
+   "difference": "inputs[2].type: 'FLOAT' vs 'inputFamily'",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeKrea2",
+   "node_type": "dinkster.models.model_merge_krea2",
+   "difference": "inputs: length 40 vs 3",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeKrea2",
+   "node_type": "dinkster.models.model_merge_krea2",
+   "difference": "inputs[2].default: missing native field",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeKrea2",
+   "node_type": "dinkster.models.model_merge_krea2",
+   "difference": "inputs[2].group: missing native field",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeKrea2",
+   "node_type": "dinkster.models.model_merge_krea2",
+   "difference": "inputs[2].max: missing native field",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeKrea2",
+   "node_type": "dinkster.models.model_merge_krea2",
+   "difference": "inputs[2].names: missing reference field",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeKrea2",
+   "node_type": "dinkster.models.model_merge_krea2",
+   "difference": "inputs[2].step: missing native field",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeKrea2",
+   "node_type": "dinkster.models.model_merge_krea2",
+   "difference": "inputs[2].template: missing reference field",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeKrea2",
+   "node_type": "dinkster.models.model_merge_krea2",
+   "difference": "inputs[2].min: 0.0 vs 38",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeKrea2",
+   "node_type": "dinkster.models.model_merge_krea2",
+   "difference": "inputs[2].name: 'first.' vs 'ratios'",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "ModelMergeKrea2",
+   "node_type": "dinkster.models.model_merge_krea2",
+   "difference": "inputs[2].type: 'FLOAT' vs 'inputFamily'",
+   "reason": "Each block merge gets one group of values, ratios, keyed by the block prefix with the last dot dropped and dots as underscores, in the node's order and with every key always present (node master plan section 13, model-merge row; comfy-vibe-station#1101 comment 7075206073)."
+  },
+  {
+   "class_name": "Load3DAdvanced",
+   "node_type": "dinkster.3d.load3_d_advanced",
+   "difference": "inputs: length 4 vs 3",
+   "reason": "viewport_state: Becomes a State: no pin, no field and no required mark, kept with the workflow and passed to execute (node master plan section 13, State row; comfy-vibe-station#1101 comment 7058717316). Its editor is an Editor row written where the input stood, and the widget names the rows it writes and reads by today's fixed names, read from the app's editor (node master plan section 2, Editor; comfy-vibe-station#1101 comment 7075165594)."
+  },
+  {
+   "class_name": "Load3DAdvanced",
+   "node_type": "dinkster.3d.load3_d_advanced",
+   "difference": "inputs[1].default: missing reference field",
+   "reason": "viewport_state: Becomes a State: no pin, no field and no required mark, kept with the workflow and passed to execute (node master plan section 13, State row; comfy-vibe-station#1101 comment 7058717316). Its editor is an Editor row written where the input stood, and the widget names the rows it writes and reads by today's fixed names, read from the app's editor (node master plan section 2, Editor; comfy-vibe-station#1101 comment 7075165594)."
+  },
+  {
+   "class_name": "Load3DAdvanced",
+   "node_type": "dinkster.3d.load3_d_advanced",
+   "difference": "inputs[1].max: missing reference field",
+   "reason": "viewport_state: Becomes a State: no pin, no field and no required mark, kept with the workflow and passed to execute (node master plan section 13, State row; comfy-vibe-station#1101 comment 7058717316). Its editor is an Editor row written where the input stood, and the widget names the rows it writes and reads by today's fixed names, read from the app's editor (node master plan section 2, Editor; comfy-vibe-station#1101 comment 7075165594)."
+  },
+  {
+   "class_name": "Load3DAdvanced",
+   "node_type": "dinkster.3d.load3_d_advanced",
+   "difference": "inputs[1].min: missing reference field",
+   "reason": "viewport_state: Becomes a State: no pin, no field and no required mark, kept with the workflow and passed to execute (node master plan section 13, State row; comfy-vibe-station#1101 comment 7058717316). Its editor is an Editor row written where the input stood, and the widget names the rows it writes and reads by today's fixed names, read from the app's editor (node master plan section 2, Editor; comfy-vibe-station#1101 comment 7075165594)."
+  },
+  {
+   "class_name": "Load3DAdvanced",
+   "node_type": "dinkster.3d.load3_d_advanced",
+   "difference": "inputs[1].step: missing reference field",
+   "reason": "viewport_state: Becomes a State: no pin, no field and no required mark, kept with the workflow and passed to execute (node master plan section 13, State row; comfy-vibe-station#1101 comment 7058717316). Its editor is an Editor row written where the input stood, and the widget names the rows it writes and reads by today's fixed names, read from the app's editor (node master plan section 2, Editor; comfy-vibe-station#1101 comment 7075165594)."
+  },
+  {
+   "class_name": "Load3DAdvanced",
+   "node_type": "dinkster.3d.load3_d_advanced",
+   "difference": "inputs[1].name: 'viewport_state' vs 'width'",
+   "reason": "viewport_state: Becomes a State: no pin, no field and no required mark, kept with the workflow and passed to execute (node master plan section 13, State row; comfy-vibe-station#1101 comment 7058717316). Its editor is an Editor row written where the input stood, and the widget names the rows it writes and reads by today's fixed names, read from the app's editor (node master plan section 2, Editor; comfy-vibe-station#1101 comment 7075165594)."
+  },
+  {
+   "class_name": "Load3DAdvanced",
+   "node_type": "dinkster.3d.load3_d_advanced",
+   "difference": "inputs[1].type: 'LOAD_3D' vs 'INT'",
+   "reason": "viewport_state: Becomes a State: no pin, no field and no required mark, kept with the workflow and passed to execute (node master plan section 13, State row; comfy-vibe-station#1101 comment 7058717316). Its editor is an Editor row written where the input stood, and the widget names the rows it writes and reads by today's fixed names, read from the app's editor (node master plan section 2, Editor; comfy-vibe-station#1101 comment 7075165594)."
+  },
+  {
+   "class_name": "Load3DAdvanced",
+   "node_type": "dinkster.3d.load3_d_advanced",
+   "difference": "inputs[2].name: 'width' vs 'height'",
+   "reason": "viewport_state: Becomes a State: no pin, no field and no required mark, kept with the workflow and passed to execute (node master plan section 13, State row; comfy-vibe-station#1101 comment 7058717316). Its editor is an Editor row written where the input stood, and the widget names the rows it writes and reads by today's fixed names, read from the app's editor (node master plan section 2, Editor; comfy-vibe-station#1101 comment 7075165594)."
+  },
+  {
+   "class_name": "Load3D",
+   "node_type": "dinkster.3d.load3_d",
+   "difference": "outputs[2].name: 'mesh_path' vs 'normal'",
+   "reason": "Outputs: the three pictures, image, mask and normal, come first, and mesh_path, camera_info, recording_video, model_3d and model_3d_info sit in a section, More outputs, that starts closed, so normal moves ahead of mesh_path (comfy-vibe-station#1260, the in-node editors brief, Load 3D outputs). A ComfyUI workflow's links keep their outputs: the importer matches Load3D outputs by name, never by position once an output sits in a section."
+  },
+  {
+   "class_name": "Load3D",
+   "node_type": "dinkster.3d.load3_d",
+   "difference": "outputs[2].type: 'STRING' vs 'IMAGE'",
+   "reason": "Outputs: the three pictures, image, mask and normal, come first, and mesh_path, camera_info, recording_video, model_3d and model_3d_info sit in a section, More outputs, that starts closed, so normal moves ahead of mesh_path (comfy-vibe-station#1260, the in-node editors brief, Load 3D outputs). A ComfyUI workflow's links keep their outputs: the importer matches Load3D outputs by name, never by position once an output sits in a section."
+  },
+  {
+   "class_name": "Load3D",
+   "node_type": "dinkster.3d.load3_d",
+   "difference": "outputs[3].name: 'normal' vs 'mesh_path'",
+   "reason": "Outputs: the three pictures, image, mask and normal, come first, and mesh_path, camera_info, recording_video, model_3d and model_3d_info sit in a section, More outputs, that starts closed, so normal moves ahead of mesh_path (comfy-vibe-station#1260, the in-node editors brief, Load 3D outputs). A ComfyUI workflow's links keep their outputs: the importer matches Load3D outputs by name, never by position once an output sits in a section."
+  },
+  {
+   "class_name": "Load3D",
+   "node_type": "dinkster.3d.load3_d",
+   "difference": "outputs[3].type: 'IMAGE' vs 'STRING'",
+   "reason": "Outputs: the three pictures, image, mask and normal, come first, and mesh_path, camera_info, recording_video, model_3d and model_3d_info sit in a section, More outputs, that starts closed, so normal moves ahead of mesh_path (comfy-vibe-station#1260, the in-node editors brief, Load 3D outputs). A ComfyUI workflow's links keep their outputs: the importer matches Load3D outputs by name, never by position once an output sits in a section."
+  },
+  {
+   "class_name": "Preview3DAdvanced",
+   "node_type": "dinkster.3d.preview3_d_advanced",
+   "difference": "inputs: length 6 vs 5",
+   "reason": "viewport_state: Becomes a State: no pin, no field and no required mark, kept with the workflow and passed to execute (node master plan section 13, State row; comfy-vibe-station#1101 comment 7058717316). Its editor is an Editor row written where the input stood, and the widget names the rows it writes and reads by today's fixed names, read from the app's editor (node master plan section 2, Editor; comfy-vibe-station#1101 comment 7075165594)."
+  },
+  {
+   "class_name": "Preview3DAdvanced",
+   "node_type": "dinkster.3d.preview3_d_advanced",
+   "difference": "inputs[2].group: 'required' vs 'optional'",
+   "reason": "viewport_state: Becomes a State: no pin, no field and no required mark, kept with the workflow and passed to execute (node master plan section 13, State row; comfy-vibe-station#1101 comment 7058717316). Its editor is an Editor row written where the input stood, and the widget names the rows it writes and reads by today's fixed names, read from the app's editor (node master plan section 2, Editor; comfy-vibe-station#1101 comment 7075165594)."
+  },
+  {
+   "class_name": "Preview3DAdvanced",
+   "node_type": "dinkster.3d.preview3_d_advanced",
+   "difference": "inputs[2].name: 'viewport_state' vs 'camera_info'",
+   "reason": "viewport_state: Becomes a State: no pin, no field and no required mark, kept with the workflow and passed to execute (node master plan section 13, State row; comfy-vibe-station#1101 comment 7058717316). Its editor is an Editor row written where the input stood, and the widget names the rows it writes and reads by today's fixed names, read from the app's editor (node master plan section 2, Editor; comfy-vibe-station#1101 comment 7075165594)."
+  },
+  {
+   "class_name": "Preview3DAdvanced",
+   "node_type": "dinkster.3d.preview3_d_advanced",
+   "difference": "inputs[2].type: 'LOAD_3D' vs 'LOAD3D_CAMERA'",
+   "reason": "viewport_state: Becomes a State: no pin, no field and no required mark, kept with the workflow and passed to execute (node master plan section 13, State row; comfy-vibe-station#1101 comment 7058717316). Its editor is an Editor row written where the input stood, and the widget names the rows it writes and reads by today's fixed names, read from the app's editor (node master plan section 2, Editor; comfy-vibe-station#1101 comment 7075165594)."
+  },
+  {
+   "class_name": "Preview3DAdvanced",
+   "node_type": "dinkster.3d.preview3_d_advanced",
+   "difference": "inputs[3].default: missing reference field",
+   "reason": "viewport_state: Becomes a State: no pin, no field and no required mark, kept with the workflow and passed to execute (node master plan section 13, State row; comfy-vibe-station#1101 comment 7058717316). Its editor is an Editor row written where the input stood, and the widget names the rows it writes and reads by today's fixed names, read from the app's editor (node master plan section 2, Editor; comfy-vibe-station#1101 comment 7075165594)."
+  },
+  {
+   "class_name": "Preview3DAdvanced",
+   "node_type": "dinkster.3d.preview3_d_advanced",
+   "difference": "inputs[3].max: missing reference field",
+   "reason": "viewport_state: Becomes a State: no pin, no field and no required mark, kept with the workflow and passed to execute (node master plan section 13, State row; comfy-vibe-station#1101 comment 7058717316). Its editor is an Editor row written where the input stood, and the widget names the rows it writes and reads by today's fixed names, read from the app's editor (node master plan section 2, Editor; comfy-vibe-station#1101 comment 7075165594)."
+  },
+  {
+   "class_name": "Preview3DAdvanced",
+   "node_type": "dinkster.3d.preview3_d_advanced",
+   "difference": "inputs[3].min: missing reference field",
+   "reason": "viewport_state: Becomes a State: no pin, no field and no required mark, kept with the workflow and passed to execute (node master plan section 13, State row; comfy-vibe-station#1101 comment 7058717316). Its editor is an Editor row written where the input stood, and the widget names the rows it writes and reads by today's fixed names, read from the app's editor (node master plan section 2, Editor; comfy-vibe-station#1101 comment 7075165594)."
+  },
+  {
+   "class_name": "Preview3DAdvanced",
+   "node_type": "dinkster.3d.preview3_d_advanced",
+   "difference": "inputs[3].step: missing reference field",
+   "reason": "viewport_state: Becomes a State: no pin, no field and no required mark, kept with the workflow and passed to execute (node master plan section 13, State row; comfy-vibe-station#1101 comment 7058717316). Its editor is an Editor row written where the input stood, and the widget names the rows it writes and reads by today's fixed names, read from the app's editor (node master plan section 2, Editor; comfy-vibe-station#1101 comment 7075165594)."
+  },
+  {
+   "class_name": "Preview3DAdvanced",
+   "node_type": "dinkster.3d.preview3_d_advanced",
+   "difference": "inputs[3].group: 'optional' vs 'required'",
+   "reason": "viewport_state: Becomes a State: no pin, no field and no required mark, kept with the workflow and passed to execute (node master plan section 13, State row; comfy-vibe-station#1101 comment 7058717316). Its editor is an Editor row written where the input stood, and the widget names the rows it writes and reads by today's fixed names, read from the app's editor (node master plan section 2, Editor; comfy-vibe-station#1101 comment 7075165594)."
+  },
+  {
+   "class_name": "Preview3DAdvanced",
+   "node_type": "dinkster.3d.preview3_d_advanced",
+   "difference": "inputs[3].name: 'camera_info' vs 'width'",
+   "reason": "viewport_state: Becomes a State: no pin, no field and no required mark, kept with the workflow and passed to execute (node master plan section 13, State row; comfy-vibe-station#1101 comment 7058717316). Its editor is an Editor row written where the input stood, and the widget names the rows it writes and reads by today's fixed names, read from the app's editor (node master plan section 2, Editor; comfy-vibe-station#1101 comment 7075165594)."
+  },
+  {
+   "class_name": "Preview3DAdvanced",
+   "node_type": "dinkster.3d.preview3_d_advanced",
+   "difference": "inputs[3].type: 'LOAD3D_CAMERA' vs 'INT'",
+   "reason": "viewport_state: Becomes a State: no pin, no field and no required mark, kept with the workflow and passed to execute (node master plan section 13, State row; comfy-vibe-station#1101 comment 7058717316). Its editor is an Editor row written where the input stood, and the widget names the rows it writes and reads by today's fixed names, read from the app's editor (node master plan section 2, Editor; comfy-vibe-station#1101 comment 7075165594)."
+  },
+  {
+   "class_name": "Preview3DAdvanced",
+   "node_type": "dinkster.3d.preview3_d_advanced",
+   "difference": "inputs[4].name: 'width' vs 'height'",
+   "reason": "viewport_state: Becomes a State: no pin, no field and no required mark, kept with the workflow and passed to execute (node master plan section 13, State row; comfy-vibe-station#1101 comment 7058717316). Its editor is an Editor row written where the input stood, and the widget names the rows it writes and reads by today's fixed names, read from the app's editor (node master plan section 2, Editor; comfy-vibe-station#1101 comment 7075165594)."
+  },
+  {
+   "class_name": "PreviewGaussianSplat",
+   "node_type": "dinkster.3d.preview_gaussian_splat",
+   "difference": "inputs: length 6 vs 5",
+   "reason": "viewport_state: Becomes a State: no pin, no field and no required mark, kept with the workflow and passed to execute (node master plan section 13, State row; comfy-vibe-station#1101 comment 7058717316). Its editor is an Editor row written where the input stood, and the widget names the rows it writes and reads by today's fixed names, read from the app's editor (node master plan section 2, Editor; comfy-vibe-station#1101 comment 7075165594)."
+  },
+  {
+   "class_name": "PreviewGaussianSplat",
+   "node_type": "dinkster.3d.preview_gaussian_splat",
+   "difference": "inputs[2].group: 'required' vs 'optional'",
+   "reason": "viewport_state: Becomes a State: no pin, no field and no required mark, kept with the workflow and passed to execute (node master plan section 13, State row; comfy-vibe-station#1101 comment 7058717316). Its editor is an Editor row written where the input stood, and the widget names the rows it writes and reads by today's fixed names, read from the app's editor (node master plan section 2, Editor; comfy-vibe-station#1101 comment 7075165594)."
+  },
+  {
+   "class_name": "PreviewGaussianSplat",
+   "node_type": "dinkster.3d.preview_gaussian_splat",
+   "difference": "inputs[2].name: 'viewport_state' vs 'camera_info'",
+   "reason": "viewport_state: Becomes a State: no pin, no field and no required mark, kept with the workflow and passed to execute (node master plan section 13, State row; comfy-vibe-station#1101 comment 7058717316). Its editor is an Editor row written where the input stood, and the widget names the rows it writes and reads by today's fixed names, read from the app's editor (node master plan section 2, Editor; comfy-vibe-station#1101 comment 7075165594)."
+  },
+  {
+   "class_name": "PreviewGaussianSplat",
+   "node_type": "dinkster.3d.preview_gaussian_splat",
+   "difference": "inputs[2].type: 'LOAD_3D' vs 'LOAD3D_CAMERA'",
+   "reason": "viewport_state: Becomes a State: no pin, no field and no required mark, kept with the workflow and passed to execute (node master plan section 13, State row; comfy-vibe-station#1101 comment 7058717316). Its editor is an Editor row written where the input stood, and the widget names the rows it writes and reads by today's fixed names, read from the app's editor (node master plan section 2, Editor; comfy-vibe-station#1101 comment 7075165594)."
+  },
+  {
+   "class_name": "PreviewGaussianSplat",
+   "node_type": "dinkster.3d.preview_gaussian_splat",
+   "difference": "inputs[3].default: missing reference field",
+   "reason": "viewport_state: Becomes a State: no pin, no field and no required mark, kept with the workflow and passed to execute (node master plan section 13, State row; comfy-vibe-station#1101 comment 7058717316). Its editor is an Editor row written where the input stood, and the widget names the rows it writes and reads by today's fixed names, read from the app's editor (node master plan section 2, Editor; comfy-vibe-station#1101 comment 7075165594)."
+  },
+  {
+   "class_name": "PreviewGaussianSplat",
+   "node_type": "dinkster.3d.preview_gaussian_splat",
+   "difference": "inputs[3].max: missing reference field",
+   "reason": "viewport_state: Becomes a State: no pin, no field and no required mark, kept with the workflow and passed to execute (node master plan section 13, State row; comfy-vibe-station#1101 comment 7058717316). Its editor is an Editor row written where the input stood, and the widget names the rows it writes and reads by today's fixed names, read from the app's editor (node master plan section 2, Editor; comfy-vibe-station#1101 comment 7075165594)."
+  },
+  {
+   "class_name": "PreviewGaussianSplat",
+   "node_type": "dinkster.3d.preview_gaussian_splat",
+   "difference": "inputs[3].min: missing reference field",
+   "reason": "viewport_state: Becomes a State: no pin, no field and no required mark, kept with the workflow and passed to execute (node master plan section 13, State row; comfy-vibe-station#1101 comment 7058717316). Its editor is an Editor row written where the input stood, and the widget names the rows it writes and reads by today's fixed names, read from the app's editor (node master plan section 2, Editor; comfy-vibe-station#1101 comment 7075165594)."
+  },
+  {
+   "class_name": "PreviewGaussianSplat",
+   "node_type": "dinkster.3d.preview_gaussian_splat",
+   "difference": "inputs[3].step: missing reference field",
+   "reason": "viewport_state: Becomes a State: no pin, no field and no required mark, kept with the workflow and passed to execute (node master plan section 13, State row; comfy-vibe-station#1101 comment 7058717316). Its editor is an Editor row written where the input stood, and the widget names the rows it writes and reads by today's fixed names, read from the app's editor (node master plan section 2, Editor; comfy-vibe-station#1101 comment 7075165594)."
+  },
+  {
+   "class_name": "PreviewGaussianSplat",
+   "node_type": "dinkster.3d.preview_gaussian_splat",
+   "difference": "inputs[3].group: 'optional' vs 'required'",
+   "reason": "viewport_state: Becomes a State: no pin, no field and no required mark, kept with the workflow and passed to execute (node master plan section 13, State row; comfy-vibe-station#1101 comment 7058717316). Its editor is an Editor row written where the input stood, and the widget names the rows it writes and reads by today's fixed names, read from the app's editor (node master plan section 2, Editor; comfy-vibe-station#1101 comment 7075165594)."
+  },
+  {
+   "class_name": "PreviewGaussianSplat",
+   "node_type": "dinkster.3d.preview_gaussian_splat",
+   "difference": "inputs[3].name: 'camera_info' vs 'width'",
+   "reason": "viewport_state: Becomes a State: no pin, no field and no required mark, kept with the workflow and passed to execute (node master plan section 13, State row; comfy-vibe-station#1101 comment 7058717316). Its editor is an Editor row written where the input stood, and the widget names the rows it writes and reads by today's fixed names, read from the app's editor (node master plan section 2, Editor; comfy-vibe-station#1101 comment 7075165594)."
+  },
+  {
+   "class_name": "PreviewGaussianSplat",
+   "node_type": "dinkster.3d.preview_gaussian_splat",
+   "difference": "inputs[3].type: 'LOAD3D_CAMERA' vs 'INT'",
+   "reason": "viewport_state: Becomes a State: no pin, no field and no required mark, kept with the workflow and passed to execute (node master plan section 13, State row; comfy-vibe-station#1101 comment 7058717316). Its editor is an Editor row written where the input stood, and the widget names the rows it writes and reads by today's fixed names, read from the app's editor (node master plan section 2, Editor; comfy-vibe-station#1101 comment 7075165594)."
+  },
+  {
+   "class_name": "PreviewGaussianSplat",
+   "node_type": "dinkster.3d.preview_gaussian_splat",
+   "difference": "inputs[4].name: 'width' vs 'height'",
+   "reason": "viewport_state: Becomes a State: no pin, no field and no required mark, kept with the workflow and passed to execute (node master plan section 13, State row; comfy-vibe-station#1101 comment 7058717316). Its editor is an Editor row written where the input stood, and the widget names the rows it writes and reads by today's fixed names, read from the app's editor (node master plan section 2, Editor; comfy-vibe-station#1101 comment 7075165594)."
+  },
+  {
+   "class_name": "PreviewPointCloud",
+   "node_type": "dinkster.3d.preview_point_cloud",
+   "difference": "inputs: length 6 vs 5",
+   "reason": "viewport_state: Becomes a State: no pin, no field and no required mark, kept with the workflow and passed to execute (node master plan section 13, State row; comfy-vibe-station#1101 comment 7058717316). Its editor is an Editor row written where the input stood, and the widget names the rows it writes and reads by today's fixed names, read from the app's editor (node master plan section 2, Editor; comfy-vibe-station#1101 comment 7075165594)."
+  },
+  {
+   "class_name": "PreviewPointCloud",
+   "node_type": "dinkster.3d.preview_point_cloud",
+   "difference": "inputs[2].group: 'required' vs 'optional'",
+   "reason": "viewport_state: Becomes a State: no pin, no field and no required mark, kept with the workflow and passed to execute (node master plan section 13, State row; comfy-vibe-station#1101 comment 7058717316). Its editor is an Editor row written where the input stood, and the widget names the rows it writes and reads by today's fixed names, read from the app's editor (node master plan section 2, Editor; comfy-vibe-station#1101 comment 7075165594)."
+  },
+  {
+   "class_name": "PreviewPointCloud",
+   "node_type": "dinkster.3d.preview_point_cloud",
+   "difference": "inputs[2].name: 'viewport_state' vs 'camera_info'",
+   "reason": "viewport_state: Becomes a State: no pin, no field and no required mark, kept with the workflow and passed to execute (node master plan section 13, State row; comfy-vibe-station#1101 comment 7058717316). Its editor is an Editor row written where the input stood, and the widget names the rows it writes and reads by today's fixed names, read from the app's editor (node master plan section 2, Editor; comfy-vibe-station#1101 comment 7075165594)."
+  },
+  {
+   "class_name": "PreviewPointCloud",
+   "node_type": "dinkster.3d.preview_point_cloud",
+   "difference": "inputs[2].type: 'LOAD_3D' vs 'LOAD3D_CAMERA'",
+   "reason": "viewport_state: Becomes a State: no pin, no field and no required mark, kept with the workflow and passed to execute (node master plan section 13, State row; comfy-vibe-station#1101 comment 7058717316). Its editor is an Editor row written where the input stood, and the widget names the rows it writes and reads by today's fixed names, read from the app's editor (node master plan section 2, Editor; comfy-vibe-station#1101 comment 7075165594)."
+  },
+  {
+   "class_name": "PreviewPointCloud",
+   "node_type": "dinkster.3d.preview_point_cloud",
+   "difference": "inputs[3].default: missing reference field",
+   "reason": "viewport_state: Becomes a State: no pin, no field and no required mark, kept with the workflow and passed to execute (node master plan section 13, State row; comfy-vibe-station#1101 comment 7058717316). Its editor is an Editor row written where the input stood, and the widget names the rows it writes and reads by today's fixed names, read from the app's editor (node master plan section 2, Editor; comfy-vibe-station#1101 comment 7075165594)."
+  },
+  {
+   "class_name": "PreviewPointCloud",
+   "node_type": "dinkster.3d.preview_point_cloud",
+   "difference": "inputs[3].max: missing reference field",
+   "reason": "viewport_state: Becomes a State: no pin, no field and no required mark, kept with the workflow and passed to execute (node master plan section 13, State row; comfy-vibe-station#1101 comment 7058717316). Its editor is an Editor row written where the input stood, and the widget names the rows it writes and reads by today's fixed names, read from the app's editor (node master plan section 2, Editor; comfy-vibe-station#1101 comment 7075165594)."
+  },
+  {
+   "class_name": "PreviewPointCloud",
+   "node_type": "dinkster.3d.preview_point_cloud",
+   "difference": "inputs[3].min: missing reference field",
+   "reason": "viewport_state: Becomes a State: no pin, no field and no required mark, kept with the workflow and passed to execute (node master plan section 13, State row; comfy-vibe-station#1101 comment 7058717316). Its editor is an Editor row written where the input stood, and the widget names the rows it writes and reads by today's fixed names, read from the app's editor (node master plan section 2, Editor; comfy-vibe-station#1101 comment 7075165594)."
+  },
+  {
+   "class_name": "PreviewPointCloud",
+   "node_type": "dinkster.3d.preview_point_cloud",
+   "difference": "inputs[3].step: missing reference field",
+   "reason": "viewport_state: Becomes a State: no pin, no field and no required mark, kept with the workflow and passed to execute (node master plan section 13, State row; comfy-vibe-station#1101 comment 7058717316). Its editor is an Editor row written where the input stood, and the widget names the rows it writes and reads by today's fixed names, read from the app's editor (node master plan section 2, Editor; comfy-vibe-station#1101 comment 7075165594)."
+  },
+  {
+   "class_name": "PreviewPointCloud",
+   "node_type": "dinkster.3d.preview_point_cloud",
+   "difference": "inputs[3].group: 'optional' vs 'required'",
+   "reason": "viewport_state: Becomes a State: no pin, no field and no required mark, kept with the workflow and passed to execute (node master plan section 13, State row; comfy-vibe-station#1101 comment 7058717316). Its editor is an Editor row written where the input stood, and the widget names the rows it writes and reads by today's fixed names, read from the app's editor (node master plan section 2, Editor; comfy-vibe-station#1101 comment 7075165594)."
+  },
+  {
+   "class_name": "PreviewPointCloud",
+   "node_type": "dinkster.3d.preview_point_cloud",
+   "difference": "inputs[3].name: 'camera_info' vs 'width'",
+   "reason": "viewport_state: Becomes a State: no pin, no field and no required mark, kept with the workflow and passed to execute (node master plan section 13, State row; comfy-vibe-station#1101 comment 7058717316). Its editor is an Editor row written where the input stood, and the widget names the rows it writes and reads by today's fixed names, read from the app's editor (node master plan section 2, Editor; comfy-vibe-station#1101 comment 7075165594)."
+  },
+  {
+   "class_name": "PreviewPointCloud",
+   "node_type": "dinkster.3d.preview_point_cloud",
+   "difference": "inputs[3].type: 'LOAD3D_CAMERA' vs 'INT'",
+   "reason": "viewport_state: Becomes a State: no pin, no field and no required mark, kept with the workflow and passed to execute (node master plan section 13, State row; comfy-vibe-station#1101 comment 7058717316). Its editor is an Editor row written where the input stood, and the widget names the rows it writes and reads by today's fixed names, read from the app's editor (node master plan section 2, Editor; comfy-vibe-station#1101 comment 7075165594)."
+  },
+  {
+   "class_name": "PreviewPointCloud",
+   "node_type": "dinkster.3d.preview_point_cloud",
+   "difference": "inputs[4].name: 'width' vs 'height'",
+   "reason": "viewport_state: Becomes a State: no pin, no field and no required mark, kept with the workflow and passed to execute (node master plan section 13, State row; comfy-vibe-station#1101 comment 7058717316). Its editor is an Editor row written where the input stood, and the widget names the rows it writes and reads by today's fixed names, read from the app's editor (node master plan section 2, Editor; comfy-vibe-station#1101 comment 7075165594)."
+  },
+  {
+   "class_name": "SaveVideo",
+   "node_type": "dinkster.video.save_video",
+   "difference": "inputs: length 4 vs 3",
+   "reason": "codec: Save Video's hidden codec input and its rows are deleted (node master plan section 13, acceptance: the four extra differences; comfy-vibe-station#1101 comment 7058717316)."
+  },
+  {
+   "class_name": "ResolutionSelector",
+   "node_type": "dinkster.utilities.resolution_selector",
+   "difference": "inputs: length 4 vs 3",
+   "reason": "preview: Resolution Selector's preview leaves the inputs and becomes a Note that shows the size from two derived formulas; the RESOLUTION_PREVIEW editor goes (node master plan section 13, acceptance: the four extra differences; comfy-vibe-station#1101 comments 7058717316 and 7075187463)."
+  },
+  {
+   "class_name": "ResolutionSelector",
+   "node_type": "dinkster.utilities.resolution_selector",
+   "difference": "inputs[2].default: missing reference field",
+   "reason": "preview: Resolution Selector's preview leaves the inputs and becomes a Note that shows the size from two derived formulas; the RESOLUTION_PREVIEW editor goes (node master plan section 13, acceptance: the four extra differences; comfy-vibe-station#1101 comments 7058717316 and 7075187463)."
+  },
+  {
+   "class_name": "ResolutionSelector",
+   "node_type": "dinkster.utilities.resolution_selector",
+   "difference": "inputs[2].max: missing reference field",
+   "reason": "preview: Resolution Selector's preview leaves the inputs and becomes a Note that shows the size from two derived formulas; the RESOLUTION_PREVIEW editor goes (node master plan section 13, acceptance: the four extra differences; comfy-vibe-station#1101 comments 7058717316 and 7075187463)."
+  },
+  {
+   "class_name": "ResolutionSelector",
+   "node_type": "dinkster.utilities.resolution_selector",
+   "difference": "inputs[2].min: missing reference field",
+   "reason": "preview: Resolution Selector's preview leaves the inputs and becomes a Note that shows the size from two derived formulas; the RESOLUTION_PREVIEW editor goes (node master plan section 13, acceptance: the four extra differences; comfy-vibe-station#1101 comments 7058717316 and 7075187463)."
+  },
+  {
+   "class_name": "ResolutionSelector",
+   "node_type": "dinkster.utilities.resolution_selector",
+   "difference": "inputs[2].step: missing reference field",
+   "reason": "preview: Resolution Selector's preview leaves the inputs and becomes a Note that shows the size from two derived formulas; the RESOLUTION_PREVIEW editor goes (node master plan section 13, acceptance: the four extra differences; comfy-vibe-station#1101 comments 7058717316 and 7075187463)."
+  },
+  {
+   "class_name": "ResolutionSelector",
+   "node_type": "dinkster.utilities.resolution_selector",
+   "difference": "inputs[2].group: 'optional' vs 'required'",
+   "reason": "preview: Resolution Selector's preview leaves the inputs and becomes a Note that shows the size from two derived formulas; the RESOLUTION_PREVIEW editor goes (node master plan section 13, acceptance: the four extra differences; comfy-vibe-station#1101 comments 7058717316 and 7075187463)."
+  },
+  {
+   "class_name": "ResolutionSelector",
+   "node_type": "dinkster.utilities.resolution_selector",
+   "difference": "inputs[2].name: 'preview' vs 'multiple'",
+   "reason": "preview: Resolution Selector's preview leaves the inputs and becomes a Note that shows the size from two derived formulas; the RESOLUTION_PREVIEW editor goes (node master plan section 13, acceptance: the four extra differences; comfy-vibe-station#1101 comments 7058717316 and 7075187463)."
+  },
+  {
+   "class_name": "ResolutionSelector",
+   "node_type": "dinkster.utilities.resolution_selector",
+   "difference": "inputs[2].type: 'RESOLUTION_PREVIEW' vs 'INT'",
+   "reason": "preview: Resolution Selector's preview leaves the inputs and becomes a Note that shows the size from two derived formulas; the RESOLUTION_PREVIEW editor goes (node master plan section 13, acceptance: the four extra differences; comfy-vibe-station#1101 comments 7058717316 and 7075187463)."
+  },
+  {
+   "class_name": "ImageCompare",
+   "node_type": "dinkster.image.image_compare",
+   "difference": "inputs: length 3 vs 2",
+   "reason": "compare_view: Removed: no widget writes it and execute does not read it, so with its editor on an Editor row it has no job left, and nothing is kept for backwards compatibility; the ComfyUI importer skips its saved value (comfy-vibe-station#1101 comment 7077499482)."
+  },
+  {
+   "class_name": "ImageCompositor",
+   "node_type": "dinkster.image.image_compositor",
+   "difference": "inputs: length 2 vs 1",
+   "reason": "compositor: Becomes a State: no pin, no field and no required mark, kept with the workflow and passed to execute (node master plan section 13, State row; comfy-vibe-station#1101 comment 7058717316). Its editor is an Editor row written where the input stood, and the widget names the rows it writes and reads by today's fixed names, read from the app's editor (node master plan section 2, Editor; comfy-vibe-station#1101 comment 7075165594)."
+  },
+  {
+   "class_name": "Save3DAdvanced",
+   "node_type": "dinkster.3d.save3_d_advanced",
+   "difference": "inputs: length 7 vs 6",
+   "reason": "viewport_state: Becomes a State: no pin, no field and no required mark, kept with the workflow and passed to execute (node master plan section 13, State row; comfy-vibe-station#1101 comment 7058717316). Its editor is an Editor row written where the input stood, and the widget names the rows it writes and reads by today's fixed names, read from the app's editor (node master plan section 2, Editor; comfy-vibe-station#1101 comment 7075165594)."
+  },
+  {
+   "class_name": "Save3DAdvanced",
+   "node_type": "dinkster.3d.save3_d_advanced",
+   "difference": "inputs[2].group: 'required' vs 'optional'",
+   "reason": "viewport_state: Becomes a State: no pin, no field and no required mark, kept with the workflow and passed to execute (node master plan section 13, State row; comfy-vibe-station#1101 comment 7058717316). Its editor is an Editor row written where the input stood, and the widget names the rows it writes and reads by today's fixed names, read from the app's editor (node master plan section 2, Editor; comfy-vibe-station#1101 comment 7075165594)."
+  },
+  {
+   "class_name": "Save3DAdvanced",
+   "node_type": "dinkster.3d.save3_d_advanced",
+   "difference": "inputs[2].name: 'viewport_state' vs 'model_3d_info'",
+   "reason": "viewport_state: Becomes a State: no pin, no field and no required mark, kept with the workflow and passed to execute (node master plan section 13, State row; comfy-vibe-station#1101 comment 7058717316). Its editor is an Editor row written where the input stood, and the widget names the rows it writes and reads by today's fixed names, read from the app's editor (node master plan section 2, Editor; comfy-vibe-station#1101 comment 7075165594)."
+  },
+  {
+   "class_name": "Save3DAdvanced",
+   "node_type": "dinkster.3d.save3_d_advanced",
+   "difference": "inputs[2].type: 'LOAD_3D' vs 'LOAD3D_MODEL_INFO'",
+   "reason": "viewport_state: Becomes a State: no pin, no field and no required mark, kept with the workflow and passed to execute (node master plan section 13, State row; comfy-vibe-station#1101 comment 7058717316). Its editor is an Editor row written where the input stood, and the widget names the rows it writes and reads by today's fixed names, read from the app's editor (node master plan section 2, Editor; comfy-vibe-station#1101 comment 7075165594)."
+  },
+  {
+   "class_name": "Save3DAdvanced",
+   "node_type": "dinkster.3d.save3_d_advanced",
+   "difference": "inputs[3].name: 'model_3d_info' vs 'camera_info'",
+   "reason": "viewport_state: Becomes a State: no pin, no field and no required mark, kept with the workflow and passed to execute (node master plan section 13, State row; comfy-vibe-station#1101 comment 7058717316). Its editor is an Editor row written where the input stood, and the widget names the rows it writes and reads by today's fixed names, read from the app's editor (node master plan section 2, Editor; comfy-vibe-station#1101 comment 7075165594)."
+  },
+  {
+   "class_name": "Save3DAdvanced",
+   "node_type": "dinkster.3d.save3_d_advanced",
+   "difference": "inputs[3].type: 'LOAD3D_MODEL_INFO' vs 'LOAD3D_CAMERA'",
+   "reason": "viewport_state: Becomes a State: no pin, no field and no required mark, kept with the workflow and passed to execute (node master plan section 13, State row; comfy-vibe-station#1101 comment 7058717316). Its editor is an Editor row written where the input stood, and the widget names the rows it writes and reads by today's fixed names, read from the app's editor (node master plan section 2, Editor; comfy-vibe-station#1101 comment 7075165594)."
+  },
+  {
+   "class_name": "Save3DAdvanced",
+   "node_type": "dinkster.3d.save3_d_advanced",
+   "difference": "inputs[4].default: missing reference field",
+   "reason": "viewport_state: Becomes a State: no pin, no field and no required mark, kept with the workflow and passed to execute (node master plan section 13, State row; comfy-vibe-station#1101 comment 7058717316). Its editor is an Editor row written where the input stood, and the widget names the rows it writes and reads by today's fixed names, read from the app's editor (node master plan section 2, Editor; comfy-vibe-station#1101 comment 7075165594)."
+  },
+  {
+   "class_name": "Save3DAdvanced",
+   "node_type": "dinkster.3d.save3_d_advanced",
+   "difference": "inputs[4].max: missing reference field",
+   "reason": "viewport_state: Becomes a State: no pin, no field and no required mark, kept with the workflow and passed to execute (node master plan section 13, State row; comfy-vibe-station#1101 comment 7058717316). Its editor is an Editor row written where the input stood, and the widget names the rows it writes and reads by today's fixed names, read from the app's editor (node master plan section 2, Editor; comfy-vibe-station#1101 comment 7075165594)."
+  },
+  {
+   "class_name": "Save3DAdvanced",
+   "node_type": "dinkster.3d.save3_d_advanced",
+   "difference": "inputs[4].min: missing reference field",
+   "reason": "viewport_state: Becomes a State: no pin, no field and no required mark, kept with the workflow and passed to execute (node master plan section 13, State row; comfy-vibe-station#1101 comment 7058717316). Its editor is an Editor row written where the input stood, and the widget names the rows it writes and reads by today's fixed names, read from the app's editor (node master plan section 2, Editor; comfy-vibe-station#1101 comment 7075165594)."
+  },
+  {
+   "class_name": "Save3DAdvanced",
+   "node_type": "dinkster.3d.save3_d_advanced",
+   "difference": "inputs[4].step: missing reference field",
+   "reason": "viewport_state: Becomes a State: no pin, no field and no required mark, kept with the workflow and passed to execute (node master plan section 13, State row; comfy-vibe-station#1101 comment 7058717316). Its editor is an Editor row written where the input stood, and the widget names the rows it writes and reads by today's fixed names, read from the app's editor (node master plan section 2, Editor; comfy-vibe-station#1101 comment 7075165594)."
+  },
+  {
+   "class_name": "Save3DAdvanced",
+   "node_type": "dinkster.3d.save3_d_advanced",
+   "difference": "inputs[4].group: 'optional' vs 'required'",
+   "reason": "viewport_state: Becomes a State: no pin, no field and no required mark, kept with the workflow and passed to execute (node master plan section 13, State row; comfy-vibe-station#1101 comment 7058717316). Its editor is an Editor row written where the input stood, and the widget names the rows it writes and reads by today's fixed names, read from the app's editor (node master plan section 2, Editor; comfy-vibe-station#1101 comment 7075165594)."
+  },
+  {
+   "class_name": "Save3DAdvanced",
+   "node_type": "dinkster.3d.save3_d_advanced",
+   "difference": "inputs[4].name: 'camera_info' vs 'width'",
+   "reason": "viewport_state: Becomes a State: no pin, no field and no required mark, kept with the workflow and passed to execute (node master plan section 13, State row; comfy-vibe-station#1101 comment 7058717316). Its editor is an Editor row written where the input stood, and the widget names the rows it writes and reads by today's fixed names, read from the app's editor (node master plan section 2, Editor; comfy-vibe-station#1101 comment 7075165594)."
+  },
+  {
+   "class_name": "Save3DAdvanced",
+   "node_type": "dinkster.3d.save3_d_advanced",
+   "difference": "inputs[4].type: 'LOAD3D_CAMERA' vs 'INT'",
+   "reason": "viewport_state: Becomes a State: no pin, no field and no required mark, kept with the workflow and passed to execute (node master plan section 13, State row; comfy-vibe-station#1101 comment 7058717316). Its editor is an Editor row written where the input stood, and the widget names the rows it writes and reads by today's fixed names, read from the app's editor (node master plan section 2, Editor; comfy-vibe-station#1101 comment 7075165594)."
+  },
+  {
+   "class_name": "Save3DAdvanced",
+   "node_type": "dinkster.3d.save3_d_advanced",
+   "difference": "inputs[5].name: 'width' vs 'height'",
+   "reason": "viewport_state: Becomes a State: no pin, no field and no required mark, kept with the workflow and passed to execute (node master plan section 13, State row; comfy-vibe-station#1101 comment 7058717316). Its editor is an Editor row written where the input stood, and the widget names the rows it writes and reads by today's fixed names, read from the app's editor (node master plan section 2, Editor; comfy-vibe-station#1101 comment 7075165594)."
+  },
+  {
+   "class_name": "SaveGaussianSplat",
+   "node_type": "dinkster.3d.save_gaussian_splat",
+   "difference": "inputs: length 7 vs 6",
+   "reason": "viewport_state: Becomes a State: no pin, no field and no required mark, kept with the workflow and passed to execute (node master plan section 13, State row; comfy-vibe-station#1101 comment 7058717316). Its editor is an Editor row written where the input stood, and the widget names the rows it writes and reads by today's fixed names, read from the app's editor (node master plan section 2, Editor; comfy-vibe-station#1101 comment 7075165594)."
+  },
+  {
+   "class_name": "SaveGaussianSplat",
+   "node_type": "dinkster.3d.save_gaussian_splat",
+   "difference": "inputs[2].group: 'required' vs 'optional'",
+   "reason": "viewport_state: Becomes a State: no pin, no field and no required mark, kept with the workflow and passed to execute (node master plan section 13, State row; comfy-vibe-station#1101 comment 7058717316). Its editor is an Editor row written where the input stood, and the widget names the rows it writes and reads by today's fixed names, read from the app's editor (node master plan section 2, Editor; comfy-vibe-station#1101 comment 7075165594)."
+  },
+  {
+   "class_name": "SaveGaussianSplat",
+   "node_type": "dinkster.3d.save_gaussian_splat",
+   "difference": "inputs[2].name: 'viewport_state' vs 'model_3d_info'",
+   "reason": "viewport_state: Becomes a State: no pin, no field and no required mark, kept with the workflow and passed to execute (node master plan section 13, State row; comfy-vibe-station#1101 comment 7058717316). Its editor is an Editor row written where the input stood, and the widget names the rows it writes and reads by today's fixed names, read from the app's editor (node master plan section 2, Editor; comfy-vibe-station#1101 comment 7075165594)."
+  },
+  {
+   "class_name": "SaveGaussianSplat",
+   "node_type": "dinkster.3d.save_gaussian_splat",
+   "difference": "inputs[2].type: 'LOAD_3D' vs 'LOAD3D_MODEL_INFO'",
+   "reason": "viewport_state: Becomes a State: no pin, no field and no required mark, kept with the workflow and passed to execute (node master plan section 13, State row; comfy-vibe-station#1101 comment 7058717316). Its editor is an Editor row written where the input stood, and the widget names the rows it writes and reads by today's fixed names, read from the app's editor (node master plan section 2, Editor; comfy-vibe-station#1101 comment 7075165594)."
+  },
+  {
+   "class_name": "SaveGaussianSplat",
+   "node_type": "dinkster.3d.save_gaussian_splat",
+   "difference": "inputs[3].name: 'model_3d_info' vs 'camera_info'",
+   "reason": "viewport_state: Becomes a State: no pin, no field and no required mark, kept with the workflow and passed to execute (node master plan section 13, State row; comfy-vibe-station#1101 comment 7058717316). Its editor is an Editor row written where the input stood, and the widget names the rows it writes and reads by today's fixed names, read from the app's editor (node master plan section 2, Editor; comfy-vibe-station#1101 comment 7075165594)."
+  },
+  {
+   "class_name": "SaveGaussianSplat",
+   "node_type": "dinkster.3d.save_gaussian_splat",
+   "difference": "inputs[3].type: 'LOAD3D_MODEL_INFO' vs 'LOAD3D_CAMERA'",
+   "reason": "viewport_state: Becomes a State: no pin, no field and no required mark, kept with the workflow and passed to execute (node master plan section 13, State row; comfy-vibe-station#1101 comment 7058717316). Its editor is an Editor row written where the input stood, and the widget names the rows it writes and reads by today's fixed names, read from the app's editor (node master plan section 2, Editor; comfy-vibe-station#1101 comment 7075165594)."
+  },
+  {
+   "class_name": "SaveGaussianSplat",
+   "node_type": "dinkster.3d.save_gaussian_splat",
+   "difference": "inputs[4].default: missing reference field",
+   "reason": "viewport_state: Becomes a State: no pin, no field and no required mark, kept with the workflow and passed to execute (node master plan section 13, State row; comfy-vibe-station#1101 comment 7058717316). Its editor is an Editor row written where the input stood, and the widget names the rows it writes and reads by today's fixed names, read from the app's editor (node master plan section 2, Editor; comfy-vibe-station#1101 comment 7075165594)."
+  },
+  {
+   "class_name": "SaveGaussianSplat",
+   "node_type": "dinkster.3d.save_gaussian_splat",
+   "difference": "inputs[4].max: missing reference field",
+   "reason": "viewport_state: Becomes a State: no pin, no field and no required mark, kept with the workflow and passed to execute (node master plan section 13, State row; comfy-vibe-station#1101 comment 7058717316). Its editor is an Editor row written where the input stood, and the widget names the rows it writes and reads by today's fixed names, read from the app's editor (node master plan section 2, Editor; comfy-vibe-station#1101 comment 7075165594)."
+  },
+  {
+   "class_name": "SaveGaussianSplat",
+   "node_type": "dinkster.3d.save_gaussian_splat",
+   "difference": "inputs[4].min: missing reference field",
+   "reason": "viewport_state: Becomes a State: no pin, no field and no required mark, kept with the workflow and passed to execute (node master plan section 13, State row; comfy-vibe-station#1101 comment 7058717316). Its editor is an Editor row written where the input stood, and the widget names the rows it writes and reads by today's fixed names, read from the app's editor (node master plan section 2, Editor; comfy-vibe-station#1101 comment 7075165594)."
+  },
+  {
+   "class_name": "SaveGaussianSplat",
+   "node_type": "dinkster.3d.save_gaussian_splat",
+   "difference": "inputs[4].step: missing reference field",
+   "reason": "viewport_state: Becomes a State: no pin, no field and no required mark, kept with the workflow and passed to execute (node master plan section 13, State row; comfy-vibe-station#1101 comment 7058717316). Its editor is an Editor row written where the input stood, and the widget names the rows it writes and reads by today's fixed names, read from the app's editor (node master plan section 2, Editor; comfy-vibe-station#1101 comment 7075165594)."
+  },
+  {
+   "class_name": "SaveGaussianSplat",
+   "node_type": "dinkster.3d.save_gaussian_splat",
+   "difference": "inputs[4].group: 'optional' vs 'required'",
+   "reason": "viewport_state: Becomes a State: no pin, no field and no required mark, kept with the workflow and passed to execute (node master plan section 13, State row; comfy-vibe-station#1101 comment 7058717316). Its editor is an Editor row written where the input stood, and the widget names the rows it writes and reads by today's fixed names, read from the app's editor (node master plan section 2, Editor; comfy-vibe-station#1101 comment 7075165594)."
+  },
+  {
+   "class_name": "SaveGaussianSplat",
+   "node_type": "dinkster.3d.save_gaussian_splat",
+   "difference": "inputs[4].name: 'camera_info' vs 'width'",
+   "reason": "viewport_state: Becomes a State: no pin, no field and no required mark, kept with the workflow and passed to execute (node master plan section 13, State row; comfy-vibe-station#1101 comment 7058717316). Its editor is an Editor row written where the input stood, and the widget names the rows it writes and reads by today's fixed names, read from the app's editor (node master plan section 2, Editor; comfy-vibe-station#1101 comment 7075165594)."
+  },
+  {
+   "class_name": "SaveGaussianSplat",
+   "node_type": "dinkster.3d.save_gaussian_splat",
+   "difference": "inputs[4].type: 'LOAD3D_CAMERA' vs 'INT'",
+   "reason": "viewport_state: Becomes a State: no pin, no field and no required mark, kept with the workflow and passed to execute (node master plan section 13, State row; comfy-vibe-station#1101 comment 7058717316). Its editor is an Editor row written where the input stood, and the widget names the rows it writes and reads by today's fixed names, read from the app's editor (node master plan section 2, Editor; comfy-vibe-station#1101 comment 7075165594)."
+  },
+  {
+   "class_name": "SaveGaussianSplat",
+   "node_type": "dinkster.3d.save_gaussian_splat",
+   "difference": "inputs[5].name: 'width' vs 'height'",
+   "reason": "viewport_state: Becomes a State: no pin, no field and no required mark, kept with the workflow and passed to execute (node master plan section 13, State row; comfy-vibe-station#1101 comment 7058717316). Its editor is an Editor row written where the input stood, and the widget names the rows it writes and reads by today's fixed names, read from the app's editor (node master plan section 2, Editor; comfy-vibe-station#1101 comment 7075165594)."
+  },
+  {
+   "class_name": "SavePointCloud",
+   "node_type": "dinkster.3d.save_point_cloud",
+   "difference": "inputs: length 7 vs 6",
+   "reason": "viewport_state: Becomes a State: no pin, no field and no required mark, kept with the workflow and passed to execute (node master plan section 13, State row; comfy-vibe-station#1101 comment 7058717316). Its editor is an Editor row written where the input stood, and the widget names the rows it writes and reads by today's fixed names, read from the app's editor (node master plan section 2, Editor; comfy-vibe-station#1101 comment 7075165594)."
+  },
+  {
+   "class_name": "SavePointCloud",
+   "node_type": "dinkster.3d.save_point_cloud",
+   "difference": "inputs[2].group: 'required' vs 'optional'",
+   "reason": "viewport_state: Becomes a State: no pin, no field and no required mark, kept with the workflow and passed to execute (node master plan section 13, State row; comfy-vibe-station#1101 comment 7058717316). Its editor is an Editor row written where the input stood, and the widget names the rows it writes and reads by today's fixed names, read from the app's editor (node master plan section 2, Editor; comfy-vibe-station#1101 comment 7075165594)."
+  },
+  {
+   "class_name": "SavePointCloud",
+   "node_type": "dinkster.3d.save_point_cloud",
+   "difference": "inputs[2].name: 'viewport_state' vs 'model_3d_info'",
+   "reason": "viewport_state: Becomes a State: no pin, no field and no required mark, kept with the workflow and passed to execute (node master plan section 13, State row; comfy-vibe-station#1101 comment 7058717316). Its editor is an Editor row written where the input stood, and the widget names the rows it writes and reads by today's fixed names, read from the app's editor (node master plan section 2, Editor; comfy-vibe-station#1101 comment 7075165594)."
+  },
+  {
+   "class_name": "SavePointCloud",
+   "node_type": "dinkster.3d.save_point_cloud",
+   "difference": "inputs[2].type: 'LOAD_3D' vs 'LOAD3D_MODEL_INFO'",
+   "reason": "viewport_state: Becomes a State: no pin, no field and no required mark, kept with the workflow and passed to execute (node master plan section 13, State row; comfy-vibe-station#1101 comment 7058717316). Its editor is an Editor row written where the input stood, and the widget names the rows it writes and reads by today's fixed names, read from the app's editor (node master plan section 2, Editor; comfy-vibe-station#1101 comment 7075165594)."
+  },
+  {
+   "class_name": "SavePointCloud",
+   "node_type": "dinkster.3d.save_point_cloud",
+   "difference": "inputs[3].name: 'model_3d_info' vs 'camera_info'",
+   "reason": "viewport_state: Becomes a State: no pin, no field and no required mark, kept with the workflow and passed to execute (node master plan section 13, State row; comfy-vibe-station#1101 comment 7058717316). Its editor is an Editor row written where the input stood, and the widget names the rows it writes and reads by today's fixed names, read from the app's editor (node master plan section 2, Editor; comfy-vibe-station#1101 comment 7075165594)."
+  },
+  {
+   "class_name": "SavePointCloud",
+   "node_type": "dinkster.3d.save_point_cloud",
+   "difference": "inputs[3].type: 'LOAD3D_MODEL_INFO' vs 'LOAD3D_CAMERA'",
+   "reason": "viewport_state: Becomes a State: no pin, no field and no required mark, kept with the workflow and passed to execute (node master plan section 13, State row; comfy-vibe-station#1101 comment 7058717316). Its editor is an Editor row written where the input stood, and the widget names the rows it writes and reads by today's fixed names, read from the app's editor (node master plan section 2, Editor; comfy-vibe-station#1101 comment 7075165594)."
+  },
+  {
+   "class_name": "SavePointCloud",
+   "node_type": "dinkster.3d.save_point_cloud",
+   "difference": "inputs[4].default: missing reference field",
+   "reason": "viewport_state: Becomes a State: no pin, no field and no required mark, kept with the workflow and passed to execute (node master plan section 13, State row; comfy-vibe-station#1101 comment 7058717316). Its editor is an Editor row written where the input stood, and the widget names the rows it writes and reads by today's fixed names, read from the app's editor (node master plan section 2, Editor; comfy-vibe-station#1101 comment 7075165594)."
+  },
+  {
+   "class_name": "SavePointCloud",
+   "node_type": "dinkster.3d.save_point_cloud",
+   "difference": "inputs[4].max: missing reference field",
+   "reason": "viewport_state: Becomes a State: no pin, no field and no required mark, kept with the workflow and passed to execute (node master plan section 13, State row; comfy-vibe-station#1101 comment 7058717316). Its editor is an Editor row written where the input stood, and the widget names the rows it writes and reads by today's fixed names, read from the app's editor (node master plan section 2, Editor; comfy-vibe-station#1101 comment 7075165594)."
+  },
+  {
+   "class_name": "SavePointCloud",
+   "node_type": "dinkster.3d.save_point_cloud",
+   "difference": "inputs[4].min: missing reference field",
+   "reason": "viewport_state: Becomes a State: no pin, no field and no required mark, kept with the workflow and passed to execute (node master plan section 13, State row; comfy-vibe-station#1101 comment 7058717316). Its editor is an Editor row written where the input stood, and the widget names the rows it writes and reads by today's fixed names, read from the app's editor (node master plan section 2, Editor; comfy-vibe-station#1101 comment 7075165594)."
+  },
+  {
+   "class_name": "SavePointCloud",
+   "node_type": "dinkster.3d.save_point_cloud",
+   "difference": "inputs[4].step: missing reference field",
+   "reason": "viewport_state: Becomes a State: no pin, no field and no required mark, kept with the workflow and passed to execute (node master plan section 13, State row; comfy-vibe-station#1101 comment 7058717316). Its editor is an Editor row written where the input stood, and the widget names the rows it writes and reads by today's fixed names, read from the app's editor (node master plan section 2, Editor; comfy-vibe-station#1101 comment 7075165594)."
+  },
+  {
+   "class_name": "SavePointCloud",
+   "node_type": "dinkster.3d.save_point_cloud",
+   "difference": "inputs[4].group: 'optional' vs 'required'",
+   "reason": "viewport_state: Becomes a State: no pin, no field and no required mark, kept with the workflow and passed to execute (node master plan section 13, State row; comfy-vibe-station#1101 comment 7058717316). Its editor is an Editor row written where the input stood, and the widget names the rows it writes and reads by today's fixed names, read from the app's editor (node master plan section 2, Editor; comfy-vibe-station#1101 comment 7075165594)."
+  },
+  {
+   "class_name": "SavePointCloud",
+   "node_type": "dinkster.3d.save_point_cloud",
+   "difference": "inputs[4].name: 'camera_info' vs 'width'",
+   "reason": "viewport_state: Becomes a State: no pin, no field and no required mark, kept with the workflow and passed to execute (node master plan section 13, State row; comfy-vibe-station#1101 comment 7058717316). Its editor is an Editor row written where the input stood, and the widget names the rows it writes and reads by today's fixed names, read from the app's editor (node master plan section 2, Editor; comfy-vibe-station#1101 comment 7075165594)."
+  },
+  {
+   "class_name": "SavePointCloud",
+   "node_type": "dinkster.3d.save_point_cloud",
+   "difference": "inputs[4].type: 'LOAD3D_CAMERA' vs 'INT'",
+   "reason": "viewport_state: Becomes a State: no pin, no field and no required mark, kept with the workflow and passed to execute (node master plan section 13, State row; comfy-vibe-station#1101 comment 7058717316). Its editor is an Editor row written where the input stood, and the widget names the rows it writes and reads by today's fixed names, read from the app's editor (node master plan section 2, Editor; comfy-vibe-station#1101 comment 7075165594)."
+  },
+  {
+   "class_name": "SavePointCloud",
+   "node_type": "dinkster.3d.save_point_cloud",
+   "difference": "inputs[5].name: 'width' vs 'height'",
+   "reason": "viewport_state: Becomes a State: no pin, no field and no required mark, kept with the workflow and passed to execute (node master plan section 13, State row; comfy-vibe-station#1101 comment 7058717316). Its editor is an Editor row written where the input stood, and the widget names the rows it writes and reads by today's fixed names, read from the app's editor (node master plan section 2, Editor; comfy-vibe-station#1101 comment 7075165594)."
+  },
+  {
+   "class_name": "CreateCameraInfo",
+   "node_type": "dinkster.3d.create_camera_info",
+   "difference": "inputs: length 9 vs 8",
+   "reason": "camera_info_state: Removed: no widget writes it and execute does not read it, so with its editor on an Editor row it has no job left, and nothing is kept for backwards compatibility; the ComfyUI importer skips its saved value (comfy-vibe-station#1101 comment 7077499482)."
+  },
+  {
+   "class_name": "CameraAngle",
+   "node_type": "dinkster.3d.camera_angle",
+   "difference": "inputs: length 5 vs 4",
+   "reason": "view: Removed: no widget writes it and execute does not read it, so with its editor on an Editor row it has no job left, and nothing is kept for backwards compatibility; the ComfyUI importer skips its saved value (comfy-vibe-station#1101 comment 7077499482)."
+  },
+  {
+   "class_name": "PrimitiveInt",
+   "node_type": "dinkster.utilities.primitive_int",
+   "difference": "inputs: length 1 vs 5",
+   "reason": "Int is the Primitive with its type fixed, with a Limits section of optional minimum, maximum, step and default fields that the editor derives from the fields it feeds (comfy-vibe-station#1234 comment 7094085698)."
+  },
+  {
+   "class_name": "PrimitiveFloat",
+   "node_type": "dinkster.utilities.primitive_float",
+   "difference": "inputs: length 1 vs 5",
+   "reason": "Float is the Primitive with its type fixed, with a Limits section of optional minimum, maximum, step and default fields that the editor derives from the fields it feeds (comfy-vibe-station#1234 comment 7094085698)."
+  },
+  {
+   "class_name": "PrimitiveString",
+   "node_type": "dinkster.utilities.primitive_string",
+   "difference": "inputs: length 1 vs 2",
+   "reason": "Text is the Primitive with its type fixed: its value is shown one-line or multiline by a representation choice, and its Limits section holds an optional default (comfy-vibe-station#1234 comment 7094085698)."
+  },
+  {
+   "class_name": "PrimitiveString",
+   "node_type": "dinkster.utilities.primitive_string",
+   "difference": "inputs[0].default: missing reference field",
+   "reason": "Text is the Primitive with its type fixed: its value is shown one-line or multiline by a representation choice, and its Limits section holds an optional default (comfy-vibe-station#1234 comment 7094085698)."
+  },
+  {
+   "class_name": "PrimitiveString",
+   "node_type": "dinkster.utilities.primitive_string",
+   "difference": "inputs[0].multiline: missing native field",
+   "reason": "Text is the Primitive with its type fixed: its value is shown one-line or multiline by a representation choice, and its Limits section holds an optional default (comfy-vibe-station#1234 comment 7094085698)."
+  },
+  {
+   "class_name": "PrimitiveStringMultiline",
+   "node_type": "dinkster.utilities.primitive_string",
+   "difference": "inputs: length 1 vs 2",
+   "reason": "Text (Multiline) is no longer its own node: it opens as Text, whose value is shown one-line or multiline by a representation choice, with a Limits section holding an optional default (comfy-vibe-station#1234 comment 7094085698)."
+  },
+  {
+   "class_name": "PrimitiveStringMultiline",
+   "node_type": "dinkster.utilities.primitive_string",
+   "difference": "inputs[0].default: missing reference field",
+   "reason": "Text (Multiline) is no longer its own node: it opens as Text, whose value is shown one-line or multiline by a representation choice, with a Limits section holding an optional default (comfy-vibe-station#1234 comment 7094085698)."
+  },
+  {
+   "class_name": "PrimitiveStringMultiline",
+   "node_type": "dinkster.utilities.primitive_string",
+   "difference": "inputs[0].multiline: missing native field",
+   "reason": "Text (Multiline) is no longer its own node: it opens as Text, whose value is shown one-line or multiline by a representation choice, with a Limits section holding an optional default (comfy-vibe-station#1234 comment 7094085698)."
+  },
+  {
+   "class_name": "PrimitiveStringMultiline",
+   "node_type": "dinkster.utilities.primitive_string",
+   "difference": "display name: 'Text (Multiline)' vs 'Text'",
+   "reason": "Text (Multiline) is no longer its own node: it opens as Text, whose value is shown one-line or multiline by a representation choice, with a Limits section holding an optional default (comfy-vibe-station#1234 comment 7094085698)."
+  },
+  {
+   "class_name": "PrimitiveBoolean",
+   "node_type": "dinkster.utilities.primitive_boolean",
+   "difference": "inputs: length 1 vs 2",
+   "reason": "Boolean is the Primitive with its type fixed, with a Limits section holding an optional default (comfy-vibe-station#1234 comment 7094085698)."
+  },
+  {
+   "class_name": "CreateList",
+   "node_type": "dinkster.utilities.create_list",
+   "difference": "inputs[0].max: 10 vs None",
+   "reason": "Create List grows by plugging in, with no limit of 10, and every input takes one value or a list of one matched type, so an INT beside a STRING is refused where ComfyUI joins them; the user wants the types matched (comfy-vibe-station#1092 comments 7096077527 and 7096204259)."
+  },
+  {
+   "class_name": "CreateHookKeyframesFromFloats",
+   "node_type": "dinkster.models.create_hook_keyframes_from_floats",
+   "difference": "inputs[0].type: 'FLOATS' vs 'FLOAT'",
+   "reason": "floats_strength takes a list<FLOAT> or a single FLOAT through a list-accepting FLOAT input; Dinkster has no separate FLOATS type (comfy-vibe-station#1272)."
+  },
+  {
+   "class_name": "ComfySwitchNode",
+   "node_type": "dinkster.utilities.switch",
+   "difference": "inputs: length 3 vs 2",
+   "reason": "ComfyUI's If/Else Switch opens as the Switch, whose Pick chooses among named branches: switch becomes Pick, on_false the first branch, on_true the second and output Value (comfy-vibe-station#1234 comment 7092430380; comfy-vibe-station#1257)."
+  },
+  {
+   "class_name": "ComfySwitchNode",
+   "node_type": "dinkster.utilities.switch",
+   "difference": "inputs[0].group: 'required' vs 'optional'",
+   "reason": "ComfyUI's If/Else Switch opens as the Switch, whose Pick chooses among named branches: switch becomes Pick, on_false the first branch, on_true the second and output Value (comfy-vibe-station#1234 comment 7092430380; comfy-vibe-station#1257)."
+  },
+  {
+   "class_name": "ComfySwitchNode",
+   "node_type": "dinkster.utilities.switch",
+   "difference": "inputs[0].name: 'switch' vs 'pick'",
+   "reason": "ComfyUI's If/Else Switch opens as the Switch, whose Pick chooses among named branches: switch becomes Pick, on_false the first branch, on_true the second and output Value (comfy-vibe-station#1234 comment 7092430380; comfy-vibe-station#1257)."
+  },
+  {
+   "class_name": "ComfySwitchNode",
+   "node_type": "dinkster.utilities.switch",
+   "difference": "inputs[0].type: 'BOOLEAN' vs 'INT,BOOLEAN,STRING,COMBO'",
+   "reason": "ComfyUI's If/Else Switch opens as the Switch, whose Pick chooses among named branches: switch becomes Pick, on_false the first branch, on_true the second and output Value (comfy-vibe-station#1234 comment 7092430380; comfy-vibe-station#1257)."
+  },
+  {
+   "class_name": "ComfySwitchNode",
+   "node_type": "dinkster.utilities.switch",
+   "difference": "inputs[1].group: missing native field",
+   "reason": "ComfyUI's If/Else Switch opens as the Switch, whose Pick chooses among named branches: switch becomes Pick, on_false the first branch, on_true the second and output Value (comfy-vibe-station#1234 comment 7092430380; comfy-vibe-station#1257)."
+  },
+  {
+   "class_name": "ComfySwitchNode",
+   "node_type": "dinkster.utilities.switch",
+   "difference": "inputs[1].max: missing reference field",
+   "reason": "ComfyUI's If/Else Switch opens as the Switch, whose Pick chooses among named branches: switch becomes Pick, on_false the first branch, on_true the second and output Value (comfy-vibe-station#1234 comment 7092430380; comfy-vibe-station#1257)."
+  },
+  {
+   "class_name": "ComfySwitchNode",
+   "node_type": "dinkster.utilities.switch",
+   "difference": "inputs[1].min: missing reference field",
+   "reason": "ComfyUI's If/Else Switch opens as the Switch, whose Pick chooses among named branches: switch becomes Pick, on_false the first branch, on_true the second and output Value (comfy-vibe-station#1234 comment 7092430380; comfy-vibe-station#1257)."
+  },
+  {
+   "class_name": "ComfySwitchNode",
+   "node_type": "dinkster.utilities.switch",
+   "difference": "inputs[1].prefix: missing reference field",
+   "reason": "ComfyUI's If/Else Switch opens as the Switch, whose Pick chooses among named branches: switch becomes Pick, on_false the first branch, on_true the second and output Value (comfy-vibe-station#1234 comment 7092430380; comfy-vibe-station#1257)."
+  },
+  {
+   "class_name": "ComfySwitchNode",
+   "node_type": "dinkster.utilities.switch",
+   "difference": "inputs[1].template: missing reference field",
+   "reason": "ComfyUI's If/Else Switch opens as the Switch, whose Pick chooses among named branches: switch becomes Pick, on_false the first branch, on_true the second and output Value (comfy-vibe-station#1234 comment 7092430380; comfy-vibe-station#1257)."
+  },
+  {
+   "class_name": "ComfySwitchNode",
+   "node_type": "dinkster.utilities.switch",
+   "difference": "inputs[1].name: 'on_false' vs 'branch'",
+   "reason": "ComfyUI's If/Else Switch opens as the Switch, whose Pick chooses among named branches: switch becomes Pick, on_false the first branch, on_true the second and output Value (comfy-vibe-station#1234 comment 7092430380; comfy-vibe-station#1257)."
+  },
+  {
+   "class_name": "ComfySwitchNode",
+   "node_type": "dinkster.utilities.switch",
+   "difference": "inputs[1].type: {'template_id': 'switch', 'allowed_types': '*'} vs 'inputFamily'",
+   "reason": "ComfyUI's If/Else Switch opens as the Switch, whose Pick chooses among named branches: switch becomes Pick, on_false the first branch, on_true the second and output Value (comfy-vibe-station#1234 comment 7092430380; comfy-vibe-station#1257)."
+  },
+  {
+   "class_name": "ComfySwitchNode",
+   "node_type": "dinkster.utilities.switch",
+   "difference": "outputs[0].name: 'output' vs 'Value'",
+   "reason": "ComfyUI's If/Else Switch opens as the Switch, whose Pick chooses among named branches: switch becomes Pick, on_false the first branch, on_true the second and output Value (comfy-vibe-station#1234 comment 7092430380; comfy-vibe-station#1257)."
+  },
+  {
+   "class_name": "ComfySwitchNode",
+   "node_type": "dinkster.utilities.switch",
+   "difference": "outputs[0].type.template_id: 'switch' vs 'value'",
+   "reason": "ComfyUI's If/Else Switch opens as the Switch, whose Pick chooses among named branches: switch becomes Pick, on_false the first branch, on_true the second and output Value (comfy-vibe-station#1234 comment 7092430380; comfy-vibe-station#1257)."
+  },
+  {
+   "class_name": "ComfySwitchNode",
+   "node_type": "dinkster.utilities.switch",
+   "difference": "display name: 'If/Else Switch' vs 'Switch'",
+   "reason": "ComfyUI's If/Else Switch opens as the Switch, whose Pick chooses among named branches: switch becomes Pick, on_false the first branch, on_true the second and output Value (comfy-vibe-station#1234 comment 7092430380; comfy-vibe-station#1257)."
+  }
+ ],
+ "known": [
+  {
+   "class_name": "CreateBoundingBoxes",
+   "node_type": "dinkster.image.create_bounding_boxes",
+   "reason": "Differed from ComfyUI before the node rewrite, which keeps it in the differs list by name (node master plan section 13, acceptance; comfy-vibe-station#1101 comment 7093935921)."
+  },
+  {
+   "class_name": "Preview3D",
+   "node_type": "dinkster.3d.preview3_d",
+   "reason": "Differed from ComfyUI before the node rewrite, which keeps it in the differs list by name (node master plan section 13, acceptance; comfy-vibe-station#1101 comment 7093935921)."
+  },
+  {
+   "class_name": "ComfyMathExpression",
+   "node_type": "dinkster.utilities.comfy_math_expression",
+   "reason": "Differed from ComfyUI before the node rewrite, which keeps it in the differs list by name (node master plan section 13, acceptance; comfy-vibe-station#1101 comment 7093935921)."
+  },
+  {
+   "class_name": "ComfyNumberConvert",
+   "node_type": "dinkster.utilities.comfy_number_convert",
+   "reason": "Differed from ComfyUI before the node rewrite, which keeps it in the differs list by name (node master plan section 13, acceptance; comfy-vibe-station#1101 comment 7093935921)."
+  }
+ ]
+}

@@ -16,11 +16,12 @@ from dinkster_api.v1 import (
     MASK_TYPE,
     TIMESTEPS_RANGE_TYPE,
     ComboWidget,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
+    Section,
     TypeExpr,
     initialize_inference_process,
     materialize_image,
@@ -61,24 +62,24 @@ def _hooks() -> Any:
     return importlib.import_module("dinkster_inference.hooks")
 
 
-def _properties_inputs(*inputs: InputSpec) -> tuple[InputSpec, ...]:
+def _properties_inputs(*inputs: Input) -> tuple[Input, ...]:
     return (
         *inputs,
-        InputSpec(
+        Input(
             "strength",
             _FLOAT,
             default=1.0,
             widget=NumberWidget(min=0.0, max=10.0, step=0.01),
         ),
-        InputSpec(
+        Input(
             "set_cond_area",
             _COMBO,
             default="default",
             widget=ComboWidget(("default", "mask bounds")),
         ),
-        InputSpec("mask", _MASK, required=False),
-        InputSpec("hooks", _HOOKS, required=False),
-        InputSpec("timesteps", _TIMESTEPS_RANGE, required=False),
+        Input("mask", _MASK, required=False),
+        Input("hooks", _HOOKS, required=False),
+        Input("timesteps", _TIMESTEPS_RANGE, required=False),
     )
 
 
@@ -119,8 +120,10 @@ class ConditioningSetProperties(Node):
                 node_type="dinkster.models.conditioning_set_properties",
                 display_name="Cond Set Props",
                 category=f"{_CATEGORY}/cond single",
-                inputs=_properties_inputs(InputSpec("cond_NEW", _CONDITIONING)),
-                outputs=(OutputSpec("conditioning", _CONDITIONING),),
+                body=(
+                    *_properties_inputs(Input("cond_NEW", _CONDITIONING)),
+                    Output("conditioning", _CONDITIONING),
+                ),
             ),
             "ConditioningSetProperties",
         )
@@ -149,10 +152,12 @@ class ConditioningSetPropertiesAndCombine(Node):
                 node_type="dinkster.models.conditioning_set_properties_and_combine",
                 display_name="Cond Set Props Combine",
                 category=f"{_CATEGORY}/cond single",
-                inputs=_properties_inputs(
-                    InputSpec("cond", _CONDITIONING), InputSpec("cond_NEW", _CONDITIONING)
+                body=(
+                    *_properties_inputs(
+                        Input("cond", _CONDITIONING), Input("cond_NEW", _CONDITIONING)
+                    ),
+                    Output("conditioning", _CONDITIONING),
                 ),
-                outputs=(OutputSpec("conditioning", _CONDITIONING),),
             ),
             "ConditioningSetPropertiesAndCombine",
         )
@@ -191,13 +196,13 @@ class PairConditioningSetProperties(Node):
                 node_type="dinkster.models.pair_conditioning_set_properties",
                 display_name="Cond Pair Set Props",
                 category=f"{_CATEGORY}/cond pair",
-                inputs=_properties_inputs(
-                    InputSpec("positive_NEW", _CONDITIONING),
-                    InputSpec("negative_NEW", _CONDITIONING),
-                ),
-                outputs=(
-                    OutputSpec("positive", _CONDITIONING),
-                    OutputSpec("negative", _CONDITIONING),
+                body=(
+                    *_properties_inputs(
+                        Input("positive_NEW", _CONDITIONING),
+                        Input("negative_NEW", _CONDITIONING),
+                    ),
+                    Output("positive", _CONDITIONING),
+                    Output("negative", _CONDITIONING),
                 ),
             ),
             "PairConditioningSetProperties",
@@ -229,15 +234,15 @@ class PairConditioningSetPropertiesAndCombine(Node):
                 node_type="dinkster.models.pair_conditioning_set_properties_and_combine",
                 display_name="Cond Pair Set Props Combine",
                 category=f"{_CATEGORY}/cond pair",
-                inputs=_properties_inputs(
-                    InputSpec("positive", _CONDITIONING),
-                    InputSpec("negative", _CONDITIONING),
-                    InputSpec("positive_NEW", _CONDITIONING),
-                    InputSpec("negative_NEW", _CONDITIONING),
-                ),
-                outputs=(
-                    OutputSpec("positive", _CONDITIONING),
-                    OutputSpec("negative", _CONDITIONING),
+                body=(
+                    *_properties_inputs(
+                        Input("positive", _CONDITIONING),
+                        Input("negative", _CONDITIONING),
+                        Input("positive_NEW", _CONDITIONING),
+                        Input("negative_NEW", _CONDITIONING),
+                    ),
+                    Output("positive", _CONDITIONING),
+                    Output("negative", _CONDITIONING),
                 ),
             ),
             "PairConditioningSetPropertiesAndCombine",
@@ -280,12 +285,12 @@ class ConditioningSetDefaultCombine(Node):
                 node_type="dinkster.models.conditioning_set_default_combine",
                 display_name="Cond Set Default Combine",
                 category=f"{_CATEGORY}/cond single",
-                inputs=(
-                    InputSpec("cond", _CONDITIONING),
-                    InputSpec("cond_DEFAULT", _CONDITIONING),
-                    InputSpec("hooks", _HOOKS, required=False),
+                body=(
+                    Input("cond", _CONDITIONING),
+                    Input("cond_DEFAULT", _CONDITIONING),
+                    Input("hooks", _HOOKS, required=False),
+                    Output("conditioning", _CONDITIONING),
                 ),
-                outputs=(OutputSpec("conditioning", _CONDITIONING),),
             ),
             "ConditioningSetDefaultCombine",
         )
@@ -312,16 +317,14 @@ class PairConditioningSetDefaultCombine(Node):
                 node_type="dinkster.models.pair_conditioning_set_default_combine",
                 display_name="Cond Pair Set Default Combine",
                 category=f"{_CATEGORY}/cond pair",
-                inputs=(
-                    InputSpec("positive", _CONDITIONING),
-                    InputSpec("negative", _CONDITIONING),
-                    InputSpec("positive_DEFAULT", _CONDITIONING),
-                    InputSpec("negative_DEFAULT", _CONDITIONING),
-                    InputSpec("hooks", _HOOKS, required=False),
-                ),
-                outputs=(
-                    OutputSpec("positive", _CONDITIONING),
-                    OutputSpec("negative", _CONDITIONING),
+                body=(
+                    Input("positive", _CONDITIONING),
+                    Input("negative", _CONDITIONING),
+                    Input("positive_DEFAULT", _CONDITIONING),
+                    Input("negative_DEFAULT", _CONDITIONING),
+                    Input("hooks", _HOOKS, required=False),
+                    Output("positive", _CONDITIONING),
+                    Output("negative", _CONDITIONING),
                 ),
             ),
             "PairConditioningSetDefaultCombine",
@@ -354,15 +357,13 @@ class PairConditioningCombine(Node):
                 node_type="dinkster.models.pair_conditioning_combine",
                 display_name="Cond Pair Combine",
                 category=f"{_CATEGORY}/cond pair",
-                inputs=(
-                    InputSpec("positive_A", _CONDITIONING),
-                    InputSpec("negative_A", _CONDITIONING),
-                    InputSpec("positive_B", _CONDITIONING),
-                    InputSpec("negative_B", _CONDITIONING),
-                ),
-                outputs=(
-                    OutputSpec("positive", _CONDITIONING),
-                    OutputSpec("negative", _CONDITIONING),
+                body=(
+                    Input("positive_A", _CONDITIONING),
+                    Input("negative_A", _CONDITIONING),
+                    Input("positive_B", _CONDITIONING),
+                    Input("negative_B", _CONDITIONING),
+                    Output("positive", _CONDITIONING),
+                    Output("negative", _CONDITIONING),
                 ),
             ),
             "PairConditioningCombine",
@@ -391,13 +392,28 @@ class SetClipHooks(Node):
                 node_type="dinkster.models.set_clip_hooks",
                 display_name="Set CLIP Hooks",
                 category=f"{_CATEGORY}/clip",
-                inputs=(
-                    InputSpec("clip", _CLIP),
-                    InputSpec("apply_to_conds", _BOOLEAN, default=True, advanced=True),
-                    InputSpec("schedule_clip", _BOOLEAN, default=False, advanced=True),
-                    InputSpec("hooks", _HOOKS, required=False),
+                body=(
+                    Input("clip", _CLIP),
+                    Input("hooks", _HOOKS, required=False),
+                    Section(
+                        "advanced",
+                        label="Advanced",
+                        collapsed=True,
+                        rows=(
+                            Input(
+                                "apply_to_conds",
+                                _BOOLEAN,
+                                default=True,
+                            ),
+                            Input(
+                                "schedule_clip",
+                                _BOOLEAN,
+                                default=False,
+                            ),
+                        ),
+                    ),
+                    Output("clip", _CLIP),
                 ),
-                outputs=(OutputSpec("clip", _CLIP),),
                 occupies=("gpu",),
             ),
             "SetClipHooks",
@@ -437,24 +453,22 @@ class ConditioningTimestepsRange(Node):
                 node_type="dinkster.models.conditioning_timesteps_range",
                 display_name="Timesteps Range",
                 category=_CATEGORY,
-                inputs=(
-                    InputSpec(
+                body=(
+                    Input(
                         "start_percent",
                         _FLOAT,
                         default=0.0,
                         widget=NumberWidget(min=0.0, max=1.0, step=0.001),
                     ),
-                    InputSpec(
+                    Input(
                         "end_percent",
                         _FLOAT,
                         default=1.0,
                         widget=NumberWidget(min=0.0, max=1.0, step=0.001),
                     ),
-                ),
-                outputs=(
-                    OutputSpec("TIMESTEPS_RANGE", _TIMESTEPS_RANGE),
-                    OutputSpec("BEFORE_RANGE", _TIMESTEPS_RANGE),
-                    OutputSpec("AFTER_RANGE", _TIMESTEPS_RANGE),
+                    Output("TIMESTEPS_RANGE", _TIMESTEPS_RANGE),
+                    Output("BEFORE_RANGE", _TIMESTEPS_RANGE),
+                    Output("AFTER_RANGE", _TIMESTEPS_RANGE),
                 ),
             ),
             "ConditioningTimestepsRange",

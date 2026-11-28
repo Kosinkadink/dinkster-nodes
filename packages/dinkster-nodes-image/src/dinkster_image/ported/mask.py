@@ -16,11 +16,12 @@ from dinkster_api.v1 import (
     MASK_TYPE,
     ComboOption,
     ComboWidget,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
+    Section,
     TypeExpr,
     materialize_image,
     with_identity_replacement,
@@ -37,8 +38,8 @@ _MAX_RESOLUTION = 16384
 _MASK_CATEGORY = "image/mask"
 
 
-def _integer(name: str, default: int, minimum: int, maximum: int, step: int) -> InputSpec:
-    return InputSpec(
+def _integer(name: str, default: int, minimum: int, maximum: int, step: int) -> Input:
+    return Input(
         name,
         _INT,
         default=default,
@@ -46,13 +47,17 @@ def _integer(name: str, default: int, minimum: int, maximum: int, step: int) -> 
     )
 
 
-def _mask_schema(node_type: str, display_name: str, inputs: tuple[InputSpec, ...]) -> NodeSchema:
+def _mask_schema(
+    node_type: str, display_name: str, inputs: tuple[Input | Section, ...]
+) -> NodeSchema:
     return NodeSchema(
         node_type=node_type,
         display_name=display_name,
         category=_MASK_CATEGORY,
-        inputs=inputs,
-        outputs=(OutputSpec("MASK", _MASK),),
+        body=(
+            *inputs,
+            Output("MASK", _MASK),
+        ),
     )
 
 
@@ -126,15 +131,15 @@ class ImageCompositeMasked(Node):
             node_type="dinkster.image.image_composite_masked",
             display_name="Image Composite Masked",
             category="image/compositing",
-            inputs=(
-                InputSpec("destination", _IMAGE),
-                InputSpec("source", _IMAGE),
+            body=(
+                Input("destination", _IMAGE),
+                Input("source", _IMAGE),
                 _integer("x", 0, 0, _MAX_RESOLUTION, 1),
                 _integer("y", 0, 0, _MAX_RESOLUTION, 1),
-                InputSpec("resize_source", _BOOLEAN, default=False),
-                InputSpec("mask", _MASK, required=False),
+                Input("resize_source", _BOOLEAN, default=False),
+                Input("mask", _MASK, required=False),
+                Output("IMAGE", _IMAGE),
             ),
-            outputs=(OutputSpec("IMAGE", _IMAGE),),
         )
         return with_identity_replacement(schema, "ImageCompositeMasked")
 
@@ -171,8 +176,10 @@ class MaskToImage(Node):
             node_type="dinkster.image.mask_to_image",
             display_name="Convert Mask to Image",
             category=_MASK_CATEGORY,
-            inputs=(InputSpec("mask", _MASK),),
-            outputs=(OutputSpec("IMAGE", _IMAGE),),
+            body=(
+                Input("mask", _MASK),
+                Output("IMAGE", _IMAGE),
+            ),
         )
         return with_identity_replacement(schema, "MaskToImage")
 
@@ -191,8 +198,8 @@ class ImageToMask(Node):
                 "dinkster.image.image_to_mask",
                 "Convert Image to Mask",
                 (
-                    InputSpec("image", _IMAGE),
-                    InputSpec(
+                    Input("image", _IMAGE),
+                    Input(
                         "channel",
                         _COMBO,
                         widget=ComboWidget(
@@ -218,8 +225,8 @@ class ImageColorToMask(Node):
                 "dinkster.image.image_color_to_mask",
                 "Convert Image Color to Mask",
                 (
-                    InputSpec("image", _IMAGE),
-                    InputSpec(
+                    Input("image", _IMAGE),
+                    Input(
                         "color",
                         _INT,
                         default=0,
@@ -251,7 +258,7 @@ class SolidMask(Node):
                 "dinkster.image.solid_mask",
                 "Create Solid Mask",
                 (
-                    InputSpec(
+                    Input(
                         "value",
                         _FLOAT,
                         default=1.0,
@@ -282,7 +289,7 @@ class InvertMask(Node):
     @classmethod
     def define_schema(cls) -> NodeSchema:
         return with_identity_replacement(
-            _mask_schema("dinkster.image.invert_mask", "Invert Mask", (InputSpec("mask", _MASK),)),
+            _mask_schema("dinkster.image.invert_mask", "Invert Mask", (Input("mask", _MASK),)),
             "InvertMask",
         )
 
@@ -299,7 +306,7 @@ class CropMask(Node):
                 "dinkster.image.crop_mask",
                 "Crop Mask",
                 (
-                    InputSpec("mask", _MASK),
+                    Input("mask", _MASK),
                     _integer("x", 0, 0, _MAX_RESOLUTION, 1),
                     _integer("y", 0, 0, _MAX_RESOLUTION, 1),
                     _integer("width", 512, 1, _MAX_RESOLUTION, 1),
@@ -323,11 +330,11 @@ class MaskComposite(Node):
                 "dinkster.image.mask_composite",
                 "Combine Masks",
                 (
-                    InputSpec("destination", _MASK),
-                    InputSpec("source", _MASK),
+                    Input("destination", _MASK),
+                    Input("source", _MASK),
                     _integer("x", 0, 0, _MAX_RESOLUTION, 1),
                     _integer("y", 0, 0, _MAX_RESOLUTION, 1),
-                    InputSpec(
+                    Input(
                         "operation",
                         _COMBO,
                         widget=ComboWidget(
@@ -385,7 +392,7 @@ class FeatherMask(Node):
                 "dinkster.image.feather_mask",
                 "Feather Mask",
                 (
-                    InputSpec("mask", _MASK),
+                    Input("mask", _MASK),
                     _integer("left", 0, 0, _MAX_RESOLUTION, 1),
                     _integer("top", 0, 0, _MAX_RESOLUTION, 1),
                     _integer("right", 0, 0, _MAX_RESOLUTION, 1),
@@ -422,9 +429,20 @@ class GrowMask(Node):
                 "dinkster.image.grow_mask",
                 "Grow Mask",
                 (
-                    InputSpec("mask", _MASK),
+                    Input("mask", _MASK),
                     _integer("expand", 0, -_MAX_RESOLUTION, _MAX_RESOLUTION, 1),
-                    InputSpec("tapered_corners", _BOOLEAN, default=True, advanced=True),
+                    Section(
+                        "advanced",
+                        label="Advanced",
+                        collapsed=True,
+                        rows=(
+                            Input(
+                                "tapered_corners",
+                                _BOOLEAN,
+                                default=True,
+                            ),
+                        ),
+                    ),
                 ),
             ),
             "GrowMask",
@@ -460,8 +478,8 @@ class ThresholdMask(Node):
                 "dinkster.image.threshold_mask",
                 "Threshold Mask",
                 (
-                    InputSpec("mask", _MASK),
-                    InputSpec(
+                    Input("mask", _MASK),
+                    Input(
                         "value",
                         _FLOAT,
                         default=0.5,

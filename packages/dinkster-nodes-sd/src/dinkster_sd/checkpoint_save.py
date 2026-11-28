@@ -15,14 +15,18 @@ from dinkster_api.v1 import (
     CLIP_VISION_TYPE,
     CORE_STRING,
     MODEL_TYPE,
+    MOUNT_TYPE,
     VAE_TYPE,
     AssetError,
     AssetWriter,
-    InputSpec,
+    Editor,
+    Input,
     MountSnapshotWriter,
     MountWidget,
     Node,
     NodeSchema,
+    Row,
+    SaveTargetWidget,
     TypeExpr,
     attach_saved_artifact,
     initialize_inference_process,
@@ -36,25 +40,32 @@ class ImageOnlyCheckpointSave(Node):
         string = TypeExpr.concrete(CORE_STRING)
         schema = NodeSchema(
             node_type="dinkster.sd.image_only_checkpoint_save",
+            display_name="ImageOnlyCheckpointSave",
             category="model/merging",
-            inputs=(
-                InputSpec("model", TypeExpr.concrete(MODEL_TYPE)),
-                InputSpec("clip_vision", TypeExpr.concrete(CLIP_VISION_TYPE)),
-                InputSpec("vae", TypeExpr.concrete(VAE_TYPE)),
-                InputSpec(
-                    "filename_prefix",
-                    string,
-                    default="checkpoints/ComfyUI",
+            body=(
+                Input("model", TypeExpr.concrete(MODEL_TYPE)),
+                Input("clip_vision", TypeExpr.concrete(CLIP_VISION_TYPE)),
+                Input("vae", TypeExpr.concrete(VAE_TYPE)),
+                Row(
+                    rows=(
+                        Input(
+                            "filename_prefix",
+                            string,
+                            default="checkpoints/ComfyUI",
+                        ),
+                        Input(
+                            "mount",
+                            TypeExpr.union(MOUNT_TYPE, CORE_STRING),
+                            required=False,
+                            widget=MountWidget(),
+                        ),
+                    )
                 ),
-                InputSpec(
-                    "mount",
-                    string,
-                    required=False,
-                    widget=MountWidget(),
-                    adjacent_to="filename_prefix",
+                Editor(
+                    "target",
+                    SaveTargetWidget(writes={"mount": "mount", "name": "filename_prefix"}),
                 ),
             ),
-            outputs=(),
             idempotent=False,
             output_node=True,
         )

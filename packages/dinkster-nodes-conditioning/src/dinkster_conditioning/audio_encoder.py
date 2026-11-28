@@ -13,11 +13,11 @@ from dinkster_api.v1 import (
     AUDIO_TYPE,
     AssetRef,
     AssetWidget,
-    InputSpec,
+    Input,
     LocalAssetRef,
     Node,
     NodeSchema,
-    OutputSpec,
+    Output,
     TypeExpr,
     initialize_inference_process,
     materialize_audio,
@@ -38,16 +38,16 @@ class AudioEncoderLoader(Node):
                 node_type="dinkster.conditioning.audio_encoder_loader",
                 display_name="Load Audio Encoder",
                 category="model/loaders",
-                inputs=(
-                    InputSpec(
+                body=(
+                    Input(
                         "audio_encoder_name",
                         TypeExpr.concrete(ASSET_TYPE),
                         widget=AssetWidget(
                             accept=("application/octet-stream",), kind="model/audio-encoder"
                         ),
                     ),
+                    Output("AUDIO_ENCODER", _AUDIO_ENCODER),
                 ),
-                outputs=(OutputSpec("AUDIO_ENCODER", _AUDIO_ENCODER),),
             ),
             "AudioEncoderLoader",
         )
@@ -77,11 +77,10 @@ class AudioEncoderEncode(Node):
             NodeSchema(
                 node_type="dinkster.conditioning.audio_encoder_encode",
                 category="model/conditioning",
-                inputs=(InputSpec("audio_encoder", _AUDIO_ENCODER), InputSpec("audio", _AUDIO)),
-                outputs=(
-                    OutputSpec(
-                        "AUDIO_ENCODER_OUTPUT", TypeExpr.concrete(AUDIO_ENCODER_OUTPUT_TYPE)
-                    ),
+                body=(
+                    Input("audio_encoder", _AUDIO_ENCODER),
+                    Input("audio", _AUDIO),
+                    Output("AUDIO_ENCODER_OUTPUT", TypeExpr.concrete(AUDIO_ENCODER_OUTPUT_TYPE)),
                 ),
             ),
             "AudioEncoderEncode",

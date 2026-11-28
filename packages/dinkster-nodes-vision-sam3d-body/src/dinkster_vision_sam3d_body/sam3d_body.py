@@ -16,12 +16,13 @@ from dinkster_api.v1 import (
     AssetRef,
     AssetWidget,
     ComboWidget,
-    InputSpec,
+    Input,
     LocalAssetRef,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
+    Section,
     TypeExpr,
     initialize_inference_process,
     materialize_vision_packet,
@@ -36,16 +37,16 @@ class SAM3DBody_Loader(Node):
             node_type="dinkster.vision.sam3d.body.sam3_d_body_loader",
             display_name="Load SAM3D Body Model",
             category="image/detection",
-            inputs=(
-                InputSpec(
+            body=(
+                Input(
                     "model_file",
                     TypeExpr.concrete(ASSET_TYPE),
                     widget=AssetWidget(
                         kind="model/detection", accept=("application/octet-stream",)
                     ),
                 ),
+                Output("sam3d_body_model", TypeExpr.concrete(SAM3D_BODY_MODEL_TYPE)),
             ),
-            outputs=(OutputSpec("sam3d_body_model", TypeExpr.concrete(SAM3D_BODY_MODEL_TYPE)),),
         )
         return with_identity_replacement(schema, "SAM3DBody_Loader")
 
@@ -105,43 +106,50 @@ class SAM3DBody_Smooth(Node):
             display_name="Smooth SAM3D Body Pose Data",
             description="Reduce frame-to-frame jitter via temporal smoothing.",
             category="image/detection",
-            inputs=(
-                InputSpec("mhr_pose_data", TypeExpr.concrete(MHR_POSE_DATA_TYPE)),
-                InputSpec(
+            body=(
+                Input("mhr_pose_data", TypeExpr.concrete(MHR_POSE_DATA_TYPE)),
+                Input(
                     "strength",
                     TypeExpr.concrete(CORE_FLOAT),
                     default=1.0,
                     widget=NumberWidget(min=0.0, max=1.0, step=0.05),
-                    doc="Smoothing strength. 0 = raw, 1 = smoothed.",
+                    tooltip="Smoothing strength. 0 = raw, 1 = smoothed.",
                 ),
-                InputSpec(
+                Input(
                     "method",
                     TypeExpr.concrete(CORE_COMBO),
                     default="savgol",
                     widget=ComboWidget(("gaussian", "savgol")),
-                    doc="gaussian: symmetric weighted average, best general-purpose smoother.\n"
+                    tooltip="gaussian: symmetric weighted average, best general-purpose smoother.\n"
                     "savgol: sliding polynomial fit, preserves sharp peaks.",
                 ),
-                InputSpec(
-                    "window",
-                    TypeExpr.concrete(CORE_INT),
-                    default=7,
-                    widget=NumberWidget(min=1, max=51, step=2),
-                    advanced=True,
-                    doc="Temporal window in frames (odd values).",
+                Section(
+                    "advanced",
+                    label="Advanced",
+                    collapsed=True,
+                    rows=(
+                        Input(
+                            "window",
+                            TypeExpr.concrete(CORE_INT),
+                            default=7,
+                            widget=NumberWidget(min=1, max=51, step=2),
+                            tooltip="Temporal window in frames (odd values).",
+                        ),
+                        Input(
+                            "rotation_threshold_degrees",
+                            TypeExpr.concrete(CORE_FLOAT),
+                            default=30.0,
+                            widget=NumberWidget(min=0.0, max=90.0, step=1.0),
+                            tooltip="Disables smoothing for this root rotation rate (degree/frame) "
+                            "to preserve "
+                            "fast spins. 30 degrees suits most content, low values might disable "
+                            "smoothing "
+                            "on ordinary jitter and silently impacts quality. 0 = disable.",
+                        ),
+                    ),
                 ),
-                InputSpec(
-                    "rotation_threshold_degrees",
-                    TypeExpr.concrete(CORE_FLOAT),
-                    default=30.0,
-                    widget=NumberWidget(min=0.0, max=90.0, step=1.0),
-                    advanced=True,
-                    doc="Disables smoothing for this root rotation rate (degree/frame) to preserve "
-                    "fast spins. 30 degrees suits most content, low values might disable smoothing "
-                    "on ordinary jitter and silently impacts quality. 0 = disable.",
-                ),
+                Output("mhr_pose_data", TypeExpr.concrete(MHR_POSE_DATA_TYPE)),
             ),
-            outputs=(OutputSpec("mhr_pose_data", TypeExpr.concrete(MHR_POSE_DATA_TYPE)),),
         )
         return with_identity_replacement(schema, "SAM3DBody_Smooth")
 

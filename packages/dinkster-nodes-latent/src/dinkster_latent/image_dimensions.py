@@ -8,10 +8,10 @@ from typing import Any
 from dinkster_api.v1 import (
     CORE_INT,
     LATENT_TYPE,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
-    OutputSpec,
+    Output,
     TypeExpr,
     materialize_latent,
     report_progress,
@@ -36,14 +36,16 @@ class GetLatentSize(Node):
                     "video latent."
                 ),
                 category="latent",
-                inputs=(InputSpec("latent", _LATENT, doc="The image or video latent to inspect."),),
-                outputs=(
-                    OutputSpec("width", _INT, doc="The latent width."),
-                    OutputSpec("height", _INT, doc="The latent height."),
-                    OutputSpec(
-                        "frames", _INT, doc="The latent frame count. Image latents have one frame."
+                body=(
+                    Input("latent", _LATENT, tooltip="The image or video latent to inspect."),
+                    Output("width", _INT, tooltip="The latent width."),
+                    Output("height", _INT, tooltip="The latent height."),
+                    Output(
+                        "frames",
+                        _INT,
+                        tooltip="The latent frame count. Image latents have one frame.",
                     ),
-                    OutputSpec("batch_size", _INT, doc="The number of latents in the batch."),
+                    Output("batch_size", _INT, tooltip="The number of latents in the batch."),
                 ),
                 search_terms=("dimensions", "resolution", "latent info", "video latent size"),
             ),

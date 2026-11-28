@@ -11,10 +11,10 @@ import torch
 from dinkster_api.v1 import (
     CONDITIONING_TYPE,
     CORE_BOOLEAN,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
-    OutputSpec,
+    Output,
     TypeExpr,
 )
 from dinkster_graph import Graph, GraphNode, Link
@@ -27,7 +27,7 @@ class ConditioningSource(Node):
     def define_schema(cls) -> NodeSchema:
         return NodeSchema(
             node_type="flux-fixture.source",
-            outputs=(OutputSpec("conditioning", TypeExpr.concrete(CONDITIONING_TYPE)),),
+            body=(Output("conditioning", TypeExpr.concrete(CONDITIONING_TYPE)),),
         )
 
     @classmethod
@@ -45,11 +45,13 @@ class InspectConditioning(Node):
     def define_schema(cls) -> NodeSchema:
         return NodeSchema(
             node_type="flux-fixture.inspect",
-            inputs=tuple(
-                InputSpec(name, TypeExpr.concrete(CONDITIONING_TYPE))
-                for name in ("original", "guided", "disabled", "reference")
+            body=(
+                *tuple(
+                    Input(name, TypeExpr.concrete(CONDITIONING_TYPE))
+                    for name in ("original", "guided", "disabled", "reference")
+                ),
+                Output("valid", TypeExpr.concrete(CORE_BOOLEAN)),
             ),
-            outputs=(OutputSpec("valid", TypeExpr.concrete(CORE_BOOLEAN)),),
         )
 
     @classmethod

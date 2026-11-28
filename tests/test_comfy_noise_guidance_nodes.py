@@ -4,6 +4,8 @@ from dinkster_api.v1 import CORE_FLOAT, CORE_INT, MODEL_TYPE, TypeExpr
 from dinkster_sampling import NODES
 from dinkster_sampling.noise_guidance import EpsilonScaling, FreSca, TemporalScoreRescaling
 
+from tests.body_rows import advanced_ids
+
 
 def test_noise_guidance_schemas_preserve_core_sockets_and_controls() -> None:
     expected = (
@@ -21,7 +23,7 @@ def test_noise_guidance_schemas_preserve_core_sockets_and_controls() -> None:
         assert schema.inputs[0].type == TypeExpr.concrete(MODEL_TYPE)
         assert [item.default for item in schema.inputs[1:]] == defaults
         for item in schema.inputs[1:]:
-            assert item.advanced
+            assert item.id in advanced_ids(schema.body)
             assert item.type == TypeExpr.concrete(
                 CORE_INT if item.id == "freq_cutoff" else CORE_FLOAT
             )

@@ -61,6 +61,7 @@ def test_controlnet_schemas_register_the_first_party_ids() -> None:
     ]
     union = SetUnionControlNetType.define_schema().inputs[1].widget
     assert isinstance(union, ComboWidget)
+    assert isinstance(union.options, tuple)
     assert [
         option.value if isinstance(option, ComboOption) else option for option in union.options
     ] == [

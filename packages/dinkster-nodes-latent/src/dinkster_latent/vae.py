@@ -10,11 +10,12 @@ from dinkster_api.v1 import (
     IMAGE_TYPE,
     LATENT_TYPE,
     VAE_TYPE,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
+    Section,
     TypeExpr,
     materialize_image,
     materialize_latent,
@@ -23,21 +24,20 @@ from dinkster_api.v1 import (
 
 
 def _schema(node_type: str, display_name: str, *, encode: bool, tiled: bool) -> NodeSchema:
-    inputs: tuple[InputSpec, ...] = (
-        InputSpec(
+    body: tuple[Input | Section | Output, ...] = (
+        Input(
             "pixels" if encode else "samples",
             TypeExpr.concrete(IMAGE_TYPE if encode else LATENT_TYPE),
         ),
-        InputSpec("vae", TypeExpr.concrete(VAE_TYPE)),
+        Input("vae", TypeExpr.concrete(VAE_TYPE)),
     )
     if tiled:
-        inputs += tuple(
-            InputSpec(
+        advanced = tuple(
+            Input(
                 name,
                 TypeExpr.concrete(CORE_INT),
                 default=default,
                 widget=NumberWidget(min=minimum, max=4096, step=step),
-                advanced=True,
             )
             for name, default, minimum, step in (
                 ("tile_size", 512, 64, 64 if encode else 32),
@@ -46,6 +46,13 @@ def _schema(node_type: str, display_name: str, *, encode: bool, tiled: bool) -> 
                 ("temporal_overlap", 8, 4, 4),
             )
         )
+        body += (Section("advanced", label="Advanced", collapsed=True, rows=advanced),)
+    body += (
+        Output(
+            "LATENT" if encode else "IMAGE",
+            TypeExpr.concrete(LATENT_TYPE if encode else IMAGE_TYPE),
+        ),
+    )
     return NodeSchema(
         node_type=node_type,
         display_name=display_name,
@@ -57,13 +64,7 @@ def _schema(node_type: str, display_name: str, *, encode: bool, tiled: bool) -> 
             if encode
             else ("decode", "decode latent", "latent to image", "render latent")
         ),
-        inputs=inputs,
-        outputs=(
-            OutputSpec(
-                "LATENT" if encode else "IMAGE",
-                TypeExpr.concrete(LATENT_TYPE if encode else IMAGE_TYPE),
-            ),
-        ),
+        body=body,
     )
 
 

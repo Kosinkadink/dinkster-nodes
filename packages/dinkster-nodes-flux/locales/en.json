@@ -1,28 +1,28 @@
 {
   "nodes": {
     "dinkster.flux.clip_text_encode_flux": {
-      "displayName": "dinkster.flux.clip_text_encode_flux"
+      "displayName": "CLIPTextEncodeFlux"
     },
     "dinkster.flux.empty_flux2_latent_image": {
       "displayName": "Empty Flux 2 Latent"
     },
     "dinkster.flux.flux2_scheduler": {
-      "displayName": "dinkster.flux.flux2_scheduler"
+      "displayName": "Flux2Scheduler"
     },
     "dinkster.flux.flux3_layout_prompt": {
       "displayName": "FLUX 3 Image Layout Prompt"
     },
     "dinkster.flux.flux_disable_guidance": {
-      "displayName": "dinkster.flux.flux_disable_guidance"
+      "displayName": "FluxDisableGuidance"
     },
     "dinkster.flux.flux_guidance": {
-      "displayName": "dinkster.flux.flux_guidance"
+      "displayName": "FluxGuidance"
     },
     "dinkster.flux.flux_kv_cache": {
       "displayName": "Flux KV Cache"
     },
     "dinkster.flux.flux_kontext_image_scale": {
-      "displayName": "dinkster.flux.flux_kontext_image_scale"
+      "displayName": "FluxKontextImageScale"
     },
     "dinkster.flux.flux_kontext_multi_reference_latent_method": {
       "displayName": "Edit Model Reference Method"

@@ -9,11 +9,12 @@ from dinkster_api.v1 import (
     CONDITIONING_TYPE,
     CORE_INT,
     CORE_STRING,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
+    Section,
     StringWidget,
     TypeExpr,
     materialize_clip_vision_output,
@@ -41,20 +42,20 @@ class CLIPTextEncodeHunyuanDiT(Node):
             node_type="dinkster.hunyuan.clip_text_encode_hunyuan_di_t",
             display_name="CLIP Text Encode (Hunyuan Image)",
             category="model/conditioning/hunyuan image",
-            inputs=(
-                InputSpec("clip", TypeExpr.concrete(CLIP_TYPE)),
-                InputSpec(
+            body=(
+                Input("clip", TypeExpr.concrete(CLIP_TYPE)),
+                Input(
                     "bert",
                     TypeExpr.concrete(CORE_STRING),
                     widget=StringWidget(multiline=True, dynamic_prompts=True),
                 ),
-                InputSpec(
+                Input(
                     "mt5xl",
                     TypeExpr.concrete(CORE_STRING),
                     widget=StringWidget(multiline=True, dynamic_prompts=True),
                 ),
+                Output("CONDITIONING", TypeExpr.concrete(CONDITIONING_TYPE)),
             ),
-            outputs=(OutputSpec("CONDITIONING", TypeExpr.concrete(CONDITIONING_TYPE)),),
         )
         return with_identity_replacement(schema, "CLIPTextEncodeHunyuanDiT")
 
@@ -71,27 +72,33 @@ class TextEncodeHunyuanVideo_ImageToVideo(Node):
         schema = NodeSchema(
             node_type="dinkster.hunyuan.text_encode_hunyuan_video_image_to_video",
             category="model/conditioning/hunyuan video",
-            inputs=(
-                InputSpec("clip", TypeExpr.concrete(CLIP_TYPE)),
-                InputSpec("clip_vision_output", TypeExpr.concrete(CLIP_VISION_OUTPUT_TYPE)),
-                InputSpec(
+            body=(
+                Input("clip", TypeExpr.concrete(CLIP_TYPE)),
+                Input("clip_vision_output", TypeExpr.concrete(CLIP_VISION_OUTPUT_TYPE)),
+                Input(
                     "prompt",
                     TypeExpr.concrete(CORE_STRING),
                     widget=StringWidget(multiline=True, dynamic_prompts=True),
                 ),
-                InputSpec(
-                    "image_interleave",
-                    TypeExpr.concrete(CORE_INT),
-                    default=2,
-                    widget=NumberWidget(min=1, max=512),
-                    doc=(
-                        "How much the image influences things vs the text prompt. "
-                        "Higher number means more influence from the text prompt."
+                Section(
+                    "advanced",
+                    label="Advanced",
+                    collapsed=True,
+                    rows=(
+                        Input(
+                            "image_interleave",
+                            TypeExpr.concrete(CORE_INT),
+                            default=2,
+                            widget=NumberWidget(min=1, max=512),
+                            tooltip=(
+                                "How much the image influences things vs the text prompt. "
+                                "Higher number means more influence from the text prompt."
+                            ),
+                        ),
                     ),
-                    advanced=True,
                 ),
+                Output("CONDITIONING", TypeExpr.concrete(CONDITIONING_TYPE)),
             ),
-            outputs=(OutputSpec("CONDITIONING", TypeExpr.concrete(CONDITIONING_TYPE)),),
         )
         return with_identity_replacement(schema, "TextEncodeHunyuanVideo_ImageToVideo")
 

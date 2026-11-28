@@ -12,11 +12,12 @@ from dinkster_api.v1 import (
     IMAGE_TYPE,
     LATENT_TYPE,
     VAE_TYPE,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
+    Section,
     TypeExpr,
     materialize_image,
     materialize_latent,
@@ -31,14 +32,13 @@ _VAE = TypeExpr.concrete(VAE_TYPE)
 
 _CONDITIONING = TypeExpr.concrete(CONDITIONING_TYPE)
 
-_STAGES = (OutputSpec("stage_c", _LATENT), OutputSpec("stage_b", _LATENT))
+_STAGES = (Output("stage_c", _LATENT), Output("stage_b", _LATENT))
 
-_COMPRESSION = InputSpec(
+_COMPRESSION = Input(
     "compression",
     TypeExpr.concrete(CORE_INT),
     default=42,
     widget=NumberWidget(min=4, max=128, step=1),
-    advanced=True,
 )
 
 
@@ -49,28 +49,28 @@ class StableCascade_EmptyLatentImage(Node):
             node_type="dinkster.sd.stable_cascade_empty_latent_image",
             display_name="Empty Stable Cascade Latent Image",
             category="model/latent/stable cascade",
-            inputs=(
-                InputSpec(
+            body=(
+                Input(
                     "width",
                     TypeExpr.concrete(CORE_INT),
                     default=1024,
                     widget=NumberWidget(min=256, max=16384, step=8),
                 ),
-                InputSpec(
+                Input(
                     "height",
                     TypeExpr.concrete(CORE_INT),
                     default=1024,
                     widget=NumberWidget(min=256, max=16384, step=8),
                 ),
-                _COMPRESSION,
-                InputSpec(
+                Input(
                     "batch_size",
                     TypeExpr.concrete(CORE_INT),
                     default=1,
                     widget=NumberWidget(min=1, max=4096),
                 ),
+                Section("advanced", label="Advanced", collapsed=True, rows=(_COMPRESSION,)),
+                *_STAGES,
             ),
-            outputs=_STAGES,
         )
         return with_identity_replacement(schema, "StableCascade_EmptyLatentImage")
 
@@ -96,8 +96,12 @@ class StableCascade_StageC_VAEEncode(Node):
             node_type="dinkster.sd.stable_cascade_stage_c_vae_encode",
             display_name="Stable Cascade Stage C VAE Encode",
             category="model/latent/stable cascade",
-            inputs=(InputSpec("image", _IMAGE), InputSpec("vae", _VAE), _COMPRESSION),
-            outputs=_STAGES,
+            body=(
+                Input("image", _IMAGE),
+                Input("vae", _VAE),
+                Section("advanced", label="Advanced", collapsed=True, rows=(_COMPRESSION,)),
+                *_STAGES,
+            ),
         )
         return with_identity_replacement(schema, "StableCascade_StageC_VAEEncode")
 
@@ -129,8 +133,11 @@ class StableCascade_StageB_Conditioning(Node):
         schema = NodeSchema(
             node_type="dinkster.sd.stable_cascade_stage_b_conditioning",
             category="model/conditioning/stable cascade",
-            inputs=(InputSpec("conditioning", _CONDITIONING), InputSpec("stage_c", _LATENT)),
-            outputs=(OutputSpec("CONDITIONING", _CONDITIONING),),
+            body=(
+                Input("conditioning", _CONDITIONING),
+                Input("stage_c", _LATENT),
+                Output("CONDITIONING", _CONDITIONING),
+            ),
         )
         return with_identity_replacement(schema, "StableCascade_StageB_Conditioning")
 
@@ -154,8 +161,12 @@ class StableCascade_SuperResolutionControlnet(Node):
         schema = NodeSchema(
             node_type="dinkster.sd.stable_cascade_super_resolution_controlnet",
             category="experimental/stable cascade",
-            inputs=(InputSpec("image", _IMAGE), InputSpec("vae", _VAE)),
-            outputs=(OutputSpec("controlnet_input", _IMAGE), *_STAGES),
+            body=(
+                Input("image", _IMAGE),
+                Input("vae", _VAE),
+                Output("controlnet_input", _IMAGE),
+                *_STAGES,
+            ),
         )
         return with_identity_replacement(schema, "StableCascade_SuperResolutionControlnet")
 

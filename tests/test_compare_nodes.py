@@ -13,6 +13,13 @@ from typing import Any
 import pytest
 
 
+def _no_differences(tmp_path: Path) -> Path:
+    """An empty written list, for a reference that lacks the listed ComfyUI classes."""
+    path = tmp_path / "differences.json"
+    path.write_text(json.dumps({"differences": [], "known": []}))
+    return path
+
+
 def _pack_registry(source: str, schema: dict[str, Any]) -> dict[str, Any]:
     from dinkster_schema import schema_to_wire
     from dinkster_workers import load_manifest
@@ -131,7 +138,7 @@ def test_empty_editable_combo_options_preserve_other_choice_contracts(
 def test_environment_options_remain_conditional_without_hiding_static_drift(
     name: str, parameter: str, baseline: list[str], observed: list[str], passed: bool
 ) -> None:
-    from dinkster_schema import ComboWidget, InputSpec, NodeSchema, TypeExpr, schema_to_wire
+    from dinkster_schema import ComboWidget, Input, NodeSchema, TypeExpr, schema_to_wire
 
     from tools.compare_nodes import compare_registry
     from tools.dump_comfy_nodes import annotate_environment_options
@@ -144,10 +151,8 @@ def test_environment_options_remain_conditional_without_hiding_static_drift(
     native = schema_to_wire(
         NodeSchema(
             node_type=name,
-            inputs=(
-                InputSpec(
-                    parameter, TypeExpr.concrete("COMBO"), widget=ComboWidget(tuple(observed))
-                ),
+            body=(
+                Input(parameter, TypeExpr.concrete("COMBO"), widget=ComboWidget(tuple(observed))),
             ),
         )
     )
@@ -162,7 +167,7 @@ def test_environment_options_remain_conditional_without_hiding_static_drift(
 
 
 def test_environment_remote_choices_still_require_same_default() -> None:
-    from dinkster_schema import ComboWidget, InputSpec, NodeSchema, TypeExpr, schema_to_wire
+    from dinkster_schema import ComboWidget, Input, NodeSchema, TypeExpr, schema_to_wire
 
     from tools.compare_nodes import compare_registry
     from tools.dump_comfy_nodes import annotate_environment_options
@@ -173,8 +178,8 @@ def test_environment_remote_choices_still_require_same_default() -> None:
     schema = schema_to_wire(
         NodeSchema(
             node_type="SelectModelDevice",
-            inputs=(
-                InputSpec(
+            body=(
+                Input(
                     "device",
                     TypeExpr.concrete("COMBO"),
                     default="default",
@@ -186,9 +191,9 @@ def test_environment_remote_choices_still_require_same_default() -> None:
     registry = _pack_registry("SelectModelDevice", schema)
     result = compare_registry(reference, registry)
     assert result["passed"] and result["counts"] == {"conditional": 1}
-    interface = schema["interface"]
-    assert isinstance(interface, list)
-    interface[0]["default"] = "cpu"
+    body = schema["body"]
+    assert isinstance(body, list)
+    body[0]["default"] = "cpu"
     assert not compare_registry(reference, registry)["passed"]
 
 
@@ -346,6 +351,8 @@ def test_cli_training_exclusion_keeps_deletion_errors(
                 str(registry),
                 str(csv_output),
                 str(summary_output),
+                "--differences",
+                str(_no_differences(tmp_path)),
             ],
             capture_output=True,
             text=True,
@@ -378,10 +385,11 @@ def test_cli_training_exclusion_keeps_deletion_errors(
     "output_node,prefix_type", [(True, "STRING"), (False, "STRING"), (True, "INT")]
 )
 @pytest.mark.parametrize("input_is_list", [False, True])
+@pytest.mark.parametrize("beside_prefix", [False, True])
 def test_save_mount_admission_uses_source_output_contract(
-    name: str, output_node: bool, prefix_type: str, input_is_list: bool
+    name: str, output_node: bool, prefix_type: str, input_is_list: bool, beside_prefix: bool
 ) -> None:
-    from dinkster_schema import InputSpec, MountWidget, NodeSchema, TypeExpr, schema_to_wire
+    from dinkster_schema import Input, MountWidget, NodeSchema, Row, TypeExpr, schema_to_wire
 
     from tools.compare_nodes import compare_registry
 
@@ -391,31 +399,27 @@ def test_save_mount_admission_uses_source_output_contract(
                 "class_name": name,
                 "output_node": output_node,
                 "input_is_list": input_is_list,
-                "input_types": {"required": {"filename_prefix": [prefix_type]}},
+                "input_types": {"required": {"filename_prefix": [prefix_type], "quality": ["INT"]}},
                 "return_types": [],
             }
         ]
     }
+    prefix = Input(
+        "filename_prefix",
+        TypeExpr.list_of(TypeExpr.concrete(prefix_type))
+        if input_is_list
+        else TypeExpr.concrete(prefix_type),
+    )
+    mount = Input(
+        "mount", TypeExpr.concrete("STRING"), required=False, default=None, widget=MountWidget()
+    )
+    quality = Input("quality", TypeExpr.concrete("INT"))
     native = schema_to_wire(
         NodeSchema(
             node_type=name,
             output_node=output_node,
-            inputs=(
-                InputSpec(
-                    "filename_prefix",
-                    TypeExpr.list_of(TypeExpr.concrete(prefix_type))
-                    if input_is_list
-                    else TypeExpr.concrete(prefix_type),
-                ),
-                InputSpec(
-                    "mount",
-                    TypeExpr.concrete("STRING"),
-                    required=False,
-                    default=None,
-                    widget=MountWidget(),
-                    adjacent_to="filename_prefix",
-                ),
-            ),
+            # A body places mount beside filename_prefix, ahead of later rows.
+            body=(Row((prefix, mount)), quality) if beside_prefix else (prefix, quality, mount),
         )
     )
     result = compare_registry(reference, _pack_registry(name, native))
@@ -494,13 +498,13 @@ class V3File:
 
 
 def test_comparison_cli(tmp_path: Path) -> None:
-    from dinkster_schema import InputSpec, NodeSchema, StringWidget, TypeExpr, schema_to_wire
+    from dinkster_schema import Input, NodeSchema, StringWidget, TypeExpr, schema_to_wire
 
     wire = schema_to_wire(
         NodeSchema(
             node_type="SaveExample",
-            inputs=(
-                InputSpec(
+            body=(
+                Input(
                     "mount",
                     TypeExpr.concrete("STRING"),
                     required=False,
@@ -510,8 +514,10 @@ def test_comparison_cli(tmp_path: Path) -> None:
             ),
         )
     )
-    mount = json.loads(json.dumps(wire))["interface"][0]
-    assert "default" not in mount
+    entry = json.loads(json.dumps(wire))["body"][0]
+    assert "default" not in entry
+    # The hand-written native entry uses the flat interface form.
+    mount = {"role": "input", **{key: value for key, value in entry.items() if key != "kind"}}
     reference = {
         "nodes": [
             {
@@ -580,6 +586,8 @@ def test_comparison_cli(tmp_path: Path) -> None:
                 str(registry),
                 str(csv_path),
                 str(summary_path),
+                "--differences",
+                str(_no_differences(tmp_path)),
             ],
             capture_output=True,
             text=True,
@@ -760,13 +768,13 @@ def test_exact_ids_and_file_widget_exemption(
     assert not compare_registry(reference, registry)["passed"]
     reference["nodes"][0]["file_inputs"] = ["file"]
     if native_type == "ASSET":
-        from dinkster_schema import AssetWidget, InputSpec, NodeSchema, TypeExpr, schema_to_wire
+        from dinkster_schema import AssetWidget, Input, NodeSchema, TypeExpr, schema_to_wire
 
         wire = schema_to_wire(
             NodeSchema(
                 node_type="LoadExample",
-                inputs=(
-                    InputSpec(
+                body=(
+                    Input(
                         "file",
                         TypeExpr.concrete("ASSET"),
                         widget=AssetWidget(kind="model/lora", accept=("application/octet-stream",)),
@@ -774,10 +782,11 @@ def test_exact_ids_and_file_widget_exemption(
                 ),
             )
         )
-        interface = wire["interface"]
-        assert isinstance(interface, list)
-        file_input = interface[0]
-        assert isinstance(file_input, dict)
+        body = wire["body"]
+        assert isinstance(body, list)
+        assert isinstance(body[0], dict)
+        # The hand-written registry entry uses the flat interface form.
+        file_input = {"role": "input", **{k: v for k, v in body[0].items() if k != "kind"}}
         schema["interface"][0] = file_input
         assert compare_registry(reference, registry)["passed"]
         widget = file_input.pop("widget")
@@ -836,6 +845,26 @@ def test_painter_empty_file_uses_an_optional_asset_without_losing_other_contract
     reference = {"nodes": [row]}
     schema: dict[str, Any] = schema_to_wire(Painter.define_schema())
     schema["pack"] = "dinkster-image"
+    # The mask keeps the upload-enabled asset widget and the binding that stages an
+    # imported ComfyUI mask filename; the painter is an Editor row right after it.
+    ids = [item["id"] for item in schema["body"]]
+    mask = schema["body"][ids.index("mask")]
+    assert mask["widget"]["type"] == "ASSET" and mask["widget"]["allowUpload"] is True
+    assert mask["sourceFilename"] == {"kind": "media/image", "category": "input"}
+    assert schema["body"][ids.index("mask") + 1] == {
+        "kind": "editor",
+        "id": "painter",
+        "widget": {
+            "type": "PAINTER",
+            "writes": {"mask": "mask"},
+            "reads": {
+                "width": "width",
+                "height": "height",
+                "image": "image",
+                "bg_color": "bg_color",
+            },
+        },
+    }
     registry = {"nodes": {"dinkster.image.painter": schema}}
     assert compare_registry(reference, registry)["passed"]
 
@@ -843,7 +872,7 @@ def test_painter_empty_file_uses_an_optional_asset_without_losing_other_contract
     changed["nodes"][0]["input_types"]["required"]["mask"][1]["default"] = "paint.png"
     assert not compare_registry(changed, registry)["passed"]
     required = deepcopy(schema)
-    next(item for item in required["interface"] if item["id"] == "mask")["required"] = True
+    next(item for item in required["body"] if item["id"] == "mask")["required"] = True
     assert not compare_registry(changed, {"nodes": {"dinkster.image.painter": required}})["passed"]
     changed = deepcopy(reference)
     changed["nodes"][0]["file_inputs"] = []
@@ -854,20 +883,20 @@ def test_painter_empty_file_uses_an_optional_asset_without_losing_other_contract
         ("required", True),
         ("default", "paint.png"),
         ("id", "paint"),
-        ("socketless", False),
+        ("pin", True),
         ("hidden", True),
         ("type", {"kind": "list", "element": {"kind": "concrete", "types": ["ASSET"]}}),
     ):
         changed = deepcopy(schema)
-        mask = next(item for item in changed["interface"] if item["id"] == "mask")
+        mask = next(item for item in changed["body"] if item["id"] == "mask")
         mask[field] = value
         assert not compare_registry(reference, {"nodes": {"dinkster.image.painter": changed}})[
             "passed"
         ]
     changed = deepcopy(schema)
-    changed["interface"][0], changed["interface"][1] = (
-        changed["interface"][1],
-        changed["interface"][0],
+    changed["body"][0], changed["body"][1] = (
+        changed["body"][1],
+        changed["body"][0],
     )
     assert not compare_registry(reference, {"nodes": {"dinkster.image.painter": changed}})["passed"]
 
@@ -935,6 +964,96 @@ def test_v3_input_order_preserves_interleaved_optional_inputs() -> None:
         native["interface"][0],
     )
     assert compare(reference, native)
+
+
+def test_advanced_section_rows_match_the_reference_position_only() -> None:
+    from tools.compare_nodes import compare
+
+    reference = {
+        "class_name": "Example",
+        "is_v3": True,
+        "v3_inputs": [{"id": name} for name in ("first", "tuned", "last")],
+        "input_types": {"required": {"first": ["INT"], "tuned": ["FLOAT"], "last": ["STRING"]}},
+    }
+
+    def field(name: str, kind: str) -> dict[str, Any]:
+        return {"kind": "input", "id": name, "type": {"kind": "concrete", "types": [kind]}}
+
+    native = {
+        "nodeType": "Example",
+        "body": [
+            field("first", "INT"),
+            field("last", "STRING"),
+            {"kind": "section", "id": "advanced", "rows": [field("tuned", "FLOAT")]},
+        ],
+    }
+    assert compare(reference, native) == []
+    # Only an advanced row moves back; other rows out of order are still a difference.
+    native["body"][:2] = reversed(native["body"][:2])
+    assert compare(reference, native)
+    native["body"][:2] = reversed(native["body"][:2])
+    native["body"][2]["id"] = "more"
+    assert compare(reference, native)
+
+
+def test_inner_use_overrides_a_row_inside_a_shared_choice_option() -> None:
+    from dinkster_schema import (
+        Choice,
+        Input,
+        NodeSchema,
+        NumberWidget,
+        Option,
+        TypeExpr,
+        Use,
+        schema_to_wire,
+    )
+
+    from tools.compare_nodes import compare
+
+    def encoding(default: float, maximum: float) -> list[Any]:
+        crf = ["FLOAT", {"default": default, "min": 0.0, "max": maximum, "step": 1.0}]
+        options = [{"key": "re-encode", "inputs": {"required": {"crf": crf}}}]
+        return ["COMFY_DYNAMICCOMBO_V3", {"options": options}]
+
+    reference = {
+        "class_name": "Example",
+        "input_types": {
+            "required": {
+                "codec": [
+                    "COMFY_DYNAMICCOMBO_V3",
+                    {
+                        "options": [
+                            {"key": key, "inputs": {"required": {"encoding": encoding(*limits)}}}
+                            for key, limits in (("h264", (18.0, 51.0)), ("av1", (24.0, 63.0)))
+                        ]
+                    },
+                ]
+            }
+        },
+    }
+
+    def native(av1_default: float) -> dict[str, Any]:
+        crf = Input(
+            "crf",
+            TypeExpr.concrete("FLOAT"),
+            default=18.0,
+            widget=NumberWidget(min=0, max=51, step=1),
+        )
+        av1_crf = Use("crf", default=av1_default, widget=NumberWidget(min=0, max=63, step=1))
+        shared = Choice("encoding", options=(Option("re-encode", rows=(crf,)),))
+        codec = Choice(
+            "codec",
+            options=(
+                Option("h264", rows=(Use("encoding"),)),
+                Option("av1", rows=(Use("encoding", inside=(av1_crf,)),)),
+            ),
+            shared=(shared,),
+        )
+        return schema_to_wire(NodeSchema(node_type="Example", body=(codec,)))
+
+    # The av1 place reaches into the shared encoding's option to change crf's limits.
+    assert compare(reference, native(24.0)) == []
+    assert any("24.0 vs 25.0" in item for item in compare(reference, native(25.0)))
 
 
 @pytest.mark.parametrize("order", [None, [], [{"id": "other"}], [{"id": "value"}] * 2])
@@ -1226,6 +1345,56 @@ def test_list_flags_do_not_hide_element_type_or_unflagged_output_drift(
     assert compare(reference, native)
 
 
+def test_written_list_holds_exactly_the_intended_differences() -> None:
+    from tools.compare_nodes import compare_registry
+
+    def node(name: str, default: int) -> dict[str, Any]:
+        field = {"role": "input", "id": "steps", "required": True, "default": default}
+        field["type"] = {"kind": "concrete", "types": ["INT"]}
+        return {"nodeType": name, "interface": [field]}
+
+    reference = {
+        "nodes": [
+            {"class_name": name, "input_types": {"required": {"steps": ["INT", {"default": 1}]}}}
+            for name in ("Listed", "Known", "Plain")
+        ]
+    }
+    served = {"Listed": node("Listed", 2), "Known": node("Known", 3), "Plain": node("Plain", 1)}
+    intended = {
+        "differences": [
+            {"class_name": "Listed", "difference": "inputs[0].default: 1 vs 2", "reason": "why"}
+        ],
+        "known": [{"class_name": "Known", "reason": "differed before"}],
+    }
+
+    def run() -> dict[str, Any]:
+        return compare_registry(reference, {"nodes": served}, intended=intended)
+
+    summary = run()
+    assert summary["passed"], summary["difference_errors"]
+    assert {row["class_name"]: row["status"] for row in summary["rows"]} == {
+        "Listed": "differs as intended",
+        "Known": "differs",
+        "Plain": "identical",
+    }
+    for name, default, error in (
+        ("Listed", 4, "differences are not exactly the listed ones: Listed"),
+        ("Listed", 1, "listed as an intended difference but identical: Listed"),
+        ("Known", 1, "listed as differing before the written list but identical: Known"),
+        ("Plain", 5, "differs and is not on the written list: Plain"),
+    ):
+        before = served[name]
+        served[name] = node(name, default)
+        summary = run()
+        assert not summary["passed"]
+        assert summary["difference_errors"] == [error]
+        served[name] = before
+    intended["known"].append({"class_name": "Retired", "reason": "gone"})
+    assert run()["difference_errors"] == [
+        "listed difference names a class the reference lacks: Retired"
+    ]
+
+
 @pytest.mark.parametrize("named", (False, True))
 @pytest.mark.parametrize("minimum", (0, 1))
 @pytest.mark.parametrize("template_required", (False, True))
@@ -1285,8 +1454,10 @@ def test_autogrow_member_requiredness_matches_expanded_reference(
     leaf["required"] = not leaf["required"]
     assert not compare_registry(reference, registry)["passed"]
     leaf["required"] = not leaf["required"]
+    # Where ComfyUI lists the group is not compared (comfy-vibe-station#1101
+    # comment 7093935921); its least member count and member marks are.
     family["required"] = False
-    assert not compare_registry(reference, registry)["passed"]
+    assert compare_registry(reference, registry)["passed"]
     family["required"] = True
     family["minMembers"] = minimum + 1
     assert not compare_registry(reference, registry)["passed"]
@@ -1697,7 +1868,7 @@ def test_engine_nodes_are_compared_despite_historical_exclusion_metadata(name: s
     "kind", ["model/vae", "model/diffusers", "directory/input", "directory/dataset"]
 )
 def test_source_marked_selections_require_exact_picker_kind_and_socket(kind: str, v3: bool) -> None:
-    from dinkster_api.v1 import AssetWidget, InputSpec, NodeSchema, TypeExpr, schema_to_wire
+    from dinkster_api.v1 import AssetWidget, Input, NodeSchema, TypeExpr, schema_to_wire
 
     from tools.compare_nodes import compare
     from tools.dump_comfy_nodes import FileChoices, annotate_files
@@ -1712,8 +1883,8 @@ def test_source_marked_selections_require_exact_picker_kind_and_socket(kind: str
     schema = schema_to_wire(
         NodeSchema(
             node_type="SelectionExample",
-            inputs=(
-                InputSpec(
+            body=(
+                Input(
                     "selection",
                     TypeExpr.union("COMBO", "ASSET")
                     if kind == "model/vae"
@@ -1724,9 +1895,9 @@ def test_source_marked_selections_require_exact_picker_kind_and_socket(kind: str
         )
     )
     assert compare(row, schema) == []
-    interface = schema["interface"]
-    assert isinstance(interface, list)
-    item = interface[0]
+    body = schema["body"]
+    assert isinstance(body, list)
+    item = body[0]
     assert isinstance(item, dict)
     widget = item["widget"]
     widget["kind"] = "directory/input" if kind != "directory/input" else "directory/dataset"

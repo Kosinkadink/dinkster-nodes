@@ -8,11 +8,11 @@ from dinkster_api.v1 import (
     BOUNDING_BOX_TYPE,
     CORE_INT,
     IMAGE_TYPE,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
     TypeExpr,
     with_identity_replacement,
 )
@@ -30,17 +30,13 @@ class PrimitiveBoundingBox(Node):
             node_type="dinkster.utilities.primitive_bounding_box",
             display_name="Bounding Box",
             category="utilities/primitive",
-            inputs=(
-                InputSpec("x", _INT, default=0, widget=NumberWidget(min=0, max=_MAX_RESOLUTION)),
-                InputSpec("y", _INT, default=0, widget=NumberWidget(min=0, max=_MAX_RESOLUTION)),
-                InputSpec(
-                    "width", _INT, default=512, widget=NumberWidget(min=1, max=_MAX_RESOLUTION)
-                ),
-                InputSpec(
-                    "height", _INT, default=512, widget=NumberWidget(min=1, max=_MAX_RESOLUTION)
-                ),
+            body=(
+                Input("x", _INT, default=0, widget=NumberWidget(min=0, max=_MAX_RESOLUTION)),
+                Input("y", _INT, default=0, widget=NumberWidget(min=0, max=_MAX_RESOLUTION)),
+                Input("width", _INT, default=512, widget=NumberWidget(min=1, max=_MAX_RESOLUTION)),
+                Input("height", _INT, default=512, widget=NumberWidget(min=1, max=_MAX_RESOLUTION)),
+                Output("BOUNDING_BOX", _BOUNDING_BOX),
             ),
-            outputs=(OutputSpec("BOUNDING_BOX", _BOUNDING_BOX),),
         )
         return with_identity_replacement(schema, "PrimitiveBoundingBox")
 

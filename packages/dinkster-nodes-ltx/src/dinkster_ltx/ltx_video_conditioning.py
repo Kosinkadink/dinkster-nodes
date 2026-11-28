@@ -12,11 +12,11 @@ from dinkster_api.v1 import (
     IMAGE_TYPE,
     LATENT_TYPE,
     VAE_TYPE,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
     TypeExpr,
     initialize_inference_process,
     materialize_image,
@@ -42,10 +42,8 @@ _VAE = TypeExpr.concrete(VAE_TYPE)
 _CATEGORY = "model/conditioning/ltxv"
 
 
-def _integer(
-    name: str, default: int, minimum: int, maximum: int, step: int | None = None
-) -> InputSpec:
-    return InputSpec(
+def _integer(name: str, default: int, minimum: int, maximum: int, step: int | None = None) -> Input:
+    return Input(
         name,
         _INT,
         default=default,
@@ -71,21 +69,19 @@ class LTXVImgToVideo(Node):
         schema = NodeSchema(
             node_type="dinkster.ltx.ltxv_img_to_video",
             category=_CATEGORY,
-            inputs=(
-                InputSpec("positive", _CONDITIONING),
-                InputSpec("negative", _CONDITIONING),
-                InputSpec("vae", _VAE),
-                InputSpec("image", _IMAGE),
+            body=(
+                Input("positive", _CONDITIONING),
+                Input("negative", _CONDITIONING),
+                Input("vae", _VAE),
+                Input("image", _IMAGE),
                 _integer("width", 768, 64, 16384, 32),
                 _integer("height", 512, 64, 16384, 32),
                 _integer("length", 97, 9, 16384, 8),
                 _integer("batch_size", 1, 1, 4096),
-                InputSpec("strength", _FLOAT, default=1.0, widget=NumberWidget(min=0.0, max=1.0)),
-            ),
-            outputs=(
-                OutputSpec("positive", _CONDITIONING, display_name="positive"),
-                OutputSpec("negative", _CONDITIONING, display_name="negative"),
-                OutputSpec("latent", _LATENT, display_name="latent"),
+                Input("strength", _FLOAT, default=1.0, widget=NumberWidget(min=0.0, max=1.0)),
+                Output("positive", _CONDITIONING, label="positive"),
+                Output("negative", _CONDITIONING, label="negative"),
+                Output("latent", _LATENT, label="latent"),
             ),
         )
         return with_identity_replacement(schema, "LTXVImgToVideo")
@@ -133,14 +129,14 @@ class LTXVImgToVideoInplace(Node):
         schema = NodeSchema(
             node_type="dinkster.ltx.ltxv_img_to_video_inplace",
             category=_CATEGORY,
-            inputs=(
-                InputSpec("vae", _VAE),
-                InputSpec("image", _IMAGE),
-                InputSpec("latent", _LATENT),
-                InputSpec("strength", _FLOAT, default=1.0, widget=NumberWidget(min=0.0, max=1.0)),
-                InputSpec("bypass", _BOOLEAN, default=False, doc="Bypass the conditioning."),
+            body=(
+                Input("vae", _VAE),
+                Input("image", _IMAGE),
+                Input("latent", _LATENT),
+                Input("strength", _FLOAT, default=1.0, widget=NumberWidget(min=0.0, max=1.0)),
+                Input("bypass", _BOOLEAN, default=False, tooltip="Bypass the conditioning."),
+                Output("latent", _LATENT, label="latent"),
             ),
-            outputs=(OutputSpec("latent", _LATENT, display_name="latent"),),
         )
         return with_identity_replacement(schema, "LTXVImgToVideoInplace")
 
@@ -174,19 +170,17 @@ class LTXVConditioning(Node):
         schema = NodeSchema(
             node_type="dinkster.ltx.ltxv_conditioning",
             category=_CATEGORY,
-            inputs=(
-                InputSpec("positive", _CONDITIONING),
-                InputSpec("negative", _CONDITIONING),
-                InputSpec(
+            body=(
+                Input("positive", _CONDITIONING),
+                Input("negative", _CONDITIONING),
+                Input(
                     "frame_rate",
                     _FLOAT,
                     default=25.0,
                     widget=NumberWidget(min=0.0, max=1000.0, step=0.01),
                 ),
-            ),
-            outputs=(
-                OutputSpec("positive", _CONDITIONING, display_name="positive"),
-                OutputSpec("negative", _CONDITIONING, display_name="negative"),
+                Output("positive", _CONDITIONING, label="positive"),
+                Output("negative", _CONDITIONING, label="negative"),
             ),
         )
         return with_identity_replacement(schema, "LTXVConditioning")
@@ -211,15 +205,13 @@ class LTXVCropGuides(Node):
         schema = NodeSchema(
             node_type="dinkster.ltx.ltxv_crop_guides",
             category=_CATEGORY,
-            inputs=(
-                InputSpec("positive", _CONDITIONING),
-                InputSpec("negative", _CONDITIONING),
-                InputSpec("latent", _LATENT),
-            ),
-            outputs=(
-                OutputSpec("positive", _CONDITIONING, display_name="positive"),
-                OutputSpec("negative", _CONDITIONING, display_name="negative"),
-                OutputSpec("latent", _LATENT, display_name="latent"),
+            body=(
+                Input("positive", _CONDITIONING),
+                Input("negative", _CONDITIONING),
+                Input("latent", _LATENT),
+                Output("positive", _CONDITIONING, label="positive"),
+                Output("negative", _CONDITIONING, label="negative"),
+                Output("latent", _LATENT, label="latent"),
             ),
         )
         return with_identity_replacement(schema, "LTXVCropGuides")

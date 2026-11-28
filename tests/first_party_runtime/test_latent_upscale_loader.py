@@ -13,10 +13,10 @@ from dinkster_api.v1 import (
     CORE_STRING,
     LATENT_UPSCALE_MODEL_TYPE,
     AssetRef,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
-    OutputSpec,
+    Output,
     TypeExpr,
     initialize_inference_process,
 )
@@ -114,8 +114,10 @@ class LatentUpscaleConsumer(Node):
     def define_schema(cls) -> NodeSchema:
         return NodeSchema(
             node_type="latent-upscale-fixture.consumer",
-            inputs=(InputSpec("model", TypeExpr.concrete(LATENT_UPSCALE_MODEL_TYPE)),),
-            outputs=(OutputSpec("summary", TypeExpr.concrete(CORE_STRING)),),
+            body=(
+                Input("model", TypeExpr.concrete(LATENT_UPSCALE_MODEL_TYPE)),
+                Output("summary", TypeExpr.concrete(CORE_STRING)),
+            ),
         )
 
     @classmethod

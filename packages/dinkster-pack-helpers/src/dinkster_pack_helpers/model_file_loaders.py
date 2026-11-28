@@ -12,7 +12,7 @@ from dinkster_api.v1 import (
     AssetWidget,
     ComboOption,
     ComboWidget,
-    InputSpec,
+    Input,
     LocalAssetRef,
     TypeExpr,
     mount_roots_for_kind,
@@ -22,11 +22,11 @@ _ASSET = TypeExpr.concrete(ASSET_TYPE)
 _COMBO = TypeExpr.concrete(CORE_COMBO)
 
 
-def asset_input(name: str, kind: str, *, doc: str = "") -> InputSpec:
-    return InputSpec(
+def asset_input(name: str, kind: str, *, doc: str = "") -> Input:
+    return Input(
         name,
         _ASSET,
-        doc=doc,
+        tooltip=doc,
         widget=AssetWidget(kind=kind, accept=("application/octet-stream",)),
     )
 
@@ -49,12 +49,13 @@ def clip_options(device: str) -> dict[str, Any]:
 
 
 def combo_input(
-    name: str, options: tuple[str, ...], default: str, *, advanced: bool = False
-) -> InputSpec:
-    return InputSpec(
+    name: str,
+    options: tuple[str, ...],
+    default: str,
+) -> Input:
+    return Input(
         name,
         _COMBO,
         default=default,
-        advanced=advanced,
         widget=ComboWidget(tuple(ComboOption(option) for option in options)),
     )

@@ -4,10 +4,12 @@ from dinkster_api.v1 import (
     ASSET_TYPE,
     AUDIO_RECORD_TYPE,
     AUDIO_TYPE,
+    MOUNT_TYPE,
     TypeRegistry,
     inference_nodes,
     register_asset_type,
     register_audio_value_type,
+    register_mount_type,
     resolver_from_env,
 )
 
@@ -35,6 +37,8 @@ NODES = (
 
 def register_types(registry: TypeRegistry) -> None:
     """Preserve the host's first media registration and granted recording codec."""
+    if MOUNT_TYPE not in registry:
+        register_mount_type(registry)
     if ASSET_TYPE not in registry:
         register_asset_type(registry, resolver_from_env())
     if AUDIO_RECORD_TYPE not in registry:

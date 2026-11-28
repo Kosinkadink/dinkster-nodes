@@ -10,11 +10,11 @@ from dinkster_api.v1 import (
     CONDITIONING_TYPE,
     CORE_INT,
     CORE_STRING,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
     StringWidget,
     TypeExpr,
     with_identity_replacement,
@@ -29,16 +29,16 @@ class CLIPTextEncodeControlnet(Node):
                 node_type="dinkster.conditioning.clip_text_encode_controlnet",
                 display_name="CLIP Text Encode (Controlnet)",
                 category="model/conditioning",
-                inputs=(
-                    InputSpec("clip", TypeExpr.concrete(CLIP_TYPE)),
-                    InputSpec("conditioning", TypeExpr.concrete(CONDITIONING_TYPE)),
-                    InputSpec(
+                body=(
+                    Input("clip", TypeExpr.concrete(CLIP_TYPE)),
+                    Input("conditioning", TypeExpr.concrete(CONDITIONING_TYPE)),
+                    Input(
                         "text",
                         TypeExpr.concrete(CORE_STRING),
                         widget=StringWidget(multiline=True, dynamic_prompts=True),
                     ),
+                    Output("CONDITIONING", TypeExpr.concrete(CONDITIONING_TYPE)),
                 ),
-                outputs=(OutputSpec("CONDITIONING", TypeExpr.concrete(CONDITIONING_TYPE)),),
             ),
             "CLIPTextEncodeControlnet",
         )
@@ -63,10 +63,10 @@ class T5TokenizerOptions(Node):
                 node_type="dinkster.conditioning.t5_tokenizer_options",
                 display_name="T5 Tokenizer Options",
                 category="model/conditioning",
-                inputs=(
-                    InputSpec("clip", TypeExpr.concrete(CLIP_TYPE)),
+                body=(
+                    Input("clip", TypeExpr.concrete(CLIP_TYPE)),
                     *(
-                        InputSpec(
+                        Input(
                             name,
                             TypeExpr.concrete(CORE_INT),
                             default=0,
@@ -74,8 +74,8 @@ class T5TokenizerOptions(Node):
                         )
                         for name in ("min_padding", "min_length")
                     ),
+                    Output("CLIP", TypeExpr.concrete(CLIP_TYPE)),
                 ),
-                outputs=(OutputSpec("CLIP", TypeExpr.concrete(CLIP_TYPE)),),
             ),
             "T5TokenizerOptions",
         )

@@ -13,11 +13,12 @@ from dinkster_api.v1 import (
     CORE_STRING,
     MODEL_TYPE,
     VAE_TYPE,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
+    Section,
     StringWidget,
     TypeExpr,
     initialize_inference_process,
@@ -31,19 +32,17 @@ _MODEL = TypeExpr.concrete(MODEL_TYPE)
 _CONDITIONING = TypeExpr.concrete(CONDITIONING_TYPE)
 
 _WINDOW = (
-    InputSpec(
+    Input(
         "start_percent",
         TypeExpr.concrete(CORE_FLOAT),
         default=0.0,
         widget=NumberWidget(min=0.0, max=1.0, step=0.001),
-        advanced=True,
     ),
-    InputSpec(
+    Input(
         "end_percent",
         TypeExpr.concrete(CORE_FLOAT),
         default=1.0,
         widget=NumberWidget(min=0.0, max=1.0, step=0.001),
-        advanced=True,
     ),
 )
 
@@ -55,24 +54,22 @@ class LTXVReferenceAudio(Node):
             node_type="dinkster.ltx.ltxv_reference_audio",
             display_name="LTXV Reference Audio (ID-LoRA)",
             category="model/conditioning/ltxv",
-            inputs=(
-                InputSpec("model", _MODEL),
-                InputSpec("positive", _CONDITIONING),
-                InputSpec("negative", _CONDITIONING),
-                InputSpec("reference_audio", TypeExpr.concrete(AUDIO_TYPE)),
-                InputSpec("audio_vae", TypeExpr.concrete(VAE_TYPE), display_name="Audio VAE"),
-                InputSpec(
+            body=(
+                Input("model", _MODEL),
+                Input("positive", _CONDITIONING),
+                Input("negative", _CONDITIONING),
+                Input("reference_audio", TypeExpr.concrete(AUDIO_TYPE)),
+                Input("audio_vae", TypeExpr.concrete(VAE_TYPE), label="Audio VAE"),
+                Input(
                     "identity_guidance_scale",
                     TypeExpr.concrete(CORE_FLOAT),
                     default=3.0,
                     widget=NumberWidget(min=0.0, max=100.0, step=0.01, round=0.01),
                 ),
-                *_WINDOW,
-            ),
-            outputs=(
-                OutputSpec("MODEL", _MODEL),
-                OutputSpec("positive", _CONDITIONING),
-                OutputSpec("negative", _CONDITIONING),
+                Section("advanced", label="Advanced", collapsed=True, rows=(*_WINDOW,)),
+                Output("MODEL", _MODEL),
+                Output("positive", _CONDITIONING),
+                Output("negative", _CONDITIONING),
             ),
         )
         return with_identity_replacement(schema, "LTXVReferenceAudio")
@@ -145,23 +142,23 @@ class LTXVSpatioTemporalGuidance(Node):
             node_type="dinkster.ltx.ltxv_spatio_temporal_guidance",
             display_name="LTXV Spatio-Temporal Guidance (STG)",
             category="advanced/guidance",
-            inputs=(
-                InputSpec("model", _MODEL),
-                InputSpec(
+            body=(
+                Input("model", _MODEL),
+                Input(
                     "scale",
                     TypeExpr.concrete(CORE_FLOAT),
                     default=1.0,
                     widget=NumberWidget(min=0.0, max=100.0, step=0.01, round=0.01),
                 ),
-                InputSpec(
+                Input(
                     "blocks",
                     TypeExpr.concrete(CORE_STRING),
                     default="29",
                     widget=StringWidget(multiline=False),
                 ),
-                *_WINDOW,
+                Section("advanced", label="Advanced", collapsed=True, rows=(*_WINDOW,)),
+                Output("MODEL", _MODEL),
             ),
-            outputs=(OutputSpec("MODEL", _MODEL),),
         )
         return with_identity_replacement(schema, "LTXVSpatioTemporalGuidance")
 
@@ -213,17 +210,17 @@ class LTXVModalityGuidance(Node):
             node_type="dinkster.ltx.ltxv_modality_guidance",
             display_name="LTXV Modality Guidance (A/V coupling)",
             category="advanced/guidance",
-            inputs=(
-                InputSpec("model", _MODEL),
-                InputSpec(
+            body=(
+                Input("model", _MODEL),
+                Input(
                     "modality_scale",
                     TypeExpr.concrete(CORE_FLOAT),
                     default=3.0,
                     widget=NumberWidget(min=1.0, max=100.0, step=0.1, round=0.01),
                 ),
-                *_WINDOW,
+                Section("advanced", label="Advanced", collapsed=True, rows=(*_WINDOW,)),
+                Output("MODEL", _MODEL),
             ),
-            outputs=(OutputSpec("MODEL", _MODEL),),
         )
         return with_identity_replacement(schema, "LTXVModalityGuidance")
 

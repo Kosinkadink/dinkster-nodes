@@ -13,7 +13,7 @@ from dinkster_api.v1 import (
     CORE_FLOAT,
     IMAGE_TYPE,
     SAM3_TRACK_DATA_TYPE,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
@@ -49,24 +49,20 @@ class SAM3_TrackPreview(Node):
             node_type="dinkster.vision.sam3.sam3_track_preview",
             display_name="SAM3 Track Preview",
             category="image/detection",
-            inputs=(
-                InputSpec(
-                    "track_data", TypeExpr.concrete(SAM3_TRACK_DATA_TYPE), display_name="track_data"
-                ),
-                InputSpec(
-                    "images", TypeExpr.concrete(IMAGE_TYPE), display_name="images", required=False
-                ),
-                InputSpec(
+            body=(
+                Input("track_data", TypeExpr.concrete(SAM3_TRACK_DATA_TYPE), label="track_data"),
+                Input("images", TypeExpr.concrete(IMAGE_TYPE), label="images", required=False),
+                Input(
                     "opacity",
                     TypeExpr.concrete(CORE_FLOAT),
-                    display_name="opacity",
+                    label="opacity",
                     default=0.5,
                     widget=NumberWidget(min=0.0, max=1.0, step=0.05),
                 ),
-                InputSpec(
+                Input(
                     "fps",
                     TypeExpr.concrete(CORE_FLOAT),
-                    display_name="fps",
+                    label="fps",
                     default=24.0,
                     widget=NumberWidget(min=1.0, max=120.0, step=1.0),
                 ),

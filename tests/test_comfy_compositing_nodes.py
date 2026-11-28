@@ -55,6 +55,7 @@ def test_compositing_schemas_match_the_fixed_reference_contract() -> None:
     schema = PorterDuffImageComposite.schema()
     assert schema.inputs[-1].default == "DST"
     assert isinstance(schema.inputs[-1].widget, ComboWidget)
+    assert isinstance(schema.inputs[-1].widget.options, tuple)
     assert tuple(
         option.value if isinstance(option, ComboOption) else option
         for option in schema.inputs[-1].widget.options

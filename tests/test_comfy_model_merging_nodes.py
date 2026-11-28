@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import cast
 
 import pytest
-from dinkster_api.v1 import InputSpec, Node, NodeSchema, OutputSpec, TypeExpr
+from dinkster_api.v1 import Input, Item, Members, Node, NodeSchema, Output, TypeExpr
 from dinkster_graph import Graph, GraphNode, Link
 from dinkster_models.model_merging import (
     CLIPMergeAdd,
@@ -106,8 +106,8 @@ def test_clip_merges_skip_only_the_two_exact_suffixes() -> None:
 def test_block_merge_uses_longest_prefix_and_first_coefficient_fallback() -> None:
     weights = {
         "diffusion_model.input.weight": 10.0,
-        "diffusion_model.input.deep.weight": 10.0,
         "diffusion_model.middle.weight": 10.0,
+        "diffusion_model.output.weight": 10.0,
         "diffusion_model.unmatched": 10.0,
         "outside": 23.0,
     }
@@ -118,13 +118,15 @@ def test_block_merge_uses_longest_prefix_and_first_coefficient_fallback() -> Non
         ModelMergeBlocks.execute(
             model1=first,
             model2=second,
-            **{"input": 0.25, "input.deep.": 0.75, "middle": 0.5, "out": 1.0},
+            ratios=Members(
+                Item(key, ratio) for key, ratio in (("input", 0.25), ("middle", 0.5), ("out", 1.0))
+            ),
         )["MODEL"],
     )
     assert merged.weights == {
         "diffusion_model.input.weight": -2.0,
-        "diffusion_model.input.deep.weight": 6.0,
         "diffusion_model.middle.weight": 2.0,
+        "diffusion_model.output.weight": 10.0,
         "diffusion_model.unmatched": -2.0,
         "outside": 23.0,
     }
@@ -136,8 +138,10 @@ class ScalarModelSource(Node):
     def define_schema(cls) -> NodeSchema:
         return NodeSchema(
             node_type="merge-fixture.model",
-            inputs=(InputSpec("weights", TypeExpr.concrete("DICT")),),
-            outputs=(OutputSpec("MODEL", TypeExpr.concrete("MODEL")),),
+            body=(
+                Input("weights", TypeExpr.concrete("DICT")),
+                Output("MODEL", TypeExpr.concrete("MODEL")),
+            ),
         )
 
     @classmethod
@@ -150,8 +154,10 @@ class ScalarModelWeights(Node):
     def define_schema(cls) -> NodeSchema:
         return NodeSchema(
             node_type="merge-fixture.weights",
-            inputs=(InputSpec("model", TypeExpr.concrete("MODEL")),),
-            outputs=(OutputSpec("weights", TypeExpr.concrete("DICT")),),
+            body=(
+                Input("model", TypeExpr.concrete("MODEL")),
+                Output("weights", TypeExpr.concrete("DICT")),
+            ),
         )
 
     @classmethod
@@ -202,10 +208,24 @@ def test_manifest_registers_model_types_for_graph_execution(
                 Graph(
                     nodes={
                         "first": GraphNode(
-                            "merge-fixture.model", {"weights": {"diffusion_model.weight": 10.0}}
+                            "merge-fixture.model",
+                            {
+                                "weights": {
+                                    "diffusion_model.weight": 10.0,
+                                    "diffusion_model.middle.weight": 10.0,
+                                    "diffusion_model.out.weight": 10.0,
+                                }
+                            },
                         ),
                         "second": GraphNode(
-                            "merge-fixture.model", {"weights": {"diffusion_model.weight": -4.0}}
+                            "merge-fixture.model",
+                            {
+                                "weights": {
+                                    "diffusion_model.weight": -4.0,
+                                    "diffusion_model.middle.weight": -4.0,
+                                    "diffusion_model.out.weight": -4.0,
+                                }
+                            },
                         ),
                         "merge": GraphNode(
                             "dinkster.models.model_merge_simple",
@@ -218,18 +238,41 @@ def test_manifest_registers_model_types_for_graph_execution(
                         "merged-weights": GraphNode(
                             "merge-fixture.weights", {"model": Link("merge", "MODEL")}
                         ),
+                        "blocks": GraphNode(
+                            "dinkster.models.model_merge_blocks",
+                            {
+                                "model1": Link("first", "MODEL"),
+                                "model2": Link("second", "MODEL"),
+                                "ratios.input": 0.25,
+                                "ratios.middle": 0.5,
+                                "ratios.out": 1.0,
+                            },
+                        ),
+                        "blocks-weights": GraphNode(
+                            "merge-fixture.weights", {"model": Link("blocks", "MODEL")}
+                        ),
                         "source-weights": GraphNode(
                             "merge-fixture.weights", {"model": Link("first", "MODEL")}
                         ),
                     }
                 ),
-                ["merged-weights", "source-weights"],
+                ["merged-weights", "blocks-weights", "source-weights"],
             )
             assert result.outputs["merged-weights"]["weights"].resolve() == {
-                "diffusion_model.weight": -0.5
+                "diffusion_model.weight": -0.5,
+                "diffusion_model.middle.weight": -0.5,
+                "diffusion_model.out.weight": -0.5,
+            }
+            # An unmatched key takes the first member's ratio, not the last one's.
+            assert result.outputs["blocks-weights"]["weights"].resolve() == {
+                "diffusion_model.weight": -0.5,
+                "diffusion_model.middle.weight": 3.0,
+                "diffusion_model.out.weight": 10.0,
             }
             assert result.outputs["source-weights"]["weights"].resolve() == {
-                "diffusion_model.weight": 10.0
+                "diffusion_model.weight": 10.0,
+                "diffusion_model.middle.weight": 10.0,
+                "diffusion_model.out.weight": 10.0,
             }
         finally:
             await composer.close()

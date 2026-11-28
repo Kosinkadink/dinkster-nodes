@@ -16,12 +16,12 @@ from dinkster_api.v1 import (
     IMAGE_TYPE,
     LAYERS_TYPE,
     MASK_TYPE,
-    InputSpec,
+    Input,
     MappingSource,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
     ReplacementCase,
     ReplacementRule,
     TypeExpr,
@@ -85,16 +85,16 @@ class LayersFromBoundingBoxes(Node):
                 "- a batch carries a single placement for every frame, so the individual "
                 "positions are otherwise lost."
             ),
-            inputs=(
-                InputSpec(
+            body=(
+                Input(
                     "image",
                     TypeExpr.concrete(IMAGE_TYPE),
-                    doc="Image batch; each frame becomes one layer.",
+                    tooltip="Image batch; each frame becomes one layer.",
                 ),
-                InputSpec(
+                Input(
                     "bboxes",
                     TypeExpr.union(BOUNDING_BOX_TYPE, ARRAY_TYPE, CORE_STRING),
-                    doc=(
+                    tooltip=(
                         "Placement boxes, index-aligned with the image batch. Accepts bounding "
                         "boxes (x, y, width, height), normalized elements (with a 'bbox' - these "
                         "need canvas_width/canvas_height to resolve to pixels), or a JSON string "
@@ -104,54 +104,52 @@ class LayersFromBoundingBoxes(Node):
                         "(frame-relative) crops the frame to its real content."
                     ),
                 ),
-                InputSpec(
+                Input(
                     "mask",
                     TypeExpr.concrete(MASK_TYPE),
                     required=False,
-                    doc=(
+                    tooltip=(
                         "Per-frame transparency, index-aligned with the image batch "
                         "(1 = transparent, LoadImage convention)."
                     ),
                 ),
-                InputSpec(
+                Input(
                     "layers",
                     TypeExpr.concrete(LAYERS_TYPE),
                     required=False,
-                    doc="Layer stack to append to. Leave unconnected to start a new stack.",
+                    tooltip="Layer stack to append to. Leave unconnected to start a new stack.",
                 ),
-                InputSpec(
+                Input(
                     "crop_to_content",
                     TypeExpr.concrete(CORE_BOOLEAN),
                     required=False,
                     default=True,
-                    doc=(
+                    tooltip=(
                         "Crop each frame to metadata.content_rect where present and place the "
                         "content at the box position plus the rect offset. Leave on for batches "
                         "whose frames are padded - it keeps only the real content at its true spot."
                     ),
                 ),
-                InputSpec(
+                Input(
                     "canvas_width",
                     TypeExpr.concrete(CORE_INT),
                     required=False,
                     default=0,
                     widget=NumberWidget(min=0, max=16_384),
-                    doc="Document canvas width. 0 derives it from the placed layers.",
+                    tooltip="Document canvas width. 0 derives it from the placed layers.",
                 ),
-                InputSpec(
+                Input(
                     "canvas_height",
                     TypeExpr.concrete(CORE_INT),
                     required=False,
                     default=0,
                     widget=NumberWidget(min=0, max=16_384),
-                    doc="Document canvas height. 0 derives it from the placed layers.",
+                    tooltip="Document canvas height. 0 derives it from the placed layers.",
                 ),
-            ),
-            outputs=(
-                OutputSpec(
+                Output(
                     "LAYERS",
                     TypeExpr.concrete(LAYERS_TYPE),
-                    doc="The layer stack, ready for Create Layered Image.",
+                    tooltip="The layer stack, ready for Create Layered Image.",
                 ),
             ),
         )

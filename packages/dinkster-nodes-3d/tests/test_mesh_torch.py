@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+from collections.abc import Mapping
 from typing import Any
 
 import pytest
@@ -12,11 +13,18 @@ from dinkster_3d.voxel_mesh import VoxelToMesh, VoxelToMeshBasic
 from dinkster_api.v1 import (
     MESH_TYPE,
     VOXEL_TYPE,
+    Item,
+    Members,
+    Record,
     TriangleMeshBatch,
     TypeRegistry,
     materialize_mesh,
     register_inference_types,
 )
+
+
+def _members(values: Mapping[str, object]) -> Members[Item]:
+    return Members(Item(key, value) for key, value in values.items())
 
 
 def mesh() -> TriangleMeshBatch[Any]:
@@ -41,8 +49,7 @@ def test_rotation_preserves_materials_normals_tangent_handedness_and_source(port
     value = spec.decode(spec.encode(source)) if portable else source
     result = RotateMesh.execute(
         mesh=value,
-        mode="euler_xyz",
-        **{"mode.angle_x": 0.0, "mode.angle_y": 0.0, "mode.angle_z": 90.0},
+        mode=Record("euler_xyz", {"angle_x": 0.0, "angle_y": 0.0, "angle_z": 90.0}),
     )["mesh"]
     assert isinstance(result, TriangleMeshBatch)
     expected = torch.tensor([[[-2.0, 1.0, 3.0], [-5.0, -2.0, 7.0]]], dtype=torch.float64)
@@ -60,8 +67,7 @@ def test_rotation_preserves_materials_normals_tangent_handedness_and_source(port
     torch.testing.assert_close(result.texture, source.texture, rtol=0, atol=0)
     quaternion = RotateMesh.execute(
         mesh=value,
-        mode="quaternion",
-        **{"mode.qw": 3.0, "mode.qx": 0.0, "mode.qy": 0.0, "mode.qz": 3.0},
+        mode=Record("quaternion", {"qw": 3.0, "qx": 0.0, "qy": 0.0, "qz": 3.0}),
     )["mesh"]
     assert isinstance(quaternion, TriangleMeshBatch)
     torch.testing.assert_close(quaternion.vertices, expected, rtol=0, atol=4e-15)
@@ -69,16 +75,14 @@ def test_rotation_preserves_materials_normals_tangent_handedness_and_source(port
     assert (
         RotateMesh.execute(
             mesh=source,
-            mode="euler_xyz",
-            **dict.fromkeys(("mode.angle_x", "mode.angle_y", "mode.angle_z"), 0.0),
+            mode=Record("euler_xyz", dict.fromkeys(("angle_x", "angle_y", "angle_z"), 0.0)),
         )["mesh"]
         is source
     )
     with pytest.raises(ValueError, match="zero magnitude"):
         RotateMesh.execute(
             mesh=source,
-            mode="quaternion",
-            **dict.fromkeys(("mode.qw", "mode.qx", "mode.qy", "mode.qz"), 0.0),
+            mode=Record("quaternion", dict.fromkeys(("qw", "qx", "qy", "qz"), 0.0)),
         )
 
 
@@ -133,9 +137,9 @@ def test_merge_first_items_excludes_padding_offsets_faces_and_fills_attributes(
     spec = registry.spec(MESH_TYPE)
     values = [spec.decode(spec.encode(value)) if portable else value for value in sources]
     result = materialize_mesh(
-        MergeMeshes.execute(meshes=dict(zip(("mesh10", "mesh2", "mesh7"), values, strict=True)))[
-            "mesh"
-        ]
+        MergeMeshes.execute(
+            meshes=_members(dict(zip(("mesh10", "mesh2", "mesh7"), values, strict=True)))
+        )["mesh"]
     )
     torch.testing.assert_close(
         result.vertices,
@@ -170,7 +174,7 @@ def test_merge_first_items_excludes_padding_offsets_faces_and_fills_attributes(
         torch.testing.assert_close(value.vertices, vertices, rtol=0, atol=0)
         torch.testing.assert_close(value.faces, faces, rtol=0, atol=0)
     with pytest.raises(ValueError, match="MergeMeshes: need at least one mesh"):
-        MergeMeshes.execute(meshes={})
+        MergeMeshes.execute(meshes=_members({}))
 
 
 @pytest.mark.parametrize("portable", [False, True])

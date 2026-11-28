@@ -8,9 +8,9 @@ import numpy as np
 from dinkster_api.v1 import (
     ABSENT,
     IMAGE_TYPE,
-    IMAGECOMPARE_TYPE,
     CustomWidgetDescriptor,
-    InputSpec,
+    Editor,
+    Input,
     Node,
     NodeSchema,
     TypeExpr,
@@ -47,17 +47,16 @@ class NativeImageCompare(Node):
             node_type="dinkster.image.image_compare",
             display_name="Compare Images",
             category="image",
-            inputs=(
+            body=(
                 *(
-                    InputSpec(name, IMAGE, required=False, default=None)
+                    Input(name, IMAGE, required=False, default=None)
                     for name in ("image_a", "image_b")
                 ),
-                InputSpec(
-                    "compare_view",
-                    TypeExpr.concrete(IMAGECOMPARE_TYPE),
-                    default=None,
-                    socketless=True,
-                    widget=CustomWidgetDescriptor("IMAGECOMPARE"),
+                Editor(
+                    "comparison",
+                    CustomWidgetDescriptor(
+                        "IMAGECOMPARE", reads={"image_a": "image_a", "image_b": "image_b"}
+                    ),
                 ),
             ),
             output_node=True,
@@ -67,9 +66,7 @@ class NativeImageCompare(Node):
         return with_identity_replacement(schema, "ImageCompare")
 
     @classmethod
-    def execute(
-        cls, *, image_a: object = None, image_b: object = None, compare_view: object = None
-    ) -> Mapping[str, object]:
+    def execute(cls, *, image_a: object = None, image_b: object = None) -> Mapping[str, object]:
         images = _compare_images(image_a=image_a, image_b=image_b)
         for name, value in images.items():
             if value is ABSENT:

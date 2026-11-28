@@ -16,11 +16,12 @@ from dinkster_api.v1 import (
     CORE_STRING,
     IMAGE_TYPE,
     MEBIBYTE,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
+    Section,
     StringWidget,
     TypeExpr,
 )
@@ -574,8 +575,10 @@ class ImportPoseJson(Node):
             node_type="dinkster.pose.import_json",
             display_name="Import Pose JSON",
             category="image/pose",
-            inputs=(InputSpec("json", STRING, widget=StringWidget(multiline=True)),),
-            outputs=(OutputSpec("poses", POSE_LIST),),
+            body=(
+                Input("json", STRING, widget=StringWidget(multiline=True)),
+                Output("poses", POSE_LIST),
+            ),
             search_terms=("OpenPose JSON", "DWPose keypoints", "AP10K pose"),
         )
 
@@ -591,8 +594,10 @@ class ExportPoseJson(Node):
             node_type="dinkster.pose.export_json",
             display_name="Export Pose JSON",
             category="image/pose",
-            inputs=(InputSpec("poses", POSE_LIST),),
-            outputs=(OutputSpec("json", STRING),),
+            body=(
+                Input("poses", POSE_LIST),
+                Output("json", STRING),
+            ),
             search_terms=("OpenPose JSON", "pose keypoints", "AP10K pose"),
         )
 
@@ -608,29 +613,35 @@ class RenderPose(Node):
             node_type="dinkster.pose.render",
             display_name="Render Pose",
             category="image/pose",
-            inputs=(
-                InputSpec("poses", POSE_LIST),
-                InputSpec("render_body", BOOLEAN, required=False, default=True),
-                InputSpec("render_hand", BOOLEAN, required=False, default=True),
-                InputSpec("render_face", BOOLEAN, required=False, default=True),
-                InputSpec("render_animal", BOOLEAN, required=False, default=True),
-                InputSpec(
-                    "confidence_threshold",
-                    FLOAT,
-                    required=False,
-                    default=0.0,
-                    advanced=True,
-                    widget=NumberWidget(min=0.0, max=1.0, step=0.01),
-                ),
-                InputSpec(
+            body=(
+                Input("poses", POSE_LIST),
+                Input("render_body", BOOLEAN, required=False, default=True),
+                Input("render_hand", BOOLEAN, required=False, default=True),
+                Input("render_face", BOOLEAN, required=False, default=True),
+                Input("render_animal", BOOLEAN, required=False, default=True),
+                Input(
                     "xinsr_stick_scaling",
                     BOOLEAN,
                     required=False,
                     default=False,
                     hidden=True,
                 ),
+                Section(
+                    "advanced",
+                    label="Advanced",
+                    collapsed=True,
+                    rows=(
+                        Input(
+                            "confidence_threshold",
+                            FLOAT,
+                            required=False,
+                            default=0.0,
+                            widget=NumberWidget(min=0.0, max=1.0, step=0.01),
+                        ),
+                    ),
+                ),
+                Output("image", IMAGE, preview=True),
             ),
-            outputs=(OutputSpec("image", IMAGE, preview=True),),
             search_terms=("OpenPose", "DWPose", "animal pose", "controlnet keypoints"),
         )
 

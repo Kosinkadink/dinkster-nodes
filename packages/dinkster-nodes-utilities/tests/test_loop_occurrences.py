@@ -8,10 +8,10 @@ from dinkster_engine import Engine
 from dinkster_graph import Graph, GraphNode, Link, RegionNode, RegionOutput, TypedLiteral
 from dinkster_schema import (
     ABSENT,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
-    OutputSpec,
+    Output,
     TypeExpr,
     build_node_types,
     build_schemas,
@@ -20,7 +20,7 @@ from dinkster_utilities import NODES as UTILITY_NODES
 from dinkster_utilities.loop_lists import ListElement, MakeList
 from dinkster_utilities.math import ComfyMathExpression
 from dinkster_utilities.primitive import PrimitiveBoolean, PrimitiveInt
-from dinkster_utilities.switch import ComfySwitchNode
+from dinkster_utilities.switch import Switch
 from dinkster_values import TypeRegistry, is_absent, register_core_types
 from dinkster_workers import InProcessWorker
 
@@ -33,7 +33,7 @@ NODES = (
     ComfyMathExpression,
     PrimitiveInt,
     PrimitiveBoolean,
-    ComfySwitchNode,
+    Switch,
     MakeList,
     ListElement,
 )
@@ -151,7 +151,7 @@ def test_nested_loop_keeps_each_occurrences_results(inner_cache: bool) -> None:
 
 
 @pytest.mark.parametrize("cache_enabled", [False, True])
-@pytest.mark.parametrize("absent_input", ["output_value", "terminations.0"])
+@pytest.mark.parametrize("absent_input", ["output_value", "terminations.termination0"])
 def test_absent_loop_dependency_completes(cache_enabled: bool, absent_input: str) -> None:
     class Empty(Node):
         @classmethod
@@ -159,8 +159,10 @@ def test_absent_loop_dependency_completes(cache_enabled: bool, absent_input: str
             integer = TypeExpr.concrete("INT")
             return NodeSchema(
                 "test.empty",
-                inputs=(InputSpec("index", integer),),
-                outputs=(OutputSpec("value", integer, optional=True),),
+                body=(
+                    Input("index", integer),
+                    Output("value", integer, optional=True),
+                ),
             )
 
         @classmethod

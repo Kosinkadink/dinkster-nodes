@@ -27,18 +27,24 @@ from dinkster_api.v1 import (
     LOAD3D_CAMERA_TYPE,
     LOAD3D_MODEL_INFO_TYPE,
     LOAD_3D_TYPE,
+    MOUNT_TYPE,
     AssetError,
     AssetRef,
     AssetWriter,
     CustomWidgetDescriptor,
-    InputSpec,
+    Editor,
+    Input,
     LocalAssetRef,
     MountSnapshotWriter,
     MountWidget,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
+    Row,
+    SaveTargetWidget,
+    Section,
+    State,
     StringWidget,
     TypeExpr,
     attach_saved_artifact,
@@ -65,69 +71,93 @@ class _Save3D(Node):
             category="3d",
             output_node=True,
             idempotent=False,
-            inputs=(
-                InputSpec("model_3d", TypeExpr.union(*cls.formats), doc=cls.model_description),
-                InputSpec(
-                    "filename_prefix",
-                    TypeExpr.concrete(CORE_STRING),
-                    default="3d/ComfyUI",
-                    widget=StringWidget(multiline=False),
+            body=(
+                Input("model_3d", TypeExpr.union(*cls.formats), tooltip=cls.model_description),
+                Row(
+                    rows=(
+                        Input(
+                            "filename_prefix",
+                            TypeExpr.concrete(CORE_STRING),
+                            default="3d/ComfyUI",
+                            widget=StringWidget(multiline=False),
+                        ),
+                        Input(
+                            "mount",
+                            TypeExpr.union(MOUNT_TYPE, CORE_STRING),
+                            required=False,
+                            widget=MountWidget(),
+                        ),
+                    )
                 ),
-                InputSpec(
-                    "viewport_state",
-                    TypeExpr.concrete(LOAD_3D_TYPE),
-                    widget=CustomWidgetDescriptor("LOAD_3D"),
+                Editor(
+                    "target",
+                    SaveTargetWidget(writes={"mount": "mount", "name": "filename_prefix"}),
                 ),
-                InputSpec(
-                    "model_3d_info",
-                    TypeExpr.concrete(LOAD3D_MODEL_INFO_TYPE),
-                    required=False,
-                    advanced=True,
-                    doc=(
-                        "Placement of each model in the scene: position, rotation, and scale "
-                        "(Y-up world space)."
-                        if detailed
-                        else ""
-                    ),
-                ),
-                InputSpec(
-                    "camera_info",
-                    TypeExpr.concrete(LOAD3D_CAMERA_TYPE),
-                    required=False,
-                    advanced=True,
-                    doc=(
-                        "Viewport camera information: position, look-at target, zoom, and type."
-                        if detailed
-                        else ""
+                State("viewport_state", TypeExpr.concrete(LOAD_3D_TYPE)),
+                Editor(
+                    "viewport",
+                    CustomWidgetDescriptor(
+                        "LOAD_3D",
+                        writes={"state": "viewport_state"},
+                        reads={
+                            "model_3d": "model_3d",
+                            "width": "width",
+                            "height": "height",
+                            "model_3d_info": "model_3d_info",
+                            "camera_info": "camera_info",
+                        },
                     ),
                 ),
                 *(
-                    InputSpec(
+                    Input(
                         axis,
                         TypeExpr.concrete(CORE_INT),
                         default=1024,
                         widget=NumberWidget(min=1, max=4096, step=1),
-                        doc=f"Render {axis} of the viewport in pixels." if detailed else "",
+                        tooltip=f"Render {axis} of the viewport in pixels." if detailed else "",
                     )
                     for axis in ("width", "height")
                 ),
-                InputSpec(
-                    "mount",
-                    TypeExpr.concrete(CORE_STRING),
-                    required=False,
-                    widget=MountWidget(),
-                    adjacent_to="filename_prefix",
+                Section(
+                    "advanced",
+                    label="Advanced",
+                    collapsed=True,
+                    rows=(
+                        Input(
+                            "model_3d_info",
+                            TypeExpr.concrete(LOAD3D_MODEL_INFO_TYPE),
+                            required=False,
+                            tooltip=(
+                                "Placement of each model in the scene: position, rotation, and "
+                                "scale "
+                                "(Y-up world space)."
+                                if detailed
+                                else ""
+                            ),
+                        ),
+                        Input(
+                            "camera_info",
+                            TypeExpr.concrete(LOAD3D_CAMERA_TYPE),
+                            required=False,
+                            tooltip=(
+                                "Viewport camera information: position, look-at target, zoom, and "
+                                "type."
+                                if detailed
+                                else ""
+                            ),
+                        ),
+                    ),
                 ),
-            ),
-            outputs=tuple(
-                OutputSpec(name, TypeExpr.concrete(type_id), preview=name == "model_3d")
-                for name, type_id in (
-                    ("model_3d", cls.output_type),
-                    ("model_3d_info", LOAD3D_MODEL_INFO_TYPE),
-                    ("camera_info", LOAD3D_CAMERA_TYPE),
-                    ("width", CORE_INT),
-                    ("height", CORE_INT),
-                )
+                *tuple(
+                    Output(name, TypeExpr.concrete(type_id), preview=name == "model_3d")
+                    for name, type_id in (
+                        ("model_3d", cls.output_type),
+                        ("model_3d_info", LOAD3D_MODEL_INFO_TYPE),
+                        ("camera_info", LOAD3D_CAMERA_TYPE),
+                        ("width", CORE_INT),
+                        ("height", CORE_INT),
+                    )
+                ),
             ),
         )
         return with_identity_replacement(schema, cls.source_type)

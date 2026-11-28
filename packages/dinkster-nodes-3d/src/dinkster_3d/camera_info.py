@@ -5,22 +5,24 @@ from __future__ import annotations
 import importlib
 import math
 from collections.abc import Mapping
-from typing import Any
+from typing import Any, cast
 
 from dinkster_api.v1 import (
-    CAMERA_INFO_STATE_TYPE,
     CORE_COMBO,
     CORE_FLOAT,
     LOAD3D_CAMERA_TYPE,
+    Choice,
     ComboWidget,
-    DynamicComboOption,
-    DynamicComboSpec,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Option,
+    Output,
+    Record,
+    Section,
     TypeExpr,
+    Use,
     initialize_inference_process,
     with_identity_replacement,
 )
@@ -34,15 +36,13 @@ def _number(
     step: float,
     *,
     doc: str = "",
-    advanced: bool = False,
-) -> InputSpec:
-    return InputSpec(
+) -> Input:
+    return Input(
         name,
         TypeExpr.concrete(CORE_FLOAT),
         default=default,
         widget=NumberWidget(min=minimum, max=maximum, step=step),
-        doc=doc,
-        advanced=advanced,
+        tooltip=doc,
     )
 
 
@@ -73,7 +73,7 @@ def matrix_quaternion(torch: Any, matrix: Any) -> Any:
 
 def _camera_info(
     torch: Any,
-    mode: Mapping[str, Any],
+    mode: Record,
     target: list[float],
     roll: float,
     fov: float,
@@ -81,11 +81,14 @@ def _camera_info(
     camera_type: str,
     device: Any,
 ) -> dict[str, object]:
-    kind = mode["mode"]
+    kind = mode.key
     if kind == "orbit":
-        yaw, pitch = math.radians(mode["yaw"]), math.radians(mode["pitch"])
+        yaw, pitch = (
+            math.radians(cast("float", mode["yaw"])),
+            math.radians(cast("float", mode["pitch"])),
+        )
         cy, sy, cp, sp = math.cos(yaw), math.sin(yaw), math.cos(pitch), math.sin(pitch)
-        distance = mode["distance"]
+        distance = cast("float", mode["distance"])
         position = [
             target[0] + distance * cp * sy,
             target[1] + distance * sp,
@@ -95,7 +98,7 @@ def _camera_info(
         position = [mode["position_x"], mode["position_y"], mode["position_z"]]
     pos = torch.as_tensor(position, dtype=torch.float32, device=device)
     if kind == "quaternion":
-        qx, qy, qz, qw = (float(mode[f"quat_{axis}"]) for axis in "xyzw")
+        qx, qy, qz, qw = (float(cast("float", mode[f"quat_{axis}"])) for axis in "xyzw")
         quaternion = torch.tensor([qw, qx, qy, qz], dtype=torch.float32, device=device)
         quaternion = quaternion / quaternion.norm().clamp_min(1e-8)
         q = quaternion / quaternion.norm(dim=-1, keepdim=True).clamp_min(1e-12)
@@ -177,13 +180,13 @@ class CreateCameraInfo(Node):
                 "target; 'look_at' places the camera at world position. Coordinates are the "
                 "viewer's world space (right-handed,Y-up)."
             ),
-            combos=(
-                DynamicComboSpec(
+            body=(
+                Choice(
                     "mode",
-                    (
-                        DynamicComboOption(
+                    options=(
+                        Option(
                             "orbit",
-                            (
+                            rows=(
                                 _number("yaw", 35.0, -360.0, 360.0, 1.0),
                                 _number("pitch", 30.0, -89.0, 89.0, 1.0),
                                 _number(
@@ -196,11 +199,16 @@ class CreateCameraInfo(Node):
                                 ),
                             ),
                         ),
-                        DynamicComboOption("look_at", position_inputs),
-                        DynamicComboOption(
+                        Option(
+                            "look_at",
+                            rows=(Use("position_x"), Use("position_y"), Use("position_z")),
+                        ),
+                        Option(
                             "quaternion",
-                            (
-                                *position_inputs,
+                            rows=(
+                                Use("position_x"),
+                                Use("position_y"),
+                                Use("position_z"),
                                 _number("quat_x", 0.0, -1.0, 1.0, 0.001),
                                 _number("quat_y", 0.0, -1.0, 1.0, 0.001),
                                 _number("quat_z", 0.0, -1.0, 1.0, 0.001),
@@ -218,28 +226,12 @@ class CreateCameraInfo(Node):
                             ),
                         ),
                     ),
-                    doc=(
+                    shared=position_inputs,
+                    tooltip=(
                         "How to define the camera: orbit angles, an explicit position, "
                         "or a position + quaternion."
                     ),
                 ),
-            ),
-            inputs=(
-                _number(
-                    "target_x",
-                    0.0,
-                    -1000.0,
-                    1000.0,
-                    0.01,
-                    advanced=True,
-                    doc=(
-                        "Look-at point (orbit pivot / aim). In orbit mode, move it to "
-                        "pan/translate the whole camera. Ignored in quaternion mode. "
-                        "Defaults to the origin."
-                    ),
-                ),
-                _number("target_y", 0.0, -1000.0, 1000.0, 0.01, advanced=True),
-                _number("target_z", 0.0, -1000.0, 1000.0, 0.01, advanced=True),
                 _number(
                     "roll", 0.0, -180.0, 180.0, 1.0, doc="Camera roll about the view axis, degrees."
                 ),
@@ -255,37 +247,49 @@ class CreateCameraInfo(Node):
                         ">1 zooms in without moving the camera."
                     ),
                 ),
-                InputSpec(
+                Input(
                     "camera_type",
                     TypeExpr.concrete(CORE_COMBO),
                     widget=ComboWidget(("perspective", "orthographic")),
-                    doc=(
+                    tooltip=(
                         "Projection used by Render Splat: perspective (foreshortening) "
                         "or orthographic (parallel)."
                     ),
                 ),
-                InputSpec(
-                    "camera_info_state",
-                    TypeExpr.concrete(CAMERA_INFO_STATE_TYPE),
-                    required=False,
-                    socketless=True,
+                Section(
+                    "advanced",
+                    label="Advanced",
+                    collapsed=True,
+                    rows=(
+                        _number(
+                            "target_x",
+                            0.0,
+                            -1000.0,
+                            1000.0,
+                            0.01,
+                            doc=(
+                                "Look-at point (orbit pivot / aim). In orbit mode, move it to "
+                                "pan/translate the whole camera. Ignored in quaternion mode. "
+                                "Defaults to the origin."
+                            ),
+                        ),
+                        _number(
+                            "target_y",
+                            0.0,
+                            -1000.0,
+                            1000.0,
+                            0.01,
+                        ),
+                        _number(
+                            "target_z",
+                            0.0,
+                            -1000.0,
+                            1000.0,
+                            0.01,
+                        ),
+                    ),
                 ),
-            ),
-            input_order=(
-                "mode",
-                "target_x",
-                "target_y",
-                "target_z",
-                "roll",
-                "fov",
-                "zoom",
-                "camera_type",
-                "camera_info_state",
-            ),
-            outputs=(
-                OutputSpec(
-                    "camera_info", TypeExpr.concrete(LOAD3D_CAMERA_TYPE), display_name="camera_info"
-                ),
+                Output("camera_info", TypeExpr.concrete(LOAD3D_CAMERA_TYPE), label="camera_info"),
             ),
         )
         return with_identity_replacement(schema, "CreateCameraInfo")
@@ -294,7 +298,7 @@ class CreateCameraInfo(Node):
     def execute(
         cls,
         *,
-        mode: str | Mapping[str, Any],
+        mode: Record,
         target_x: float,
         target_y: float,
         target_z: float,
@@ -302,17 +306,10 @@ class CreateCameraInfo(Node):
         fov: float,
         zoom: float = 1.0,
         camera_type: str = "perspective",
-        camera_info_state: object = None,
-        **values: Any,
     ) -> Mapping[str, object]:
         initialize_inference_process()
         torch = importlib.import_module("torch")
         management = importlib.import_module("dinkster_inference.model_management")
-        if isinstance(mode, str):
-            mode = {
-                "mode": mode,
-                **{key.removeprefix("mode."): value for key, value in values.items()},
-            }
         return cls.outputs(
             camera_info=_camera_info(
                 torch,

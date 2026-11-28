@@ -11,11 +11,11 @@ from dinkster_api.v1 import (
     CORE_FLOAT,
     CORE_INT,
     MESH_TYPE,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
     TypeExpr,
     initialize_inference_process,
     with_identity_replacement,
@@ -159,39 +159,39 @@ class FillHoles(Node):
             category="3d/mesh",
             description="Fills holes up to a max perimeter, preserving existing geometry/UVs. "
             "GPU-vectorised with auto-corrected winding and loop-averaged centroid colors",
-            inputs=(
-                InputSpec("mesh", TypeExpr.concrete(MESH_TYPE)),
-                InputSpec(
+            body=(
+                Input("mesh", TypeExpr.concrete(MESH_TYPE)),
+                Input(
                     "max_perimeter",
                     TypeExpr.concrete(CORE_FLOAT),
                     default=0.03,
                     widget=NumberWidget(min=0.0, step=0.0001),
-                    doc="Max hole perimeter to fill. 0 disables.",
+                    tooltip="Max hole perimeter to fill. 0 disables.",
                 ),
-                InputSpec(
+                Input(
                     "weld_epsilon_rel",
                     TypeExpr.concrete(CORE_FLOAT),
                     default=1e-5,
                     widget=NumberWidget(min=0.0, step=1e-6),
-                    doc="Pre-weld tolerance (fraction of bounding box diagonal); "
+                    tooltip="Pre-weld tolerance (fraction of bounding box diagonal); "
                     "boundary detection needs welded vertices. 0 skips.",
                 ),
-                InputSpec(
+                Input(
                     "max_vertices",
                     TypeExpr.concrete(CORE_INT),
                     default=16,
                     widget=NumberWidget(min=3, max=1024),
-                    doc="Cap boundary vertices per cycle; centroid-fan only works for small "
+                    tooltip="Cap boundary vertices per cycle; centroid-fan only works for small "
                     "near-planar holes. Keep <=16.",
                 ),
-                InputSpec(
+                Input(
                     "fill_chains",
                     TypeExpr.concrete(CORE_BOOLEAN),
                     default=False,
-                    doc="Also fill open chains (not just cycles). Noisy; OFF matches cumesh.",
+                    tooltip="Also fill open chains (not just cycles). Noisy; OFF matches cumesh.",
                 ),
+                Output("mesh", TypeExpr.concrete(MESH_TYPE)),
             ),
-            outputs=(OutputSpec("mesh", TypeExpr.concrete(MESH_TYPE)),),
         )
         return with_identity_replacement(schema, "FillHoles")
 

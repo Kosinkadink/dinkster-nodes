@@ -16,11 +16,14 @@ from dinkster_api.v1 import (
     DETECTION_TYPE,
     REGION_TYPE,
     CompositorWidget,
+    Editor,
     ImageDocument,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
-    OutputSpec,
+    Output,
+    Section,
+    State,
     StringWidget,
     TypeExpr,
     append_raster,
@@ -50,10 +53,10 @@ class AddLayer(Node):
             node_type="dinkster.layers.add",
             display_name="Add Layer",
             category="image/compositor",
-            inputs=(
-                InputSpec("layers", LAYERS, required=False, default=None),
-                InputSpec("image", IMAGE),
-                InputSpec(
+            body=(
+                Input("layers", LAYERS, required=False, default=None),
+                Input("image", IMAGE),
+                Input(
                     "mask",
                     MASK,
                     required=False,
@@ -61,26 +64,23 @@ class AddLayer(Node):
                     mask_polarity="transparency",
                     mask_semantic="alpha",
                 ),
-                InputSpec(
+                Input(
                     "name",
                     TypeExpr.concrete(CORE_STRING),
                     required=False,
                     default="Layer",
                     widget=StringWidget(),
                 ),
-                *(
-                    InputSpec(key, FLOAT, required=False, default=0.0)
-                    for key in ("x", "y", "rotation")
-                ),
-                *(InputSpec(key, INT, required=False, default=0) for key in ("width", "height")),
-                InputSpec("opacity", FLOAT, required=False, default=1.0),
-                InputSpec("z_index", INT, required=False, default=0),
+                *(Input(key, FLOAT, required=False, default=0.0) for key in ("x", "y", "rotation")),
+                *(Input(key, INT, required=False, default=0) for key in ("width", "height")),
+                Input("opacity", FLOAT, required=False, default=1.0),
+                Input("z_index", INT, required=False, default=0),
                 combo_input("blend_mode", BLEND_MODES, "normal"),
-                InputSpec("visible", BOOLEAN, required=False, default=True),
-                InputSpec("flip_horizontal", BOOLEAN, required=False, default=False),
-                InputSpec("flip_vertical", BOOLEAN, required=False, default=False),
+                Input("visible", BOOLEAN, required=False, default=True),
+                Input("flip_horizontal", BOOLEAN, required=False, default=False),
+                Input("flip_vertical", BOOLEAN, required=False, default=False),
+                Output("layers", LAYERS),
             ),
-            outputs=(OutputSpec("layers", LAYERS),),
         )
 
     @classmethod
@@ -150,16 +150,16 @@ class LayersFromBoundingBoxes(Node):
             node_type="dinkster.layers.from_bounding_boxes",
             display_name="Layers From Bounding Boxes",
             category="image/compositor",
-            inputs=(
-                InputSpec("layers", LAYERS, required=False, default=None),
-                InputSpec("image", IMAGE),
-                InputSpec(
+            body=(
+                Input("layers", LAYERS, required=False, default=None),
+                Input("image", IMAGE),
+                Input(
                     "bounding_boxes",
                     TypeExpr.list_of(TypeExpr.union(REGION_TYPE, DETECTION_TYPE)),
                     required=False,
                     default=None,
                 ),
-                InputSpec(
+                Input(
                     "mask",
                     MASK,
                     required=False,
@@ -167,18 +167,18 @@ class LayersFromBoundingBoxes(Node):
                     mask_polarity="transparency",
                     mask_semantic="alpha",
                 ),
-                InputSpec("canvas_width", INT, required=False, default=0),
-                InputSpec("canvas_height", INT, required=False, default=0),
-                InputSpec(
+                Input("canvas_width", INT, required=False, default=0),
+                Input("canvas_height", INT, required=False, default=0),
+                Input(
                     "bboxes",
                     TypeExpr.union(CORE_STRING, BOUNDING_BOX_TYPE, COMFY_ARRAY_TYPE),
                     required=False,
                     default=None,
-                    force_input=True,
+                    pin_first=True,
                 ),
-                InputSpec("crop_to_content", BOOLEAN, required=False, default=True),
+                Input("crop_to_content", BOOLEAN, required=False, default=True),
+                Output("layers", LAYERS),
             ),
-            outputs=(OutputSpec("layers", LAYERS),),
         )
 
     @classmethod
@@ -311,20 +311,28 @@ class CreateLayeredImage(Node):
             editor_role="compositor",
             display_name="Create Layered Image",
             category="image/compositor",
-            inputs=(
-                InputSpec("layers", LAYERS),
-                InputSpec(
+            body=(
+                Input("layers", LAYERS),
+                State(
                     "compositor",
                     COMPOSITOR,
-                    required=False,
                     default={"version": 2, "documentDigest": None, "commands": []},
-                    widget=CompositorWidget(),
                 ),
-                combo_input("color_space", ("perceptual", "linear"), "perceptual", advanced=True),
-            ),
-            outputs=(
-                OutputSpec("image", IMAGE, preview=True),
-                OutputSpec(
+                Editor("composition", CompositorWidget(writes={"value": "compositor"})),
+                Section(
+                    "advanced",
+                    label="Advanced",
+                    collapsed=True,
+                    rows=(
+                        combo_input(
+                            "color_space",
+                            ("perceptual", "linear"),
+                            "perceptual",
+                        ),
+                    ),
+                ),
+                Output("image", IMAGE, preview=True),
+                Output(
                     "transparency_mask",
                     MASK,
                     preview=True,

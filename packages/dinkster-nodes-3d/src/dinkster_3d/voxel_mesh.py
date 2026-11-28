@@ -14,11 +14,11 @@ from dinkster_api.v1 import (
     ComboOption,
     ComboWidget,
     Deprecation,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
     TriangleMeshBatch,
     TypeExpr,
     materialize_voxel,
@@ -262,7 +262,7 @@ def _extract(voxel: object, algorithm: str, threshold: float) -> TriangleMeshBat
 
 _VOXEL = TypeExpr.concrete(VOXEL_TYPE)
 _MESH = TypeExpr.concrete(MESH_TYPE)
-_THRESHOLD = InputSpec(
+_THRESHOLD = Input(
     "threshold",
     TypeExpr.concrete(CORE_FLOAT),
     default=0.6,
@@ -280,8 +280,11 @@ class VoxelToMeshBasic(Node):
             description="Converts a voxel grid to a mesh.",
             deprecation=Deprecation(message="Use VoxelToMesh instead."),
             search_visibility="deprecated",
-            inputs=(InputSpec("voxel", _VOXEL), _THRESHOLD),
-            outputs=(OutputSpec("MESH", _MESH),),
+            body=(
+                Input("voxel", _VOXEL),
+                _THRESHOLD,
+                Output("MESH", _MESH),
+            ),
         )
         return with_identity_replacement(schema, "VoxelToMeshBasic")
 
@@ -298,17 +301,17 @@ class VoxelToMesh(Node):
             display_name="Voxel to Mesh",
             category="3d",
             description="Converts a voxel grid to a mesh.",
-            inputs=(
-                InputSpec("voxel", _VOXEL),
-                InputSpec(
+            body=(
+                Input("voxel", _VOXEL),
+                Input(
                     "algorithm",
                     TypeExpr.concrete(CORE_COMBO),
                     default="surface net",
                     widget=ComboWidget(options=(ComboOption("surface net"), ComboOption("basic"))),
                 ),
                 _THRESHOLD,
+                Output("MESH", _MESH),
             ),
-            outputs=(OutputSpec("MESH", _MESH),),
         )
         return with_identity_replacement(schema, "VoxelToMesh")
 

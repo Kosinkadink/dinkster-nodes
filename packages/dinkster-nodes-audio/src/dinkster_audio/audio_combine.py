@@ -11,10 +11,10 @@ from dinkster_api.v1 import (
     CORE_COMBO,
     ComboOption,
     ComboWidget,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
-    OutputSpec,
+    Output,
     TypeExpr,
     initialize_inference_process,
     materialize_audio,
@@ -61,8 +61,11 @@ class JoinAudioChannels(Node):
             display_name="Join Audio Channels",
             description="Joins left and right mono audio channels into a stereo audio.",
             category="audio",
-            inputs=(InputSpec("audio_left", _AUDIO), InputSpec("audio_right", _AUDIO)),
-            outputs=(OutputSpec("audio", _AUDIO),),
+            body=(
+                Input("audio_left", _AUDIO),
+                Input("audio_right", _AUDIO),
+                Output("audio", _AUDIO),
+            ),
         )
         return with_identity_replacement(schema, "JoinAudioChannels")
 
@@ -104,17 +107,17 @@ class AudioConcat(Node):
             display_name="Concatenate Audio",
             description="Concatenates the audio1 to audio2 in the specified direction.",
             category="audio",
-            inputs=(
-                InputSpec("audio1", _AUDIO),
-                InputSpec("audio2", _AUDIO),
-                InputSpec(
+            body=(
+                Input("audio1", _AUDIO),
+                Input("audio2", _AUDIO),
+                Input(
                     "direction",
                     _COMBO,
                     default="after",
                     widget=ComboWidget((ComboOption("after"), ComboOption("before"))),
                 ),
+                Output("AUDIO", _AUDIO),
             ),
-            outputs=(OutputSpec("AUDIO", _AUDIO),),
         )
         return with_identity_replacement(schema, "AudioConcat")
 
@@ -154,10 +157,10 @@ class AudioMerge(Node):
             display_name="Merge Audio",
             description="Combine two audio tracks by overlaying their waveforms.",
             category="audio",
-            inputs=(
-                InputSpec("audio1", _AUDIO),
-                InputSpec("audio2", _AUDIO),
-                InputSpec(
+            body=(
+                Input("audio1", _AUDIO),
+                Input("audio2", _AUDIO),
+                Input(
                     "merge_method",
                     _COMBO,
                     widget=ComboWidget(
@@ -167,8 +170,8 @@ class AudioMerge(Node):
                         )
                     ),
                 ),
+                Output("AUDIO", _AUDIO),
             ),
-            outputs=(OutputSpec("AUDIO", _AUDIO),),
         )
         return with_identity_replacement(schema, "AudioMerge")
 

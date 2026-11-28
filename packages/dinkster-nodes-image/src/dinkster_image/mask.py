@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import dataclasses
 import math
 from collections import deque
 from collections.abc import Iterable, Mapping
@@ -18,15 +17,17 @@ from dinkster_api.v1 import (
     CORE_STRING,
     IMAGE_TYPE,
     MASK_TYPE,
+    Choice,
     ColorWidget,
-    DynamicComboOption,
-    DynamicComboSpec,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
-    OutputSpec,
+    Option,
+    Output,
+    Section,
     StringWidget,
     TypeExpr,
+    Use,
     annotate_mask,
     copy_media_semantics,
     media_semantics,
@@ -39,6 +40,7 @@ from .support import (
     MAX_IMAGE_BYTES,
     materialized_inputs,
     normalize_mask_polarity,
+    with_shared,
 )
 from .support import (
     color_from_int as _color_from_int,
@@ -186,9 +188,9 @@ class MakeMask(Node):
             _number("shape_width", INT, 256, minimum=1, maximum=MAX_DIMENSION, step=1),
             _number("shape_height", INT, 256, minimum=1, maximum=MAX_DIMENSION, step=1),
             _number("grow", INT, 0, minimum=-MAX_DIMENSION, maximum=MAX_DIMENSION, step=1),
-            InputSpec("region", REGION, required=False),
-            InputSpec("points_x", FLOAT_LIST, required=False),
-            InputSpec("points_y", FLOAT_LIST, required=False),
+            Input("region", REGION, required=False),
+            Input("points_x", FLOAT_LIST, required=False),
+            Input("points_y", FLOAT_LIST, required=False),
             _number("angle", FLOAT, 0.0, step=0.1),
             _number("center_x", FLOAT, 0.5, step=0.01),
             _number("center_y", FLOAT, 0.5, step=0.01),
@@ -213,14 +215,18 @@ class MakeMask(Node):
             _combo("timing_function", ("linear", "in", "out", "in_out"), "linear"),
             _number("tile_size", INT, 32, minimum=1, maximum=MAX_DIMENSION, step=1),
             _number("seed", INT, 0, minimum=0, maximum=0x1FFFFFFFFFFFFF, step=1),
-            _combo("noise_mode", ("uniform", "binary"), "uniform", advanced=True),
+            _combo(
+                "noise_mode",
+                ("uniform", "binary"),
+                "uniform",
+            ),
             _number("noise_density", FLOAT, 0.5, minimum=0.0, maximum=1.0, step=0.01),
-            InputSpec("invert", BOOLEAN, required=False, default=False),
+            Input("invert", BOOLEAN, required=False, default=False),
         )
         by_id = {item.id: item for item in inputs}
 
-        def option(key: str, *ids: str) -> DynamicComboOption:
-            return DynamicComboOption(key, tuple(by_id[id_] for id_ in ids))
+        def option(key: str, *ids: str) -> Option:
+            return Option(key, rows=tuple(Use(id_) for id_ in ids))
 
         foreground_background = ("foreground", "background")
         return with_v1_migration(
@@ -229,66 +235,75 @@ class MakeMask(Node):
                 node_type="dinkster.mask.make",
                 display_name="Create Mask",
                 category="mask/create",
-                inputs=tuple(by_id[id_] for id_ in ("width", "height", "batch_size", "invert")),
-                combos=(
-                    DynamicComboSpec(
-                        "operation",
-                        (
-                            option("solid", "foreground"),
-                            *(
+                body=(
+                    *tuple(by_id[id_] for id_ in ("width", "height", "batch_size", "invert")),
+                    with_shared(
+                        Choice(
+                            "operation",
+                            options=(
+                                option("solid", "foreground"),
+                                *(
+                                    option(
+                                        key,
+                                        "foreground",
+                                        "background",
+                                        "x",
+                                        "y",
+                                        "shape_origin",
+                                        "shape_width",
+                                        "shape_height",
+                                        "grow",
+                                    )
+                                    for key in ("rectangle", "ellipse", "triangle")
+                                ),
                                 option(
-                                    key,
-                                    "foreground",
-                                    "background",
-                                    "x",
-                                    "y",
-                                    "shape_origin",
-                                    "shape_width",
-                                    "shape_height",
-                                    "grow",
-                                )
-                                for key in ("rectangle", "ellipse", "triangle")
-                            ),
-                            option("polygon", "foreground", "background", "points_x", "points_y"),
-                            option("region", "foreground", "background", "region"),
-                            option("linear_gradient", *foreground_background, "angle"),
-                            option(
-                                "radial_gradient",
-                                *foreground_background,
-                                "center_x",
-                                "center_y",
-                                "radius",
-                            ),
-                            option("frame_gradient"),
-                            option(
-                                "transition",
-                                *foreground_background,
-                                "start_frame",
-                                "end_frame",
-                                "transition_type",
-                                "timing_function",
-                            ),
-                            option("checkerboard", *foreground_background, "tile_size"),
-                            DynamicComboOption(
-                                "noise",
-                                (
-                                    by_id["foreground"],
-                                    by_id["background"],
-                                    by_id["seed"],
-                                    DynamicComboSpec(
-                                        "noise_mode",
-                                        (option("uniform"), option("binary", "noise_density")),
-                                        default="uniform",
+                                    "polygon", "foreground", "background", "points_x", "points_y"
+                                ),
+                                option("region", "foreground", "background", "region"),
+                                option("linear_gradient", *foreground_background, "angle"),
+                                option(
+                                    "radial_gradient",
+                                    *foreground_background,
+                                    "center_x",
+                                    "center_y",
+                                    "radius",
+                                ),
+                                option("frame_gradient"),
+                                option(
+                                    "transition",
+                                    *foreground_background,
+                                    "start_frame",
+                                    "end_frame",
+                                    "transition_type",
+                                    "timing_function",
+                                ),
+                                option("checkerboard", *foreground_background, "tile_size"),
+                                Option(
+                                    "noise",
+                                    rows=(
+                                        Use("foreground"),
+                                        Use("background"),
+                                        Use("seed"),
+                                        with_shared(
+                                            Choice(
+                                                "noise_mode",
+                                                options=(
+                                                    option("uniform"),
+                                                    option("binary", "noise_density"),
+                                                ),
+                                                default="uniform",
+                                            ),
+                                            by_id,
+                                        ),
                                     ),
                                 ),
                             ),
+                            default="solid",
                         ),
-                        default="solid",
+                        by_id,
                     ),
-                ),
-                outputs=(
-                    OutputSpec("mask", MASK, preview=True),
-                    OutputSpec("inverse_mask", MASK, preview=True),
+                    Output("mask", MASK, preview=True),
+                    Output("inverse_mask", MASK, preview=True),
                 ),
                 search_terms=(
                     "SolidMask",
@@ -479,8 +494,8 @@ class TextMask(Node):
                 node_type="dinkster.mask.text",
                 display_name="Create Text Mask",
                 category="mask/create",
-                inputs=(
-                    InputSpec("text", STRING, widget=StringWidget(multiline=True)),
+                body=(
+                    Input("text", STRING, widget=StringWidget(multiline=True)),
                     _number("width", INT, 512, minimum=1, maximum=MAX_DIMENSION, step=1),
                     _number("height", INT, 512, minimum=1, maximum=MAX_DIMENSION, step=1),
                     _number("batch_size", INT, 1, minimum=1, maximum=4096, step=1),
@@ -488,32 +503,42 @@ class TextMask(Node):
                     _number("y", INT, 0, step=1),
                     _number("font_size", INT, 32, minimum=1, maximum=1024, step=1),
                     _number("background", FLOAT, 0.0, minimum=0.0, maximum=1.0, step=0.01),
-                    InputSpec(
+                    Input(
                         "color",
                         STRING,
                         required=False,
                         default="#ffffff",
                         widget=ColorWidget(),
                     ),
-                    _number("line_spacing", INT, 4, minimum=0, maximum=1024, step=1, advanced=True),
                     _number("start_rotation", FLOAT, 0.0, step=0.1),
                     _number("end_rotation", FLOAT, 0.0, step=0.1),
-                    InputSpec("invert", BOOLEAN, required=False, default=False),
-                ),
-                combos=(
-                    DynamicComboSpec(
+                    Input("invert", BOOLEAN, required=False, default=False),
+                    Choice(
                         "mask_value",
-                        (
-                            DynamicComboOption("foreground", (foreground,)),
-                            DynamicComboOption("color_red"),
+                        options=(
+                            Option("foreground", rows=(foreground,)),
+                            Option("color_red"),
                         ),
                         default="foreground",
                     ),
-                ),
-                outputs=(
-                    OutputSpec("mask", MASK, preview=True),
-                    OutputSpec("image", IMAGE, preview=True),
-                    OutputSpec("inverse_mask", MASK, preview=True),
+                    Section(
+                        "advanced",
+                        label="Advanced",
+                        collapsed=True,
+                        rows=(
+                            _number(
+                                "line_spacing",
+                                INT,
+                                4,
+                                minimum=0,
+                                maximum=1024,
+                                step=1,
+                            ),
+                        ),
+                    ),
+                    Output("mask", MASK, preview=True),
+                    Output("image", IMAGE, preview=True),
+                    Output("inverse_mask", MASK, preview=True),
                 ),
                 search_terms=("CreateTextMask", "Mask By Text", "text raster"),
             )
@@ -841,7 +866,11 @@ class MaskMorphology(Node):
                 maximum=MAX_DIMENSION * MAX_DIMENSION,
                 step=1,
             ),
-            _combo("connectivity", ("4", "8"), "8", advanced=True),
+            _combo(
+                "connectivity",
+                ("4", "8"),
+                "8",
+            ),
             _number("radius", INT, 1, minimum=-4096, maximum=4096, step=1),
             _number("blur_radius", INT, 0, minimum=0, maximum=4096, step=1),
             _number("blur_amount", FLOAT, 0.0, minimum=0.0, maximum=100.0, step=0.1),
@@ -852,10 +881,21 @@ class MaskMorphology(Node):
                 minimum=0.0,
                 maximum=100.0,
                 step=0.1,
-                advanced=True,
             ),
-            InputSpec("flip_input", BOOLEAN, required=False, default=False, advanced=True),
-            _number("lerp_alpha", FLOAT, 1.0, minimum=0.0, maximum=1.0, step=0.01, advanced=True),
+            Input(
+                "flip_input",
+                BOOLEAN,
+                required=False,
+                default=False,
+            ),
+            _number(
+                "lerp_alpha",
+                FLOAT,
+                1.0,
+                minimum=0.0,
+                maximum=1.0,
+                step=0.01,
+            ),
             _number(
                 "decay_factor",
                 FLOAT,
@@ -863,14 +903,35 @@ class MaskMorphology(Node):
                 minimum=0.0,
                 maximum=1.0,
                 step=0.01,
-                advanced=True,
             ),
-            InputSpec("fill_holes", BOOLEAN, required=False, default=False, advanced=True),
+            Input(
+                "fill_holes",
+                BOOLEAN,
+                required=False,
+                default=False,
+            ),
             _number("kernel_size", INT, 3, minimum=1, maximum=4097, step=2),
             _number("iterations", INT, 1, minimum=1, maximum=4096, step=1),
-            InputSpec("tapered_corners", BOOLEAN, required=False, default=True, advanced=True),
-            _number("sigma", FLOAT, 1.0, minimum=0.001, maximum=4096.0, step=0.01, advanced=True),
-            _number("edge_value", FLOAT, 0.0, step=0.01, advanced=True),
+            Input(
+                "tapered_corners",
+                BOOLEAN,
+                required=False,
+                default=True,
+            ),
+            _number(
+                "sigma",
+                FLOAT,
+                1.0,
+                minimum=0.001,
+                maximum=4096.0,
+                step=0.01,
+            ),
+            _number(
+                "edge_value",
+                FLOAT,
+                0.0,
+                step=0.01,
+            ),
             _number("left", INT, 0, minimum=0, maximum=MAX_DIMENSION, step=1),
             _number("top", INT, 0, minimum=0, maximum=MAX_DIMENSION, step=1),
             _number("right", INT, 0, minimum=0, maximum=MAX_DIMENSION, step=1),
@@ -883,34 +944,45 @@ class MaskMorphology(Node):
             _number("input_high", FLOAT, 1.0, step=0.01),
             _number("output_low", FLOAT, 0.0, step=0.01),
             _number("output_high", FLOAT, 1.0, step=0.01),
-            InputSpec("clamp", BOOLEAN, required=False, default=True, advanced=True),
-            _combo("block_mode", ("mean", "min", "max"), "mean", advanced=True),
+            Input(
+                "clamp",
+                BOOLEAN,
+                required=False,
+                default=True,
+            ),
+            _combo(
+                "block_mode",
+                ("mean", "min", "max"),
+                "mean",
+            ),
         )
         by_id = {item.id: item for item in dynamic_inputs}
 
-        def edge_policy() -> DynamicComboSpec:
-            return DynamicComboSpec(
+        pool: dict[str, Input | Choice] = {
+            **by_id,
+            "edge_policy": Choice(
                 "edge_policy",
-                (
-                    DynamicComboOption("constant", (by_id["edge_value"],)),
-                    DynamicComboOption("replicate"),
-                    DynamicComboOption("reflect"),
-                    DynamicComboOption("wrap"),
+                options=(
+                    Option("constant", rows=(by_id["edge_value"],)),
+                    Option("replicate"),
+                    Option("reflect"),
+                    Option("wrap"),
                 ),
                 default="constant",
-            )
+            ),
+        }
 
         def option(
             key: str,
             *ids: str,
             edge: bool = False,
-        ) -> DynamicComboOption:
-            inputs: tuple[InputSpec | DynamicComboSpec, ...] = tuple(
-                by_id[input_id] for input_id in ids
+        ) -> Option:
+            return Option(
+                key,
+                rows=tuple(
+                    Use(input_id) for input_id in (*ids, *(("edge_policy",) if edge else ()))
+                ),
             )
-            if edge:
-                inputs = (*inputs, edge_policy())
-            return DynamicComboOption(key, inputs)
 
         return with_v1_migration(
             NodeSchema(
@@ -918,72 +990,78 @@ class MaskMorphology(Node):
                 node_type="dinkster.mask.morphology",
                 display_name="Mask Morphology",
                 category="mask/operations",
-                inputs=(InputSpec("mask", MASK),),
-                combos=(
-                    DynamicComboSpec(
-                        "operation",
-                        (
-                            option("threshold", "threshold"),
-                            option(
-                                "remove_small_components",
-                                "minimum_area",
-                                "threshold",
-                                "connectivity",
-                            ),
-                            option("fill_holes"),
-                            option(
-                                "grow_erode", "radius", "iterations", "tapered_corners", edge=True
-                            ),
-                            option(
-                                "grow_blur",
-                                "radius",
-                                "blur_radius",
-                                "blur_amount",
-                                "incremental_expandrate",
-                                "flip_input",
-                                "lerp_alpha",
-                                "decay_factor",
-                                "fill_holes",
-                                "iterations",
-                                "tapered_corners",
-                                "sigma",
-                                edge=True,
-                            ),
-                            option(
-                                "open", "kernel_size", "iterations", "tapered_corners", edge=True
-                            ),
-                            option(
-                                "close", "kernel_size", "iterations", "tapered_corners", edge=True
-                            ),
-                            option("feather_edges", "left", "top", "right", "bottom"),
-                            DynamicComboOption(
-                                "blur",
-                                (
-                                    by_id["radius"],
-                                    dataclasses.replace(by_id["sigma"], advanced=False),
-                                    edge_policy(),
+                body=(
+                    Input("mask", MASK),
+                    with_shared(
+                        Choice(
+                            "operation",
+                            options=(
+                                option("threshold", "threshold"),
+                                option(
+                                    "remove_small_components",
+                                    "minimum_area",
+                                    "threshold",
+                                    "connectivity",
                                 ),
+                                option("fill_holes"),
+                                option(
+                                    "grow_erode",
+                                    "radius",
+                                    "iterations",
+                                    "tapered_corners",
+                                    edge=True,
+                                ),
+                                option(
+                                    "grow_blur",
+                                    "radius",
+                                    "blur_radius",
+                                    "blur_amount",
+                                    "incremental_expandrate",
+                                    "flip_input",
+                                    "lerp_alpha",
+                                    "decay_factor",
+                                    "fill_holes",
+                                    "iterations",
+                                    "tapered_corners",
+                                    "sigma",
+                                    edge=True,
+                                ),
+                                option(
+                                    "open",
+                                    "kernel_size",
+                                    "iterations",
+                                    "tapered_corners",
+                                    edge=True,
+                                ),
+                                option(
+                                    "close",
+                                    "kernel_size",
+                                    "iterations",
+                                    "tapered_corners",
+                                    edge=True,
+                                ),
+                                option("feather_edges", "left", "top", "right", "bottom"),
+                                option("blur", "radius", "sigma", edge=True),
+                                option("offset", "x", "y", edge=True),
+                                option(
+                                    "remap",
+                                    "input_low",
+                                    "input_high",
+                                    "output_low",
+                                    "output_high",
+                                    "clamp",
+                                ),
+                                option("round", "radius", "iterations", edge=True),
+                                option("block", "kernel_size", "block_mode"),
+                                option("invert"),
+                                option("crop", "x", "y", "width", "height"),
                             ),
-                            option("offset", "x", "y", edge=True),
-                            option(
-                                "remap",
-                                "input_low",
-                                "input_high",
-                                "output_low",
-                                "output_high",
-                                "clamp",
-                            ),
-                            option("round", "radius", "iterations", edge=True),
-                            option("block", "kernel_size", "block_mode"),
-                            option("invert"),
-                            option("crop", "x", "y", "width", "height"),
+                            default="threshold",
                         ),
-                        default="threshold",
+                        pool,
                     ),
-                ),
-                outputs=(
-                    OutputSpec("mask", MASK, preview=True),
-                    OutputSpec("inverse_mask", MASK, preview=True),
+                    Output("mask", MASK, preview=True),
+                    Output("inverse_mask", MASK, preview=True),
                 ),
                 search_terms=(
                     "ThresholdMask",
@@ -1269,9 +1347,9 @@ class MaskCombine(Node):
             node_type="dinkster.mask.combine",
             display_name="Combine Masks",
             category="mask/operations",
-            inputs=(
-                InputSpec("destination", MASK),
-                InputSpec("source", MASK),
+            body=(
+                Input("destination", MASK),
+                Input("source", MASK),
                 _combo(
                     "operation",
                     ("multiply", "add", "subtract", "min", "max", "and", "or", "xor"),
@@ -1279,14 +1357,20 @@ class MaskCombine(Node):
                 ),
                 _number("x", INT, 0, step=1),
                 _number("y", INT, 0, step=1),
-                _combo(
-                    "batch_policy",
-                    ("singleton_broadcast", "source_singleton"),
-                    "singleton_broadcast",
-                    advanced=True,
+                Section(
+                    "advanced",
+                    label="Advanced",
+                    collapsed=True,
+                    rows=(
+                        _combo(
+                            "batch_policy",
+                            ("singleton_broadcast", "source_singleton"),
+                            "singleton_broadcast",
+                        ),
+                    ),
                 ),
+                Output("mask", MASK, preview=True),
             ),
-            outputs=(OutputSpec("mask", MASK, preview=True),),
             search_terms=(
                 "MaskComposite",
                 "Combine Masks",
@@ -1366,12 +1450,12 @@ class ImageToMask(Node):
             ("red", "green", "blue", "alpha", "transparency", "luma"),
             "red",
         )
-        color = InputSpec(
+        color = Input(
             "color",
             STRING,
             required=False,
             default="#000000",
-            widget=ColorWidget(),
+            widget=ColorWidget(alpha=True),
         )
         color_value = _number("color_value", INT, 0, minimum=0, maximum=0xFFFFFF, step=1)
         red = _number("red", INT, 0, minimum=0, maximum=255, step=1)
@@ -1382,19 +1466,17 @@ class ImageToMask(Node):
             "metric",
             ("max_channel", "euclidean_rgb", "euclidean_rgb_sum", "euclidean_rgba"),
             "max_channel",
-            advanced=True,
         )
 
-        def color_source() -> DynamicComboSpec:
-            return DynamicComboSpec(
-                "color_source",
-                (
-                    DynamicComboOption("hex", (color,)),
-                    DynamicComboOption("integer", (color_value,)),
-                    DynamicComboOption("channels", (red, green, blue)),
-                ),
-                default="hex",
-            )
+        color_source = Choice(
+            "color_source",
+            options=(
+                Option("hex", rows=(color,)),
+                Option("integer", rows=(color_value,)),
+                Option("channels", rows=(red, green, blue)),
+            ),
+            default="hex",
+        )
 
         return with_v1_migration(
             NodeSchema(
@@ -1402,24 +1484,23 @@ class ImageToMask(Node):
                 node_type="dinkster.image.to_mask",
                 display_name="Convert Image to Mask",
                 category="mask/convert",
-                inputs=(
-                    InputSpec("image", IMAGE),
-                    InputSpec("invert", BOOLEAN, required=False, default=False),
-                ),
-                combos=(
-                    DynamicComboSpec(
+                body=(
+                    Input("image", IMAGE),
+                    Input("invert", BOOLEAN, required=False, default=False),
+                    Choice(
                         "policy",
-                        (
-                            DynamicComboOption("channel", (channel,)),
-                            DynamicComboOption("exact_color", (color_source(),)),
-                            DynamicComboOption(
-                                "tolerance_color", (color_source(), tolerance, metric)
+                        options=(
+                            Option("channel", rows=(channel,)),
+                            Option("exact_color", rows=(Use("color_source"),)),
+                            Option(
+                                "tolerance_color", rows=(Use("color_source"), tolerance, metric)
                             ),
                         ),
+                        shared=(color_source,),
                         default="channel",
                     ),
+                    Output("mask", MASK, preview=True),
                 ),
-                outputs=(OutputSpec("mask", MASK, preview=True),),
                 search_terms=(
                     "ImageToMask",
                     "ImageColorToMask",
@@ -1534,7 +1615,7 @@ class ImageToMask(Node):
 class MaskToImage(Node):
     @classmethod
     def define_schema(cls) -> NodeSchema:
-        color = InputSpec(
+        color = Input(
             "color",
             STRING,
             required=False,
@@ -1545,7 +1626,6 @@ class MaskToImage(Node):
             "alpha_polarity",
             ("mask_is_opacity", "mask_is_transparency"),
             "mask_is_opacity",
-            advanced=True,
         )
         return with_mask_polarity(
             with_v1_migration(
@@ -1554,18 +1634,18 @@ class MaskToImage(Node):
                     node_type="dinkster.mask.to_image",
                     display_name="Convert Mask to Image",
                     category="mask/convert",
-                    inputs=(InputSpec("mask", MASK),),
-                    combos=(
-                        DynamicComboSpec(
+                    body=(
+                        Input("mask", MASK),
+                        Choice(
                             "channels",
-                            (
-                                DynamicComboOption("rgb"),
-                                DynamicComboOption("rgba", (color, alpha_polarity)),
+                            options=(
+                                Option("rgb"),
+                                Option("rgba", rows=(color, alpha_polarity)),
                             ),
                             default="rgb",
                         ),
+                        Output("image", IMAGE, preview=True),
                     ),
-                    outputs=(OutputSpec("image", IMAGE, preview=True),),
                     search_terms=("MaskToImage", "Convert Masks to Images", "mask preview"),
                 )
             )
@@ -1621,18 +1701,27 @@ class MaskInfo(Node):
             node_type="dinkster.mask.info",
             display_name="Mask Information",
             category="mask/inspect",
-            inputs=(
-                InputSpec("mask", MASK),
+            body=(
+                Input("mask", MASK),
                 _number("threshold", FLOAT, 0.0, minimum=0.0, maximum=1.0, step=0.01),
-                _combo("empty", ("zero_region", "error"), "zero_region", advanced=True),
-            ),
-            outputs=(
-                OutputSpec("mask", MASK, preview=True),
-                OutputSpec("width", INT),
-                OutputSpec("height", INT),
-                OutputSpec("count", INT),
-                OutputSpec("area", INT),
-                OutputSpec("bounds", REGION),
+                Section(
+                    "advanced",
+                    label="Advanced",
+                    collapsed=True,
+                    rows=(
+                        _combo(
+                            "empty",
+                            ("zero_region", "error"),
+                            "zero_region",
+                        ),
+                    ),
+                ),
+                Output("mask", MASK, preview=True),
+                Output("width", INT),
+                Output("height", INT),
+                Output("count", INT),
+                Output("area", INT),
+                Output("bounds", REGION),
             ),
             search_terms=("GetMaskSizeAndCount", "mask area", "mask bounds", "isMaskEmpty"),
         )
@@ -1664,11 +1753,11 @@ class MaskPolarity(Node):
             node_type="dinkster.mask.polarity",
             display_name="Convert Mask Polarity",
             category="mask/convert",
-            inputs=(
-                InputSpec("mask", MASK),
+            body=(
+                Input("mask", MASK),
                 _combo("mask_polarity", ("coverage", "transparency"), "transparency"),
+                Output("mask", MASK, preview=True),
             ),
-            outputs=(OutputSpec("mask", MASK, preview=True),),
             description="Invert mask values and declare the output polarity; retain its semantic.",
         )
 

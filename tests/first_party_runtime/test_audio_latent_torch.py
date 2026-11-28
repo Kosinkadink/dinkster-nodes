@@ -11,11 +11,11 @@ import torch
 from dinkster_api.v1 import (
     CORE_INT,
     LATENT_TYPE,
-    InputSpec,
+    Input,
     MultiStreamLatent,
     Node,
     NodeSchema,
-    OutputSpec,
+    Output,
     TypeExpr,
     materialize_latent,
 )
@@ -154,9 +154,11 @@ class SizeSource(Node):
     def define_schema(cls) -> NodeSchema:
         return NodeSchema(
             "audio-size-fixture.source",
-            outputs=tuple(
-                OutputSpec(name, TypeExpr.concrete(LATENT_TYPE))
-                for name in ("plain", "channel", "joint", "reverse")
+            body=(
+                *tuple(
+                    Output(name, TypeExpr.concrete(LATENT_TYPE))
+                    for name in ("plain", "channel", "joint", "reverse")
+                ),
             ),
         )
 
@@ -177,11 +179,13 @@ class SizeInspect(Node):
     def define_schema(cls) -> NodeSchema:
         return NodeSchema(
             "audio-size-fixture.inspect",
-            inputs=tuple(
-                InputSpec(name, TypeExpr.concrete(CORE_INT))
-                for name in ("length", "audio_channels", "batch_size")
+            body=(
+                *tuple(
+                    Input(name, TypeExpr.concrete(CORE_INT))
+                    for name in ("length", "audio_channels", "batch_size")
+                ),
+                Output("length", TypeExpr.concrete(CORE_INT)),
             ),
-            outputs=(OutputSpec("length", TypeExpr.concrete(CORE_INT)),),
         )
 
     @classmethod

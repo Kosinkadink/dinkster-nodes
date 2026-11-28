@@ -38,6 +38,7 @@ from dinkster_video.video_components import CreateVideo
 from dinkster_workers import InProcessWorker
 
 from tests.async_scenarios import run_scenario
+from tests.body_rows import choices
 
 
 def _frames(count: int = 3, height: int = 6, width: int = 8, channels: int = 3) -> np.ndarray:
@@ -364,7 +365,7 @@ def test_registered_schemas_bind_media_output_types_through_graph_execution(type
     assert uncrop_schema.inputs[0].type.kind == "variable"
     assert uncrop_schema.outputs[0].type == uncrop_schema.inputs[0].type
     assert uncrop_schema.inputs[1].type.kind == "union"
-    source = crop_schema.combos[0]
+    source = choices(crop_schema)[0]
     assert tuple(option.key for option in source.options) == ("masks", "bounding_boxes")
 
     async def scenario() -> None:

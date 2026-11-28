@@ -10,11 +10,12 @@ from dinkster_api.v1 import (
     CORE_FLOAT,
     CORE_INT,
     MODEL_TYPE,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
+    Section,
     TypeExpr,
     with_identity_replacement,
 )
@@ -35,60 +36,65 @@ class ChromaRadianceOptions(Node):
             node_type="dinkster.misc.models.chroma_radiance_options",
             category="model/patch/chroma radiance",
             description="Allows setting advanced options for the Chroma Radiance model.",
-            inputs=(
-                InputSpec("model", _MODEL),
-                InputSpec(
+            body=(
+                Input("model", _MODEL),
+                Input(
                     "preserve_wrapper",
                     _BOOLEAN,
                     default=True,
-                    doc=(
+                    tooltip=(
                         "When enabled, delegates to an existing model function wrapper "
                         "if it exists. "
                         "Generally should be left enabled."
                     ),
                 ),
-                InputSpec(
-                    "start_sigma",
-                    _FLOAT,
-                    default=1.0,
-                    advanced=True,
-                    doc="First sigma that these options will be in effect.",
-                    widget=NumberWidget(min=0.0, max=1.0),
-                ),
-                InputSpec(
-                    "end_sigma",
-                    _FLOAT,
-                    default=0.0,
-                    advanced=True,
-                    doc="Last sigma that these options will be in effect.",
-                    widget=NumberWidget(min=0.0, max=1.0),
-                ),
-                InputSpec(
-                    "nerf_tile_size",
-                    _INT,
-                    default=-1,
-                    advanced=True,
-                    doc=(
-                        "Allows overriding the default NeRF tile size. -1 means use the "
-                        "default (32). "
-                        "0 means use non-tiling mode (may require a lot of VRAM)."
+                Section(
+                    "advanced",
+                    label="Advanced",
+                    collapsed=True,
+                    rows=(
+                        Input(
+                            "start_sigma",
+                            _FLOAT,
+                            default=1.0,
+                            tooltip="First sigma that these options will be in effect.",
+                            widget=NumberWidget(min=0.0, max=1.0),
+                        ),
+                        Input(
+                            "end_sigma",
+                            _FLOAT,
+                            default=0.0,
+                            tooltip="Last sigma that these options will be in effect.",
+                            widget=NumberWidget(min=0.0, max=1.0),
+                        ),
+                        Input(
+                            "nerf_tile_size",
+                            _INT,
+                            default=-1,
+                            tooltip=(
+                                "Allows overriding the default NeRF tile size. -1 means use the "
+                                "default (32). "
+                                "0 means use non-tiling mode (may require a lot of VRAM)."
+                            ),
+                            widget=NumberWidget(min=-1),
+                        ),
+                        Input(
+                            "force_sequential_txt_ids",
+                            _BOOLEAN,
+                            default=False,
+                            tooltip=(
+                                "Force usage of sequential text token IDs instead of zeroes. "
+                                "Should be "
+                                "used for checkpoints from 2026-05-22 to 2026-06-01 that are "
+                                "trained "
+                                "in this way but do "
+                                "not contain the __sequential__ key in the state dict."
+                            ),
+                        ),
                     ),
-                    widget=NumberWidget(min=-1),
                 ),
-                InputSpec(
-                    "force_sequential_txt_ids",
-                    _BOOLEAN,
-                    default=False,
-                    advanced=True,
-                    doc=(
-                        "Force usage of sequential text token IDs instead of zeroes. Should be "
-                        "used for checkpoints from 2026-05-22 to 2026-06-01 that are trained "
-                        "in this way but do "
-                        "not contain the __sequential__ key in the state dict."
-                    ),
-                ),
+                Output("MODEL", _MODEL),
             ),
-            outputs=(OutputSpec("MODEL", _MODEL),),
         )
         return with_identity_replacement(schema, "ChromaRadianceOptions")
 

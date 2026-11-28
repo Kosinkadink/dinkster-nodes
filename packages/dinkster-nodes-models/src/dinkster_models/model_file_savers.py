@@ -16,14 +16,18 @@ from dinkster_api.v1 import (
     CLIP_TYPE,
     CORE_STRING,
     MODEL_TYPE,
+    MOUNT_TYPE,
     VAE_TYPE,
     AssetError,
     AssetWriter,
-    InputSpec,
+    Editor,
+    Input,
     MountSnapshotWriter,
     MountWidget,
     Node,
     NodeSchema,
+    Row,
+    SaveTargetWidget,
     TypeExpr,
     attach_saved_artifact,
     current_export_snapshot,
@@ -34,13 +38,12 @@ from dinkster_api.v1 import (
 _STRING = TypeExpr.concrete(CORE_STRING)
 
 
-_MOUNT = InputSpec(
+_MOUNT = Input(
     "mount",
-    _STRING,
+    TypeExpr.union(MOUNT_TYPE, CORE_STRING),
     required=False,
     default=None,
     widget=MountWidget(),
-    adjacent_to="filename_prefix",
 )
 
 
@@ -148,12 +151,20 @@ class CheckpointSave(Node):
                 node_type="dinkster.models.checkpoint_save",
                 display_name="Save Checkpoint",
                 category="model/merging",
-                inputs=(
-                    InputSpec("model", TypeExpr.concrete(MODEL_TYPE)),
-                    InputSpec("clip", TypeExpr.concrete(CLIP_TYPE)),
-                    InputSpec("vae", TypeExpr.concrete(VAE_TYPE)),
-                    InputSpec("filename_prefix", _STRING, default="checkpoints/ComfyUI"),
-                    _MOUNT,
+                body=(
+                    Input("model", TypeExpr.concrete(MODEL_TYPE)),
+                    Input("clip", TypeExpr.concrete(CLIP_TYPE)),
+                    Input("vae", TypeExpr.concrete(VAE_TYPE)),
+                    Row(
+                        rows=(
+                            Input("filename_prefix", _STRING, default="checkpoints/ComfyUI"),
+                            _MOUNT,
+                        )
+                    ),
+                    Editor(
+                        "target",
+                        SaveTargetWidget(writes={"mount": "mount", "name": "filename_prefix"}),
+                    ),
                 ),
                 output_node=True,
                 idempotent=False,
@@ -183,10 +194,18 @@ class ModelSave(Node):
             NodeSchema(
                 node_type="dinkster.models.model_save",
                 category="model/merging",
-                inputs=(
-                    InputSpec("model", TypeExpr.concrete(MODEL_TYPE)),
-                    InputSpec("filename_prefix", _STRING, default="diffusion_models/ComfyUI"),
-                    _MOUNT,
+                body=(
+                    Input("model", TypeExpr.concrete(MODEL_TYPE)),
+                    Row(
+                        rows=(
+                            Input("filename_prefix", _STRING, default="diffusion_models/ComfyUI"),
+                            _MOUNT,
+                        )
+                    ),
+                    Editor(
+                        "target",
+                        SaveTargetWidget(writes={"mount": "mount", "name": "filename_prefix"}),
+                    ),
                 ),
                 output_node=True,
                 idempotent=False,
@@ -214,10 +233,18 @@ class CLIPSave(Node):
             NodeSchema(
                 node_type="dinkster.models.clip_save",
                 category="model/merging",
-                inputs=(
-                    InputSpec("clip", TypeExpr.concrete(CLIP_TYPE)),
-                    InputSpec("filename_prefix", _STRING, default="clip/ComfyUI"),
-                    _MOUNT,
+                body=(
+                    Input("clip", TypeExpr.concrete(CLIP_TYPE)),
+                    Row(
+                        rows=(
+                            Input("filename_prefix", _STRING, default="clip/ComfyUI"),
+                            _MOUNT,
+                        )
+                    ),
+                    Editor(
+                        "target",
+                        SaveTargetWidget(writes={"mount": "mount", "name": "filename_prefix"}),
+                    ),
                 ),
                 output_node=True,
                 idempotent=False,
@@ -270,10 +297,18 @@ class VAESave(Node):
             NodeSchema(
                 node_type="dinkster.models.vae_save",
                 category="model/merging",
-                inputs=(
-                    InputSpec("vae", TypeExpr.concrete(VAE_TYPE)),
-                    InputSpec("filename_prefix", _STRING, default="vae/ComfyUI_vae"),
-                    _MOUNT,
+                body=(
+                    Input("vae", TypeExpr.concrete(VAE_TYPE)),
+                    Row(
+                        rows=(
+                            Input("filename_prefix", _STRING, default="vae/ComfyUI_vae"),
+                            _MOUNT,
+                        )
+                    ),
+                    Editor(
+                        "target",
+                        SaveTargetWidget(writes={"mount": "mount", "name": "filename_prefix"}),
+                    ),
                 ),
                 output_node=True,
                 idempotent=False,

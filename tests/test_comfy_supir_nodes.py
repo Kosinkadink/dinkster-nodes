@@ -4,6 +4,8 @@ from dinkster_api.v1 import NumberWidget, schema_from_wire, schema_to_wire
 from dinkster_misc_models import NODES
 from dinkster_misc_models.supir import SUPIRApply
 
+from tests.body_rows import advanced_ids
+
 
 def test_supir_schema_preserves_guidance_controls_and_registration() -> None:
     schema = SUPIRApply.schema()
@@ -22,6 +24,8 @@ def test_supir_schema_preserves_guidance_controls_and_registration() -> None:
         "restore_cfg_s_tmin",
     ]
     assert [item.default for item in schema.inputs[4:]] == [1.0, 1.0, 4.0, 0.05]
-    assert [item.advanced for item in schema.inputs] == [False] * 6 + [True] * 2
+    advanced = advanced_ids(schema.body)
+    assert [item.id in advanced for item in schema.inputs] == [False] * 6 + [True] * 2
+    assert advanced == ("restore_cfg", "restore_cfg_s_tmin")
     assert schema.inputs[6].widget == NumberWidget(min=0.0, max=20.0, step=0.1)
     assert schema_to_wire(schema_from_wire(schema_to_wire(schema))) == schema_to_wire(schema)

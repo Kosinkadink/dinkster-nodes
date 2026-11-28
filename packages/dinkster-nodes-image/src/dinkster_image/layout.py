@@ -3,16 +3,18 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
+from dataclasses import replace
 from typing import cast
 
 import numpy as np
 from dinkster_api.v1 import (
-    ConditionalWidgetGroup,
-    InputFamilySpec,
-    InputSpec,
+    Formula,
+    Group,
+    Input,
     Node,
     NodeSchema,
-    OutputSpec,
+    Numbered,
+    Output,
 )
 
 from .geometry import BOOLEAN, IMAGE, INT
@@ -33,13 +35,17 @@ class ImageGridCompose(Node):
             node_type="dinkster.image.grid.compose",
             display_name="Compose Image Grid",
             category="image/layout",
-            inputs=(number_input("columns", INT, 2, minimum=1, maximum=100, step=1),),
-            input_families=(
-                InputFamilySpec(
-                    "images", IMAGE, min_members=1, max_members=100, member_prefix="image_"
+            body=(
+                number_input("columns", INT, 2, minimum=1, maximum=100, step=1),
+                Group(
+                    "images",
+                    value=Input("value", IMAGE),
+                    min_members=1,
+                    max_members=100,
+                    keys=Numbered("image_", start=0),
                 ),
+                Output("image", IMAGE, preview=True),
             ),
-            outputs=(OutputSpec("image", IMAGE, preview=True),),
             search_terms=("ImageGridComposite2x2", "ImageGridComposite3x3", "image grid"),
         )
 
@@ -93,12 +99,12 @@ class ImageGridDecompose(Node):
             node_type="dinkster.image.grid.decompose",
             display_name="Decompose Image Grid",
             category="image/layout",
-            inputs=(
-                InputSpec("image", IMAGE),
+            body=(
+                Input("image", IMAGE),
                 number_input("columns", INT, 3, minimum=1, maximum=100, step=1),
                 number_input("rows", INT, 0, minimum=0, maximum=100, step=1),
+                Output("image", IMAGE, preview=True),
             ),
-            outputs=(OutputSpec("image", IMAGE, preview=True),),
             search_terms=("ImageGridtoBatch", "grid to batch"),
         )
 
@@ -248,25 +254,21 @@ class ImageStitch(Node):
             node_type="dinkster.image.stitch",
             display_name="Stitch Images",
             category="image/layout",
-            inputs=(
-                InputSpec("first", IMAGE),
+            body=(
+                Input("first", IMAGE),
                 combo_input("direction", ("right", "down", "left", "up"), "right"),
-                InputSpec("match_image_size", BOOLEAN, required=False, default=True),
+                Input("match_image_size", BOOLEAN, required=False, default=True),
                 number_input("spacing_width", INT, 0, minimum=0, maximum=1024, step=2),
-                combo_input(
-                    "spacing_color",
-                    ("white", "black", "red", "green", "blue"),
-                    "white",
+                replace(
+                    combo_input(
+                        "spacing_color",
+                        ("white", "black", "red", "green", "blue"),
+                        "white",
+                    ),
+                    visible=Formula("spacing_width >= 1"),
                 ),
-                InputSpec("second", IMAGE, required=False, default=None),
-            ),
-            outputs=(OutputSpec("image", IMAGE, preview=True),),
-            widget_groups=(
-                ConditionalWidgetGroup(
-                    "spacing_width",
-                    tuple(range(1, 1025)),
-                    ("spacing_color",),
-                ),
+                Input("second", IMAGE, required=False, default=None),
+                Output("image", IMAGE, preview=True),
             ),
             search_terms=("ImageStitch", "join images", "concatenate images", "side by side"),
         )

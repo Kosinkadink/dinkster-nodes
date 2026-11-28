@@ -10,12 +10,12 @@ from dinkster_api.v1 import (
     CORE_FLOAT,
     CORE_INT,
     LATENT_TYPE,
-    InputSpec,
+    Input,
     MultiStreamLatent,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
     TypeExpr,
     initialize_inference_process,
     materialize_latent,
@@ -26,20 +26,20 @@ from dinkster_api.v1 import (
 
 def _duration_inputs(
     seconds: float, step: float, *, minimum: float = 1.0, batch_doc: str = ""
-) -> tuple[InputSpec, ...]:
+) -> tuple[Input, ...]:
     return (
-        InputSpec(
+        Input(
             "seconds",
             TypeExpr.concrete(CORE_FLOAT),
             default=seconds,
             widget=NumberWidget(min=minimum, max=1000.0, step=step),
         ),
-        InputSpec(
+        Input(
             "batch_size",
             TypeExpr.concrete(CORE_INT),
             default=1,
             widget=NumberWidget(min=1, max=4096),
-            doc=batch_doc,
+            tooltip=batch_doc,
         ),
     )
 
@@ -52,10 +52,12 @@ class EmptyLatentAudio(Node):
                 node_type="dinkster.latent.empty_latent_audio",
                 display_name="Empty Latent Audio",
                 category="model/latent",
-                inputs=_duration_inputs(
-                    47.6, 0.1, batch_doc="The number of latent images in the batch."
+                body=(
+                    *_duration_inputs(
+                        47.6, 0.1, batch_doc="The number of latent images in the batch."
+                    ),
+                    Output("LATENT", TypeExpr.concrete(LATENT_TYPE)),
                 ),
-                outputs=(OutputSpec("LATENT", TypeExpr.concrete(LATENT_TYPE)),),
             ),
             "EmptyLatentAudio",
         )
@@ -84,28 +86,26 @@ class GetAudioLatentSize(Node):
                     "Returns the length, audio channel count, and batch size of an audio latent."
                 ),
                 category="model/latent",
-                inputs=(
-                    InputSpec(
+                body=(
+                    Input(
                         "latent",
                         TypeExpr.concrete(LATENT_TYPE),
-                        doc="The audio or audio/video latent to inspect.",
+                        tooltip="The audio or audio/video latent to inspect.",
                     ),
-                ),
-                outputs=(
-                    OutputSpec(
-                        "length", TypeExpr.concrete(CORE_INT), doc="The audio latent length."
+                    Output(
+                        "length", TypeExpr.concrete(CORE_INT), tooltip="The audio latent length."
                     ),
-                    OutputSpec(
+                    Output(
                         "audio_channels",
                         TypeExpr.concrete(CORE_INT),
-                        doc="The number of audio channels. "
+                        tooltip="The number of audio channels. "
                         "Latents without an audio channel dimension "
                         "have one channel.",
                     ),
-                    OutputSpec(
+                    Output(
                         "batch_size",
                         TypeExpr.concrete(CORE_INT),
-                        doc="The number of latents in the batch.",
+                        tooltip="The number of latents in the batch.",
                     ),
                 ),
             ),

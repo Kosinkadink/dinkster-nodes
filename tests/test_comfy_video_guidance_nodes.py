@@ -4,6 +4,8 @@ from dinkster_api.v1 import CORE_FLOAT, MODEL_TYPE, NumberWidget, TypeExpr, sche
 from dinkster_sampling import NODES
 from dinkster_sampling.video_guidance import VideoLinearCFGGuidance, VideoTriangleCFGGuidance
 
+from tests.body_rows import advanced_ids
+
 
 def test_video_cfg_guidance_schemas_are_registered_with_canonical_types() -> None:
     nodes = (VideoLinearCFGGuidance, VideoTriangleCFGGuidance)
@@ -23,7 +25,7 @@ def test_video_cfg_guidance_schemas_are_registered_with_canonical_types() -> Non
             ("min_cfg", TypeExpr.concrete(CORE_FLOAT)),
         ]
         assert schema.inputs[1].default == 1.0
-        assert schema.inputs[1].advanced
+        assert advanced_ids(schema.body) == ("min_cfg",)
         assert schema.inputs[1].widget == NumberWidget(min=0.0, max=100.0, step=0.5, round=0.01)
         assert [(item.id, item.type) for item in schema.outputs] == [
             ("MODEL", TypeExpr.concrete(MODEL_TYPE))

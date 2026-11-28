@@ -12,17 +12,21 @@ from dinkster_api.v1 import (
     ASSET_TYPE,
     CONDITIONING_TYPE,
     CORE_STRING,
+    MOUNT_TYPE,
     AssetError,
     AssetRef,
     AssetWidget,
     AssetWriter,
-    InputSpec,
+    Editor,
+    Input,
     LocalAssetRef,
     MountSnapshotWriter,
     MountWidget,
     Node,
     NodeSchema,
-    OutputSpec,
+    Output,
+    Row,
+    SaveTargetWidget,
     StringWidget,
     TypeExpr,
     attach_saved_artifact,
@@ -46,16 +50,16 @@ class ConditioningLoader(Node):
                 category="model/loaders",
                 description="Loads a conditioning saved with Save Conditioning, or any safetensors "
                 "file with a 'conditioning' tensor, from the embeddings folder.",
-                inputs=(
-                    InputSpec(
+                body=(
+                    Input(
                         "conditioning_name",
                         TypeExpr.concrete(ASSET_TYPE),
                         widget=AssetWidget(
                             accept=("application/octet-stream",), kind="model/embedding"
                         ),
                     ),
+                    Output("CONDITIONING", _CONDITIONING),
                 ),
-                outputs=(OutputSpec("CONDITIONING", _CONDITIONING),),
             ),
             "ConditioningLoader",
         )
@@ -100,24 +104,31 @@ class SaveConditioning(Node):
                     "export conditioning",
                     "cache text encoder output",
                 ),
-                inputs=(
-                    InputSpec("conditioning", _CONDITIONING),
-                    InputSpec(
-                        "filename_prefix",
-                        _STRING,
-                        default="conditioning/ComfyUI",
-                        widget=StringWidget(multiline=False),
+                body=(
+                    Input("conditioning", _CONDITIONING),
+                    Row(
+                        rows=(
+                            Input(
+                                "filename_prefix",
+                                _STRING,
+                                default="conditioning/ComfyUI",
+                                widget=StringWidget(multiline=False),
+                            ),
+                            Input(
+                                "mount",
+                                TypeExpr.union(MOUNT_TYPE, CORE_STRING),
+                                required=False,
+                                default=None,
+                                widget=MountWidget(),
+                            ),
+                        )
                     ),
-                    InputSpec(
-                        "mount",
-                        _STRING,
-                        required=False,
-                        default=None,
-                        widget=MountWidget(),
-                        adjacent_to="filename_prefix",
+                    Editor(
+                        "target",
+                        SaveTargetWidget(writes={"mount": "mount", "name": "filename_prefix"}),
                     ),
+                    Output("conditioning", _CONDITIONING),
                 ),
-                outputs=(OutputSpec("conditioning", _CONDITIONING),),
                 output_node=True,
                 idempotent=False,
             ),

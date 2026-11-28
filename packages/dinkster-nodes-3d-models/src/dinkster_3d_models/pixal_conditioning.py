@@ -13,11 +13,11 @@ from dinkster_api.v1 import (
     CONDITIONING_TYPE,
     CORE_FLOAT,
     IMAGE_TYPE,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
     TypeExpr,
     initialize_inference_process,
     materialize_image,
@@ -185,31 +185,32 @@ class Pixal3DConditioning(Node):
             node_type="dinkster.3d.models.pixal3_d_conditioning",
             display_name="Pixal3D Conditioning",
             category="model/conditioning/trellis",
-            inputs=(
-                InputSpec(
+            body=(
+                Input(
                     "clip_vision_model",
                     TypeExpr.concrete(CLIP_VISION_TYPE),
-                    doc="DINOv3 ViT-L/16 ClipVision.",
+                    tooltip="DINOv3 ViT-L/16 ClipVision.",
                 ),
-                InputSpec(
+                Input(
                     "image",
                     TypeExpr.concrete(IMAGE_TYPE),
-                    doc="Preprocessed image from ImageCropToMask (pad_factor=1.1 for Pixal3D).",
+                    tooltip="Preprocessed image from ImageCropToMask (pad_factor=1.1 for Pixal3D).",
                 ),
-                InputSpec(
+                Input(
                     "camera_angle_x",
                     TypeExpr.concrete(CORE_FLOAT),
-                    display_name="fov",
+                    label="fov",
                     default=49.13,
                     widget=NumberWidget(min=1.0, max=170.0, step=0.01),
-                    doc=(
+                    tooltip=(
                         "Horizontal FOV in degrees. Wire a MoGeGeometryToFOV "
                         "(axis='horizontal', unit='degrees') for a per-image FoV "
                         "(matches upstream default)."
                     ),
                 ),
+                Output("positive", conditioning),
+                Output("negative", conditioning),
             ),
-            outputs=(OutputSpec("positive", conditioning), OutputSpec("negative", conditioning)),
         )
         return with_identity_replacement(schema, "Pixal3DConditioning")
 
@@ -242,29 +243,29 @@ class Pixal3DMultiViewConditioning(Node):
             node_type="dinkster.3d.models.pixal3_d_multi_view_conditioning",
             display_name="Pixal3D Multi-View Conditioning",
             category="model/conditioning/trellis",
-            inputs=(
-                InputSpec(
+            body=(
+                Input(
                     "clip_vision_model",
                     TypeExpr.concrete(CLIP_VISION_TYPE),
-                    doc="DINOv3 ViT-L/16 ClipVision with bundled NAF weights.",
+                    tooltip="DINOv3 ViT-L/16 ClipVision with bundled NAF weights.",
                 ),
-                InputSpec(
+                Input(
                     "fov",
                     TypeExpr.concrete(CORE_FLOAT),
                     default=20.0,
                     widget=NumberWidget(min=1.0, max=170.0, step=0.01, round=False),
-                    doc=(
+                    tooltip=(
                         "Horizontal FOV in degrees of the views as framed: 20 for rig renders "
                         "and most multi-view generators, or MoGeGeometryToFOV on one of the "
                         "views for photos."
                     ),
                 ),
                 *(
-                    InputSpec(
+                    Input(
                         name,
                         TypeExpr.concrete(IMAGE_TYPE),
                         required=False,
-                        doc=(
+                        tooltip=(
                             f"Square view of the object's {name} side, with alpha or on a black "
                             "background, framed like the rig: the object spans about 1/1.1 of "
                             "the frame at its widest, the same scale in every view. The first "
@@ -274,8 +275,9 @@ class Pixal3DMultiViewConditioning(Node):
                     )
                     for name in _VIEW_AZIMUTHS
                 ),
+                Output("positive", conditioning),
+                Output("negative", conditioning),
             ),
-            outputs=(OutputSpec("positive", conditioning), OutputSpec("negative", conditioning)),
         )
         return with_identity_replacement(schema, "Pixal3DMultiViewConditioning")
 

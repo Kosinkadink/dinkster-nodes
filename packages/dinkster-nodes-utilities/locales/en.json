@@ -1,7 +1,7 @@
 {
   "nodes": {
     "dinkster.utilities.make_list": {
-      "displayName": "Create List"
+      "displayName": "Create Nested List"
     },
     "dinkster.utilities.list_element": {
       "displayName": "List Element"
@@ -14,6 +14,9 @@
     },
     "dinkster.utilities.curve_editor": {
       "displayName": "Curve Editor"
+    },
+    "dinkster.utilities.sample_curve": {
+      "displayName": "Sample curve"
     },
     "dinkster.utilities.primitive_bounding_box": {
       "displayName": "Bounding Box"
@@ -57,9 +60,6 @@
     "dinkster.utilities.primitive_string": {
       "displayName": "Text"
     },
-    "dinkster.utilities.primitive_string_multiline": {
-      "displayName": "Text (Multiline)"
-    },
     "dinkster.utilities.primitive_int": {
       "displayName": "Int"
     },
@@ -69,8 +69,14 @@
     "dinkster.utilities.primitive_boolean": {
       "displayName": "Boolean"
     },
-    "dinkster.utilities.comfy_switch_node": {
-      "displayName": "If/Else Switch"
+    "dinkster.utilities.primitive_choice": {
+      "displayName": "Choice"
+    },
+    "dinkster.utilities.primitive": {
+      "displayName": "Primitive"
+    },
+    "dinkster.utilities.switch": {
+      "displayName": "Switch"
     },
     "dinkster.utilities.comfy_number_convert": {
       "displayName": "Convert Number"
@@ -80,6 +86,15 @@
     },
     "dinkster.utilities.preview_any": {
       "displayName": "Preview as Text"
+    },
+    "dinkster.utilities.or_else": {
+      "displayName": "Or else"
+    },
+    "dinkster.utilities.has_value": {
+      "displayName": "Has value"
+    },
+    "dinkster.utilities.only_if": {
+      "displayName": "Only if"
     }
   },
   "searchTerms": {
@@ -99,6 +114,10 @@
       "Image Iterator",
       "Text Iterator",
       "Iterator",
+      "flatten",
+      "combine",
+      "merge",
+      "concat",
       "CreateList"
     ],
     "dinkster.utilities.get_item_from_list": [
@@ -135,22 +154,41 @@
       "ComfyMathExpression"
     ],
     "dinkster.utilities.primitive_string": [
-      "PrimitiveString"
-    ],
-    "dinkster.utilities.primitive_string_multiline": [
+      "string",
+      "PrimitiveString",
       "PrimitiveStringMultiline"
     ],
     "dinkster.utilities.primitive_int": [
+      "integer",
+      "number",
       "PrimitiveInt"
     ],
     "dinkster.utilities.primitive_float": [
+      "number",
+      "decimal",
       "PrimitiveFloat"
     ],
     "dinkster.utilities.primitive_boolean": [
+      "bool",
+      "toggle",
       "PrimitiveBoolean"
     ],
-    "dinkster.utilities.comfy_switch_node": [
-      "ComfySwitchNode"
+    "dinkster.utilities.primitive_choice": [
+      "dropdown",
+      "combo",
+      "select",
+      "options"
+    ],
+    "dinkster.utilities.primitive": [
+      "value",
+      "constant"
+    ],
+    "dinkster.utilities.switch": [
+      "If/Else Switch",
+      "If",
+      "Else",
+      "Select",
+      "Route"
     ],
     "dinkster.utilities.comfy_number_convert": [
       "ComfyNumberConvert"
@@ -167,6 +205,24 @@
       "print value",
       "show text",
       "PreviewAny"
+    ],
+    "dinkster.utilities.or_else": [
+      "coalesce",
+      "fallback",
+      "first non-empty",
+      "default"
+    ],
+    "dinkster.utilities.has_value": [
+      "is empty",
+      "is nothing",
+      "exists",
+      "is set"
+    ],
+    "dinkster.utilities.only_if": [
+      "gate",
+      "when",
+      "if",
+      "condition"
     ]
   }
 }

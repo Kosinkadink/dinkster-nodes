@@ -5,7 +5,7 @@ from __future__ import annotations
 import importlib
 import math
 from collections.abc import Mapping, Sequence
-from typing import Any
+from typing import Any, cast
 
 from dinkster_api.v1 import (
     CONDITIONING_TYPE,
@@ -13,14 +13,18 @@ from dinkster_api.v1 import (
     IMAGE_TYPE,
     LATENT_TYPE,
     VAE_TYPE,
-    DynamicComboOption,
-    DynamicComboSpec,
-    InputFamilySpec,
-    InputSpec,
+    Choice,
+    Group,
+    Input,
+    Item,
+    Members,
     Node,
     NodeSchema,
+    Numbered,
     NumberWidget,
-    OutputSpec,
+    Option,
+    Output,
+    Record,
     TypeExpr,
     initialize_inference_process,
     materialize_image,
@@ -40,18 +44,6 @@ _IMAGE = TypeExpr.concrete(IMAGE_TYPE)
 _LATENT = TypeExpr.concrete(LATENT_TYPE)
 
 
-def _combo_values(
-    combo_id: str, selected: str | Mapping[str, Any], values: Mapping[str, Any]
-) -> Mapping[str, Any]:
-    if isinstance(selected, Mapping):
-        return selected
-    prefix = f"{combo_id}."
-    return {
-        combo_id: selected,
-        **{input_id.removeprefix(prefix): value for input_id, value in values.items()},
-    }
-
-
 class ReferenceLatent(Node):
     @classmethod
     def define_schema(cls) -> NodeSchema:
@@ -64,11 +56,11 @@ class ReferenceLatent(Node):
                     "This node sets the guiding latent for an edit model. If the model supports it "
                     "you can chain multiple to set multiple reference images."
                 ),
-                inputs=(
-                    InputSpec("conditioning", _CONDITIONING),
-                    InputSpec("latent", _LATENT, required=False),
+                body=(
+                    Input("conditioning", _CONDITIONING),
+                    Input("latent", _LATENT, required=False),
+                    Output("CONDITIONING", _CONDITIONING),
                 ),
-                outputs=(OutputSpec("CONDITIONING", _CONDITIONING),),
             ),
             "ReferenceLatent",
         )
@@ -100,30 +92,28 @@ class ReferenceMultiLatent(Node):
                     "Encodes reference images and appends their latents to positive and optional "
                     "negative conditioning for edit models."
                 ),
-                inputs=(
-                    InputSpec("positive", _CONDITIONING),
-                    InputSpec("negative", _CONDITIONING, required=False),
-                    InputSpec(
+                body=(
+                    Input("positive", _CONDITIONING),
+                    Input("negative", _CONDITIONING, required=False),
+                    Input(
                         "vae",
                         TypeExpr.concrete(VAE_TYPE),
                         required=False,
-                        doc="Reference images are ignored when no VAE is connected.",
+                        tooltip="Reference images are ignored when no VAE is connected.",
                     ),
-                ),
-                combos=(
-                    DynamicComboSpec(
+                    Choice(
                         "resolution",
-                        (
-                            DynamicComboOption("keep resolution"),
-                            DynamicComboOption(
+                        options=(
+                            Option("keep resolution"),
+                            Option(
                                 "resize",
-                                (
-                                    InputSpec(
+                                rows=(
+                                    Input(
                                         "megapixels",
                                         _FLOAT,
                                         default=1.0,
                                         widget=NumberWidget(min=0.01, max=16.0, step=0.01),
-                                        doc=(
+                                        tooltip=(
                                             "Target size of each reference image, "
                                             "preserving aspect "
                                             "ratio. "
@@ -134,24 +124,18 @@ class ReferenceMultiLatent(Node):
                             ),
                         ),
                     ),
-                ),
-                input_families=(
-                    InputFamilySpec(
+                    Group(
                         "images",
-                        (InputSpec("image", _IMAGE, required=False),),
+                        value=Input("image", _IMAGE, required=False),
                         min_members=1,
                         max_members=100,
-                        required=False,
-                        member_prefix="image",
                         optional_after_minimum=True,
+                        keys=Numbered("image", start=0),
                     ),
+                    Output("positive", _CONDITIONING),
+                    Output("negative", _CONDITIONING),
+                    Output("empty_latent", _LATENT),
                 ),
-                outputs=(
-                    OutputSpec("positive", _CONDITIONING),
-                    OutputSpec("negative", _CONDITIONING),
-                    OutputSpec("empty_latent", _LATENT),
-                ),
-                input_order=("positive", "negative", "vae", "resolution", "images"),
             ),
             "ReferenceMultiLatent",
         )
@@ -161,25 +145,24 @@ class ReferenceMultiLatent(Node):
         cls,
         *,
         positive: Sequence[Sequence[Any]],
-        resolution: str | Mapping[str, Any],
+        resolution: Record,
         negative: Sequence[Sequence[Any]] | None = None,
         vae: Any = None,
-        images: Mapping[str, object] | None = None,
-        **values: Any,
+        images: Members[Item] = Members[Item](),
     ) -> Mapping[str, object]:
-        resolution = _combo_values("resolution", resolution, values)
         references: list[Any] = []
         if vae is not None:
             initialize_inference_process()
-            for _, pixels in sorted(
-                (images or {}).items(), key=lambda item: int(item[0].removeprefix("image"))
-            ):
+            for member in images:
+                pixels = member.value
                 if pixels is None:
                     continue
                 image = materialize_image(pixels)
-                if resolution["resolution"] == "resize":
+                if resolution.key == "resize":
                     height, width = image.shape[1:3]
-                    scale = math.sqrt(resolution["megapixels"] * 1024.0 * 1024.0 / (width * height))
+                    scale = math.sqrt(
+                        cast("float", resolution["megapixels"]) * 1024.0 * 1024.0 / (width * height)
+                    )
                     image = (
                         importlib.import_module("dinkster_inference.utils")
                         .common_upscale(
@@ -199,8 +182,8 @@ class ReferenceMultiLatent(Node):
             from dinkster_latent.latent import EmptyLatentImage
 
             size = 1024
-            if resolution["resolution"] == "resize":
-                size = round(math.sqrt(resolution["megapixels"] * 1024.0 * 1024.0))
+            if resolution.key == "resize":
+                size = round(math.sqrt(cast("float", resolution["megapixels"]) * 1024.0 * 1024.0))
             empty_latent = materialize_latent(
                 EmptyLatentImage.execute(width=size, height=size, batch_size=1)["LATENT"]
             )

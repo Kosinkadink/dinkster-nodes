@@ -10,10 +10,10 @@ import torch
 from dinkster_api.v1 import (
     CORE_FLOAT,
     MODEL_TYPE,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
-    OutputSpec,
+    Output,
     TypeExpr,
     initialize_inference_process,
 )
@@ -63,7 +63,7 @@ class VideoGuidanceModelSource(Node):
     def define_schema(cls) -> NodeSchema:
         return NodeSchema(
             node_type="video-guidance-fixture.source",
-            outputs=(OutputSpec("MODEL", TypeExpr.concrete(MODEL_TYPE)),),
+            body=(Output("MODEL", TypeExpr.concrete(MODEL_TYPE)),),
         )
 
     @classmethod
@@ -76,8 +76,10 @@ class VideoGuidanceModelConsumer(Node):
     def define_schema(cls) -> NodeSchema:
         return NodeSchema(
             node_type="video-guidance-fixture.consumer",
-            inputs=(InputSpec("model", TypeExpr.concrete(MODEL_TYPE)),),
-            outputs=(OutputSpec("value", TypeExpr.concrete(CORE_FLOAT)),),
+            body=(
+                Input("model", TypeExpr.concrete(MODEL_TYPE)),
+                Output("value", TypeExpr.concrete(CORE_FLOAT)),
+            ),
         )
 
     @classmethod

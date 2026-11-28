@@ -14,10 +14,10 @@ from dinkster_api.v1 import (
     SHAPE_SUBDIVIDES_TYPE,
     VAE_TYPE,
     VOXEL_TYPE,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
-    OutputSpec,
+    Output,
     TriangleMeshBatch,
     TypeExpr,
     initialize_inference_process,
@@ -38,19 +38,17 @@ class Trellis2ShapeStage(Node):
             node_type="dinkster.3d.models.trellis2_shape_stage",
             display_name="Trellis2 Shape Stage",
             category="model/conditioning/trellis",
-            inputs=(
-                InputSpec("positive", conditioning),
-                InputSpec("negative", conditioning),
-                InputSpec(
+            body=(
+                Input("positive", conditioning),
+                Input("negative", conditioning),
+                Input(
                     "voxel",
                     TypeExpr.concrete(VOXEL_TYPE),
-                    doc="Dense structure voxel from VaeDecodeStructureTrellis2.",
+                    tooltip="Dense structure voxel from VaeDecodeStructureTrellis2.",
                 ),
-            ),
-            outputs=(
-                OutputSpec("positive", conditioning),
-                OutputSpec("negative", conditioning),
-                OutputSpec("LATENT", TypeExpr.concrete(LATENT_TYPE)),
+                Output("positive", conditioning),
+                Output("negative", conditioning),
+                Output("LATENT", TypeExpr.concrete(LATENT_TYPE)),
             ),
         )
         return with_identity_replacement(schema, "Trellis2ShapeStage")
@@ -127,13 +125,11 @@ class VaeDecodeShapeTrellis(Node):
             node_type="dinkster.3d.models.vae_decode_shape_trellis",
             display_name="Trellis2 VAE Decode Shape",
             category="model/latent/trellis",
-            inputs=(
-                InputSpec("samples", TypeExpr.concrete(LATENT_TYPE)),
-                InputSpec("vae", TypeExpr.concrete(VAE_TYPE)),
-            ),
-            outputs=(
-                OutputSpec("mesh", TypeExpr.concrete(MESH_TYPE)),
-                OutputSpec("shape_subdivides", TypeExpr.concrete(SHAPE_SUBDIVIDES_TYPE)),
+            body=(
+                Input("samples", TypeExpr.concrete(LATENT_TYPE)),
+                Input("vae", TypeExpr.concrete(VAE_TYPE)),
+                Output("mesh", TypeExpr.concrete(MESH_TYPE)),
+                Output("shape_subdivides", TypeExpr.concrete(SHAPE_SUBDIVIDES_TYPE)),
             ),
         )
         return with_identity_replacement(schema, "VaeDecodeShapeTrellis")

@@ -14,15 +14,17 @@ from dinkster_api.v1 import (
     CORE_STRING,
     IMAGE_TYPE,
     MASK_TYPE,
+    Choice,
     ColorWidget,
-    DynamicComboOption,
-    DynamicComboSpec,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
-    OutputSpec,
+    Option,
+    Output,
+    Section,
     StringWidget,
     TypeExpr,
+    Use,
     image_math,
 )
 
@@ -72,14 +74,16 @@ FLOAT = TypeExpr.concrete(CORE_FLOAT)
 STRING = TypeExpr.concrete(CORE_STRING)
 
 
-def _color_input(id: str, default: str, *, advanced: bool = False) -> InputSpec:
-    return InputSpec(
+def _color_input(
+    id: str,
+    default: str,
+) -> Input:
+    return Input(
         id,
         STRING,
         required=False,
         default=default,
-        widget=ColorWidget(),
-        advanced=advanced,
+        widget=ColorWidget(alpha=True),
     )
 
 
@@ -149,45 +153,40 @@ class MakeImage(Node):
                 version=2,
                 display_name="Create Image",
                 category="image/create",
-                inputs=(
+                body=(
                     _number("width", INT, 512, minimum=1, maximum=MAX_DIMENSION, step=1),
                     _number("height", INT, 512, minimum=1, maximum=MAX_DIMENSION, step=1),
                     _number("batch_size", INT, 1, minimum=1, maximum=4096, step=1),
                     _combo("channels", ("rgb", "rgba"), "rgb"),
-                ),
-                combos=(
-                    DynamicComboSpec(
+                    Choice(
                         "color_source",
-                        (
-                            DynamicComboOption("hex", (by_id["color_a"],)),
-                            DynamicComboOption("integer", (by_id["color_value"],)),
+                        options=(
+                            Option("hex", rows=(by_id["color_a"],)),
+                            Option("integer", rows=(by_id["color_value"],)),
                         ),
                         default="hex",
                     ),
-                    DynamicComboSpec(
+                    Choice(
                         "operation",
-                        (
-                            DynamicComboOption("solid"),
-                            DynamicComboOption(
-                                "linear_gradient", (by_id["color_b"], by_id["angle"])
-                            ),
-                            DynamicComboOption(
+                        options=(
+                            Option("solid"),
+                            Option("linear_gradient", rows=(Use("color_b"), by_id["angle"])),
+                            Option(
                                 "radial_gradient",
-                                (
-                                    by_id["color_b"],
+                                rows=(
+                                    Use("color_b"),
                                     by_id["center_x"],
                                     by_id["center_y"],
                                     by_id["radius"],
                                 ),
                             ),
-                            DynamicComboOption(
-                                "checkerboard", (by_id["color_b"], by_id["tile_size"])
-                            ),
+                            Option("checkerboard", rows=(Use("color_b"), by_id["tile_size"])),
                         ),
+                        shared=(by_id["color_b"],),
                         default="solid",
                     ),
+                    Output("image", IMAGE, preview=True),
                 ),
-                outputs=(OutputSpec("image", IMAGE, preview=True),),
                 search_terms=(
                     "EmptyImage",
                     "Image Blank",
@@ -257,17 +256,31 @@ class DrawText(Node):
             node_type="dinkster.image.draw_text",
             display_name="Draw Text on Image",
             category="image/draw",
-            inputs=(
-                InputSpec("image", IMAGE),
-                InputSpec("text", STRING, widget=StringWidget(multiline=True)),
+            body=(
+                Input("image", IMAGE),
+                Input("text", STRING, widget=StringWidget(multiline=True)),
                 _number("x", INT, 0, step=1),
                 _number("y", INT, 0, step=1),
                 _number("font_size", INT, 32, minimum=1, maximum=1024, step=1),
                 _color_input("color", "#ffffff"),
                 _number("opacity", FLOAT, 1.0, minimum=0.0, maximum=1.0, step=0.01),
-                _number("line_spacing", INT, 4, minimum=0, maximum=1024, step=1, advanced=True),
+                Section(
+                    "advanced",
+                    label="Advanced",
+                    collapsed=True,
+                    rows=(
+                        _number(
+                            "line_spacing",
+                            INT,
+                            4,
+                            minimum=0,
+                            maximum=1024,
+                            step=1,
+                        ),
+                    ),
+                ),
+                Output("image", IMAGE, preview=True),
             ),
-            outputs=(OutputSpec("image", IMAGE, preview=True),),
             search_terms=("DrawText+", "text overlay", "AddText"),
         )
 
@@ -384,28 +397,20 @@ class DrawRegion(Node):
                 version=2,
                 display_name="Draw Region on Image",
                 category="image/draw",
-                inputs=(
-                    InputSpec("image", IMAGE),
-                    InputSpec("region", REGION),
+                body=(
+                    Input("image", IMAGE),
+                    Input("region", REGION),
                     _combo("shape", ("rectangle", "ellipse"), "rectangle"),
                     _color_input("color", "#ff0000"),
                     _number("opacity", FLOAT, 1.0, minimum=0.0, maximum=1.0, step=0.01),
                     _combo("coordinate_format", ("xywh", "xyxy"), "xywh", hidden=True),
-                    _combo(
-                        "batch_policy",
-                        ("broadcast", "pairwise_truncate"),
-                        "broadcast",
-                        advanced=True,
-                    ),
-                ),
-                combos=(
-                    DynamicComboSpec(
+                    Choice(
                         "mode",
-                        (
-                            DynamicComboOption("fill"),
-                            DynamicComboOption(
+                        options=(
+                            Option("fill"),
+                            Option(
                                 "outline",
-                                (
+                                rows=(
                                     _number(
                                         "line_width",
                                         INT,
@@ -419,8 +424,20 @@ class DrawRegion(Node):
                         ),
                         default="outline",
                     ),
+                    Section(
+                        "advanced",
+                        label="Advanced",
+                        collapsed=True,
+                        rows=(
+                            _combo(
+                                "batch_policy",
+                                ("broadcast", "pairwise_truncate"),
+                                "broadcast",
+                            ),
+                        ),
+                    ),
+                    Output("image", IMAGE, preview=True),
                 ),
-                outputs=(OutputSpec("image", IMAGE, preview=True),),
                 search_terms=(
                     "BboxVisualize",
                     "draw bounding box",
@@ -486,24 +503,38 @@ class DrawMask(Node):
             node_type="dinkster.image.draw_mask",
             display_name="Draw Mask on Image",
             category="image/draw",
-            inputs=(
-                InputSpec("image", IMAGE),
-                InputSpec("mask", MASK),
+            body=(
+                Input("image", IMAGE),
+                Input("mask", MASK),
                 _number("x", INT, 0, step=1),
                 _number("y", INT, 0, step=1),
                 _color_input("color", "#ff0000"),
                 _number("opacity", FLOAT, 0.5, minimum=0.0, maximum=1.0, step=0.01),
-                InputSpec("invert", BOOLEAN, required=False, default=False),
-                _combo("mask_size", ("preserve", "resize_to_image"), "preserve", advanced=True),
-                _combo(
-                    "batch_policy",
-                    ("singleton_broadcast", "cyclic_repeat"),
-                    "singleton_broadcast",
-                    advanced=True,
+                Input("invert", BOOLEAN, required=False, default=False),
+                Section(
+                    "advanced",
+                    label="Advanced",
+                    collapsed=True,
+                    rows=(
+                        _combo(
+                            "mask_size",
+                            ("preserve", "resize_to_image"),
+                            "preserve",
+                        ),
+                        _combo(
+                            "batch_policy",
+                            ("singleton_broadcast", "cyclic_repeat"),
+                            "singleton_broadcast",
+                        ),
+                        _combo(
+                            "alpha_mode",
+                            ("source_over", "max"),
+                            "source_over",
+                        ),
+                    ),
                 ),
-                _combo("alpha_mode", ("source_over", "max"), "source_over", advanced=True),
+                Output("image", IMAGE, preview=True),
             ),
-            outputs=(OutputSpec("image", IMAGE, preview=True),),
             search_terms=("DrawMaskOnImage", "mask color overlay", "Mix Color By Mask"),
         )
 

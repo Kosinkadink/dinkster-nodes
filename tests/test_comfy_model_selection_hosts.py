@@ -17,7 +17,7 @@ import json
 import sys
 from pathlib import Path
 from types import SimpleNamespace
-from dinkster_api.v1 import Node, NodeSchema, InputSpec, OutputSpec, TypeExpr
+from dinkster_api.v1 import Input, Node, NodeSchema, Output, TypeExpr
 from dinkster_models import model_selections
 
 class VAE:
@@ -50,9 +50,10 @@ def register_types(registry):
 class Inspect(Node):
     @classmethod
     def define_schema(cls):
-        return NodeSchema(node_type='selectionprobe.inspect', inputs=(
-            InputSpec('vae', TypeExpr.concrete('VAE')),
-        ), outputs=(OutputSpec('summary', TypeExpr.concrete('STRING')),))
+        return NodeSchema(node_type='selectionprobe.inspect', body=(
+            Input('vae', TypeExpr.concrete('VAE')),
+            Output('summary', TypeExpr.concrete('STRING')),
+        ))
     @classmethod
     def execute(cls, *, vae):
         assert vae.validated
@@ -63,11 +64,12 @@ class ReadEncoder(Node):
     @classmethod
     def define_schema(cls):
         from dinkster_api.v1 import AssetWidget
-        return NodeSchema(node_type='selectionprobe.encoder', inputs=(
-            InputSpec('file', TypeExpr.concrete('ASSET'),
+        return NodeSchema(node_type='selectionprobe.encoder', body=(
+            Input('file', TypeExpr.concrete('ASSET'),
                 widget=AssetWidget(kind='model/text-encoder')),
-            InputSpec('readonly', TypeExpr.concrete('BOOLEAN')),
-        ), outputs=(OutputSpec('text', TypeExpr.concrete('STRING')),), idempotent=False)
+            Input('readonly', TypeExpr.concrete('BOOLEAN')),
+            Output('text', TypeExpr.concrete('STRING')),
+        ), idempotent=False)
     @classmethod
     def execute(cls, *, file, readonly):
         path = file.local_path()

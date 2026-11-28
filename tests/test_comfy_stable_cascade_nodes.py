@@ -9,12 +9,14 @@ from dinkster_sd.stable_cascade import (
     StableCascade_SuperResolutionControlnet,
 )
 
+from tests.body_rows import advanced_ids
+
 
 def test_stable_cascade_interfaces() -> None:
     expected = (
         (
             "dinkster.sd.stable_cascade_empty_latent_image",
-            ("width", "height", "compression", "batch_size"),
+            ("width", "height", "batch_size", "compression"),
             ("stage_c", "stage_b"),
         ),
         (
@@ -50,9 +52,15 @@ def test_stable_cascade_interfaces() -> None:
         )
         == expected
     )
+    assert tuple(advanced_ids(node.schema().body) for node in nodes) == (
+        ("compression",),
+        (),
+        ("compression",),
+        (),
+    )
     for node in nodes:
         assert NODES.count(node) == 1
         assert schema_to_wire(node.schema())
-    compression = StableCascade_EmptyLatentImage.schema().inputs[2]
+    compression = StableCascade_EmptyLatentImage.schema().inputs[3]
+    assert compression.id == "compression"
     assert compression.default == 42
-    assert compression.advanced

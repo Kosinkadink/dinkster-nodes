@@ -13,11 +13,11 @@ from dinkster_api.v1 import (
     LATENT_TYPE,
     TRACKS_TYPE,
     VAE_TYPE,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
     TypeExpr,
     initialize_inference_process,
     materialize_clip_vision_output,
@@ -94,36 +94,28 @@ class WanMoveTrackToVideo(Node):
         schema = NodeSchema(
             node_type="dinkster.wan.wan_move_track_to_video",
             category="model/conditioning/wan/move",
-            inputs=(
-                InputSpec("positive", _CONDITIONING),
-                InputSpec("negative", _CONDITIONING),
-                InputSpec("vae", _VAE),
-                InputSpec("tracks", _TRACKS, required=False),
-                InputSpec(
+            body=(
+                Input("positive", _CONDITIONING),
+                Input("negative", _CONDITIONING),
+                Input("vae", _VAE),
+                Input("tracks", _TRACKS, required=False),
+                Input(
                     "strength",
                     _FLOAT,
                     default=1.0,
                     widget=NumberWidget(min=0.0, max=100.0, step=0.01),
                 ),
-                InputSpec(
-                    "width", _INT, default=832, widget=NumberWidget(min=16, max=16384, step=16)
-                ),
-                InputSpec(
-                    "height", _INT, default=480, widget=NumberWidget(min=16, max=16384, step=16)
-                ),
-                InputSpec(
-                    "length", _INT, default=81, widget=NumberWidget(min=1, max=16384, step=4)
-                ),
-                InputSpec("batch_size", _INT, default=1, widget=NumberWidget(min=1, max=4096)),
-                InputSpec("start_image", _IMAGE),
-                InputSpec(
+                Input("width", _INT, default=832, widget=NumberWidget(min=16, max=16384, step=16)),
+                Input("height", _INT, default=480, widget=NumberWidget(min=16, max=16384, step=16)),
+                Input("length", _INT, default=81, widget=NumberWidget(min=1, max=16384, step=4)),
+                Input("batch_size", _INT, default=1, widget=NumberWidget(min=1, max=4096)),
+                Input("start_image", _IMAGE),
+                Input(
                     "clip_vision_output", TypeExpr.concrete(CLIP_VISION_OUTPUT_TYPE), required=False
                 ),
-            ),
-            outputs=(
-                OutputSpec("positive", _CONDITIONING),
-                OutputSpec("negative", _CONDITIONING),
-                OutputSpec("latent", _LATENT),
+                Output("positive", _CONDITIONING),
+                Output("negative", _CONDITIONING),
+                Output("latent", _LATENT),
             ),
         )
         return with_identity_replacement(schema, "WanMoveTrackToVideo")

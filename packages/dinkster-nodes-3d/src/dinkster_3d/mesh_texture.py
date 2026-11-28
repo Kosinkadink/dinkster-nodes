@@ -10,10 +10,10 @@ from typing import Any
 from dinkster_api.v1 import (
     IMAGE_TYPE,
     MESH_TYPE,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
-    OutputSpec,
+    Output,
     TypeExpr,
     initialize_inference_process,
     materialize_image,
@@ -34,10 +34,12 @@ class MeshTextureToImage(Node):
                 "roughness, occlusion and normal_map. Channels with nothing baked come back "
                 "neutral (occlusion white, normal flat)."
             ),
-            inputs=(InputSpec("mesh", TypeExpr.concrete(MESH_TYPE)),),
-            outputs=tuple(
-                OutputSpec(name, TypeExpr.concrete(IMAGE_TYPE))
-                for name in ("base_color", "metallic", "roughness", "occlusion", "normal_map")
+            body=(
+                Input("mesh", TypeExpr.concrete(MESH_TYPE)),
+                *tuple(
+                    Output(name, TypeExpr.concrete(IMAGE_TYPE))
+                    for name in ("base_color", "metallic", "roughness", "occlusion", "normal_map")
+                ),
             ),
         )
         return with_identity_replacement(schema, "MeshTextureToImage")
@@ -138,15 +140,15 @@ class ApplyTextureToMesh(Node):
                 "Attaches baked texture IMAGEs to a mesh's UV layout for SaveGLB. "
                 "Feed the SAME mesh you baked"
             ),
-            inputs=(
-                InputSpec("mesh", TypeExpr.concrete(MESH_TYPE)),
-                InputSpec("base_color", TypeExpr.concrete(IMAGE_TYPE)),
+            body=(
+                Input("mesh", TypeExpr.concrete(MESH_TYPE)),
+                Input("base_color", TypeExpr.concrete(IMAGE_TYPE)),
                 *(
-                    InputSpec(name, TypeExpr.concrete(IMAGE_TYPE), required=False)
+                    Input(name, TypeExpr.concrete(IMAGE_TYPE), required=False)
                     for name in ("metallic", "roughness", "occlusion", "normal_map")
                 ),
+                Output("mesh", TypeExpr.concrete(MESH_TYPE)),
             ),
-            outputs=(OutputSpec("mesh", TypeExpr.concrete(MESH_TYPE)),),
         )
         return with_identity_replacement(schema, "ApplyTextureToMesh")
 

@@ -4,6 +4,7 @@ from dinkster_api.v1 import (
     ASSET_TYPE,
     AUDIO_TYPE,
     INTERP_MODEL_TYPE,
+    MOUNT_TYPE,
     OPTICAL_FLOW_TYPE,
     VIDEO_TYPE,
     TypeRegistry,
@@ -13,6 +14,7 @@ from dinkster_api.v1 import (
     register_asset_type,
     register_audio_value_type,
     register_media_types,
+    register_mount_type,
     register_resident_type,
     register_video_edit_type,
     register_video_value_type,
@@ -46,6 +48,8 @@ NODES = (
 
 def register_types(registry: TypeRegistry) -> None:
     """Keep media authority and model objects in their existing codec owners."""
+    if MOUNT_TYPE not in registry:
+        register_mount_type(registry)
     if ASSET_TYPE not in registry:
         register_asset_type(registry, resolver_from_env())
     if AUDIO_TYPE not in registry:

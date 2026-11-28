@@ -1,3 +1,4 @@
+from dinkster_api.v1 import Record
 from dinkster_misc_models.json_prompt import BuildJsonPromptIdeogram
 
 
@@ -6,14 +7,13 @@ def test_json_prompt_photo_preserves_text_elements_and_palette_order() -> None:
     palette = {"second": "#ab12cd", "first": "#00ef45", "empty": "", "number": 7}
     result = BuildJsonPromptIdeogram.execute(
         element=elements,
-        style="photo",
+        style=Record("photo", {"photo": "35mm"}),
         high_level_description="  portrait  ",
         background="studio",
         aesthetics="muted",
         lighting="side",
         medium="photograph",
         color_palette=palette,
-        **{"style.photo": "35mm", "style.art_style": "ignored"},
     )["prompt"]
     assert result == {
         "high_level_description": "  portrait  ",
@@ -33,7 +33,7 @@ def test_json_prompt_photo_preserves_text_elements_and_palette_order() -> None:
 def test_json_prompt_none_omits_style_and_blank_description() -> None:
     assert BuildJsonPromptIdeogram.execute(
         element="not an array",
-        style="none",
+        style=Record("none", {}),
         high_level_description=" \n ",
         color_palette=["#abcdef"],
     )["prompt"] == {"compositional_deconstruction": {"background": "", "elements": []}}
@@ -42,9 +42,8 @@ def test_json_prompt_none_omits_style_and_blank_description() -> None:
 def test_json_prompt_art_style_omits_empty_palette_and_photo() -> None:
     assert BuildJsonPromptIdeogram.execute(
         element=[],
-        style="art_style",
+        style=Record("art_style", {"art_style": "watercolor"}),
         medium="painting",
-        **{"style.art_style": "watercolor", "style.photo": "ignored"},
     )["prompt"] == {
         "style_description": {
             "aesthetics": "",

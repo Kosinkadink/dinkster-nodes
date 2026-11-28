@@ -11,11 +11,11 @@ from dinkster_api.v1 import (
     INTERP_MODEL_TYPE,
     AssetRef,
     AssetWidget,
-    InputSpec,
+    Input,
     LocalAssetRef,
     Node,
     NodeSchema,
-    OutputSpec,
+    Output,
     TypeExpr,
     initialize_inference_process,
     with_identity_replacement,
@@ -29,11 +29,11 @@ class FrameInterpolationModelLoader(Node):
             node_type="dinkster.video.frame_interpolation_model_loader",
             display_name="Load Frame Interpolation Model",
             category="model/loaders",
-            inputs=(
-                InputSpec(
+            body=(
+                Input(
                     "model_name",
                     TypeExpr.concrete(ASSET_TYPE),
-                    doc=(
+                    tooltip=(
                         "Select a frame interpolation model to load. Models must be placed "
                         "in the 'frame_interpolation' folder."
                     ),
@@ -41,8 +41,8 @@ class FrameInterpolationModelLoader(Node):
                         accept=("application/octet-stream",), kind="model/frame-interpolation"
                     ),
                 ),
+                Output("INTERP_MODEL", TypeExpr.concrete(INTERP_MODEL_TYPE)),
             ),
-            outputs=(OutputSpec("INTERP_MODEL", TypeExpr.concrete(INTERP_MODEL_TYPE)),),
         )
         return with_identity_replacement(schema, "FrameInterpolationModelLoader")
 

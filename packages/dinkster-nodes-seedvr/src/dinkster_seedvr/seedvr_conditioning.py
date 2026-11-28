@@ -8,10 +8,10 @@ from dinkster_api.v1 import (
     CONDITIONING_TYPE,
     LATENT_TYPE,
     MODEL_TYPE,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
-    OutputSpec,
+    Output,
     TypeExpr,
     initialize_inference_process,
     materialize_latent,
@@ -68,22 +68,20 @@ class SeedVR2Conditioning(Node):
             category="model/conditioning",
             description="Build SeedVR2 positive/negative conditioning from a VAE latent.",
             search_terms=("seedvr2", "upscale", "conditioning"),
-            inputs=(
-                InputSpec("model", _MODEL, doc="The SeedVR2 model."),
-                InputSpec("vae_conditioning", _LATENT, display_name="latent"),
-            ),
-            outputs=(
-                OutputSpec(
+            body=(
+                Input("model", _MODEL, tooltip="The SeedVR2 model."),
+                Input("vae_conditioning", _LATENT, label="latent"),
+                Output(
                     "positive",
                     _CONDITIONING,
-                    display_name="positive",
-                    doc="The positive conditioning for sampling.",
+                    label="positive",
+                    tooltip="The positive conditioning for sampling.",
                 ),
-                OutputSpec(
+                Output(
                     "negative",
                     _CONDITIONING,
-                    display_name="negative",
-                    doc="The negative conditioning for sampling.",
+                    label="negative",
+                    tooltip="The negative conditioning for sampling.",
                 ),
             ),
         )

@@ -12,11 +12,12 @@ from dinkster_api.v1 import (
     CORE_FLOAT,
     CORE_STRING,
     MODEL_TYPE,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
+    Section,
     StringWidget,
     TypeExpr,
     initialize_inference_process,
@@ -129,23 +130,29 @@ class SelfAttentionGuidance(Node):
                 node_type="dinkster.sampling.self_attention_guidance",
                 display_name="Self-Attention Guidance",
                 category="experimental",
-                inputs=(
-                    InputSpec("model", _MODEL),
-                    InputSpec(
+                body=(
+                    Input("model", _MODEL),
+                    Input(
                         "scale",
                         _FLOAT,
                         default=0.5,
                         widget=NumberWidget(min=-2.0, max=5.0, step=0.01),
                     ),
-                    InputSpec(
-                        "blur_sigma",
-                        _FLOAT,
-                        default=2.0,
-                        advanced=True,
-                        widget=NumberWidget(min=0.0, max=10.0, step=0.1),
+                    Section(
+                        "advanced",
+                        label="Advanced",
+                        collapsed=True,
+                        rows=(
+                            Input(
+                                "blur_sigma",
+                                _FLOAT,
+                                default=2.0,
+                                widget=NumberWidget(min=0.0, max=10.0, step=0.1),
+                            ),
+                        ),
                     ),
+                    Output("MODEL", _MODEL),
                 ),
-                outputs=(OutputSpec("MODEL", _MODEL),),
             ),
             "SelfAttentionGuidance",
         )
@@ -199,16 +206,16 @@ class PerturbedAttentionGuidance(Node):
             NodeSchema(
                 node_type="dinkster.sampling.perturbed_attention_guidance",
                 category="model/patch/unet",
-                inputs=(
-                    InputSpec("model", _MODEL),
-                    InputSpec(
+                body=(
+                    Input("model", _MODEL),
+                    Input(
                         "scale",
                         _FLOAT,
                         default=3.0,
                         widget=NumberWidget(min=0.0, max=100.0, step=0.01, round=0.01),
                     ),
+                    Output("MODEL", _MODEL),
                 ),
-                outputs=(OutputSpec("MODEL", _MODEL),),
             ),
             "PerturbedAttentionGuidance",
         )
@@ -248,50 +255,53 @@ class SkipLayerGuidanceDiT(Node):
                 description=(
                     "Generic version of SkipLayerGuidance node that can be used on every DiT model."
                 ),
-                inputs=(
-                    InputSpec("model", _MODEL),
-                    InputSpec(
-                        "double_layers",
-                        _STRING,
-                        default="7, 8, 9",
-                        advanced=True,
-                        widget=StringWidget(multiline=False),
-                    ),
-                    InputSpec(
-                        "single_layers",
-                        _STRING,
-                        default="7, 8, 9",
-                        advanced=True,
-                        widget=StringWidget(multiline=False),
-                    ),
-                    InputSpec(
+                body=(
+                    Input("model", _MODEL),
+                    Input(
                         "scale",
                         _FLOAT,
                         default=3.0,
                         widget=NumberWidget(min=0.0, max=10.0, step=0.1),
                     ),
-                    InputSpec(
-                        "start_percent",
-                        _FLOAT,
-                        default=0.01,
-                        advanced=True,
-                        widget=NumberWidget(min=0.0, max=1.0, step=0.001),
-                    ),
-                    InputSpec(
-                        "end_percent",
-                        _FLOAT,
-                        default=0.15,
-                        advanced=True,
-                        widget=NumberWidget(min=0.0, max=1.0, step=0.001),
-                    ),
-                    InputSpec(
+                    Input(
                         "rescaling_scale",
                         _FLOAT,
                         default=0.0,
                         widget=NumberWidget(min=0.0, max=10.0, step=0.01),
                     ),
+                    Section(
+                        "advanced",
+                        label="Advanced",
+                        collapsed=True,
+                        rows=(
+                            Input(
+                                "double_layers",
+                                _STRING,
+                                default="7, 8, 9",
+                                widget=StringWidget(multiline=False),
+                            ),
+                            Input(
+                                "single_layers",
+                                _STRING,
+                                default="7, 8, 9",
+                                widget=StringWidget(multiline=False),
+                            ),
+                            Input(
+                                "start_percent",
+                                _FLOAT,
+                                default=0.01,
+                                widget=NumberWidget(min=0.0, max=1.0, step=0.001),
+                            ),
+                            Input(
+                                "end_percent",
+                                _FLOAT,
+                                default=0.15,
+                                widget=NumberWidget(min=0.0, max=1.0, step=0.001),
+                            ),
+                        ),
+                    ),
+                    Output("MODEL", _MODEL),
                 ),
-                outputs=(OutputSpec("MODEL", _MODEL),),
             ),
             "SkipLayerGuidanceDiT",
         )
@@ -356,38 +366,41 @@ class SkipLayerGuidanceDiTSimple(Node):
                     "Simple version of the SkipLayerGuidanceDiT node that only modifies the uncond "
                     "pass."
                 ),
-                inputs=(
-                    InputSpec("model", _MODEL),
-                    InputSpec(
-                        "double_layers",
-                        _STRING,
-                        default="7, 8, 9",
-                        advanced=True,
-                        widget=StringWidget(multiline=False),
+                body=(
+                    Input("model", _MODEL),
+                    Section(
+                        "advanced",
+                        label="Advanced",
+                        collapsed=True,
+                        rows=(
+                            Input(
+                                "double_layers",
+                                _STRING,
+                                default="7, 8, 9",
+                                widget=StringWidget(multiline=False),
+                            ),
+                            Input(
+                                "single_layers",
+                                _STRING,
+                                default="7, 8, 9",
+                                widget=StringWidget(multiline=False),
+                            ),
+                            Input(
+                                "start_percent",
+                                _FLOAT,
+                                default=0.0,
+                                widget=NumberWidget(min=0.0, max=1.0, step=0.001),
+                            ),
+                            Input(
+                                "end_percent",
+                                _FLOAT,
+                                default=1.0,
+                                widget=NumberWidget(min=0.0, max=1.0, step=0.001),
+                            ),
+                        ),
                     ),
-                    InputSpec(
-                        "single_layers",
-                        _STRING,
-                        default="7, 8, 9",
-                        advanced=True,
-                        widget=StringWidget(multiline=False),
-                    ),
-                    InputSpec(
-                        "start_percent",
-                        _FLOAT,
-                        default=0.0,
-                        advanced=True,
-                        widget=NumberWidget(min=0.0, max=1.0, step=0.001),
-                    ),
-                    InputSpec(
-                        "end_percent",
-                        _FLOAT,
-                        default=1.0,
-                        advanced=True,
-                        widget=NumberWidget(min=0.0, max=1.0, step=0.001),
-                    ),
+                    Output("MODEL", _MODEL),
                 ),
-                outputs=(OutputSpec("MODEL", _MODEL),),
             ),
             "SkipLayerGuidanceDiTSimple",
         )

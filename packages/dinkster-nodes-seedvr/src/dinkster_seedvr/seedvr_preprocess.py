@@ -5,10 +5,10 @@ from collections.abc import Mapping
 
 from dinkster_api.v1 import (
     IMAGE_TYPE,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
-    OutputSpec,
+    Output,
     TypeExpr,
     initialize_inference_process,
     materialize_image,
@@ -30,8 +30,10 @@ class SeedVR2Preprocess(Node):
                 "original resized image."
             ),
             search_terms=("seedvr2", "upscale", "video upscale", "pad", "preprocess"),
-            inputs=(InputSpec("resized_images", image, doc="The resized image to process."),),
-            outputs=(OutputSpec("images", image, doc="The padded image for VAE encoding."),),
+            body=(
+                Input("resized_images", image, tooltip="The resized image to process."),
+                Output("images", image, tooltip="The padded image for VAE encoding."),
+            ),
         )
         return with_identity_replacement(schema, "SeedVR2Preprocess")
 

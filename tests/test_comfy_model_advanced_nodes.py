@@ -8,6 +8,8 @@ import pytest
 from dinkster_api.v1 import MODEL_TYPE, NumberWidget, TypeExpr
 from dinkster_models import NODES, device_routing, model_advanced
 
+from tests.body_rows import advanced_ids
+
 MODEL_ADVANCED_NODES = (
     model_advanced.ModelSamplingDiscrete,
     model_advanced.ModelSamplingContinuousEDM,
@@ -33,39 +35,33 @@ def test_advanced_model_patch_interfaces() -> None:
     # Named classes below, F bc5f880d, define_schema() without inputs.
     # MODEL uses the canonical native public identity.
     expected = {
-        "dinkster.models.model_sampling_discrete": ("model", "sampling", "zsnr"),
-        "dinkster.models.model_sampling_continuous_edm": (
-            "model",
-            "sampling",
-            "sigma_max",
-            "sigma_min",
-        ),
-        "dinkster.models.model_sampling_continuous_v": (
-            "model",
-            "sampling",
-            "sigma_max",
-            "sigma_min",
-        ),
+        "dinkster.models.model_sampling_discrete": ("model", "sampling"),
+        "dinkster.models.model_sampling_continuous_edm": ("model", "sampling"),
+        "dinkster.models.model_sampling_continuous_v": ("model", "sampling"),
         "dinkster.models.model_sampling_stable_cascade": ("model", "shift"),
         "dinkster.models.model_sampling_sd3": ("model", "shift"),
-        "dinkster.models.model_sampling_aura_flow": ("model", "shift", "sampling"),
-        "dinkster.models.model_sampling_flux": (
-            "model",
-            "max_shift",
-            "base_shift",
-            "width",
-            "height",
-        ),
+        "dinkster.models.model_sampling_aura_flow": ("model", "shift"),
+        "dinkster.models.model_sampling_flux": ("model", "width", "height"),
         "dinkster.models.model_noise_scale": ("model", "noise_scale"),
         "dinkster.models.rescale_cfg": ("model", "multiplier"),
-        "dinkster.models.model_compute_dtype": ("model", "dtype"),
+        "dinkster.models.model_compute_dtype": ("model",),
         "dinkster.models.model_attention_backend": ("model", "attention"),
+    }
+    advanced = {
+        "dinkster.models.model_sampling_discrete": ("zsnr",),
+        "dinkster.models.model_sampling_continuous_edm": ("sigma_max", "sigma_min"),
+        "dinkster.models.model_sampling_continuous_v": ("sigma_max", "sigma_min"),
+        "dinkster.models.model_sampling_aura_flow": ("sampling",),
+        "dinkster.models.model_sampling_flux": ("max_shift", "base_shift"),
+        "dinkster.models.model_compute_dtype": ("dtype",),
     }
     assert {node.define_schema().node_type for node in MODEL_ADVANCED_NODES} == set(expected)
     for node in MODEL_ADVANCED_NODES:
         assert node in NODES
         schema = node.define_schema()
-        assert tuple(item.id for item in schema.inputs) == expected[schema.node_type]
+        shown = advanced.get(schema.node_type, ())
+        assert tuple(item.id for item in schema.inputs) == (*expected[schema.node_type], *shown)
+        assert advanced_ids(schema.body) == shown
         assert schema.inputs[0].type == TypeExpr.concrete(MODEL_TYPE)
         assert [(item.id, item.type) for item in schema.outputs] == [
             ("MODEL", TypeExpr.concrete(MODEL_TYPE))
@@ -79,7 +75,7 @@ def test_advanced_model_patch_interfaces() -> None:
     aura = next(node for node in MODEL_ADVANCED_NODES if node.__name__ == "ModelSamplingAuraFlow")
     assert not aura.define_schema().inputs[-1].required
     attention = MODEL_ADVANCED_NODES[-1].define_schema()
-    assert attention.outputs[0].display_name == "model"
+    assert attention.outputs[0].label == "model"
 
 
 def test_device_routing_required_inputs_and_cold_discovery() -> None:

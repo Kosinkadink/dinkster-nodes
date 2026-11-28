@@ -3,6 +3,7 @@
 from dinkster_api.v1 import (
     ASSET_TYPE,
     INFERENCE_LATENT_OPERATION_TYPE,
+    MOUNT_TYPE,
     TypeRegistry,
     TypeSpec,
     comfy_resident_meta,
@@ -10,12 +11,15 @@ from dinkster_api.v1 import (
     register_asset_type,
     register_inference_types,
     register_media_types,
+    register_mount_type,
     register_resident_type,
     resolver_from_env,
 )
 
 
 def register_types(registry: TypeRegistry) -> tuple[TypeSpec, ...]:
+    if MOUNT_TYPE not in registry:
+        register_mount_type(registry)
     register_inference_types(registry)
     if ASSET_TYPE not in registry:
         register_asset_type(registry, resolver_from_env())

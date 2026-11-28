@@ -16,16 +16,20 @@ from dinkster_api.v1 import (
     CORE_STRING,
     ENCODED_MEDIA_LIMIT_BYTES,
     IMAGE_TYPE,
+    MOUNT_TYPE,
     AssetError,
     AssetWriter,
     ComboWidget,
-    InputSpec,
+    Editor,
+    Input,
     MountSnapshotWriter,
     MountWidget,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
+    Row,
+    SaveTargetWidget,
     StringWidget,
     TypeExpr,
     attach_saved_artifact,
@@ -57,53 +61,60 @@ class SaveWEBM(Node):
             display_name="Save WEBM",
             category="video",
             search_terms=("export webm",),
-            inputs=(
-                InputSpec(
+            body=(
+                Input(
                     "images",
                     TypeExpr.concrete(IMAGE_TYPE),
-                    doc=(
+                    tooltip=(
                         "RGBA images are saved with their alpha channel as transparency "
                         "(vp9 codec only)."
                     ),
                 ),
-                InputSpec(
-                    "filename_prefix",
-                    TypeExpr.concrete(CORE_STRING),
-                    default="ComfyUI",
-                    widget=StringWidget(multiline=False),
+                Row(
+                    rows=(
+                        Input(
+                            "filename_prefix",
+                            TypeExpr.concrete(CORE_STRING),
+                            default="ComfyUI",
+                            widget=StringWidget(multiline=False),
+                        ),
+                        Input(
+                            "mount",
+                            TypeExpr.union(MOUNT_TYPE, CORE_STRING),
+                            required=False,
+                            default=None,
+                            widget=MountWidget(),
+                        ),
+                    )
                 ),
-                InputSpec(
+                Editor(
+                    "target",
+                    SaveTargetWidget(writes={"mount": "mount", "name": "filename_prefix"}),
+                ),
+                Input(
                     "codec",
                     TypeExpr.concrete(CORE_COMBO),
                     default="vp9",
                     widget=ComboWidget(options=("vp9", "av1")),
                 ),
-                InputSpec(
+                Input(
                     "fps",
                     TypeExpr.concrete(CORE_FLOAT),
                     default=24.0,
                     widget=NumberWidget(min=0.01, max=1000.0, step=0.01),
                 ),
-                InputSpec(
+                Input(
                     "crf",
                     TypeExpr.concrete(CORE_FLOAT),
                     default=32.0,
                     widget=NumberWidget(min=0.0, max=63.0, step=1.0),
-                    doc=(
+                    tooltip=(
                         "Higher crf means lower quality with a smaller file size, "
                         "lower crf means higher quality higher filesize."
                     ),
                 ),
-                InputSpec(
-                    "mount",
-                    TypeExpr.concrete(CORE_STRING),
-                    required=False,
-                    default=None,
-                    widget=MountWidget(),
-                    adjacent_to="filename_prefix",
-                ),
+                Output("images", TypeExpr.concrete(IMAGE_TYPE), preview=True),
             ),
-            outputs=(OutputSpec("images", TypeExpr.concrete(IMAGE_TYPE), preview=True),),
             output_node=True,
             idempotent=False,
         )

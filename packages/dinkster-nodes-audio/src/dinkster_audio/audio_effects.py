@@ -10,11 +10,11 @@ from dinkster_api.v1 import (
     AUDIO_TYPE,
     CORE_FLOAT,
     CORE_INT,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
     TypeExpr,
     initialize_inference_process,
     materialize_audio,
@@ -34,29 +34,29 @@ class TrimAudioDuration(Node):
             display_name="Trim Audio Duration",
             description="Trim audio tensor into chosen time range.",
             category="audio",
-            inputs=(
-                InputSpec("audio", _AUDIO),
-                InputSpec(
+            body=(
+                Input("audio", _AUDIO),
+                Input(
                     "start_index",
                     _FLOAT,
                     default=0.0,
                     widget=NumberWidget(
                         min=-float(0xFFFFFFFFFFFFFFFF), max=float(0xFFFFFFFFFFFFFFFF), step=0.01
                     ),
-                    doc=(
+                    tooltip=(
                         "Start time in seconds, can be negative to count from the end "
                         "(supports sub-seconds)."
                     ),
                 ),
-                InputSpec(
+                Input(
                     "duration",
                     _FLOAT,
                     default=60.0,
                     widget=NumberWidget(min=0.0, step=0.01),
-                    doc="Duration in seconds",
+                    tooltip="Duration in seconds",
                 ),
+                Output("AUDIO", _AUDIO),
             ),
-            outputs=(OutputSpec("AUDIO", _AUDIO),),
         )
         return with_identity_replacement(schema, "TrimAudioDuration")
 
@@ -95,59 +95,59 @@ class AudioEqualizer3Band(Node):
             node_type="dinkster.audio.audio_equalizer3_band",
             display_name="Audio Equalizer (3-Band)",
             category="audio",
-            inputs=(
-                InputSpec("audio", _AUDIO),
-                InputSpec(
+            body=(
+                Input("audio", _AUDIO),
+                Input(
                     "low_gain_dB",
                     _FLOAT,
                     default=0.0,
                     widget=NumberWidget(min=-24.0, max=24.0, step=0.1),
-                    doc="Gain for Low frequencies (Bass)",
+                    tooltip="Gain for Low frequencies (Bass)",
                 ),
-                InputSpec(
+                Input(
                     "low_freq",
                     _INT,
                     default=100,
                     widget=NumberWidget(min=20, max=500),
-                    doc="Cutoff frequency for Low shelf",
+                    tooltip="Cutoff frequency for Low shelf",
                 ),
-                InputSpec(
+                Input(
                     "mid_gain_dB",
                     _FLOAT,
                     default=0.0,
                     widget=NumberWidget(min=-24.0, max=24.0, step=0.1),
-                    doc="Gain for Mid frequencies",
+                    tooltip="Gain for Mid frequencies",
                 ),
-                InputSpec(
+                Input(
                     "mid_freq",
                     _INT,
                     default=1000,
                     widget=NumberWidget(min=200, max=4000),
-                    doc="Center frequency for Mids",
+                    tooltip="Center frequency for Mids",
                 ),
-                InputSpec(
+                Input(
                     "mid_q",
                     _FLOAT,
                     default=0.707,
                     widget=NumberWidget(min=0.1, max=10.0, step=0.1),
-                    doc="Q factor (bandwidth) for Mids",
+                    tooltip="Q factor (bandwidth) for Mids",
                 ),
-                InputSpec(
+                Input(
                     "high_gain_dB",
                     _FLOAT,
                     default=0.0,
                     widget=NumberWidget(min=-24.0, max=24.0, step=0.1),
-                    doc="Gain for High frequencies (Treble)",
+                    tooltip="Gain for High frequencies (Treble)",
                 ),
-                InputSpec(
+                Input(
                     "high_freq",
                     _INT,
                     default=5000,
                     widget=NumberWidget(min=1000, max=15000),
-                    doc="Cutoff frequency for High shelf",
+                    tooltip="Cutoff frequency for High shelf",
                 ),
+                Output("AUDIO", _AUDIO),
             ),
-            outputs=(OutputSpec("AUDIO", _AUDIO),),
         )
         return with_identity_replacement(schema, "AudioEqualizer3Band")
 

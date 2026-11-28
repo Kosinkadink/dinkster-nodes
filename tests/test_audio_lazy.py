@@ -20,6 +20,7 @@ from dinkster_assets import AssetError, AssetIntegrityError, AssetRef, AssetVaul
 from dinkster_assets.audio import bind_audio_value, register_audio_value_type
 from dinkster_assets.value import value_asset_references
 from dinkster_audio.audio_save import SaveAudio, SaveAudioMP3, SaveAudioOpus
+from dinkster_schema import elaborate
 from dinkster_values import TypeRegistry
 from dinkster_values.audio_codec import (
     AUDIO_INLINE_LIMIT,
@@ -928,7 +929,7 @@ def test_lazy_audio_chain_matches_across_worker_shared_memory(source, concat) ->
                         "start_index": registry.wrap("FLOAT", 0.113),
                         "duration": registry.wrap("FLOAT", 0.751),
                     },
-                    effective_schema=worker.schemas[node_type],
+                    effective_schema=elaborate(worker.schemas[node_type], ()),
                 )
             )
             assert result.error is None

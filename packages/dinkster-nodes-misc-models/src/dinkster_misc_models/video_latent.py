@@ -8,11 +8,11 @@ from collections.abc import Mapping
 from dinkster_api.v1 import (
     CORE_INT,
     LATENT_TYPE,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
     TypeExpr,
     with_identity_replacement,
 )
@@ -20,10 +20,8 @@ from dinkster_api.v1 import (
 _LATENT = TypeExpr.concrete(LATENT_TYPE)
 
 
-def _integer(
-    name: str, default: int, minimum: int, maximum: int, step: int | None = None
-) -> InputSpec:
-    return InputSpec(
+def _integer(name: str, default: int, minimum: int, maximum: int, step: int | None = None) -> Input:
+    return Input(
         name,
         TypeExpr.concrete(CORE_INT),
         default=default,
@@ -50,13 +48,13 @@ def _schema(
         node_type=node_type,
         display_name=display_name,
         category=category,
-        inputs=(
+        body=(
             _integer("width", width, spatial_minimum, maximum, spatial_step),
             _integer("height", height, spatial_minimum, maximum, spatial_step),
             _integer("length", length, 1, temporal_maximum or maximum, temporal_step),
             _integer("batch_size", 1, 1, batch_maximum),
+            Output("LATENT", _LATENT),
         ),
-        outputs=(OutputSpec("LATENT", _LATENT),),
     )
 
 
@@ -109,7 +107,9 @@ class EmptyARVideoLatent(Node):
     def execute(
         cls, *, width: int, height: int, length: int, batch_size: int = 1
     ) -> Mapping[str, object]:
-        from dinkster_api.v1 import initialize_inference_process
+        from dinkster_api.v1 import (
+            initialize_inference_process,
+        )
 
         initialize_inference_process()
         return cls.outputs(LATENT=_empty_video_latent(batch_size, 16, length, 4, height, width, 8))

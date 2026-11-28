@@ -8,7 +8,8 @@ from dinkster_api.v1 import (
     VAE_TYPE,
     Node,
     NodeSchema,
-    OutputSpec,
+    Output,
+    Section,
     TypeExpr,
     initialize_inference_process,
     with_identity_replacement,
@@ -41,8 +42,10 @@ class LTXVAudioVAELoader(Node):
             node_type="dinkster.ltx.ltxv_audio_vae_loader",
             display_name="Load LTXV Audio VAE",
             category="model/loaders",
-            inputs=(_asset("ckpt_name", "model/checkpoint", doc="Audio VAE checkpoint to load."),),
-            outputs=(OutputSpec("VAE", _VAE, display_name="Audio VAE"),),
+            body=(
+                _asset("ckpt_name", "model/checkpoint", doc="Audio VAE checkpoint to load."),
+                Output("VAE", _VAE, label="Audio VAE"),
+            ),
         )
         return with_identity_replacement(schema, "LTXVAudioVAELoader")
 
@@ -69,12 +72,23 @@ class LTXAVTextEncoderLoader(Node):
             display_name="Load LTXV Audio Text Encoder",
             category="model/loaders",
             description="Recipes:\nltxav: gemma 3 12B or matching gemma 4 model",
-            inputs=(
+            body=(
                 _asset("text_encoder", "model/text-encoder"),
                 _asset("ckpt_name", "model/checkpoint"),
-                _combo("device", ("default", "cpu"), "default", advanced=True),
+                Section(
+                    "advanced",
+                    label="Advanced",
+                    collapsed=True,
+                    rows=(
+                        _combo(
+                            "device",
+                            ("default", "cpu"),
+                            "default",
+                        ),
+                    ),
+                ),
+                Output("CLIP", _CLIP),
             ),
-            outputs=(OutputSpec("CLIP", _CLIP),),
         )
         return with_identity_replacement(schema, "LTXAVTextEncoderLoader")
 

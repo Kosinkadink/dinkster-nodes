@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 
 from dinkster_api.v1 import (
     CORE_BOOLEAN,
@@ -10,11 +10,15 @@ from dinkster_api.v1 import (
     CORE_INT,
     CORE_STRING,
     ComboWidget,
-    InputFamilySpec,
-    InputSpec,
+    Group,
+    Input,
+    Item,
+    Members,
     Node,
     NodeSchema,
-    OutputSpec,
+    Numbered,
+    Output,
+    OutputKnownValue,
     TypeExpr,
     with_identity_replacement,
 )
@@ -31,8 +35,10 @@ class ComfyNotNode(Node):
                 "Logical NOT operation. Returns true if the value is falsy. "
                 "Uses Python's rules for truthiness."
             ),
-            inputs=(InputSpec("value", TypeExpr.wildcard()),),
-            outputs=(OutputSpec("BOOLEAN", TypeExpr.concrete(CORE_BOOLEAN)),),
+            body=(
+                Input("value", TypeExpr.wildcard()),
+                Output("BOOLEAN", TypeExpr.concrete(CORE_BOOLEAN)),
+            ),
         )
         return with_identity_replacement(schema, "ComfyNotNode")
 
@@ -52,23 +58,23 @@ class ComfyAndNode(Node):
                 "Logical AND operation. Returns true if all of the values are truthy. "
                 "Uses Python's rules for truthiness."
             ),
-            input_families=(
-                InputFamilySpec(
+            body=(
+                Group(
                     "values",
-                    TypeExpr.wildcard(),
+                    value=Input("value", TypeExpr.wildcard()),
                     min_members=1,
                     max_members=10,
-                    member_prefix="value",
                     optional_after_minimum=True,
+                    keys=Numbered("value", start=0),
                 ),
+                Output("BOOLEAN", TypeExpr.concrete(CORE_BOOLEAN)),
             ),
-            outputs=(OutputSpec("BOOLEAN", TypeExpr.concrete(CORE_BOOLEAN)),),
         )
         return with_identity_replacement(schema, "ComfyAndNode")
 
     @classmethod
-    def execute(cls, *, values: Mapping[str, object]) -> Mapping[str, object]:
-        return cls.outputs(BOOLEAN=all(values.values()))
+    def execute(cls, *, values: Members[Item]) -> Mapping[str, object]:
+        return cls.outputs(BOOLEAN=all(member.value for member in values))
 
 
 class ComfyOrNode(Node):
@@ -82,47 +88,64 @@ class ComfyOrNode(Node):
                 "Logical OR operation. Returns true if any of the values are truthy. "
                 "Uses Python's rules for truthiness."
             ),
-            input_families=(
-                InputFamilySpec(
+            body=(
+                Group(
                     "values",
-                    TypeExpr.wildcard(),
+                    value=Input("value", TypeExpr.wildcard()),
                     min_members=1,
                     max_members=10,
-                    member_prefix="value",
                     optional_after_minimum=True,
+                    keys=Numbered("value", start=0),
                 ),
+                Output("BOOLEAN", TypeExpr.concrete(CORE_BOOLEAN)),
             ),
-            outputs=(OutputSpec("BOOLEAN", TypeExpr.concrete(CORE_BOOLEAN)),),
         )
         return with_identity_replacement(schema, "ComfyOrNode")
 
     @classmethod
-    def execute(cls, *, values: Mapping[str, object]) -> Mapping[str, object]:
-        return cls.outputs(BOOLEAN=any(values.values()))
+    def execute(cls, *, values: Members[Item]) -> Mapping[str, object]:
+        return cls.outputs(BOOLEAN=any(member.value for member in values))
 
 
 class CustomCombo(Node):
+    """A choice among options the author types. The editor sends those options,
+    in order, to ``options``; INDEX is the choice's position among them,
+    counting from 0. STRING is the stored choice, so the editor knows it
+    before the run, as it knows a primitive's value."""
+
     @classmethod
     def define_schema(cls) -> NodeSchema:
         schema = NodeSchema(
             node_type="dinkster.utilities.custom_combo",
             display_name="Custom Combo",
             category="utilities",
-            inputs=(
-                InputSpec(
+            body=(
+                Input(
                     "choice",
                     TypeExpr.concrete(CORE_COMBO),
-                    widget=ComboWidget(options=(), editable_options=True),
+                    widget=ComboWidget(options=(), editable_options=True, options_input="options"),
                 ),
-            ),
-            outputs=(
-                OutputSpec("STRING", TypeExpr.concrete(CORE_STRING)),
-                OutputSpec("INDEX", TypeExpr.concrete(CORE_INT)),
+                Input(
+                    "options",
+                    TypeExpr.list_of(TypeExpr.concrete(CORE_STRING)),
+                    required=False,
+                    hidden=True,
+                ),
+                Output(
+                    "STRING",
+                    TypeExpr.concrete(CORE_STRING),
+                    known_value=OutputKnownValue("choice"),
+                ),
+                Output("INDEX", TypeExpr.concrete(CORE_INT)),
             ),
             additional_inputs=TypeExpr.wildcard(),
         )
         return with_identity_replacement(schema, "CustomCombo")
 
     @classmethod
-    def execute(cls, *, choice: str, index: int = 0, **kwargs: object) -> Mapping[str, object]:
-        return cls.outputs(STRING=choice, INDEX=index)
+    def execute(
+        cls, *, choice: str, options: Sequence[str] = (), **_: object
+    ) -> Mapping[str, object]:
+        if choice not in options:
+            raise ValueError(f'Custom Combo\'s choice "{choice}" is not one of its options.')
+        return cls.outputs(STRING=choice, INDEX=list(options).index(choice))

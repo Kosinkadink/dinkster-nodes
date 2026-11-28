@@ -14,13 +14,13 @@ from dinkster_api.v1 import (
     WEBCAM_TYPE,
     AssetRef,
     CustomWidgetDescriptor,
-    InputSpec,
+    Input,
     LocalAssetRef,
     MappingSource,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
     ReplacementCase,
     ReplacementRule,
     TypeExpr,
@@ -42,12 +42,21 @@ class WebcamCapture(Node):
                 "camera feed",
                 "snapshot",
             ),
-            inputs=(
-                InputSpec(
-                    "image", TypeExpr.concrete(WEBCAM_TYPE), widget=CustomWidgetDescriptor("WEBCAM")
+            body=(
+                Input(
+                    "image",
+                    TypeExpr.concrete(WEBCAM_TYPE),
+                    widget=CustomWidgetDescriptor(
+                        "WEBCAM",
+                        reads={
+                            "width": "width",
+                            "height": "height",
+                            "capture_on_queue": "capture_on_queue",
+                        },
+                    ),
                 ),
                 *(
-                    InputSpec(
+                    Input(
                         name,
                         TypeExpr.concrete(CORE_INT),
                         default=0,
@@ -55,9 +64,9 @@ class WebcamCapture(Node):
                     )
                     for name in ("width", "height")
                 ),
-                InputSpec("capture_on_queue", TypeExpr.concrete(CORE_BOOLEAN), default=True),
+                Input("capture_on_queue", TypeExpr.concrete(CORE_BOOLEAN), default=True),
+                Output("IMAGE", TypeExpr.concrete(IMAGE_TYPE)),
             ),
-            outputs=(OutputSpec("IMAGE", TypeExpr.concrete(IMAGE_TYPE)),),
         )
         return replace(
             schema,

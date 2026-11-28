@@ -11,6 +11,8 @@ from dinkster_models.compile import TorchCompileModel
 from dinkster_wan import NODES as WAN_NODES
 from dinkster_wan.compile import wanBlockSwap
 
+from tests.body_rows import advanced_ids
+
 
 def test_compile_nodes_are_registered_once_with_their_public_schemas() -> None:
     compile_schema, nop_schema = TorchCompileModel.schema(), wanBlockSwap.schema()
@@ -23,7 +25,7 @@ def test_compile_nodes_are_registered_once_with_their_public_schemas() -> None:
     assert compile_schema.category == "experimental"
     assert compile_schema.inputs[0].type == TypeExpr.concrete(MODEL_TYPE)
     assert compile_schema.inputs[1].type == TypeExpr.concrete(CORE_COMBO)
-    assert compile_schema.inputs[1].advanced is True
+    assert advanced_ids(compile_schema.body) == (compile_schema.inputs[1].id,)
     assert compile_schema.inputs[1].required is True
     assert nop_schema.node_type == "dinkster.wan.wan_block_swap"
     assert nop_schema.deprecation is not None

@@ -14,11 +14,12 @@ from dinkster_api.v1 import (
     LATENT_TYPE,
     VAE_TYPE,
     ComboWidget,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
+    Section,
     TypeExpr,
     initialize_inference_process,
     materialize_clip_vision_output,
@@ -47,8 +48,8 @@ _VAE = TypeExpr.concrete(VAE_TYPE)
 _CATEGORY = "model/conditioning/hunyuan video"
 
 
-def _integer(name: str, default: int, minimum: int, *, step: int | None = None) -> InputSpec:
-    return InputSpec(
+def _integer(name: str, default: int, minimum: int, *, step: int | None = None) -> Input:
+    return Input(
         name,
         _INT,
         default=default,
@@ -78,23 +79,30 @@ class HunyuanImageToVideo(Node):
         schema = NodeSchema(
             node_type="dinkster.hunyuan.hunyuan_image_to_video",
             category=_CATEGORY,
-            inputs=(
-                InputSpec("positive", _CONDITIONING),
-                InputSpec("vae", _VAE),
+            body=(
+                Input("positive", _CONDITIONING),
+                Input("vae", _VAE),
                 _integer("width", 848, 16, step=16),
                 _integer("height", 480, 16, step=16),
                 _integer("length", 53, 1, step=4),
                 _integer("batch_size", 1, 1),
-                InputSpec(
-                    "guidance_type",
-                    _COMBO,
-                    default="v1 (concat)",
-                    widget=ComboWidget(("v1 (concat)", "v2 (replace)", "custom")),
-                    advanced=True,
+                Input("start_image", _IMAGE, required=False),
+                Section(
+                    "advanced",
+                    label="Advanced",
+                    collapsed=True,
+                    rows=(
+                        Input(
+                            "guidance_type",
+                            _COMBO,
+                            default="v1 (concat)",
+                            widget=ComboWidget(("v1 (concat)", "v2 (replace)", "custom")),
+                        ),
+                    ),
                 ),
-                InputSpec("start_image", _IMAGE, required=False),
+                Output("positive", _CONDITIONING),
+                Output("latent", _LATENT),
             ),
-            outputs=(OutputSpec("positive", _CONDITIONING), OutputSpec("latent", _LATENT)),
         )
         return with_identity_replacement(schema, "HunyuanImageToVideo")
 
@@ -148,21 +156,19 @@ class HunyuanVideo15ImageToVideo(Node):
         schema = NodeSchema(
             node_type="dinkster.hunyuan.hunyuan_video15_image_to_video",
             category=_CATEGORY,
-            inputs=(
-                InputSpec("positive", _CONDITIONING),
-                InputSpec("negative", _CONDITIONING),
-                InputSpec("vae", _VAE),
+            body=(
+                Input("positive", _CONDITIONING),
+                Input("negative", _CONDITIONING),
+                Input("vae", _VAE),
                 _integer("width", 848, 16, step=16),
                 _integer("height", 480, 16, step=16),
                 _integer("length", 33, 1, step=4),
                 _integer("batch_size", 1, 1),
-                InputSpec("start_image", _IMAGE, required=False),
-                InputSpec("clip_vision_output", _CLIP_VISION_OUTPUT, required=False),
-            ),
-            outputs=(
-                OutputSpec("positive", _CONDITIONING),
-                OutputSpec("negative", _CONDITIONING),
-                OutputSpec("latent", _LATENT),
+                Input("start_image", _IMAGE, required=False),
+                Input("clip_vision_output", _CLIP_VISION_OUTPUT, required=False),
+                Output("positive", _CONDITIONING),
+                Output("negative", _CONDITIONING),
+                Output("latent", _LATENT),
             ),
         )
         return with_identity_replacement(schema, "HunyuanVideo15ImageToVideo")
@@ -219,25 +225,29 @@ class HunyuanVideo15SuperResolution(Node):
             node_type="dinkster.hunyuan.hunyuan_video15_super_resolution",
             display_name="Hunyuan Video 1.5 Super Resolution",
             category=_CATEGORY,
-            inputs=(
-                InputSpec("positive", _CONDITIONING),
-                InputSpec("negative", _CONDITIONING),
-                InputSpec("vae", _VAE, required=False),
-                InputSpec("start_image", _IMAGE, required=False),
-                InputSpec("clip_vision_output", _CLIP_VISION_OUTPUT, required=False),
-                InputSpec("latent", _LATENT),
-                InputSpec(
-                    "noise_augmentation",
-                    _FLOAT,
-                    default=0.70,
-                    widget=NumberWidget(min=0.0, max=1.0, step=0.01),
-                    advanced=True,
+            body=(
+                Input("positive", _CONDITIONING),
+                Input("negative", _CONDITIONING),
+                Input("vae", _VAE, required=False),
+                Input("start_image", _IMAGE, required=False),
+                Input("clip_vision_output", _CLIP_VISION_OUTPUT, required=False),
+                Input("latent", _LATENT),
+                Section(
+                    "advanced",
+                    label="Advanced",
+                    collapsed=True,
+                    rows=(
+                        Input(
+                            "noise_augmentation",
+                            _FLOAT,
+                            default=0.70,
+                            widget=NumberWidget(min=0.0, max=1.0, step=0.01),
+                        ),
+                    ),
                 ),
-            ),
-            outputs=(
-                OutputSpec("positive", _CONDITIONING),
-                OutputSpec("negative", _CONDITIONING),
-                OutputSpec("latent", _LATENT),
+                Output("positive", _CONDITIONING),
+                Output("negative", _CONDITIONING),
+                Output("latent", _LATENT),
             ),
         )
         return with_identity_replacement(schema, "HunyuanVideo15SuperResolution")

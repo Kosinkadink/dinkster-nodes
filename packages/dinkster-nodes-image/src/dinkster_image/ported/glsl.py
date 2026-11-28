@@ -20,15 +20,20 @@ from dinkster_api.v1 import (
     CORE_STRING,
     CURVE_TYPE,
     IMAGE_TYPE,
+    Choice,
     CurveWidget,
-    DynamicComboOption,
-    DynamicComboSpec,
-    InputFamilySpec,
-    InputSpec,
+    Group,
+    Input,
+    Item,
+    Members,
+    Named,
     Node,
     NodeSchema,
+    Numbered,
     NumberWidget,
-    OutputSpec,
+    Option,
+    Output,
+    Record,
     StringWidget,
     TypeExpr,
     render_image_png,
@@ -268,9 +273,9 @@ def _family_template(
     type_expr: TypeExpr,
     default: object,
     widget: CurveWidget | NumberWidget | None,
-) -> tuple[InputSpec, ...]:
+) -> tuple[Input, ...]:
     return (
-        InputSpec(
+        Input(
             "value",
             type_expr,
             required=False,
@@ -296,31 +301,60 @@ def _glsl_schema() -> NodeSchema:
         description=(
             "Render a bounded GLSL ES 3.00 fragment shader with isolated native execution."
         ),
-        inputs=(
-            InputSpec(
+        body=(
+            Input(
                 "fragment_shader",
                 STRING,
                 required=False,
                 default=DEFAULT_FRAGMENT_SHADER,
                 widget=StringWidget(multiline=True),
             ),
-        ),
-        combos=(
-            DynamicComboSpec(
+            Group(
+                "images",
+                value=Input("value", IMAGE),
+                min_members=1,
+                label="Images",
+                keys=Named(tuple(f"u_image{index}" for index in range(MAX_GLSL_IMAGES))),
+            ),
+            Group(
+                "floats",
+                value=_family_template(FLOAT, 0.0, NumberWidget(step=0.01))[0],
+                label="Float uniforms",
+                keys=Named(tuple(f"u_float{index}" for index in range(MAX_GLSL_FLOATS))),
+            ),
+            Group(
+                "ints",
+                value=_family_template(INT, 0, NumberWidget(step=1))[0],
+                label="Integer uniforms",
+                keys=Named(tuple(f"u_int{index}" for index in range(MAX_GLSL_INTS))),
+            ),
+            Group(
+                "bools",
+                value=_family_template(BOOLEAN, False, None)[0],
+                label="Boolean uniforms",
+                keys=Named(tuple(f"u_bool{index}" for index in range(MAX_GLSL_BOOLS))),
+            ),
+            Group(
+                "curves",
+                value=_family_template(CURVE, curve_default, CurveWidget())[0],
+                label="Curve uniforms",
+                keys=Named(tuple(f"u_curve{index}" for index in range(MAX_GLSL_CURVES))),
+            ),
+            Choice(
                 "size_mode",
-                (
-                    DynamicComboOption("from_input"),
-                    DynamicComboOption(
+                options=(
+                    Option("from_input"),
+                    Option(
                         "custom",
-                        (
-                            InputSpec(
+                        rows=(
+                            Input(
                                 "width",
                                 INT,
                                 required=False,
                                 default=512,
                                 widget=NumberWidget(min=1, max=MAX_DIMENSION, step=1),
                             ),
-                            InputSpec(
+                            Input(
                                 "height",
                                 INT,
                                 required=False,
@@ -332,49 +366,16 @@ def _glsl_schema() -> NodeSchema:
                 ),
                 default="from_input",
             ),
-        ),
-        input_families=(
-            InputFamilySpec(
-                "images",
-                IMAGE,
-                min_members=1,
-                member_names=tuple(f"u_image{index}" for index in range(MAX_GLSL_IMAGES)),
-                display_name="Images",
+            *tuple(
+                Output(
+                    f"image{index}",
+                    IMAGE,
+                    tooltip=f"Shader output fragColor{index}.",
+                    preview=index == 0,
+                    alpha_policy="create_if_missing",
+                )
+                for index in range(4)
             ),
-            InputFamilySpec(
-                "floats",
-                _family_template(FLOAT, 0.0, NumberWidget(step=0.01)),
-                member_names=tuple(f"u_float{index}" for index in range(MAX_GLSL_FLOATS)),
-                display_name="Float uniforms",
-            ),
-            InputFamilySpec(
-                "ints",
-                _family_template(INT, 0, NumberWidget(step=1)),
-                member_names=tuple(f"u_int{index}" for index in range(MAX_GLSL_INTS)),
-                display_name="Integer uniforms",
-            ),
-            InputFamilySpec(
-                "bools",
-                _family_template(BOOLEAN, False, None),
-                member_names=tuple(f"u_bool{index}" for index in range(MAX_GLSL_BOOLS)),
-                display_name="Boolean uniforms",
-            ),
-            InputFamilySpec(
-                "curves",
-                _family_template(CURVE, curve_default, CurveWidget()),
-                member_names=tuple(f"u_curve{index}" for index in range(MAX_GLSL_CURVES)),
-                display_name="Curve uniforms",
-            ),
-        ),
-        outputs=tuple(
-            OutputSpec(
-                f"image{index}",
-                IMAGE,
-                doc=f"Shader output fragColor{index}.",
-                preview=index == 0,
-                alpha_policy="create_if_missing",
-            )
-            for index in range(4)
         ),
         output_node=True,
         emits_previews=True,
@@ -504,21 +505,24 @@ class NativeGlslShader(Node):
     @classmethod
     def define_schema(cls) -> NodeSchema:
         schema = _glsl_schema()
-        families: list[InputFamilySpec] = []
-        for family in schema.input_families:
-            member = cast(InputSpec, family.template[0])
-            families.append(
-                replace(
-                    family,
-                    member_names=None,
-                    member_prefix="image" if family.id == "images" else f"u_{family.id[:-1]}",
-                    max_members=family.max_members,
-                    optional_after_minimum=family.id == "images",
-                    template=(
-                        replace(
+        fragment, size_mode = None, None
+        groups: list[Group] = []
+        outputs: list[Output] = []
+        for row in schema.body:
+            if isinstance(row, Group):
+                member = cast(Input, row.value)
+                groups.append(
+                    replace(
+                        row,
+                        keys=Numbered(
+                            "image" if row.id == "images" else f"u_{row.id[:-1]}", start=0
+                        ),
+                        max_members=len(cast(Named, row.keys).names),
+                        optional_after_minimum=row.id == "images",
+                        value=replace(
                             member,
-                            id=family.id[:-1],
-                            force_input=family.id != "images",
+                            id=row.id[:-1],
+                            pin_first=row.id != "images",
                             widget=(
                                 None if isinstance(member.widget, NumberWidget) else member.widget
                             ),
@@ -527,58 +531,44 @@ class NativeGlslShader(Node):
                                     "points": [[0.0, 0.0], [1.0, 1.0]],
                                     "interpolation": "monotone_cubic",
                                 }
-                                if family.id == "curves"
+                                if row.id == "curves"
                                 else member.default
                             ),
                         ),
-                    ),
+                    )
                 )
-            )
-        schema = replace(
-            schema,
-            inputs=tuple(
-                replace(
-                    spec,
-                    required=True,
-                    default=DEFAULT_FRAGMENT_SHADER.replace("precision highp sampler2D;\n", ""),
-                )
-                for spec in schema.inputs
-            ),
-            combos=tuple(
-                replace(
-                    combo,
+            elif isinstance(row, Choice):
+                size_mode = replace(
+                    row,
                     default=None,
                     options=tuple(
                         replace(
                             option,
-                            inputs=tuple(
+                            rows=tuple(
                                 replace(
-                                    cast(InputSpec, spec),
+                                    cast(Input, spec),
                                     required=True,
                                     widget=NumberWidget(min=1, max=MAX_DIMENSION),
                                 )
-                                for spec in option.inputs
+                                for spec in option.rows
                             ),
                         )
-                        for option in combo.options
+                        for option in row.options
                     ),
                 )
-                for combo in schema.combos
-            ),
-            input_families=tuple(families),
-            input_order=(
-                "fragment_shader",
-                "size_mode",
-                "images",
-                "floats",
-                "ints",
-                "bools",
-                "curves",
-            ),
-            outputs=tuple(
-                replace(spec, id=f"IMAGE{index}", display_name=f"IMAGE{index}")
-                for index, spec in enumerate(schema.outputs)
-            ),
+            elif isinstance(row, Input):
+                fragment = replace(
+                    row,
+                    required=True,
+                    default=DEFAULT_FRAGMENT_SHADER.replace("precision highp sampler2D;\n", ""),
+                )
+            elif isinstance(row, Output):
+                index = len(outputs)
+                outputs.append(replace(row, id=f"IMAGE{index}", label=f"IMAGE{index}"))
+        assert fragment is not None and size_mode is not None
+        schema = replace(
+            schema,
+            body=(fragment, size_mode, *groups, *outputs),
             output_node=False,
         )
         return with_identity_replacement(schema, "GLSLShader")
@@ -587,55 +577,33 @@ class NativeGlslShader(Node):
     def execute(
         cls,
         *,
+        size_mode: Record,
+        images: Members[Item],
         fragment_shader: str = DEFAULT_FRAGMENT_SHADER.replace("precision highp sampler2D;\n", ""),
-        size_mode: str = "from_input",
-        width: int = 512,
-        height: int = 512,
-        images: Mapping[str, object],
-        floats: Mapping[str, object] | None = None,
-        ints: Mapping[str, object] | None = None,
-        bools: Mapping[str, object] | None = None,
-        curves: Mapping[str, object] | None = None,
-        **size_values: object,
+        floats: Members[Item] = Members[Item](),
+        ints: Members[Item] = Members[Item](),
+        bools: Members[Item] = Members[Item](),
+        curves: Members[Item] = Members[Item](),
     ) -> Mapping[str, object]:
-        nested_width = size_values.pop("size_mode.width", width)
-        nested_height = size_values.pop("size_mode.height", height)
-        if type(nested_width) is not int:
-            raise TypeError("size_mode.width must be an integer")
-        if type(nested_height) is not int:
-            raise TypeError("size_mode.height must be an integer")
-        width = nested_width
-        height = nested_height
-        if size_values:
-            unexpected = next(iter(size_values))
-            raise TypeError(
-                f"NativeGlslShader.execute() got an unexpected keyword argument {unexpected!r}"
-            )
         normalized: dict[str, dict[str, object]] = {}
-        for family, values, prefix, maximum, default in (
-            ("images", images, "image", MAX_GLSL_IMAGES, None),
-            ("floats", floats or {}, "u_float", MAX_GLSL_FLOATS, 0.0),
-            ("ints", ints or {}, "u_int", MAX_GLSL_INTS, 0),
-            ("bools", bools or {}, "u_bool", MAX_GLSL_BOOLS, False),
-            ("curves", curves or {}, "u_curve", MAX_GLSL_CURVES, None),
+        for family, members, prefix, default in (
+            ("images", images, "u_image", None),
+            ("floats", floats, "u_float", 0.0),
+            ("ints", ints, "u_int", 0),
+            ("bools", bools, "u_bool", False),
+            ("curves", curves, "u_curve", None),
         ):
-            _ordered_family(
-                values, tuple(f"{prefix}{index}" for index in range(maximum)), subject=family
-            )
-            members = [
-                default if value is None else value
-                for value in values.values()
-                if value is not None or default is not None
+            values = [
+                default if member.value is None else member.value
+                for member in members
+                if member.value is not None or default is not None
             ]
-            target_prefix = "u_image" if family == "images" else prefix
-            normalized[family] = {
-                f"{target_prefix}{index}": value for index, value in enumerate(members)
-            }
+            normalized[family] = {f"{prefix}{index}": value for index, value in enumerate(values)}
         outputs = _execute_glsl(
             fragment_shader=fragment_shader,
-            size_mode=size_mode,
-            width=width,
-            height=height,
+            size_mode=size_mode.key,
+            width=cast(int, size_mode.get("width", 512)),
+            height=cast(int, size_mode.get("height", 512)),
             images=normalized["images"],
             floats=normalized["floats"],
             ints=normalized["ints"],

@@ -9,6 +9,8 @@ from dinkster_conditioning.conditioning_files import ConditioningLoader, SaveCon
 from dinkster_schema import claim_covers
 from dinkster_workers import load_manifest
 
+from tests.body_rows import beside
+
 
 def test_conditioning_file_schemas_and_registration() -> None:
     loader = ConditioningLoader.schema()
@@ -31,7 +33,7 @@ def test_conditioning_file_schemas_and_registration() -> None:
     assert saver.inputs[1].default == "conditioning/ComfyUI"
     assert not saver.inputs[2].required and saver.inputs[2].default is None
     assert saver.inputs[2].widget == MountWidget()
-    assert saver.inputs[2].adjacent_to == "filename_prefix"
+    assert beside(saver.body) == {"mount": "filename_prefix"}
     assert [(item.id, item.type.types) for item in saver.outputs] == [
         ("conditioning", (CONDITIONING_TYPE,))
     ]

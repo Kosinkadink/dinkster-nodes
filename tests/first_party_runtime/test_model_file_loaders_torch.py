@@ -21,10 +21,10 @@ from dinkster_api.v1 import (
     MODEL_TYPE,
     STYLE_MODEL_TYPE,
     VAE_TYPE,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
-    OutputSpec,
+    Output,
     TypeExpr,
     initialize_inference_process,
 )
@@ -110,7 +110,7 @@ class LoaderSource(Node):
     def define_schema(cls) -> NodeSchema:
         return NodeSchema(
             node_type="model-file-loaders-fixture.source",
-            outputs=(OutputSpec("ready", TypeExpr.concrete(CORE_STRING)),),
+            body=(Output("ready", TypeExpr.concrete(CORE_STRING)),),
         )
 
     @classmethod
@@ -124,8 +124,10 @@ class LoaderInspect(Node):
     def define_schema(cls) -> NodeSchema:
         return NodeSchema(
             node_type="model-file-loaders-fixture.inspect",
-            inputs=(InputSpec("ready", TypeExpr.concrete(CORE_STRING)),),
-            outputs=(OutputSpec("summary", TypeExpr.concrete(CORE_STRING)),),
+            body=(
+                Input("ready", TypeExpr.concrete(CORE_STRING)),
+                Output("summary", TypeExpr.concrete(CORE_STRING)),
+            ),
         )
 
     @classmethod
@@ -139,22 +141,22 @@ class LoaderOutputInspect(Node):
     def define_schema(cls) -> NodeSchema:
         return NodeSchema(
             node_type="model-file-loaders-fixture.output-inspect",
-            inputs=(
-                InputSpec("checkpoint_model", TypeExpr.concrete(MODEL_TYPE)),
-                InputSpec("checkpoint_clip", TypeExpr.concrete(CLIP_TYPE)),
-                InputSpec("checkpoint_vae", TypeExpr.concrete(VAE_TYPE)),
-                InputSpec("configured_model", TypeExpr.concrete(MODEL_TYPE)),
-                InputSpec("unclip_vision", TypeExpr.concrete(CLIP_VISION_TYPE)),
-                InputSpec("control", TypeExpr.concrete(CONTROL_NET_TYPE)),
-                InputSpec("diff_control", TypeExpr.concrete(CONTROL_NET_TYPE)),
-                InputSpec("unet", TypeExpr.concrete(MODEL_TYPE)),
-                InputSpec("clip", TypeExpr.concrete(CLIP_TYPE)),
-                InputSpec("dual", TypeExpr.concrete(CLIP_TYPE)),
-                InputSpec("vision", TypeExpr.concrete(CLIP_VISION_TYPE)),
-                InputSpec("style", TypeExpr.concrete(STYLE_MODEL_TYPE)),
-                InputSpec("gligen", TypeExpr.concrete(GLIGEN_TYPE)),
+            body=(
+                Input("checkpoint_model", TypeExpr.concrete(MODEL_TYPE)),
+                Input("checkpoint_clip", TypeExpr.concrete(CLIP_TYPE)),
+                Input("checkpoint_vae", TypeExpr.concrete(VAE_TYPE)),
+                Input("configured_model", TypeExpr.concrete(MODEL_TYPE)),
+                Input("unclip_vision", TypeExpr.concrete(CLIP_VISION_TYPE)),
+                Input("control", TypeExpr.concrete(CONTROL_NET_TYPE)),
+                Input("diff_control", TypeExpr.concrete(CONTROL_NET_TYPE)),
+                Input("unet", TypeExpr.concrete(MODEL_TYPE)),
+                Input("clip", TypeExpr.concrete(CLIP_TYPE)),
+                Input("dual", TypeExpr.concrete(CLIP_TYPE)),
+                Input("vision", TypeExpr.concrete(CLIP_VISION_TYPE)),
+                Input("style", TypeExpr.concrete(STYLE_MODEL_TYPE)),
+                Input("gligen", TypeExpr.concrete(GLIGEN_TYPE)),
+                Output("summary", TypeExpr.concrete(CORE_STRING)),
             ),
-            outputs=(OutputSpec("summary", TypeExpr.concrete(CORE_STRING)),),
         )
 
     @classmethod
@@ -214,14 +216,14 @@ class CheckpointVariantInspect(Node):
     def define_schema(cls) -> NodeSchema:
         return NodeSchema(
             node_type="model-file-loaders-fixture.checkpoint-variant-inspect",
-            inputs=(
-                InputSpec("configured_clip", TypeExpr.concrete(CLIP_TYPE)),
-                InputSpec("configured_vae", TypeExpr.concrete(VAE_TYPE)),
-                InputSpec("unclip_model", TypeExpr.concrete(MODEL_TYPE)),
-                InputSpec("unclip_clip", TypeExpr.concrete(CLIP_TYPE)),
-                InputSpec("unclip_vae", TypeExpr.concrete(VAE_TYPE)),
+            body=(
+                Input("configured_clip", TypeExpr.concrete(CLIP_TYPE)),
+                Input("configured_vae", TypeExpr.concrete(VAE_TYPE)),
+                Input("unclip_model", TypeExpr.concrete(MODEL_TYPE)),
+                Input("unclip_clip", TypeExpr.concrete(CLIP_TYPE)),
+                Input("unclip_vae", TypeExpr.concrete(VAE_TYPE)),
+                Output("summary", TypeExpr.concrete(CORE_STRING)),
             ),
-            outputs=(OutputSpec("summary", TypeExpr.concrete(CORE_STRING)),),
         )
 
     @classmethod

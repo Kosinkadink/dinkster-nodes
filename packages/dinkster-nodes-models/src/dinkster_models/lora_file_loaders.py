@@ -15,13 +15,16 @@ from dinkster_api.v1 import (
     MODEL_TYPE,
     AssetRef,
     AssetWidget,
-    InputFamilySpec,
-    InputSpec,
+    Group,
+    Input,
     LocalAssetRef,
+    Members,
     Node,
     NodeSchema,
+    Numbered,
     NumberWidget,
-    OutputSpec,
+    Output,
+    Record,
     TypeExpr,
     initialize_inference_process,
     obtain_resident,
@@ -71,18 +74,18 @@ class _Tensor(Protocol):
     def untyped_storage(self) -> _Storage: ...
 
 
-def _strength(name: str, *, doc: str = "") -> InputSpec:
-    return InputSpec(
+def _strength(name: str, *, doc: str = "") -> Input:
+    return Input(
         name,
         _FLOAT,
         default=1.0,
         widget=NumberWidget(min=-100.0, max=100.0, step=0.01),
-        doc=doc,
+        tooltip=doc,
     )
 
 
-def _asset_input(*, doc: str = _LORA_TOOLTIP) -> InputSpec:
-    return InputSpec("lora_name", _ASSET, widget=AssetWidget(kind="model/lora"), doc=doc)
+def _asset_input(*, doc: str = _LORA_TOOLTIP) -> Input:
+    return Input("lora_name", _ASSET, widget=AssetWidget(kind="model/lora"), tooltip=doc)
 
 
 def _ram_bytes(value: Any) -> int:
@@ -164,8 +167,12 @@ def _loader_schema(node_type: str, *, bypass: bool, model_only: bool) -> NodeSch
             search_terms=()
             if bypass
             else ("lora", "load lora", "apply lora", "lora loader", "lora model"),
-            inputs=(InputSpec("model", _MODEL), _asset_input(doc=""), _strength("strength_model")),
-            outputs=(OutputSpec("MODEL", _MODEL),),
+            body=(
+                Input("model", _MODEL),
+                _asset_input(doc=""),
+                _strength("strength_model"),
+                Output("MODEL", _MODEL),
+            ),
         )
     return NodeSchema(
         node_type=node_type,
@@ -185,16 +192,14 @@ def _loader_schema(node_type: str, *, bypass: bool, model_only: bool) -> NodeSch
         search_terms=()
         if bypass
         else ("lora", "load lora", "apply lora", "lora loader", "lora model"),
-        inputs=(
-            InputSpec("model", _MODEL, doc=_MODEL_TOOLTIP),
-            InputSpec("clip", _CLIP, doc=_CLIP_TOOLTIP),
+        body=(
+            Input("model", _MODEL, tooltip=_MODEL_TOOLTIP),
+            Input("clip", _CLIP, tooltip=_CLIP_TOOLTIP),
             _asset_input(),
             _strength("strength_model", doc=_STRENGTH_TOOLTIP.format("diffusion model")),
             _strength("strength_clip", doc=_STRENGTH_TOOLTIP.format("CLIP model")),
-        ),
-        outputs=(
-            OutputSpec("MODEL", _MODEL, doc="The modified diffusion model."),
-            OutputSpec("CLIP", _CLIP, doc="The modified CLIP model."),
+            Output("MODEL", _MODEL, tooltip="The modified diffusion model."),
+            Output("CLIP", _CLIP, tooltip="The modified CLIP model."),
         ),
     )
 
@@ -281,43 +286,34 @@ class LoraLoaderBypassModelOnly(Node):
         return cls.outputs(MODEL=model)
 
 
-def _stack_family(doc: str) -> InputFamilySpec:
-    return InputFamilySpec(
+def _stack_family(doc: str) -> Group:
+    return Group(
         "loras",
-        (
-            InputSpec(
+        member=(
+            Input(
                 "lora_name",
                 _ASSET,
                 widget=AssetWidget(kind="model/lora"),
-                doc="The name of the LoRA file to apply.",
+                tooltip="The name of the LoRA file to apply.",
             ),
             _strength("strength", doc=_STACK_STRENGTH_TOOLTIP),
-            InputSpec(
+            Input(
                 "enabled",
                 TypeExpr.concrete(CORE_BOOLEAN),
                 default=True,
-                doc="Turn off to skip this LoRA without changing its file or strength.",
+                tooltip="Turn off to skip this LoRA without changing its file or strength.",
             ),
         ),
         min_members=1,
         max_members=20,
-        doc=doc,
-        display_name="LoRA",
+        tooltip=doc,
+        label="LoRA",
+        keys=Numbered("", start=0),
     )
 
 
-def _rows(loras: Mapping[str, object]) -> tuple[dict[str, object], ...]:
-    rows: dict[str, dict[str, object]] = {}
-    for input_id, value in loras.items():
-        row, separator, field = input_id.partition(".")
-        if not separator:
-            continue
-        rows.setdefault(row, {})[field] = value
-    return tuple(rows.values())
-
-
-def _row_strength(row: Mapping[str, object]) -> float:
-    strength = row.get("strength", 1.0)
+def _row_strength(row: Record) -> float:
+    strength = row["strength"]
     if isinstance(strength, bool) or not isinstance(strength, (int, float)):
         raise TypeError("LoRA strength must be a number")
     return float(strength)
@@ -337,23 +333,23 @@ class LoadLoraModel(Node):
                     "a LoRA file and its strength."
                 ),
                 search_terms=("lora", "load lora", "apply lora", "lora model", "lora stack"),
-                inputs=(
-                    InputSpec(
-                        "model", _MODEL, doc="The diffusion model the LoRAs will be applied to."
+                body=(
+                    Input(
+                        "model", _MODEL, tooltip="The diffusion model the LoRAs will be applied to."
                     ),
+                    _stack_family("Each row applies one LoRA to the model."),
+                    Output("MODEL", _MODEL, tooltip="The modified diffusion model."),
                 ),
-                input_families=(_stack_family("Each row applies one LoRA to the model."),),
-                outputs=(OutputSpec("MODEL", _MODEL, doc="The modified diffusion model."),),
             ),
             "LoadLoraModel",
         )
 
     @classmethod
-    def execute(cls, *, model: Any, loras: Mapping[str, object]) -> Mapping[str, object]:
-        for row in _rows(loras):
+    def execute(cls, *, model: Any, loras: Members[Record]) -> Mapping[str, object]:
+        for row in loras:
             lora_name = row.get("lora_name")
             strength = _row_strength(row)
-            if not lora_name or not row.get("enabled", True) or strength == 0:
+            if not lora_name or not row["enabled"] or strength == 0:
                 continue
             model, _ = _apply_lora(model, None, lora_name, strength, 0.0, bypass=False)
         return cls.outputs(MODEL=model)
@@ -373,23 +369,23 @@ class LoadLoraTextEncoder(Node):
                     "a LoRA file and its strength."
                 ),
                 search_terms=("lora", "load lora", "apply lora", "clip lora", "lora stack"),
-                inputs=(
-                    InputSpec(
-                        "clip", _CLIP, doc="The CLIP text encoder the LoRAs will be applied to."
+                body=(
+                    Input(
+                        "clip", _CLIP, tooltip="The CLIP text encoder the LoRAs will be applied to."
                     ),
+                    _stack_family("Each row applies one LoRA to the text encoder."),
+                    Output("CLIP", _CLIP, tooltip="The modified CLIP text encoder."),
                 ),
-                input_families=(_stack_family("Each row applies one LoRA to the text encoder."),),
-                outputs=(OutputSpec("CLIP", _CLIP, doc="The modified CLIP text encoder."),),
             ),
             "LoadLoraTextEncoder",
         )
 
     @classmethod
-    def execute(cls, *, clip: Any, loras: Mapping[str, object]) -> Mapping[str, object]:
-        for row in _rows(loras):
+    def execute(cls, *, clip: Any, loras: Members[Record]) -> Mapping[str, object]:
+        for row in loras:
             lora_name = row.get("lora_name")
             strength = _row_strength(row)
-            if not lora_name or not row.get("enabled", True) or strength == 0:
+            if not lora_name or not row["enabled"] or strength == 0:
                 continue
             _, clip = _apply_lora(None, clip, lora_name, 0.0, strength, bypass=False)
         return cls.outputs(CLIP=clip)

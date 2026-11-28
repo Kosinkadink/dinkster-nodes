@@ -6,12 +6,14 @@ from dinkster_api.v1 import (
     AUDIO_ENCODER_TYPE,
     CLIP_VISION_OUTPUT_TYPE,
     CONDITIONING_TYPE,
+    MOUNT_TYPE,
     TypeRegistry,
     TypeSpec,
     comfy_resident_meta,
     default_pool,
     register_asset_type,
     register_inference_types,
+    register_mount_type,
     register_resident_type,
     resolver_from_env,
 )
@@ -26,6 +28,8 @@ from dinkster_inference_wire.wan_wire import register_wan_type
 
 
 def register_types(registry: TypeRegistry) -> tuple[TypeSpec, ...]:
+    if MOUNT_TYPE not in registry:
+        register_mount_type(registry)
     register_inference_types(registry)
     if ASSET_TYPE not in registry:
         register_asset_type(registry, resolver_from_env())

@@ -15,17 +15,18 @@ import torch
 from dinkster_api.v1 import (
     CORE_STRING,
     LATENT_TYPE,
+    MOUNT_TYPE,
     AssetRef,
     ExportSnapshot,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
-    OutputSpec,
+    Output,
     TypeExpr,
     materialize_latent,
 )
 from dinkster_assets import MountDef, MountTable, digest_file
-from dinkster_graph import Graph, GraphNode, Link
+from dinkster_graph import Graph, GraphNode, Link, TypedLiteral
 from dinkster_latent.latent_file_tools import LoadLatent, SaveLatent
 from dinkster_schema.reporting import capture_saved_artifacts
 from safetensors import safe_open
@@ -158,8 +159,10 @@ class LatentInspect(Node):
     def define_schema(cls) -> NodeSchema:
         return NodeSchema(
             node_type="file-export-fixture.inspect",
-            inputs=(InputSpec("latent", TypeExpr.concrete(LATENT_TYPE)),),
-            outputs=(OutputSpec("summary", TypeExpr.concrete(CORE_STRING)),),
+            body=(
+                Input("latent", TypeExpr.concrete(LATENT_TYPE)),
+                Output("summary", TypeExpr.concrete(CORE_STRING)),
+            ),
         )
 
     @classmethod
@@ -185,7 +188,9 @@ def test_latent_export_consumes_submission_metadata(
     disabled: bool,
     prompt: dict | None,
 ) -> None:
-    from dinkster_api.v1 import initialize_inference_process
+    from dinkster_api.v1 import (
+        initialize_inference_process,
+    )
 
     initialize_inference_process()
     from dinkster_inference.cli_args import args
@@ -335,7 +340,7 @@ def test_latent_exports_attach_exact_mounted_files_on_each_execution(
                         {
                             "samples": Link("load", "LATENT"),
                             "filename_prefix": "chosen/asymmetric",
-                            "mount": "alternate",
+                            "mount": TypedLiteral(MOUNT_TYPE, "alternate"),
                         },
                     ),
                 }

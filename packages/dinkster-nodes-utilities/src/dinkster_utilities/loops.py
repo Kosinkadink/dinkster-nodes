@@ -10,20 +10,24 @@ from dinkster_api.v1 import (
     CORE_BOOLEAN,
     CORE_INT,
     CORE_STRING,
-    DynamicComboOption,
-    DynamicComboSpec,
+    Choice,
     Expansion,
     ExpansionBuilder,
     ExpansionNode,
-    InputFamilySpec,
-    InputSpec,
+    Group,
+    Input,
     Node,
     NodeSchema,
+    Numbered,
     NumberWidget,
-    OutputSpec,
+    Option,
+    Output,
+    Record,
     RunExecutionContext,
+    Section,
     StringWidget,
     TypeExpr,
+    member_id,
     report_progress,
     with_identity_replacement,
 )
@@ -35,20 +39,20 @@ ANY = TypeExpr.wildcard()
 ITEM = TypeExpr.variable("list_item")
 CARRY = TypeExpr.variable("carried_value")
 OUTPUT = TypeExpr.variable("output_value")
-DEPENDENCIES = InputFamilySpec(
+DEPENDENCIES = Group(
     "dependencies",
-    (InputSpec("dependency", ANY, hidden=True, on_absent="accept"),),
-    member_prefix="dependency",
+    value=Input("dependency", ANY, hidden=True, on_absent="accept"),
+    keys=Numbered("", start=0),
 )
 
 
-def _outputs() -> tuple[OutputSpec, ...]:
+def _outputs() -> tuple[Output, ...]:
     return (
-        OutputSpec("iteration_index", INT, optional=True),
-        OutputSpec("is_first", BOOL),
-        OutputSpec("is_last", BOOL),
-        OutputSpec("list_item", ITEM, optional=True),
-        OutputSpec("current_iteration_value", CARRY, optional=True),
+        Output("iteration_index", INT, optional=True),
+        Output("is_first", BOOL),
+        Output("is_last", BOOL),
+        Output("list_item", ITEM, optional=True),
+        Output("current_iteration_value", CARRY, optional=True),
     )
 
 
@@ -65,47 +69,48 @@ class StartLoop(Node):
             "dinkster.utilities.start_loop",
             display_name="Start Loop",
             category="utilities/looping",
-            inputs=(
-                InputSpec("cache_iterations", BOOL, default=False, advanced=True),
-                InputSpec("parent_iteration", INT, required=False, force_input=True),
-                InputSpec("initial_iteration_value", CARRY, required=False),
-            ),
-            input_order=(
-                "mode",
-                "cache_iterations",
-                "parent_iteration",
-                "initial_iteration_value",
-            ),
-            combos=(
-                DynamicComboSpec(
+            body=(
+                Choice(
                     "mode",
-                    (
-                        DynamicComboOption(
+                    options=(
+                        Option(
                             "simple",
-                            (
-                                InputSpec(
-                                    "num_iterations", INT, default=4, widget=NumberWidget(min=0)
-                                ),
+                            rows=(
+                                Input("num_iterations", INT, default=4, widget=NumberWidget(min=0)),
                             ),
                         ),
-                        DynamicComboOption(
+                        Option(
                             "For",
-                            (
-                                InputSpec("start_iteration_index", INT, default=0),
-                                InputSpec(
+                            rows=(
+                                Input("start_iteration_index", INT, default=0),
+                                Input(
                                     "max_iteration",
                                     INT,
                                     default=4,
                                     widget=NumberWidget(max=0xFFFFFFFFFFFFFFFF),
                                 ),
-                                InputSpec("step", INT, default=1, widget=NumberWidget(min=1)),
+                                Input("step", INT, default=1, widget=NumberWidget(min=1)),
                             ),
                         ),
-                        DynamicComboOption("List", (InputSpec("list", TypeExpr.list_of(ITEM)),)),
+                        Option("List", rows=(Input("list", TypeExpr.list_of(ITEM)),)),
                     ),
                 ),
+                Input("parent_iteration", INT, required=False, pin_first=True),
+                Input("initial_iteration_value", CARRY, required=False),
+                Section(
+                    "advanced",
+                    label="Advanced",
+                    collapsed=True,
+                    rows=(
+                        Input(
+                            "cache_iterations",
+                            BOOL,
+                            default=False,
+                        ),
+                    ),
+                ),
+                *_outputs(),
             ),
-            outputs=_outputs(),
             execution_context=True,
             may_expand_graph=True,
             idempotent=False,
@@ -117,27 +122,26 @@ class StartLoop(Node):
         cls,
         *,
         execution_context: RunExecutionContext,
-        mode: str = "simple",
+        mode: Record,
         cache_iterations: bool = False,
         parent_iteration: object = None,
         initial_iteration_value: object = None,
-        **options: Any,
     ) -> Expansion:
-        if mode == "simple":
-            values = list(range(options.get("mode.num_iterations", 4)))
-        elif mode == "For":
-            step = options.get("mode.step", 1)
+        if mode.key == "simple":
+            values = list(range(cast("int", mode.get("num_iterations", 4))))
+        elif mode.key == "For":
+            step = cast("int", mode.get("step", 1))
             if step == 0:
                 raise ValueError("Start Loop step must not be 0")
             values = list(
                 range(
-                    options.get("mode.start_iteration_index", 0),
-                    options.get("mode.max_iteration", 4),
+                    cast("int", mode.get("start_iteration_index", 0)),
+                    cast("int", mode.get("max_iteration", 4)),
                     step,
                 )
             )
         else:
-            values = list(range(len(options["mode.list"])))
+            values = list(range(len(cast("Sequence[object]", mode["list"]))))
         document = cast("Any", await execution_context.get_graph())
         start_id = execution_context.node_id
         pair = document["loops"][start_id]
@@ -165,12 +169,14 @@ class StartLoop(Node):
                 is_first=position == 0,
                 is_last=position == len(values) - 1,
                 reuse_cache=cache_iterations,
-                **{f"dependencies.{i}": value for i, value in enumerate(dependencies)},
+                **{
+                    member_id("dependencies", str(i)): value for i, value in enumerate(dependencies)
+                },
             )
             iteration.set_override_display_id(start_id, external=True)
             if previous_carry is not None:
                 iteration.set_input("current_iteration_value", previous_carry)
-            if mode == "List":
+            if mode.key == "List":
                 element = builder.node(
                     "dinkster.utilities.list_element",
                     f"item_{position}",
@@ -226,7 +232,9 @@ class StartLoop(Node):
                 start_id=start_id,
                 position=position + 1,
                 total=len(values),
-                **{f"dependencies.{i}": value for i, value in enumerate(dependencies)},
+                **{
+                    member_id("dependencies", str(i)): value for i, value in enumerate(dependencies)
+                },
             )
             if previous_progress is not None:
                 progress.set_input("previous_progress", previous_progress)
@@ -236,21 +244,25 @@ class StartLoop(Node):
             collected = builder.node(
                 "dinkster.utilities.make_list",
                 "collected",
-                **{f"items.{i}": value for i, value in enumerate(results)},
+                **{member_id("items", str(i)): value for i, value in enumerate(results)},
             )
             result_value: object = collected.out("list")
             if dynamic_accumulate:
                 final = builder.node(
-                    "dinkster.utilities.make_list", "final", **{"items.0": results[-1]}
+                    "dinkster.utilities.make_list",
+                    "final",
+                    **{member_id("items", "0"): results[-1]},
                 )
                 selection = builder.node(
-                    "dinkster.utilities.comfy_switch_node",
+                    "dinkster.utilities.switch",
                     "accumulation",
-                    switch=external(accumulate),
-                    on_false=final.out("list"),
-                    on_true=result_value,
+                    pick=external(accumulate),
+                    **{
+                        member_id("branch", "branch1"): final.out("list"),
+                        member_id("branch", "branch2"): result_value,
+                    },
                 )
-                result_value = selection.out("output")
+                result_value = selection.out("value")
         else:
             result_type = document["outputTypes"][end_id]["outputs"]
             if result_type is None:
@@ -263,7 +275,7 @@ class StartLoop(Node):
             "result",
             close_id=end_id,
             result=result_value,
-            **{f"dependencies.{i}": value for i, value in enumerate(dependencies)},
+            **{member_id("dependencies", str(i)): value for i, value in enumerate(dependencies)},
         )
         if previous_progress is not None:
             result.set_input("progress", previous_progress)
@@ -293,16 +305,16 @@ class LoopIteration(Node):
         schema = NodeSchema(
             "dinkster.utilities.loop_iteration",
             category="sd",
-            inputs=(
-                InputSpec("iteration_index", INT),
-                InputSpec("is_first", BOOL),
-                InputSpec("is_last", BOOL),
-                InputSpec("list_item", ITEM, required=False),
-                InputSpec("current_iteration_value", CARRY, required=False),
-                InputSpec("reuse_cache", BOOL),
+            body=(
+                Input("iteration_index", INT),
+                Input("is_first", BOOL),
+                Input("is_last", BOOL),
+                Input("list_item", ITEM, required=False),
+                Input("current_iteration_value", CARRY, required=False),
+                Input("reuse_cache", BOOL),
+                DEPENDENCIES,
+                *_outputs(),
             ),
-            input_families=(DEPENDENCIES,),
-            outputs=_outputs(),
             execution_context=True,
         )
         return with_identity_replacement(schema, "LoopIteration")
@@ -320,14 +332,14 @@ class LoopProgress(Node):
         schema = NodeSchema(
             "dinkster.utilities.loop_progress",
             category="sd",
-            inputs=(
-                InputSpec("start_id", STRING, widget=StringWidget(multiline=False)),
-                InputSpec("position", INT),
-                InputSpec("total", INT),
-                InputSpec("previous_progress", INT, required=False, hidden=True),
+            body=(
+                Input("start_id", STRING, widget=StringWidget(multiline=False)),
+                Input("position", INT),
+                Input("total", INT),
+                Input("previous_progress", INT, required=False, hidden=True),
+                DEPENDENCIES,
+                Output("INT", INT),
             ),
-            input_families=(DEPENDENCIES,),
-            outputs=(OutputSpec("INT", INT),),
             output_node=True,
             idempotent=False,
         )
@@ -347,13 +359,12 @@ class LoopResult(Node):
         schema = NodeSchema(
             "dinkster.utilities.loop_result",
             category="sd",
-            inputs=(
-                InputSpec("close_id", STRING, widget=StringWidget(multiline=False)),
-                InputSpec("result", TypeExpr.list_of(ANY), hidden=True, on_absent="accept"),
-                InputSpec("progress", INT, required=False, hidden=True),
+            body=(
+                Input("close_id", STRING, widget=StringWidget(multiline=False)),
+                Input("result", TypeExpr.list_of(ANY), hidden=True, on_absent="accept"),
+                Input("progress", INT, required=False, hidden=True),
+                DEPENDENCIES,
             ),
-            input_families=(DEPENDENCIES,),
-            outputs=(),
             output_node=True,
             idempotent=False,
             execution_context=True,
@@ -377,21 +388,18 @@ class EndLoop(Node):
             "dinkster.utilities.end_loop",
             display_name="End Loop",
             category="utilities/looping",
-            inputs=(
-                InputSpec("output_value", OUTPUT, required=False),
-                InputSpec("next_iteration_value", CARRY, required=False),
-                InputSpec("accumulate", BOOL, default=False),
-            ),
-            input_families=(
-                InputFamilySpec(
+            body=(
+                Input("output_value", OUTPUT, required=False),
+                Input("next_iteration_value", CARRY, required=False),
+                Input("accumulate", BOOL, default=False),
+                Group(
                     "terminations",
-                    (InputSpec("termination", ANY, required=False),),
+                    value=Input("termination", ANY, required=False),
                     max_members=50,
-                    member_prefix="termination",
-                    required=False,
+                    keys=Numbered("termination", start=0),
                 ),
+                Output("outputs", TypeExpr.list_of(OUTPUT), optional=True),
             ),
-            outputs=(OutputSpec("outputs", TypeExpr.list_of(OUTPUT), optional=True),),
             execution_context=True,
         )
         return with_identity_replacement(schema, "EndLoop")

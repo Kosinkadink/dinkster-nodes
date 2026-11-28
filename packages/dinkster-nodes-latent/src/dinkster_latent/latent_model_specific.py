@@ -8,10 +8,10 @@ from typing import Any
 from dinkster_api.v1 import (
     CORE_INT,
     LATENT_TYPE,
-    InputSpec,
+    Input,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
     TypeExpr,
     initialize_inference_process,
 )
@@ -21,8 +21,8 @@ __all__ = ["_integer", "_schema", "_runtime"]
 
 def _integer(
     name: str, default: int, maximum: int, minimum: int = 1, step: int | None = None
-) -> InputSpec:
-    return InputSpec(
+) -> Input:
+    return Input(
         name,
         TypeExpr.concrete(CORE_INT),
         default=default,
@@ -33,7 +33,7 @@ def _integer(
 def _schema(
     name: str,
     category: str,
-    inputs: tuple[InputSpec, ...],
+    inputs: tuple[Input, ...],
     display: str | None = None,
     description: str = "",
 ) -> NodeSchema:
@@ -42,8 +42,10 @@ def _schema(
         display_name=display or name,
         category=category,
         description=description,
-        inputs=inputs,
-        outputs=(OutputSpec("LATENT", TypeExpr.concrete(LATENT_TYPE)),),
+        body=(
+            *inputs,
+            Output("LATENT", TypeExpr.concrete(LATENT_TYPE)),
+        ),
     )
 
 

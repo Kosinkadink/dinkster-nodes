@@ -12,11 +12,11 @@ from dinkster_api.v1 import (
     IMAGE_TYPE,
     MESH_TYPE,
     VOXEL_TYPE,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
     TypeExpr,
     initialize_inference_process,
     materialize_mesh,
@@ -171,28 +171,28 @@ class BakeTextureFromVoxel(Node):
                 "Outputs base_color + metallic/roughness grayscale IMAGEs (black if no PBR); "
                 "feed them to ApplyTextureToMesh (SAME mesh) for SaveGLB."
             ),
-            inputs=(
-                InputSpec("mesh", TypeExpr.concrete(MESH_TYPE)),
-                InputSpec("voxel_colors", TypeExpr.concrete(VOXEL_TYPE)),
-                InputSpec(
+            body=(
+                Input("mesh", TypeExpr.concrete(MESH_TYPE)),
+                Input("voxel_colors", TypeExpr.concrete(VOXEL_TYPE)),
+                Input(
                     "texture_size",
                     TypeExpr.concrete(CORE_INT),
-                    display_name="resolution",
+                    label="resolution",
                     default=2048,
                     widget=NumberWidget(min=64, max=8192),
-                    doc="Square UV atlas resolution.",
+                    tooltip="Square UV atlas resolution.",
                 ),
-                InputSpec(
+                Input(
                     "reference_mesh",
                     TypeExpr.concrete(MESH_TYPE),
                     required=False,
-                    doc="Optional dense pre-decimation mesh; back-projects each texel onto its "
+                    tooltip="Optional dense pre-decimation mesh; back-projects each texel onto its "
                     "true surface before sampling, removing faceted baking on coarse meshes.",
                 ),
-            ),
-            outputs=tuple(
-                OutputSpec(name, TypeExpr.concrete(IMAGE_TYPE))
-                for name in ("base_color", "metallic", "roughness")
+                *tuple(
+                    Output(name, TypeExpr.concrete(IMAGE_TYPE))
+                    for name in ("base_color", "metallic", "roughness")
+                ),
             ),
         )
         return with_identity_replacement(schema, "BakeTextureFromVoxel")

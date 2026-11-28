@@ -9,11 +9,12 @@ from dinkster_api.v1 import (
     AUDIO_TYPE,
     CORE_FLOAT,
     CORE_INT,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
+    Section,
     TypeExpr,
     initialize_inference_process,
     with_identity_replacement,
@@ -27,29 +28,34 @@ class EmptyAudio(Node):
             node_type="dinkster.audio.empty_audio",
             display_name="Empty Audio",
             category="audio",
-            inputs=(
-                InputSpec(
+            body=(
+                Input(
                     "duration",
                     TypeExpr.concrete(CORE_FLOAT),
                     default=60.0,
                     widget=NumberWidget(min=0.0, max=float(0xFFFFFFFFFFFFFFFF), step=0.01),
                 ),
-                InputSpec(
-                    "sample_rate",
-                    TypeExpr.concrete(CORE_INT),
-                    default=44100,
-                    widget=NumberWidget(min=1, max=192000),
-                    advanced=True,
+                Section(
+                    "advanced",
+                    label="Advanced",
+                    collapsed=True,
+                    rows=(
+                        Input(
+                            "sample_rate",
+                            TypeExpr.concrete(CORE_INT),
+                            default=44100,
+                            widget=NumberWidget(min=1, max=192000),
+                        ),
+                        Input(
+                            "channels",
+                            TypeExpr.concrete(CORE_INT),
+                            default=2,
+                            widget=NumberWidget(min=1, max=2),
+                        ),
+                    ),
                 ),
-                InputSpec(
-                    "channels",
-                    TypeExpr.concrete(CORE_INT),
-                    default=2,
-                    widget=NumberWidget(min=1, max=2),
-                    advanced=True,
-                ),
+                Output("AUDIO", TypeExpr.concrete(AUDIO_TYPE)),
             ),
-            outputs=(OutputSpec("AUDIO", TypeExpr.concrete(AUDIO_TYPE)),),
         )
         return with_identity_replacement(schema, "EmptyAudio")
 

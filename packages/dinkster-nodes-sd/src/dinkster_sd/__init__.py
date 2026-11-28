@@ -1,5 +1,6 @@
 from dinkster_api.v1 import (
     ASSET_TYPE,
+    MOUNT_TYPE,
     PHOTOMAKER_TYPE,
     TypeRegistry,
     TypeSpec,
@@ -8,6 +9,7 @@ from dinkster_api.v1 import (
     inference_nodes,
     register_asset_type,
     register_inference_types,
+    register_mount_type,
     register_resident_type,
     resolver_from_env,
 )
@@ -66,6 +68,8 @@ __all__ = ["NODES"]
 
 
 def register_types(registry: TypeRegistry) -> tuple[TypeSpec, ...]:
+    if MOUNT_TYPE not in registry:
+        register_mount_type(registry)
     if ASSET_TYPE not in registry:
         register_asset_type(registry, resolver_from_env())
     register_inference_types(registry)

@@ -14,11 +14,12 @@ from dinkster_api.v1 import (
     CORE_INT,
     CORE_STRING,
     ComboWidget,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
+    Section,
     StringWidget,
     TypeExpr,
     initialize_inference_process,
@@ -119,8 +120,8 @@ _KEYS = (
 _KEYSCALES = tuple(f"{root} {quality}" for quality in ("major", "minor") for root in _KEYS)
 
 
-def _text(name: str) -> InputSpec:
-    return InputSpec(name, _STRING, widget=StringWidget(multiline=True, dynamic_prompts=True))
+def _text(name: str) -> Input:
+    return Input(name, _STRING, widget=StringWidget(multiline=True, dynamic_prompts=True))
 
 
 class TextEncodeAceStepAudio(Node):
@@ -129,18 +130,18 @@ class TextEncodeAceStepAudio(Node):
         schema = NodeSchema(
             node_type="dinkster.audio.models.text_encode_ace_step_audio",
             category=_CATEGORY,
-            inputs=(
-                InputSpec("clip", _CLIP),
+            body=(
+                Input("clip", _CLIP),
                 _text("tags"),
                 _text("lyrics"),
-                InputSpec(
+                Input(
                     "lyrics_strength",
                     _FLOAT,
                     default=1.0,
                     widget=NumberWidget(min=0.0, max=10.0, step=0.01),
                 ),
+                Output("CONDITIONING", _CONDITIONING),
             ),
-            outputs=(OutputSpec("CONDITIONING", _CONDITIONING),),
         )
         return with_identity_replacement(schema, "TextEncodeAceStepAudio")
 
@@ -161,86 +162,88 @@ class TextEncodeAceStepAudio15(Node):
         schema = NodeSchema(
             node_type="dinkster.audio.models.text_encode_ace_step_audio1_5",
             category=_CATEGORY,
-            inputs=(
-                InputSpec("clip", _CLIP),
+            body=(
+                Input("clip", _CLIP),
                 _text("tags"),
                 _text("lyrics"),
-                InputSpec(
+                Input(
                     "seed",
                     _INT,
                     default=0,
-                    widget=NumberWidget(
-                        min=0, max=0xFFFFFFFFFFFFFFFF, control_after_generate="fixed"
-                    ),
+                    widget=NumberWidget(min=0, max=0xFFFFFFFFFFFFFFFF),
+                    after_run="fixed",
                 ),
-                InputSpec("bpm", _INT, default=120, widget=NumberWidget(min=10, max=300)),
-                InputSpec(
+                Input("bpm", _INT, default=120, widget=NumberWidget(min=10, max=300)),
+                Input(
                     "duration",
                     _FLOAT,
                     default=120.0,
                     widget=NumberWidget(min=0.0, max=2000.0, step=0.1),
                 ),
-                InputSpec(
+                Input(
                     "timesignature",
                     _COMBO,
                     default="2",
                     widget=ComboWidget(("2", "3", "4", "6")),
                 ),
-                InputSpec("language", _COMBO, default="en", widget=ComboWidget(_LANGUAGES)),
-                InputSpec(
+                Input("language", _COMBO, default="en", widget=ComboWidget(_LANGUAGES)),
+                Input(
                     "keyscale",
                     _COMBO,
                     default="C major",
                     widget=ComboWidget(_KEYSCALES),
                 ),
-                InputSpec(
-                    "generate_audio_codes",
-                    _BOOLEAN,
-                    default=True,
-                    advanced=True,
-                    doc=(
-                        "Enable the LLM that generates audio codes. This can be slow but will "
-                        "increase the quality of the generated audio. Turn this off if you are "
-                        "giving the model an audio reference."
+                Section(
+                    "advanced",
+                    label="Advanced",
+                    collapsed=True,
+                    rows=(
+                        Input(
+                            "generate_audio_codes",
+                            _BOOLEAN,
+                            default=True,
+                            tooltip=(
+                                "Enable the LLM that generates audio codes. This can be slow but "
+                                "will "
+                                "increase the quality of the generated audio. Turn this off if you "
+                                "are "
+                                "giving the model an audio reference."
+                            ),
+                        ),
+                        Input(
+                            "cfg_scale",
+                            _FLOAT,
+                            default=2.0,
+                            widget=NumberWidget(min=0.0, max=100.0, step=0.1),
+                        ),
+                        Input(
+                            "temperature",
+                            _FLOAT,
+                            default=0.85,
+                            widget=NumberWidget(min=0.0, max=2.0, step=0.01),
+                        ),
+                        Input(
+                            "top_p",
+                            _FLOAT,
+                            default=0.9,
+                            widget=NumberWidget(min=0.0, max=2000.0, step=0.01),
+                        ),
+                        Input(
+                            "top_k",
+                            _INT,
+                            default=0,
+                            widget=NumberWidget(min=0, max=100),
+                        ),
+                        Input(
+                            "min_p",
+                            _FLOAT,
+                            default=0.0,
+                            widget=NumberWidget(min=0.0, max=1.0, step=0.001),
+                        ),
                     ),
                 ),
-                InputSpec(
-                    "cfg_scale",
-                    _FLOAT,
-                    default=2.0,
-                    advanced=True,
-                    widget=NumberWidget(min=0.0, max=100.0, step=0.1),
-                ),
-                InputSpec(
-                    "temperature",
-                    _FLOAT,
-                    default=0.85,
-                    advanced=True,
-                    widget=NumberWidget(min=0.0, max=2.0, step=0.01),
-                ),
-                InputSpec(
-                    "top_p",
-                    _FLOAT,
-                    default=0.9,
-                    advanced=True,
-                    widget=NumberWidget(min=0.0, max=2000.0, step=0.01),
-                ),
-                InputSpec(
-                    "top_k",
-                    _INT,
-                    default=0,
-                    advanced=True,
-                    widget=NumberWidget(min=0, max=100),
-                ),
-                InputSpec(
-                    "min_p",
-                    _FLOAT,
-                    default=0.0,
-                    advanced=True,
-                    widget=NumberWidget(min=0.0, max=1.0, step=0.001),
-                ),
+                Output("CONDITIONING", _CONDITIONING),
             ),
-            outputs=(OutputSpec("CONDITIONING", _CONDITIONING),),
         )
         return with_identity_replacement(schema, "TextEncodeAceStepAudio1.5")
 

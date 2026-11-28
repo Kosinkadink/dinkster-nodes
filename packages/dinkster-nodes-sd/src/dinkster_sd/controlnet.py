@@ -12,11 +12,11 @@ from dinkster_api.v1 import (
     IMAGE_TYPE,
     VAE_TYPE,
     Deprecation,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
     TypeExpr,
     with_identity_replacement,
 )
@@ -33,8 +33,8 @@ _VAE = TypeExpr.concrete(VAE_TYPE)
 _CATEGORY = "model/conditioning/controlnet"
 
 
-def _strength() -> InputSpec:
-    return InputSpec(
+def _strength() -> Input:
+    return Input(
         "strength",
         TypeExpr.concrete(CORE_FLOAT),
         default=1.0,
@@ -42,14 +42,13 @@ def _strength() -> InputSpec:
     )
 
 
-def _range(*, advanced: bool = False) -> tuple[InputSpec, ...]:
+def _range() -> tuple[Input, ...]:
     return tuple(
-        InputSpec(
+        Input(
             name,
             TypeExpr.concrete(CORE_FLOAT),
             default=default,
             widget=NumberWidget(min=0.0, max=1.0, step=0.001),
-            advanced=advanced,
         )
         for name, default in (("start_percent", 0.0), ("end_percent", 1.0))
     )
@@ -64,18 +63,16 @@ class ControlNetApplySD3(Node):
             category=_CATEGORY,
             deprecation=Deprecation(message="Use ControlNetApplyAdvanced with a VAE instead."),
             search_visibility="deprecated",
-            inputs=(
-                InputSpec("positive", _CONDITIONING),
-                InputSpec("negative", _CONDITIONING),
-                InputSpec("control_net", _CONTROL_NET),
-                InputSpec("vae", _VAE),
-                InputSpec("image", _IMAGE),
+            body=(
+                Input("positive", _CONDITIONING),
+                Input("negative", _CONDITIONING),
+                Input("control_net", _CONTROL_NET),
+                Input("vae", _VAE),
+                Input("image", _IMAGE),
                 _strength(),
                 *_range(),
-            ),
-            outputs=(
-                OutputSpec("positive", _CONDITIONING),
-                OutputSpec("negative", _CONDITIONING),
+                Output("positive", _CONDITIONING),
+                Output("negative", _CONDITIONING),
             ),
         )
         return with_identity_replacement(schema, "ControlNetApplySD3")

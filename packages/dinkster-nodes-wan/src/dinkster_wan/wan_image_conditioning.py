@@ -11,11 +11,11 @@ from dinkster_api.v1 import (
     IMAGE_TYPE,
     LATENT_TYPE,
     VAE_TYPE,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
     TypeExpr,
     initialize_inference_process,
     materialize_clip_vision_output,
@@ -39,10 +39,8 @@ _VAE = TypeExpr.concrete(VAE_TYPE)
 _CATEGORY = "model/conditioning/wan"
 
 
-def _integer(
-    name: str, default: int, minimum: int, maximum: int, step: int | None = None
-) -> InputSpec:
-    return InputSpec(
+def _integer(name: str, default: int, minimum: int, maximum: int, step: int | None = None) -> Input:
+    return Input(
         name,
         _INT,
         default=default,
@@ -78,32 +76,30 @@ class WanImageToVideo(Node):
         schema = NodeSchema(
             node_type="dinkster.wan.wan_image_to_video",
             category=_CATEGORY,
-            inputs=(
-                InputSpec("positive", _CONDITIONING),
-                InputSpec("negative", _CONDITIONING),
-                InputSpec("vae", _VAE),
+            body=(
+                Input("positive", _CONDITIONING),
+                Input("negative", _CONDITIONING),
+                Input("vae", _VAE),
                 _integer("width", 832, 16, 16384, 16),
                 _integer("height", 480, 16, 16384, 16),
                 _integer("length", 81, 1, 16384, 4),
                 _integer("batch_size", 1, 1, 4096),
-                InputSpec("clip_vision_output", _CLIP_VISION_OUTPUT, required=False),
-                InputSpec("start_image", _IMAGE, required=False),
-                InputSpec(
+                Input("clip_vision_output", _CLIP_VISION_OUTPUT, required=False),
+                Input("start_image", _IMAGE, required=False),
+                Input(
                     "ref_pad_image",
                     _IMAGE,
                     required=False,
-                    doc=(
+                    tooltip=(
                         "Fills the padding frames of the image conditioning with this image "
                         "instead "
                         "of gray, anchoring identity without pinning frames (SVI-style anti-drift "
                         "padding, used by models such as ID-V2V)."
                     ),
                 ),
-            ),
-            outputs=(
-                OutputSpec("positive", _CONDITIONING, display_name="positive"),
-                OutputSpec("negative", _CONDITIONING, display_name="negative"),
-                OutputSpec("latent", _LATENT, display_name="latent"),
+                Output("positive", _CONDITIONING, label="positive"),
+                Output("negative", _CONDITIONING, label="negative"),
+                Output("latent", _LATENT, label="latent"),
             ),
         )
         return with_identity_replacement(schema, "WanImageToVideo")
@@ -162,23 +158,21 @@ class WanFirstLastFrameToVideo(Node):
         schema = NodeSchema(
             node_type="dinkster.wan.wan_first_last_frame_to_video",
             category=_CATEGORY,
-            inputs=(
-                InputSpec("positive", _CONDITIONING),
-                InputSpec("negative", _CONDITIONING),
-                InputSpec("vae", _VAE),
+            body=(
+                Input("positive", _CONDITIONING),
+                Input("negative", _CONDITIONING),
+                Input("vae", _VAE),
                 _integer("width", 832, 16, 16384, 16),
                 _integer("height", 480, 16, 16384, 16),
                 _integer("length", 81, 1, 16384, 4),
                 _integer("batch_size", 1, 1, 4096),
-                InputSpec("clip_vision_start_image", _CLIP_VISION_OUTPUT, required=False),
-                InputSpec("clip_vision_end_image", _CLIP_VISION_OUTPUT, required=False),
-                InputSpec("start_image", _IMAGE, required=False),
-                InputSpec("end_image", _IMAGE, required=False),
-            ),
-            outputs=(
-                OutputSpec("positive", _CONDITIONING, display_name="positive"),
-                OutputSpec("negative", _CONDITIONING, display_name="negative"),
-                OutputSpec("latent", _LATENT, display_name="latent"),
+                Input("clip_vision_start_image", _CLIP_VISION_OUTPUT, required=False),
+                Input("clip_vision_end_image", _CLIP_VISION_OUTPUT, required=False),
+                Input("start_image", _IMAGE, required=False),
+                Input("end_image", _IMAGE, required=False),
+                Output("positive", _CONDITIONING, label="positive"),
+                Output("negative", _CONDITIONING, label="negative"),
+                Output("latent", _LATENT, label="latent"),
             ),
         )
         return with_identity_replacement(schema, "WanFirstLastFrameToVideo")
@@ -265,22 +259,20 @@ class WanFunInpaintToVideo(Node):
         schema = NodeSchema(
             node_type="dinkster.wan.wan_fun_inpaint_to_video",
             category="model/conditioning/wan/fun inpaint",
-            inputs=(
-                InputSpec("positive", _CONDITIONING),
-                InputSpec("negative", _CONDITIONING),
-                InputSpec("vae", _VAE),
+            body=(
+                Input("positive", _CONDITIONING),
+                Input("negative", _CONDITIONING),
+                Input("vae", _VAE),
                 _integer("width", 832, 16, 16384, 16),
                 _integer("height", 480, 16, 16384, 16),
                 _integer("length", 81, 1, 16384, 4),
                 _integer("batch_size", 1, 1, 4096),
-                InputSpec("clip_vision_output", _CLIP_VISION_OUTPUT, required=False),
-                InputSpec("start_image", _IMAGE, required=False),
-                InputSpec("end_image", _IMAGE, required=False),
-            ),
-            outputs=(
-                OutputSpec("positive", _CONDITIONING, display_name="positive"),
-                OutputSpec("negative", _CONDITIONING, display_name="negative"),
-                OutputSpec("latent", _LATENT, display_name="latent"),
+                Input("clip_vision_output", _CLIP_VISION_OUTPUT, required=False),
+                Input("start_image", _IMAGE, required=False),
+                Input("end_image", _IMAGE, required=False),
+                Output("positive", _CONDITIONING, label="positive"),
+                Output("negative", _CONDITIONING, label="negative"),
+                Output("latent", _LATENT, label="latent"),
             ),
         )
         return with_identity_replacement(schema, "WanFunInpaintToVideo")

@@ -17,12 +17,16 @@ from dinkster_api.v1 import (
     VIDEO_TYPE,
     ComboOption,
     ComboWidget,
-    InputFamilySpec,
-    InputSpec,
+    Group,
+    Input,
+    Item,
+    Members,
     Node,
     NodeSchema,
+    Numbered,
     NumberWidget,
-    OutputSpec,
+    Output,
+    Section,
     TypeExpr,
     assemble_video,
     bind_video_value,
@@ -51,51 +55,57 @@ class CreateVideo(Node):
             category="video",
             description="Create a video from images.",
             search_terms=("images to video",),
-            inputs=(
-                InputSpec("images", _IMAGE, doc="The images to create a video from."),
-                InputSpec(
+            body=(
+                Input("images", _IMAGE, tooltip="The images to create a video from."),
+                Input(
                     "fps",
                     _FLOAT,
                     default=30.0,
                     widget=NumberWidget(min=1.0, max=120.0, step=1.0),
                 ),
-                InputSpec("audio", _AUDIO, required=False, doc="The audio to add to the video."),
-                InputSpec(
+                Input("audio", _AUDIO, required=False, tooltip="The audio to add to the video."),
+                Input(
                     "bit_depth",
                     _COMBO,
                     default="auto",
                     required=False,
                     widget=ComboWidget((ComboOption("auto"), ComboOption(8), ComboOption(10))),
-                    doc=(
+                    tooltip=(
                         "Auto uses 8-bit for sRGB and 10-bit for HDR. Explicit 8-bit and "
                         "10-bit choices are independent of colorspace."
                     ),
                 ),
-                InputSpec(
+                Input(
                     "color_space",
                     _COMBO,
                     default="sRGB",
                     required=False,
                     widget=ComboWidget(options=("sRGB", "HDR", "HDR PQ")),
-                    doc=(
+                    tooltip=(
                         "Colorspace of the input images. HDR selects BT.2020/HLG and "
                         "HDR PQ selects BT.2020/PQ."
                     ),
                 ),
-                InputSpec(
-                    "codec",
-                    _COMBO,
-                    default="none",
-                    required=False,
-                    advanced=True,
-                    widget=ComboWidget(options=("none", "auto", "h264", "av1")),
-                    doc=(
-                        "Optionally encode the video immediately. None keeps the images "
-                        "in tensor form; Auto uses H.264."
+                Section(
+                    "advanced",
+                    label="Advanced",
+                    collapsed=True,
+                    rows=(
+                        Input(
+                            "codec",
+                            _COMBO,
+                            default="none",
+                            required=False,
+                            widget=ComboWidget(options=("none", "auto", "h264", "av1")),
+                            tooltip=(
+                                "Optionally encode the video immediately. None keeps the images "
+                                "in tensor form; Auto uses H.264."
+                            ),
+                        ),
                     ),
                 ),
+                Output("video", _VIDEO),
             ),
-            outputs=(OutputSpec("video", _VIDEO),),
         )
         return with_identity_replacement(schema, "CreateVideo")
 
@@ -144,13 +154,13 @@ class GetVideoComponents(Node):
             category="video",
             description="Extracts video frames, audio, frame rate, bit depth, and color space.",
             search_terms=("extract frames", "split video", "video to images", "demux"),
-            inputs=(InputSpec("video", _VIDEO, doc="The video to extract components from."),),
-            outputs=(
-                OutputSpec("images", _IMAGE),
-                OutputSpec("audio", _AUDIO, optional=True),
-                OutputSpec("fps", _FLOAT),
-                OutputSpec("bit_depth", _COMBO),
-                OutputSpec("color_space", _COMBO),
+            body=(
+                Input("video", _VIDEO, tooltip="The video to extract components from."),
+                Output("images", _IMAGE),
+                Output("audio", _AUDIO, optional=True),
+                Output("fps", _FLOAT),
+                Output("bit_depth", _COMBO),
+                Output("color_space", _COMBO),
             ),
         )
         return with_identity_replacement(schema, "GetVideoComponents")
@@ -181,34 +191,39 @@ class ConcatenateVideo(Node):
             display_name="Concatenate Video",
             category="video",
             description="Concatenates videos in order without decoding compatible encoded inputs.",
-            input_families=(
-                InputFamilySpec(
+            body=(
+                Group(
                     "videos",
-                    (
-                        InputSpec(
-                            "video",
-                            TypeExpr.list_of(_VIDEO),
-                            doc="VIDEO lists to concatenate in input order.",
-                        ),
+                    value=Input(
+                        "video",
+                        TypeExpr.list_of(_VIDEO),
+                        tooltip="VIDEO lists to concatenate in input order.",
                     ),
                     min_members=1,
                     max_members=100,
-                    member_prefix="video",
                     optional_after_minimum=True,
+                    keys=Numbered("video", start=0),
                 ),
-            ),
-            inputs=(
-                InputSpec(
-                    "codec",
-                    _COMBO,
-                    default="auto",
-                    advanced=True,
-                    widget=ComboWidget(options=("auto", "h264", "av1")),
+                Section(
+                    "advanced",
+                    label="Advanced",
+                    collapsed=True,
+                    rows=(
+                        Input(
+                            "codec",
+                            _COMBO,
+                            default="auto",
+                            widget=ComboWidget(options=("auto", "h264", "av1")),
+                        ),
+                        Input(
+                            "complete_audio",
+                            _AUDIO,
+                            required=False,
+                        ),
+                    ),
                 ),
-                InputSpec("complete_audio", _AUDIO, required=False, advanced=True),
+                Output("video", _VIDEO),
             ),
-            outputs=(OutputSpec("video", _VIDEO),),
-            input_order=("videos", "codec", "complete_audio"),
         )
         return with_identity_replacement(schema, "ConcatenateVideo")
 
@@ -216,12 +231,16 @@ class ConcatenateVideo(Node):
     def execute(
         cls,
         *,
-        videos: Mapping[str, list[object]],
+        videos: Members[Item],
         codec: str = "auto",
         complete_audio: object | None = None,
     ) -> Mapping[str, object]:
         resolver = resolver_from_env()
-        bound = [bind_video_value(video, resolver) for group in videos.values() for video in group]
+        bound = [
+            bind_video_value(video, resolver)
+            for member in videos
+            for video in cast(list[object], member.value)
+        ]
         return cls.outputs(
             video=concatenate_video(bound, codec=codec, complete_audio=complete_audio)
         )

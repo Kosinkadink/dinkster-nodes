@@ -13,11 +13,11 @@ from dinkster_api.v1 import (
     MODEL_TYPE,
     SAMPLER_TYPE,
     VAE_TYPE,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
     TypeExpr,
     initialize_inference_process,
     materialize_image,
@@ -32,19 +32,19 @@ class SamplerARVideo(Node):
             node_type="dinkster.misc.models.sampler_ar_video",
             display_name="Sampler AR Video",
             category="model/sampling/samplers",
-            inputs=(
-                InputSpec(
+            body=(
+                Input(
                     "num_frame_per_block",
                     TypeExpr.concrete(CORE_INT),
                     default=1,
                     widget=NumberWidget(min=1, max=64),
-                    doc=(
+                    tooltip=(
                         "Frames per autoregressive block. 1 = framewise, "
                         "3 = chunkwise. Must match the checkpoint's training mode."
                     ),
                 ),
+                Output("SAMPLER", TypeExpr.concrete(SAMPLER_TYPE)),
             ),
-            outputs=(OutputSpec("SAMPLER", TypeExpr.concrete(SAMPLER_TYPE)),),
         )
         return with_identity_replacement(schema, "SamplerARVideo")
 
@@ -64,24 +64,20 @@ class ARVideoI2V(Node):
         schema = NodeSchema(
             node_type="dinkster.misc.models.ar_video_i2_v",
             category="model/conditioning/autoregressive",
-            inputs=(
-                InputSpec("model", TypeExpr.concrete(MODEL_TYPE)),
-                InputSpec("vae", TypeExpr.concrete(VAE_TYPE)),
-                InputSpec("start_image", TypeExpr.concrete(IMAGE_TYPE)),
-                InputSpec(
+            body=(
+                Input("model", TypeExpr.concrete(MODEL_TYPE)),
+                Input("vae", TypeExpr.concrete(VAE_TYPE)),
+                Input("start_image", TypeExpr.concrete(IMAGE_TYPE)),
+                Input(
                     "width", integer, default=832, widget=NumberWidget(min=16, max=8192, step=16)
                 ),
-                InputSpec(
+                Input(
                     "height", integer, default=480, widget=NumberWidget(min=16, max=8192, step=16)
                 ),
-                InputSpec(
-                    "length", integer, default=81, widget=NumberWidget(min=1, max=1024, step=4)
-                ),
-                InputSpec("batch_size", integer, default=1, widget=NumberWidget(min=1, max=64)),
-            ),
-            outputs=(
-                OutputSpec("MODEL", TypeExpr.concrete(MODEL_TYPE)),
-                OutputSpec("LATENT", TypeExpr.concrete(LATENT_TYPE)),
+                Input("length", integer, default=81, widget=NumberWidget(min=1, max=1024, step=4)),
+                Input("batch_size", integer, default=1, widget=NumberWidget(min=1, max=64)),
+                Output("MODEL", TypeExpr.concrete(MODEL_TYPE)),
+                Output("LATENT", TypeExpr.concrete(LATENT_TYPE)),
             ),
         )
         return with_identity_replacement(schema, "ARVideoI2V")

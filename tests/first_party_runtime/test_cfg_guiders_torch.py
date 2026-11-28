@@ -13,10 +13,10 @@ from dinkster_api.v1 import (
     CORE_FLOAT,
     GUIDER_TYPE,
     MODEL_TYPE,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
-    OutputSpec,
+    Output,
     TypeExpr,
     initialize_inference_process,
 )
@@ -74,12 +74,12 @@ class GuiderSource(Node):
     def define_schema(cls) -> NodeSchema:
         return NodeSchema(
             node_type="cfg-guiders-fixture.source",
-            outputs=(
-                OutputSpec("model", _MODEL_TYPE),
-                OutputSpec("negative_model", _MODEL_TYPE),
-                OutputSpec("positive", _CONDITIONING_TYPE),
-                OutputSpec("middle", _CONDITIONING_TYPE),
-                OutputSpec("negative", _CONDITIONING_TYPE),
+            body=(
+                Output("model", _MODEL_TYPE),
+                Output("negative_model", _MODEL_TYPE),
+                Output("positive", _CONDITIONING_TYPE),
+                Output("middle", _CONDITIONING_TYPE),
+                Output("negative", _CONDITIONING_TYPE),
             ),
         )
 
@@ -102,15 +102,15 @@ class GuiderConsumer(Node):
     def define_schema(cls) -> NodeSchema:
         return NodeSchema(
             node_type="cfg-guiders-fixture.consumer",
-            inputs=(
-                InputSpec("basic", _GUIDER_TYPE),
-                InputSpec("cfg", _GUIDER_TYPE),
-                InputSpec("dual_regular", _GUIDER_TYPE),
-                InputSpec("dual_nested", _GUIDER_TYPE),
-                InputSpec("dual_model", _GUIDER_TYPE),
-                InputSpec("dual_fallback", _GUIDER_TYPE),
+            body=(
+                Input("basic", _GUIDER_TYPE),
+                Input("cfg", _GUIDER_TYPE),
+                Input("dual_regular", _GUIDER_TYPE),
+                Input("dual_nested", _GUIDER_TYPE),
+                Input("dual_model", _GUIDER_TYPE),
+                Input("dual_fallback", _GUIDER_TYPE),
+                Output("summary", _FLOAT_TYPE),
             ),
-            outputs=(OutputSpec("summary", _FLOAT_TYPE),),
         )
 
     @classmethod

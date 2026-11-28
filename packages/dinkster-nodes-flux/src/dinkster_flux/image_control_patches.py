@@ -10,10 +10,10 @@ from dinkster_api.v1 import (
     CLIP_VISION_OUTPUT_TYPE,
     MODEL_PATCH_TYPE,
     MODEL_TYPE,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
-    OutputSpec,
+    Output,
     TypeExpr,
     initialize_inference_process,
     materialize_clip_vision_output,
@@ -75,12 +75,12 @@ class USOStyleReference(Node):
             node_type="dinkster.flux.uso_style_reference",
             display_name="Apply USO Style Reference",
             category="model/patch/flux",
-            inputs=(
-                InputSpec("model", _MODEL),
-                InputSpec("model_patch", _MODEL_PATCH),
-                InputSpec("clip_vision_output", TypeExpr.concrete(CLIP_VISION_OUTPUT_TYPE)),
+            body=(
+                Input("model", _MODEL),
+                Input("model_patch", _MODEL_PATCH),
+                Input("clip_vision_output", TypeExpr.concrete(CLIP_VISION_OUTPUT_TYPE)),
+                Output("MODEL", _MODEL),
             ),
-            outputs=(OutputSpec("MODEL", _MODEL),),
         )
         return with_identity_replacement(schema, "USOStyleReference")
 

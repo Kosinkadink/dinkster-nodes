@@ -14,7 +14,11 @@ import dinkster_audio.audio_io as audio_io
 import numpy as np
 import pytest
 import torch
-from dinkster_api.v1 import decode_audio, materialize_audio
+from dinkster_api.v1 import (
+    Record,
+    decode_audio,
+    materialize_audio,
+)
 from dinkster_assets import MountDef, MountTable
 from dinkster_audio.audio_save import (
     SaveAudio,
@@ -66,14 +70,16 @@ def _snapshot(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
         (SaveAudioMP3, {"quality": "320k"}, ".mp3", 22_050),
         (SaveAudioOpus, {}, ".opus", 48_000),
         (SaveAudioOpus, {"quality": "96k"}, ".opus", 48_000),
-        (SaveAudioAdvanced, {"format": "opus", "format.quality": "192k"}, ".opus", 48_000),
+        (SaveAudioAdvanced, {"format": Record("flac", {})}, ".flac", 22_050),
+        (SaveAudioAdvanced, {"format": Record("mp3", {"quality": "V0"})}, ".mp3", 22_050),
+        (SaveAudioAdvanced, {"format": Record("opus", {"quality": "192k"})}, ".opus", 48_000),
     ),
 )
 def test_save_audio_writes_each_asymmetric_stereo_batch_and_passes_through_audio(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
     node: type[SaveAudio],
-    kwargs: dict[str, str],
+    kwargs: dict[str, object],
     suffix: str,
     rate: int,
 ) -> None:
@@ -104,12 +110,15 @@ def test_save_audio_writes_each_asymmetric_stereo_batch_and_passes_through_audio
     (
         (SaveAudioMP3, {"quality": "bad"}),
         (SaveAudioOpus, {"quality": "bad"}),
-        (SaveAudioAdvanced, {"format": "wav"}),
-        (SaveAudioAdvanced, {"format": "mp3", "quality": "bad"}),
+        (SaveAudioAdvanced, {"format": Record("wav", {})}),
+        (SaveAudioAdvanced, {"format": Record("mp3", {"quality": "bad"})}),
     ),
 )
 def test_save_audio_rejects_untrusted_format_and_quality(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, node: type[SaveAudio], kwargs: dict[str, str]
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    node: type[SaveAudio],
+    kwargs: dict[str, object],
 ) -> None:
     root = _snapshot(tmp_path, monkeypatch)
     with pytest.raises(ValueError):
@@ -117,13 +126,24 @@ def test_save_audio_rejects_untrusted_format_and_quality(
     assert not list(root.rglob("*"))
 
 
-def test_save_audio_refuses_mounts_outside_the_snapshot(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+def test_save_audio_lands_a_missing_mount_in_the_default_output_and_refuses_read_only(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
 ) -> None:
     root = _snapshot(tmp_path, monkeypatch)
-    with pytest.raises(Exception, match="mount"):
+    with caplog.at_level("WARNING"):
         SaveAudio.execute(audio=_audio(), filename_prefix="audio/clip", mount="outside")
-    assert not list(root.rglob("*"))
+    assert len(list(root.glob("audio/clip_*.flac"))) == 2
+    assert "mount 'outside' is not on this machine" in caplog.text
+
+    frozen = tmp_path / "frozen"
+    frozen.mkdir()
+    snapshot = tmp_path / "mounts.json"
+    mounts = json.loads(snapshot.read_text())
+    mounts["mounts"].append({"id": "frozen", "root": str(frozen), "mode": "readonly"})
+    snapshot.write_text(json.dumps(mounts))
+    with pytest.raises(Exception, match="frozen"):
+        SaveAudio.execute(audio=_audio(), filename_prefix="audio/clip", mount="frozen")
+    assert not list(frozen.rglob("*"))
 
 
 @pytest.mark.parametrize(

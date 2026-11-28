@@ -13,10 +13,11 @@ from dinkster_api.v1 import (
     CORE_INT,
     CORE_STRING,
     MASK_TYPE,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
-    OutputSpec,
+    Output,
+    Section,
     StringWidget,
     TypeExpr,
 )
@@ -58,13 +59,13 @@ class MakeDetection(Node):
             node_type="dinkster.detection.make",
             display_name="Create Detection",
             category="image/detection",
-            inputs=(
-                InputSpec("region", REGION),
-                InputSpec("label", STRING, required=False, default="object", widget=StringWidget()),
+            body=(
+                Input("region", REGION),
+                Input("label", STRING, required=False, default="object", widget=StringWidget()),
                 _number("score", FLOAT, 1.0, minimum=0.0, maximum=1.0, step=0.01),
-                InputSpec("mask", MASK, required=False),
+                Input("mask", MASK, required=False),
+                Output("detection", DETECTION),
             ),
-            outputs=(OutputSpec("detection", DETECTION),),
             search_terms=("bbox annotation", "SEGS", "labeled region"),
         )
 
@@ -97,13 +98,13 @@ class DetectionInfo(Node):
             node_type="dinkster.detection.info",
             display_name="Detection Information",
             category="image/detection",
-            inputs=(InputSpec("detection", DETECTION),),
-            outputs=(
-                OutputSpec("region", REGION),
-                OutputSpec("label", STRING),
-                OutputSpec("score", FLOAT),
-                OutputSpec("area", FLOAT),
-                OutputSpec("has_mask", BOOLEAN),
+            body=(
+                Input("detection", DETECTION),
+                Output("region", REGION),
+                Output("label", STRING),
+                Output("score", FLOAT),
+                Output("area", FLOAT),
+                Output("has_mask", BOOLEAN),
             ),
             search_terms=("detection label", "detection score", "bbox info"),
         )
@@ -126,17 +127,15 @@ class DetectionFilter(Node):
             node_type="dinkster.detection.filter",
             display_name="Filter Detections",
             category="image/detection",
-            inputs=(
-                InputSpec("detections", DETECTIONS),
-                InputSpec("labels", STRING, required=False, default="", widget=StringWidget()),
+            body=(
+                Input("detections", DETECTIONS),
+                Input("labels", STRING, required=False, default="", widget=StringWidget()),
                 _number("min_score", FLOAT, 0.0, minimum=0.0, maximum=1.0, step=0.01),
                 _number("min_area", FLOAT, 0.0, minimum=0.0, step=1.0),
                 _number("max_area", FLOAT, 0.0, minimum=0.0, step=1.0),
                 _number("max_results", INT, 0, minimum=0, step=1),
-            ),
-            outputs=(
-                OutputSpec("detections", DETECTIONS),
-                OutputSpec("count", INT),
+                Output("detections", DETECTIONS),
+                Output("count", INT),
             ),
             search_terms=(
                 "SEGS filter",
@@ -185,12 +184,12 @@ class DetectionSort(Node):
             node_type="dinkster.detection.sort",
             display_name="Sort Detections",
             category="image/detection",
-            inputs=(
-                InputSpec("detections", DETECTIONS),
+            body=(
+                Input("detections", DETECTIONS),
                 _combo("key", _SORT_KEYS, "score"),
-                InputSpec("descending", BOOLEAN, required=False, default=True),
+                Input("descending", BOOLEAN, required=False, default=True),
+                Output("detections", DETECTIONS),
             ),
-            outputs=(OutputSpec("detections", DETECTIONS),),
             search_terms=("SEGS ordered filter", "sort by confidence", "largest detection"),
         )
 
@@ -221,16 +220,26 @@ class DetectionsToMasks(Node):
             node_type="dinkster.detection.to_masks",
             display_name="Detections to Masks",
             category="image/detection",
-            inputs=(
-                InputSpec("detections", DETECTIONS),
+            body=(
+                Input("detections", DETECTIONS),
                 _number("width", INT, 512, minimum=1, maximum=MAX_DIMENSION, step=1),
                 _number("height", INT, 512, minimum=1, maximum=MAX_DIMENSION, step=1),
                 _number("dilation", INT, 0, minimum=-4096, maximum=4096, step=1),
-                InputSpec("tapered_corners", BOOLEAN, required=False, default=True, advanced=True),
-            ),
-            outputs=(
-                OutputSpec("masks", MASKS),
-                OutputSpec("combined", MASK, preview=True),
+                Section(
+                    "advanced",
+                    label="Advanced",
+                    collapsed=True,
+                    rows=(
+                        Input(
+                            "tapered_corners",
+                            BOOLEAN,
+                            required=False,
+                            default=True,
+                        ),
+                    ),
+                ),
+                Output("masks", MASKS),
+                Output("combined", MASK, preview=True),
             ),
             search_terms=(
                 "SegsToCombinedMask",

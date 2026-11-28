@@ -7,11 +7,11 @@ from typing import Any
 from dinkster_api.v1 import (
     CORE_FLOAT,
     MODEL_TYPE,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
     TypeExpr,
     initialize_inference_process,
     with_identity_replacement,
@@ -29,22 +29,22 @@ class MiniMaxH3SigmaShift(Node):
             description="Set the video/audio flow shifts.",
             category="model/patch/minimax",
             search_terms=("sigma shift", "minimax shift"),
-            inputs=(
-                InputSpec("model", model),
-                InputSpec(
+            body=(
+                Input("model", model),
+                Input(
                     "shift_video",
                     number,
                     default=12.0,
                     widget=NumberWidget(min=0.01, max=100.0, step=0.01),
                 ),
-                InputSpec(
+                Input(
                     "shift_audio",
                     number,
                     default=3.0,
                     widget=NumberWidget(min=0.01, max=100.0, step=0.01),
                 ),
+                Output("MODEL", model),
             ),
-            outputs=(OutputSpec("MODEL", model),),
         )
         return with_identity_replacement(schema, "MiniMaxH3SigmaShift")
 

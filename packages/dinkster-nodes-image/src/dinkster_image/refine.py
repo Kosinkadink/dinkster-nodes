@@ -9,11 +9,11 @@ from dataclasses import dataclass
 import numpy as np
 from dinkster_api.v1 import (
     CORE_STRING,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
     TypeExpr,
 )
 from PIL import Image, ImageFilter
@@ -221,16 +221,16 @@ class TileRefinePlan(Node):
             node_type="dinkster.image.tile_refine_plan",
             display_name="Plan Tiled Refine",
             category="image/tiles",
-            inputs=(
-                InputSpec("width", INT, widget=NumberWidget(min=1, max=MAX_DIMENSION, step=1)),
-                InputSpec("height", INT, widget=NumberWidget(min=1, max=MAX_DIMENSION, step=1)),
+            body=(
+                Input("width", INT, widget=NumberWidget(min=1, max=MAX_DIMENSION, step=1)),
+                Input("height", INT, widget=NumberWidget(min=1, max=MAX_DIMENSION, step=1)),
                 _number("tile_width", INT, 512, minimum=8, maximum=MAX_TILE_SIZE, step=1),
                 _number("tile_height", INT, 512, minimum=8, maximum=MAX_TILE_SIZE, step=1),
                 _combo("phase", _PHASES, "redraw"),
                 _combo("mode", _REDRAW_MODES, "linear"),
                 _number("mask_blur", INT, 8, minimum=0, maximum=MAX_FILTER_RADIUS, step=1),
                 _number("tile_padding", INT, 32, minimum=0, maximum=MAX_TILE_SIZE, step=1),
-                InputSpec("force_uniform_tiles", BOOLEAN, required=False, default=True),
+                Input("force_uniform_tiles", BOOLEAN, required=False, default=True),
                 _combo("seam_fix_mode", _SEAM_FIX_MODES, "none"),
                 _number("seam_fix_width", INT, 64, minimum=8, maximum=MAX_TILE_SIZE, step=1),
                 _number(
@@ -242,15 +242,13 @@ class TileRefinePlan(Node):
                     step=1,
                 ),
                 _number("seam_fix_padding", INT, 16, minimum=0, maximum=MAX_TILE_SIZE, step=1),
-            ),
-            outputs=(
-                OutputSpec("regions", REGION_LIST),
-                OutputSpec("crops", REGION_LIST),
-                OutputSpec("sample_widths", INT_LIST),
-                OutputSpec("sample_heights", INT_LIST),
-                OutputSpec("mask_kinds", STRING_LIST),
-                OutputSpec("mask_blurs", INT_LIST),
-                OutputSpec("count", INT),
+                Output("regions", REGION_LIST),
+                Output("crops", REGION_LIST),
+                Output("sample_widths", INT_LIST),
+                Output("sample_heights", INT_LIST),
+                Output("mask_kinds", STRING_LIST),
+                Output("mask_blurs", INT_LIST),
+                Output("count", INT),
             ),
             search_terms=("UltimateSDUpscale", "upscale tiles", "seam fix"),
         )
@@ -467,14 +465,14 @@ class TileBlendMask(Node):
             node_type="dinkster.mask.tile_blend",
             display_name="Tile Blend Mask",
             category="mask/create",
-            inputs=(
-                InputSpec("width", INT, widget=NumberWidget(min=1, max=MAX_DIMENSION, step=1)),
-                InputSpec("height", INT, widget=NumberWidget(min=1, max=MAX_DIMENSION, step=1)),
-                InputSpec("region", REGION),
+            body=(
+                Input("width", INT, widget=NumberWidget(min=1, max=MAX_DIMENSION, step=1)),
+                Input("height", INT, widget=NumberWidget(min=1, max=MAX_DIMENSION, step=1)),
+                Input("region", REGION),
                 _combo("kind", _MASK_KINDS, "rectangle"),
                 _number("blur", INT, 0, minimum=0, maximum=MAX_FILTER_RADIUS, step=1),
+                Output("mask", MASK, preview=True),
             ),
-            outputs=(OutputSpec("mask", MASK, preview=True),),
             search_terms=("UltimateSDUpscale", "tile mask", "seam mask"),
         )
 

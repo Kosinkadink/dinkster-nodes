@@ -16,8 +16,7 @@ def test_noise_nodes_publish_the_fixed_core_interfaces_and_manifest_entries() ->
     )
     seed = RandomNoise.schema().inputs[0]
     assert seed.default == 0
-    assert seed.widget == NumberWidget(
-        min=0, max=0xFFFFFFFFFFFFFFFF, control_after_generate="fixed"
-    )
+    assert seed.widget == NumberWidget(min=0, max=0xFFFFFFFFFFFFFFFF)
+    assert seed.after_run == "fixed"
     manifest = load_manifest("packages/dinkster-nodes-sampling/dinkster-pack.toml")
     assert manifest.namespaces == ("dinkster.sampling",)

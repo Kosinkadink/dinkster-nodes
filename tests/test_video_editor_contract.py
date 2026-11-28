@@ -19,7 +19,7 @@ from dinkster_caches import MemoryLRUCache
 from dinkster_engine import Engine
 from dinkster_graph import Graph, GraphNode, Link, graph_from_wire, graph_to_wire
 from dinkster_protocol import Invocation
-from dinkster_schema import build_node_types
+from dinkster_schema import build_node_types, elaborate
 from dinkster_values import (
     TypeRegistry,
     decode_video,
@@ -399,7 +399,9 @@ def test_media_packs_execute_audio_video_and_video_edit_in_process_and_isolated(
                         "start_index": registry.wrap(CORE_FLOAT, 0.001),
                         "duration": registry.wrap(CORE_FLOAT, 0.002),
                     },
-                    effective_schema=audio_worker.schemas["dinkster.audio.trim_audio_duration"],
+                    effective_schema=elaborate(
+                        audio_worker.schemas["dinkster.audio.trim_audio_duration"], ()
+                    ),
                 )
             )
             assert trimmed_audio.error is None and trimmed_audio.outputs is not None
@@ -414,7 +416,7 @@ def test_media_packs_execute_audio_video_and_video_edit_in_process_and_isolated(
                         "video": registry.wrap(VIDEO_TYPE, source),
                         "trim": registry.wrap(VIDEO_EDIT_TYPE, edit),
                     },
-                    effective_schema=worker.schemas["dinkster.video.video_trim"],
+                    effective_schema=elaborate(worker.schemas["dinkster.video.video_trim"], ()),
                 )
             )
             assert trimmed_video.error is None and trimmed_video.outputs is not None

@@ -13,12 +13,12 @@ from dinkster_api.v1 import (
     MODEL_TYPE,
     AssetRef,
     AssetWidget,
-    InputSpec,
+    Input,
     LocalAssetRef,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
     TypeExpr,
     initialize_inference_process,
     with_identity_replacement,
@@ -112,23 +112,23 @@ class HypernetworkLoader(Node):
                 node_type="dinkster.models.hypernetwork_loader",
                 display_name="Load Hypernetwork",
                 category="model/loaders",
-                inputs=(
-                    InputSpec("model", TypeExpr.concrete(MODEL_TYPE)),
-                    InputSpec(
+                body=(
+                    Input("model", TypeExpr.concrete(MODEL_TYPE)),
+                    Input(
                         "hypernetwork_name",
                         TypeExpr.concrete(ASSET_TYPE),
                         widget=AssetWidget(
                             kind="model/hypernetwork", accept=("application/octet-stream",)
                         ),
                     ),
-                    InputSpec(
+                    Input(
                         "strength",
                         TypeExpr.concrete(CORE_FLOAT),
                         default=1.0,
                         widget=NumberWidget(min=-10.0, max=10.0, step=0.01),
                     ),
+                    Output("MODEL", TypeExpr.concrete(MODEL_TYPE)),
                 ),
-                outputs=(OutputSpec("MODEL", TypeExpr.concrete(MODEL_TYPE)),),
             ),
             "HypernetworkLoader",
         )

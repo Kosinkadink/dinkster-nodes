@@ -42,7 +42,7 @@ def test_audio_transform_interfaces_match_comfy_schemas() -> None:
     assert setting.widget.max == 100
     assert setting.widget.step is None
     assert (
-        setting.doc
+        setting.tooltip
         == "Volume adjustment in decibels (dB). 0 = no change, +6 = double, -6 = half, etc"
     )
     assert tuple((item.id, item.type.types) for item in volume.outputs) == (

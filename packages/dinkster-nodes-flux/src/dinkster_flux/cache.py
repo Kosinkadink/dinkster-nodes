@@ -8,10 +8,10 @@ from typing import Any
 
 from dinkster_api.v1 import (
     MODEL_TYPE,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
-    OutputSpec,
+    Output,
     TypeExpr,
     initialize_inference_process,
     with_identity_replacement,
@@ -59,8 +59,10 @@ class FluxKVCache(Node):
             display_name="Flux KV Cache",
             description="Enables KV Cache optimization for reference images on Flux family models.",
             category="experimental",
-            inputs=(InputSpec("model", _MODEL),),
-            outputs=(OutputSpec("MODEL", _MODEL),),
+            body=(
+                Input("model", _MODEL),
+                Output("MODEL", _MODEL),
+            ),
         )
         return with_identity_replacement(schema, "FluxKVCache")
 

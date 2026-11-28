@@ -10,11 +10,12 @@ from dinkster_api.v1 import (
     CORE_BOOLEAN,
     CORE_FLOAT,
     MODEL_TYPE,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
+    Section,
     TypeExpr,
     with_identity_replacement,
 )
@@ -41,8 +42,10 @@ class CFGZeroStar(Node):
             NodeSchema(
                 node_type="dinkster.sampling.cfg_zero_star",
                 category="advanced/guidance",
-                inputs=(InputSpec("model", _MODEL),),
-                outputs=(OutputSpec("MODEL", _MODEL, display_name="patched_model"),),
+                body=(
+                    Input("model", _MODEL),
+                    Output("MODEL", _MODEL, label="patched_model"),
+                ),
             ),
             "CFGZeroStar",
         )
@@ -72,19 +75,19 @@ class CFGNorm(Node):
             NodeSchema(
                 node_type="dinkster.sampling.cfg_norm",
                 category="advanced/guidance",
-                inputs=(
-                    InputSpec("model", _MODEL),
-                    InputSpec(
+                body=(
+                    Input("model", _MODEL),
+                    Input(
                         "strength",
                         _FLOAT,
                         default=1.0,
                         widget=NumberWidget(min=0.0, max=100.0, step=0.01),
                     ),
-                    InputSpec(
+                    Input(
                         "pre_cfg", TypeExpr.concrete(CORE_BOOLEAN), default=False, required=False
                     ),
+                    Output("MODEL", _MODEL, label="patched_model"),
                 ),
-                outputs=(OutputSpec("MODEL", _MODEL, display_name="patched_model"),),
             ),
             "CFGNorm",
         )
@@ -143,31 +146,35 @@ class APG(Node):
                 node_type="dinkster.sampling.apg",
                 display_name="Adaptive Projected Guidance",
                 category="model/sampling/custom",
-                inputs=(
-                    InputSpec("model", _MODEL),
-                    InputSpec(
-                        "eta",
-                        _FLOAT,
-                        default=1.0,
-                        advanced=True,
-                        widget=NumberWidget(min=-10.0, max=10.0, step=0.01),
+                body=(
+                    Input("model", _MODEL),
+                    Section(
+                        "advanced",
+                        label="Advanced",
+                        collapsed=True,
+                        rows=(
+                            Input(
+                                "eta",
+                                _FLOAT,
+                                default=1.0,
+                                widget=NumberWidget(min=-10.0, max=10.0, step=0.01),
+                            ),
+                            Input(
+                                "norm_threshold",
+                                _FLOAT,
+                                default=5.0,
+                                widget=NumberWidget(min=0.0, max=50.0, step=0.1),
+                            ),
+                            Input(
+                                "momentum",
+                                _FLOAT,
+                                default=0.0,
+                                widget=NumberWidget(min=-5.0, max=1.0, step=0.01),
+                            ),
+                        ),
                     ),
-                    InputSpec(
-                        "norm_threshold",
-                        _FLOAT,
-                        default=5.0,
-                        advanced=True,
-                        widget=NumberWidget(min=0.0, max=50.0, step=0.1),
-                    ),
-                    InputSpec(
-                        "momentum",
-                        _FLOAT,
-                        default=0.0,
-                        advanced=True,
-                        widget=NumberWidget(min=-5.0, max=1.0, step=0.01),
-                    ),
+                    Output("MODEL", _MODEL),
                 ),
-                outputs=(OutputSpec("MODEL", _MODEL),),
             ),
             "APG",
         )
@@ -238,8 +245,10 @@ class TCFG(Node):
                 node_type="dinkster.sampling.tcfg",
                 display_name="Tangential Damping CFG",
                 category="advanced/guidance",
-                inputs=(InputSpec("model", _MODEL),),
-                outputs=(OutputSpec("MODEL", _MODEL, display_name="patched_model"),),
+                body=(
+                    Input("model", _MODEL),
+                    Output("MODEL", _MODEL, label="patched_model"),
+                ),
             ),
             "TCFG",
         )
@@ -268,8 +277,10 @@ class Mahiro(Node):
                 node_type="dinkster.sampling.mahiro",
                 display_name="Positive-Biased Guidance",
                 category="experimental",
-                inputs=(InputSpec("model", _MODEL),),
-                outputs=(OutputSpec("MODEL", _MODEL, display_name="patched_model"),),
+                body=(
+                    Input("model", _MODEL),
+                    Output("MODEL", _MODEL, label="patched_model"),
+                ),
                 search_terms=(
                     "mahiro",
                     "mahiro cfg",
@@ -313,28 +324,28 @@ class NAGuidance(Node):
                 node_type="dinkster.sampling.na_guidance",
                 display_name="Normalized Attention Guidance",
                 category="advanced/guidance",
-                inputs=(
-                    InputSpec("model", _MODEL),
-                    InputSpec(
+                body=(
+                    Input("model", _MODEL),
+                    Input(
                         "nag_scale",
                         _FLOAT,
                         default=5.0,
                         widget=NumberWidget(min=0.0, max=50.0, step=0.1),
                     ),
-                    InputSpec(
+                    Input(
                         "nag_alpha",
                         _FLOAT,
                         default=0.5,
                         widget=NumberWidget(min=0.0, max=1.0, step=0.01),
                     ),
-                    InputSpec(
+                    Input(
                         "nag_tau",
                         _FLOAT,
                         default=1.5,
                         widget=NumberWidget(min=1.0, max=10.0, step=0.01),
                     ),
+                    Output("MODEL", _MODEL),
                 ),
-                outputs=(OutputSpec("MODEL", _MODEL),),
             ),
             "NAGuidance",
         )
@@ -388,24 +399,29 @@ class RenormCFG(Node):
             NodeSchema(
                 node_type="dinkster.sampling.renorm_cfg",
                 category="model/patch",
-                inputs=(
-                    InputSpec("model", _MODEL),
-                    InputSpec(
-                        "cfg_trunc",
-                        _FLOAT,
-                        default=100,
-                        advanced=True,
-                        widget=NumberWidget(min=0.0, max=100.0, step=0.01),
+                body=(
+                    Input("model", _MODEL),
+                    Section(
+                        "advanced",
+                        label="Advanced",
+                        collapsed=True,
+                        rows=(
+                            Input(
+                                "cfg_trunc",
+                                _FLOAT,
+                                default=100,
+                                widget=NumberWidget(min=0.0, max=100.0, step=0.01),
+                            ),
+                            Input(
+                                "renorm_cfg",
+                                _FLOAT,
+                                default=1.0,
+                                widget=NumberWidget(min=0.0, max=100.0, step=0.01),
+                            ),
+                        ),
                     ),
-                    InputSpec(
-                        "renorm_cfg",
-                        _FLOAT,
-                        default=1.0,
-                        advanced=True,
-                        widget=NumberWidget(min=0.0, max=100.0, step=0.01),
-                    ),
+                    Output("MODEL", _MODEL),
                 ),
-                outputs=(OutputSpec("MODEL", _MODEL),),
             ),
             "RenormCFG",
         )

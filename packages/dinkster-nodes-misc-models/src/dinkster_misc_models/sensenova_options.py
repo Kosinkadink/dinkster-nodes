@@ -9,11 +9,11 @@ from typing import Any
 from dinkster_api.v1 import (
     CORE_FLOAT,
     MODEL_TYPE,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
     TypeExpr,
     initialize_inference_process,
     with_identity_replacement,
@@ -28,16 +28,16 @@ class SenseNovaSamplingOptions(Node):
             display_name="SenseNova Sampling Options",
             category="model/patch/sensenova",
             description="Set the SenseNova flow shift.",
-            inputs=(
-                InputSpec("model", TypeExpr.concrete(MODEL_TYPE)),
-                InputSpec(
+            body=(
+                Input("model", TypeExpr.concrete(MODEL_TYPE)),
+                Input(
                     "shift",
                     TypeExpr.concrete(CORE_FLOAT),
                     default=3.0,
                     widget=NumberWidget(step=0.01),
                 ),
+                Output("MODEL", TypeExpr.concrete(MODEL_TYPE)),
             ),
-            outputs=(OutputSpec("MODEL", TypeExpr.concrete(MODEL_TYPE)),),
         )
         return with_identity_replacement(schema, "SenseNovaSamplingOptions")
 

@@ -12,11 +12,12 @@ from dinkster_api.v1 import (
     IMAGE_TYPE,
     LOAD3D_CAMERA_TYPE,
     CustomWidgetDescriptor,
-    InputSpec,
+    Editor,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
     TypeExpr,
     with_identity_replacement,
 )
@@ -51,58 +52,60 @@ class CameraAngle(Node):
                 "shot angle",
                 "camera prompt",
             ),
-            inputs=(
-                InputSpec(
+            body=(
+                Input(
                     "horizontal_angle",
                     TypeExpr.concrete(CORE_INT),
                     default=0,
                     widget=NumberWidget(min=0, max=360, step=1),
-                    doc=(
+                    tooltip=(
                         "Azimuth around the subject in degrees. "
                         "0 is the front, 90 the right side, 180 the back."
                     ),
                 ),
-                InputSpec(
+                Input(
                     "vertical_angle",
                     TypeExpr.concrete(CORE_INT),
                     default=0,
                     widget=NumberWidget(min=-30, max=60, step=1),
-                    doc=(
+                    tooltip=(
                         "Elevation in degrees. "
                         "Negative looks up from below, positive looks down from above."
                     ),
                 ),
-                InputSpec(
+                Input(
                     "zoom",
                     TypeExpr.concrete(CORE_FLOAT),
                     default=5.0,
                     widget=NumberWidget(min=0.0, max=10.0, step=0.1),
-                    doc=(
+                    tooltip=(
                         "Lens zoom on the subject: 0 is a wide shot, 10 a close-up. "
                         "Carried into camera_info.zoom."
                     ),
                 ),
-                InputSpec(
+                Input(
                     "image",
                     TypeExpr.concrete(IMAGE_TYPE),
                     required=False,
-                    doc=(
+                    tooltip=(
                         "Optional reference image shown on the front of the subject cube "
                         "in the 3D preview."
                     ),
                 ),
-                InputSpec(
-                    "view",
-                    TypeExpr.concrete(CORE_STRING),
-                    default="",
-                    required=False,
-                    socketless=True,
-                    widget=CustomWidgetDescriptor("CAMERA_ANGLE_VIEW", {"multiline": False}),
+                Editor(
+                    "angle_view",
+                    CustomWidgetDescriptor(
+                        "CAMERA_ANGLE_VIEW",
+                        {"multiline": False},
+                        writes={
+                            "horizontal_angle": "horizontal_angle",
+                            "vertical_angle": "vertical_angle",
+                            "zoom": "zoom",
+                        },
+                    ),
                 ),
-            ),
-            outputs=(
-                OutputSpec("camera_info", TypeExpr.concrete(LOAD3D_CAMERA_TYPE)),
-                OutputSpec("prompt", TypeExpr.concrete(CORE_STRING)),
+                Output("camera_info", TypeExpr.concrete(LOAD3D_CAMERA_TYPE)),
+                Output("prompt", TypeExpr.concrete(CORE_STRING)),
             ),
         )
         return with_identity_replacement(schema, "CameraAngle")
@@ -115,7 +118,6 @@ class CameraAngle(Node):
         vertical_angle: int,
         zoom: float,
         image: object = None,
-        view: object = None,
     ) -> Mapping[str, object]:
         horizontal_angle = max(0, min(360, int(horizontal_angle)))
         vertical_angle = max(-30, min(60, int(vertical_angle)))

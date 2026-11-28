@@ -27,6 +27,12 @@ round sentinels are not numeric precision values.
 API nodes and nodes originating in nodes_train.py or nodes_dataset.py are
 excluded from required coverage. Training-origin nodes must also be absent
 from the served registry; their exclusion does not hide pending deletions.
+Where ComfyUI lists a growing group (required or optional) is not compared;
+the group's least member count and each member's required mark are.
+Differences from ComfyUI that are meant are written in
+data/comfy_core_differences.json, each exact difference with its reason; a
+class whose differences are exactly its listed ones "differs as intended", and
+the list's "known" classes are those that differed before it was written.
 
 Usage: python tools/compare_nodes.py COMFY_JSON REGISTRY_JSON OUT_CSV OUT_JSON
 """
@@ -43,6 +49,7 @@ from typing import Any, cast
 
 FORBIDDEN_PREFIXES = ("dinkster.", "comfy.")
 SCOPE_RULES = Path(__file__).with_name("node_comparison_scope.json")
+INTENDED_DIFFERENCES = Path(__file__).with_name("data") / "comfy_core_differences.json"
 INPUT_ROLES = {"input", "inputFamily", "dynamicCombo", "dynamicSlot"}
 VALUE_OPTIONS = (
     "default",
@@ -155,12 +162,135 @@ def _reference_inputs(groups: dict[str, Any], list_inputs: bool = False) -> list
                 entry["asset_selection_kind"] = options["asset_selection_kind"]
             if "options" in entry and entry["type"] == "COMBO" and entry["options"]:
                 entry.setdefault("default", entry["options"][0])
-            if entry["type"] == "inputFamily" and not entry["template"]:
-                continue
+            if entry["type"] == "inputFamily":
+                if not entry["template"]:
+                    continue
+                # Where ComfyUI lists a growing group is not compared; its least
+                # member count and each member's required mark are.
+                del entry["group"]
             if list_inputs and entry["type"] not in ("inputFamily", "dynamicCombo"):
                 entry["_list_flag"] = True
             result.append(entry)
     return result
+
+
+_LAYOUT_KINDS = ("row", "section")
+_USE_OVERRIDES = ("label", "tooltip", "widget", "default", "required")
+
+
+def _used(entry: dict[str, Any], use: dict[str, Any]) -> dict[str, Any]:
+    """A shared row as one place names it: the Use's overrides, options and inner places."""
+    placed = {**entry, **{key: use[key] for key in _USE_OVERRIDES if key in use}}
+    if use.get("required") is True and "default" not in use:
+        # A place that makes the row required ignores the shared row's default.
+        placed.pop("default", None)
+    if entry.get("kind") == "choice":
+        options = [
+            option
+            for option in entry["options"]
+            if "only" not in use or option["key"] in use["only"]
+        ]
+        inner = {item["id"]: item for item in use.get("inside", [])}
+        if inner:
+            # An inner Use reaches a row in the choice's shared rows or in an option.
+            def place(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+                return [
+                    _used(item, inner[item["id"]]) if item.get("id") in inner else item
+                    for item in rows
+                ]
+
+            placed["shared"] = place(entry.get("shared", []))
+            options = [{**option, "rows": place(option["rows"])} for option in options]
+        placed["options"] = options
+    return placed
+
+
+def _scope_entries(
+    entries: list[dict[str, Any]], shared: dict[str, dict[str, Any]] | None = None
+) -> list[dict[str, Any]]:
+    """One body scope's rows through rows and sections, each Use resolved to its shared row."""
+    found: list[dict[str, Any]] = []
+    for entry in entries:
+        kind = entry.get("kind")
+        if kind == "section" and entry.get("id") == "advanced":
+            # Marked so the comparison may put advanced rows back where the reference has them.
+            found.extend(
+                {**row, "_advanced": True} for row in _scope_entries(entry["rows"], shared)
+            )
+        elif kind in _LAYOUT_KINDS:
+            found.extend(_scope_entries(entry["rows"], shared))
+        elif kind == "use":
+            found.append(_used((shared or {})[entry["id"]], entry))
+        else:
+            found.append(entry)
+    return found
+
+
+def _body_interface(entries: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """The flat interface entries (input, dynamicCombo, inputFamily, ...) a body declares."""
+    items: list[dict[str, Any]] = []
+    for entry in _scope_entries(entries):
+        kind = entry["kind"]
+        rest = {key: value for key, value in entry.items() if key != "kind"}
+        if kind == "input":
+            if rest.pop("pin", True) is False:
+                rest["socketless"] = True
+            if "label" in rest:
+                rest["displayName"] = rest.pop("label")
+            items.append({"role": "input", **rest})
+        elif kind == "output":
+            if "label" in rest:
+                rest["displayName"] = rest.pop("label")
+            items.append({"role": "output", **rest})
+        elif kind == "choice":
+            shared = {item["id"]: item for item in _scope_entries(entry.get("shared", []))}
+            items.append(
+                {
+                    "role": "dynamicCombo",
+                    "id": entry["id"],
+                    **({"default": entry["default"]} if "default" in entry else {}),
+                    **({"required": entry["required"]} if "required" in entry else {}),
+                    "options": [
+                        {
+                            "key": option["key"],
+                            "inputs": _body_interface(_scope_entries(option["rows"], shared)),
+                        }
+                        for option in entry["options"]
+                    ],
+                }
+            )
+        elif kind == "group":
+            if isinstance(entry.get("value"), dict) and entry["value"]["kind"] == "output":
+                items.append({"role": "outputFamily", "id": entry["id"]})
+                continue
+            template = [entry["value"]] if isinstance(entry.get("value"), dict) else entry["member"]
+            family: dict[str, Any] = {
+                "role": "inputFamily",
+                "id": entry["id"],
+                "template": _body_interface(template),
+                "minMembers": entry.get("minMembers", 0),
+            }
+            if entry.get("optionalAfterMinimum"):
+                family["optionalAfterMinimum"] = True
+            keys = entry.get("keys") or {}
+            if "named" in keys:
+                family["memberNames"] = keys["named"]
+            else:
+                prefix = keys.get("numbered", {}).get("prefix", "")
+                if prefix:
+                    family["memberPrefix"] = prefix
+                if "maxMembers" in entry:
+                    family["maxMembers"] = entry["maxMembers"]
+            items.append(family)
+        elif kind == "typeChoice":
+            items.append({"role": "dynamicSlot", **rest})
+    return items
+
+
+def _interface(schema: dict[str, Any]) -> list[dict[str, Any]]:
+    if "body" in schema and schema["body"]:
+        return _body_interface(schema["body"])
+    return cast("list[dict[str, Any]]", schema.get("interface", []))
 
 
 def _native_inputs(
@@ -179,6 +309,8 @@ def _native_inputs(
         }
         if item.get("hidden"):
             entry["hidden"] = True
+        if item.get("_advanced"):
+            entry["_advanced"] = True
         if "socketless" in public:
             entry["socketless"] = item.get("socketless", False)
         if role == "input":
@@ -187,7 +319,10 @@ def _native_inputs(
             if widget.get("type") == "ASSET" and widget.get("selection") is True:
                 entry["selection_picker"] = widget.get("kind")
             for key in VALUE_OPTIONS:
-                wire_key = "controlAfterGenerate" if key == "control_after_generate" else key
+                wire_key = {
+                    "control_after_generate": "afterRun",
+                    "forceInput": "pinFirst",
+                }.get(key, key)
                 if wire_key in widget:
                     value = widget[wire_key]
                     # Schema wire encodes integers outside JS's safe range as decimal strings.
@@ -262,10 +397,42 @@ def _native_inputs(
                 entry["max"] = item.get("maxMembers")
         else:
             entry.update(type=role, dynamic=item)
-        if entry["type"] == "inputFamily" and not entry["template"]:
-            continue
+        if entry["type"] == "inputFamily":
+            if not entry["template"]:
+                continue
+            del entry["group"]
         result.append(entry)
     return result
+
+
+def _reference_order(
+    expected: list[dict[str, Any]], actual: list[dict[str, Any]]
+) -> list[dict[str, Any]]:
+    """The native inputs with each advanced row moved to the reference's position.
+
+    A body keeps advanced rows in a closing Advanced section; every other row
+    keeps its order. When the other rows are not in the reference's order, the
+    native order stands, so the comparison reports it."""
+    options = {
+        item["name"]: {option["key"]: option["inputs"] for option in item.get("options", [])}
+        for item in expected
+        if item.get("type") == "dynamicCombo"
+    }
+    for entry in actual:
+        if entry.get("type") == "dynamicCombo":
+            reference = options.get(entry["name"], {})
+            for option in entry["options"]:
+                option["inputs"] = _reference_order(
+                    reference.get(option["key"], []), option["inputs"]
+                )
+    names = [item["name"] for item in expected]
+    known = [entry for entry in actual if entry["name"] in names]
+    placed = sorted(known, key=lambda entry: names.index(entry["name"]))
+    plain = [entry["name"] for entry in known if not entry.get("_advanced")]
+    ordered = placed + [entry for entry in actual if entry["name"] not in names]
+    if [entry["name"] for entry in placed if not entry.get("_advanced")] != plain:
+        ordered = actual
+    return [{key: value for key, value in entry.items() if key != "_advanced"} for entry in ordered]
 
 
 def _differences(expected: Any, actual: Any, path: str) -> list[str]:
@@ -386,9 +553,9 @@ def compare(
 ) -> list[str]:
     if row.get("input_types_error") or not isinstance(row.get("input_types"), dict):
         return [f"reference input schema unavailable: {row.get('input_types_error')}"]
-    if "interface" not in schema:
+    if "interface" not in schema and "body" not in schema:
         return ["native interface missing"]
-    if any(item.get("role") not in INPUT_ROLES | {"output"} for item in schema["interface"]):
+    if any(item.get("role") not in INPUT_ROLES | {"output"} for item in _interface(schema)):
         return ["native interface contains an unsupported role or a variable output family"]
     expected = _reference_inputs(row["input_types"], bool(row.get("input_is_list")))
     for item in expected:
@@ -446,7 +613,7 @@ def compare(
         ):
             return ["reference V3 input sequence does not match public input groups"]
         expected = [by_name[name] for name in names]
-    actual = _native_inputs(schema.get("interface", []), expected)
+    actual = _native_inputs(_interface(schema), expected)
     differences = []
     for item in expected:
         conditional = item.pop("possible_options", [])
@@ -489,8 +656,18 @@ def compare(
         and not item.get("_list_flag")
         for item in expected
     )
-    if actual and actual[-1]["name"] == "mount" and save_node:
-        mount = actual.pop()
+    actual_names = [entry["name"] for entry in actual]
+    # A body places mount beside filename_prefix; an interface appends it.
+    mount_at = actual_names.index("mount") if "mount" in actual_names else -1
+    if (
+        save_node
+        and mount_at >= 0
+        and (
+            mount_at == len(actual) - 1
+            or (mount_at > 0 and actual_names[mount_at - 1] == "filename_prefix")
+        )
+    ):
+        mount = actual.pop(mount_at)
         if mount.get("multiline") is False:
             mount.pop("multiline")
         # The production serializer omits the configured-output None sentinel.
@@ -505,7 +682,7 @@ def compare(
     for item in expected:
         if item["name"] in row.get("file_inputs", []):
             item["file_input"] = True
-    differences.extend(_differences(expected, actual, "inputs"))
+    differences.extend(_differences(expected, _reference_order(expected, actual), "inputs"))
     expected_outputs = []
     names = row.get("return_names")
     output_metadata = row.get("v3_outputs") or []
@@ -530,9 +707,7 @@ def compare(
             "type": _type(item["type"]),
         }
         for index, item in enumerate(
-            item
-            for item in schema.get("interface", [])
-            if item["role"] in ("output", "outputFamily")
+            item for item in _interface(schema) if item["role"] in ("output", "outputFamily")
         )
     ]
     differences.extend(_differences(expected_outputs, actual_outputs, "outputs"))
@@ -555,7 +730,14 @@ def compare_registry(
     registry: dict[str, Any],
     *,
     scope: dict[str, Any] | None = None,
+    intended: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
+    """Compare every reference class with the registry.
+
+    ``intended`` is the written list of differences from ComfyUI: each entry
+    names a class, one exact difference and its reason, and ``known`` names the
+    classes that differed before it was written. A listed class whose
+    differences are exactly its listed ones "differs as intended"."""
     if scope is None:
         scope = cast(
             "dict[str, Any]", json.loads(SCOPE_RULES.read_text(), object_pairs_hook=_unique_object)
@@ -570,8 +752,16 @@ def compare_registry(
     if len(classes) != len(set(classes)):
         raise ValueError("duplicate reference class id")
     served = registry["nodes"]
+    intended = intended or {"differences": [], "known": []}
+    listed: dict[str, list[str]] = {}
+    for item in intended["differences"]:
+        listed.setdefault(item["class_name"], []).append(item["difference"])
+    known = {item["class_name"] for item in intended["known"]}
     results = []
     errors = []
+    difference_errors = []
+    for name in sorted((listed.keys() | known) - set(classes)):
+        difference_errors.append(f"listed difference names a class the reference lacks: {name}")
     identities: dict[str, tuple[str, str]] = {}
     # A nested official namespace belongs to the most specific selected pack.
     moved_owners = {
@@ -584,7 +774,8 @@ def compare_registry(
         if key not in moved_owners:
             continue
         for rule in schema.get("replacements", []):
-            if rule.get("migration") is not None or rule["from"] == key:
+            # A same-type migration retires paths; it names no other class.
+            if rule["from"] == key:
                 continue
             if not rule.get("cases") or any(case.get("to") != key for case in rule["cases"]):
                 errors.append(f"{key}: replacement must target its declaring node")
@@ -633,7 +824,7 @@ def compare_registry(
             errors.append(f"retired class id remains registered: {key}")
         if key.startswith(FORBIDDEN_PREFIXES) and key not in moved_ids:
             errors.append(f"prefixed node id: {key}")
-        for item in schema.get("interface", []):
+        for item in _interface(schema):
             for value in _type_names(item):
                 if value.startswith(FORBIDDEN_PREFIXES):
                     errors.append(f"{key}: prefixed type name: {value}")
@@ -680,6 +871,22 @@ def compare_registry(
             status = (
                 "differs" if differences else "conditional" if row_conditionals else "identical"
             )
+            if name in listed:
+                if status != "differs":
+                    difference_errors.append(
+                        f"listed as an intended difference but {status}: {name}"
+                    )
+                elif differences == listed[name]:
+                    status = "differs as intended"
+                else:
+                    difference_errors.append(f"differences are not exactly the listed ones: {name}")
+            elif name in known:
+                if status != "differs":
+                    difference_errors.append(
+                        f"listed as differing before the written list but {status}: {name}"
+                    )
+            elif status == "differs":
+                difference_errors.append(f"differs and is not on the written list: {name}")
         results.append(
             {
                 "class_name": name,
@@ -708,7 +915,9 @@ def compare_registry(
         "reference_commit": reference.get("source_commit"),
         "reference_environment": reference.get("environment"),
         "eligible_node_count": sum(
-            row["status"] in ("identical", "conditional", "differs", "absent") for row in results
+            row["status"]
+            in ("identical", "conditional", "differs as intended", "differs", "absent")
+            for row in results
         ),
         "counts": counts,
         "pack_counts": {
@@ -718,8 +927,9 @@ def compare_registry(
         "engine_exclusions": {},
         "conditional_options": conditional_options,
         "registry_errors": sorted(set(errors)),
+        "difference_errors": difference_errors,
         "rows": results,
-        "passed": not errors and not counts.get("differs") and not counts.get("absent"),
+        "passed": not errors and not difference_errors and not counts.get("absent"),
     }
 
 
@@ -751,6 +961,7 @@ def main() -> int:
     for name in ("reference", "registry", "csv_output", "summary_output"):
         parser.add_argument(name, type=Path)
     parser.add_argument("--scope", type=Path, default=SCOPE_RULES)
+    parser.add_argument("--differences", type=Path, default=INTENDED_DIFFERENCES)
     args = parser.parse_args()
     reference = json.loads(args.reference.read_text(), object_pairs_hook=_unique_object)
     registry = json.loads(args.registry.read_text(), object_pairs_hook=_unique_object)
@@ -758,6 +969,7 @@ def main() -> int:
         reference,
         registry,
         scope=json.loads(args.scope.read_text(), object_pairs_hook=_unique_object),
+        intended=json.loads(args.differences.read_text(), object_pairs_hook=_unique_object),
     )
     with args.csv_output.open("w", newline="") as handle:
         writer = csv.DictWriter(

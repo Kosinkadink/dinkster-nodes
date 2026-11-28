@@ -183,6 +183,9 @@
     "dinkster.models.create_hook_keyframes_from_floats": {
       "displayName": "Create Hook Keyframes From Floats"
     },
+    "dinkster.models.hook_keyframes_from_curve": {
+      "displayName": "Hook keyframes from curve"
+    },
     "dinkster.models.combine_hooks2": {
       "displayName": "Combine Hooks [2]"
     },

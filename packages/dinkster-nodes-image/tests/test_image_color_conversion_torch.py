@@ -7,6 +7,7 @@ from typing import Any
 import torch
 from dinkster_api.v1 import (
     IMAGE_TYPE,
+    Record,
     TypeExpr,
 )
 from dinkster_image.ported.image_color_conversion import ImageColorSpace, ImageSDRToHDR
@@ -33,7 +34,8 @@ def test_color_conversion_preserves_straight_alpha_and_linear_extended_values() 
     linear = ImageColorSpace.execute(image=image, source="sRGB", destination="linear")["IMAGE"]
     restored = ImageColorSpace.execute(image=linear, source="linear", destination="sRGB")["IMAGE"]
     hdr = ImageSDRToHDR.execute(
-        image=image, algorithm="lottes", **{"algorithm.target_luminance": 650.0}
+        image=image,
+        algorithm=Record("lottes", {"target_luminance": 650.0}),
     )["IMAGE"]
 
     assert linear[0, 0, 0, 2] > 1.0
@@ -48,7 +50,8 @@ def test_color_conversion_returns_intermediate_float32_for_identity_and_hdr() ->
     identity = ImageColorSpace.execute(image=image, source="sRGB", destination="sRGB")["IMAGE"]
     linear = ImageColorSpace.execute(image=image, source="sRGB", destination="linear")["IMAGE"]
     hdr = ImageSDRToHDR.execute(
-        image=image.half(), algorithm="lottes", **{"algorithm.target_luminance": 1400.0}
+        image=image.half(),
+        algorithm=Record("lottes", {"target_luminance": 1400.0}),
     )["IMAGE"]
     for result in (identity, linear, hdr):
         assert result.dtype == torch.float32

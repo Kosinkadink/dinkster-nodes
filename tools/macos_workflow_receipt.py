@@ -27,6 +27,21 @@ STARTER_SHA256_BY_COMMIT = {
 }
 
 
+def _ports(schema: dict) -> set[tuple[str, str]]:
+    """A catalog schema's top-level inputs and outputs, through its sections and rows."""
+    found: set[tuple[str, str]] = set()
+
+    def walk(rows: list[dict]) -> None:
+        for row in rows:
+            if row["kind"] in ("input", "output"):
+                found.add((row["kind"], row["id"]))
+            elif row["kind"] in ("section", "row"):
+                walk(row["rows"])
+
+    walk(schema["body"])
+    return found
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--url", required=True)
@@ -198,16 +213,13 @@ def main() -> None:
             schema = catalog["nodes"].get(node["type"])
             if schema is None:
                 raise ValueError(f"installed catalog has no node type {node['type']!r}")
-            inputs = {port["id"] for port in schema["interface"] if port["role"] == "input"}
+            inputs = {port for role, port in _ports(schema) if role == "input"}
             if not set(node["values"]).issubset(inputs):
                 raise ValueError(f"graph values do not match catalog inputs for {node['type']!r}")
         for link in graph["links"].values():
             for endpoint, role in (("from", "output"), ("to", "input")):
                 node = graph["nodes"][link[endpoint]["node"]]
-                ports = catalog["nodes"][node["type"]]["interface"]
-                if not any(
-                    port["role"] == role and port["id"] == link[endpoint]["port"] for port in ports
-                ):
+                if (role, link[endpoint]["port"]) not in _ports(catalog["nodes"][node["type"]]):
                     raise ValueError(
                         f"graph link does not match catalog {role} for {node['type']!r}"
                     )
@@ -277,6 +289,9 @@ def main() -> None:
                 "$link": {"node": link["from"]["node"], "output": link["from"]["port"]},
             }
         nodes["checkpoint"]["inputs"]["ckpt_name"] = resolved["asset"]
+        nodes["save"]["inputs"]["mount"] = {
+            "$typed": {"type": "MOUNT", "value": nodes["save"]["inputs"]["mount"]}
+        }
         job = {
             "clientId": "mac-readiness",
             "jobId": str(uuid.uuid4()),

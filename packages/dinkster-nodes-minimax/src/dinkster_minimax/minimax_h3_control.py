@@ -11,11 +11,12 @@ from dinkster_api.v1 import (
     MODEL_PATCH_TYPE,
     MODEL_TYPE,
     VAE_TYPE,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
+    Section,
     TypeExpr,
     initialize_inference_process,
     materialize_image,
@@ -250,35 +251,40 @@ class MiniMaxH3FunControlNetApply(Node):
             display_name="Apply MiniMax H3 Fun ControlNet",
             category="model/patch/minimax",
             search_terms=("minimax controlnet", "h3 controlnet", "video inpaint controlnet"),
-            inputs=(
-                InputSpec("model", TypeExpr.concrete(MODEL_TYPE)),
-                InputSpec("model_patch", TypeExpr.concrete(MODEL_PATCH_TYPE)),
-                InputSpec("vae", TypeExpr.concrete(VAE_TYPE)),
-                InputSpec(
+            body=(
+                Input("model", TypeExpr.concrete(MODEL_TYPE)),
+                Input("model_patch", TypeExpr.concrete(MODEL_PATCH_TYPE)),
+                Input("vae", TypeExpr.concrete(VAE_TYPE)),
+                Input(
                     "strength",
                     TypeExpr.concrete(CORE_FLOAT),
                     default=1.0,
                     widget=NumberWidget(min=0.0, max=10.0, step=0.01),
                 ),
-                InputSpec(
-                    "start_percent",
-                    TypeExpr.concrete(CORE_FLOAT),
-                    default=0.0,
-                    widget=NumberWidget(min=0.0, max=1.0, step=0.001),
-                    advanced=True,
+                Input("control_video", TypeExpr.concrete(IMAGE_TYPE), required=False),
+                Input("mask", TypeExpr.concrete(MASK_TYPE), required=False),
+                Input("source_video", TypeExpr.concrete(IMAGE_TYPE), required=False),
+                Section(
+                    "advanced",
+                    label="Advanced",
+                    collapsed=True,
+                    rows=(
+                        Input(
+                            "start_percent",
+                            TypeExpr.concrete(CORE_FLOAT),
+                            default=0.0,
+                            widget=NumberWidget(min=0.0, max=1.0, step=0.001),
+                        ),
+                        Input(
+                            "end_percent",
+                            TypeExpr.concrete(CORE_FLOAT),
+                            default=1.0,
+                            widget=NumberWidget(min=0.0, max=1.0, step=0.001),
+                        ),
+                    ),
                 ),
-                InputSpec(
-                    "end_percent",
-                    TypeExpr.concrete(CORE_FLOAT),
-                    default=1.0,
-                    widget=NumberWidget(min=0.0, max=1.0, step=0.001),
-                    advanced=True,
-                ),
-                InputSpec("control_video", TypeExpr.concrete(IMAGE_TYPE), required=False),
-                InputSpec("mask", TypeExpr.concrete(MASK_TYPE), required=False),
-                InputSpec("source_video", TypeExpr.concrete(IMAGE_TYPE), required=False),
+                Output("MODEL", TypeExpr.concrete(MODEL_TYPE)),
             ),
-            outputs=(OutputSpec("MODEL", TypeExpr.concrete(MODEL_TYPE)),),
         )
         return with_identity_replacement(schema, "MiniMaxH3FunControlNetApply")
 

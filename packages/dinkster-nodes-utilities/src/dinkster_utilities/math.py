@@ -13,11 +13,14 @@ from dinkster_api.v1 import (
     CORE_FLOAT,
     CORE_INT,
     CORE_STRING,
-    InputFamilySpec,
-    InputSpec,
+    Group,
+    Input,
+    Item,
+    Members,
+    Named,
     Node,
     NodeSchema,
-    OutputSpec,
+    Output,
     StringWidget,
     TypeExpr,
     with_identity_replacement,
@@ -68,43 +71,37 @@ class ComfyMathExpression(Node):
             node_type="dinkster.utilities.comfy_math_expression",
             display_name="Math Expression",
             category="utilities",
-            inputs=(
-                InputSpec(
+            body=(
+                Input(
                     "expression",
                     TypeExpr.concrete(CORE_STRING),
                     default="a + b",
                     widget=StringWidget(multiline=True),
                 ),
-            ),
-            input_families=(
-                InputFamilySpec(
+                Group(
                     "values",
-                    (
-                        InputSpec(
-                            "value",
-                            TypeExpr.union(CORE_FLOAT, CORE_INT, CORE_BOOLEAN),
-                            force_input=True,
-                        ),
+                    value=Input(
+                        "value",
+                        TypeExpr.union(CORE_FLOAT, CORE_INT, CORE_BOOLEAN),
+                        pin_first=True,
                     ),
                     min_members=1,
-                    member_names=tuple(string.ascii_lowercase),
                     optional_after_minimum=True,
+                    keys=Named(tuple(string.ascii_lowercase)),
                 ),
-            ),
-            outputs=(
-                OutputSpec("FLOAT", TypeExpr.concrete(CORE_FLOAT)),
-                OutputSpec("INT", TypeExpr.concrete(CORE_INT)),
-                OutputSpec("BOOL", TypeExpr.concrete(CORE_BOOLEAN)),
+                Output("FLOAT", TypeExpr.concrete(CORE_FLOAT)),
+                Output("INT", TypeExpr.concrete(CORE_INT)),
+                Output("BOOL", TypeExpr.concrete(CORE_BOOLEAN)),
             ),
         )
         return with_identity_replacement(schema, "ComfyMathExpression")
 
     @classmethod
-    def execute(cls, *, expression: str, values: Mapping[str, object]) -> Mapping[str, object]:
+    def execute(cls, *, expression: str, values: Members[Item]) -> Mapping[str, object]:
         if not expression.strip():
             raise ValueError("Expression cannot be empty.")
-        context = dict(values)
-        context["values"] = list(values.values())
+        context = values.as_dict()
+        context["values"] = [member.value for member in values]
         result = simple_eval(expression, names=context, functions=MATH_FUNCTIONS)
         if not isinstance(result, (int, float)):
             raise ValueError(

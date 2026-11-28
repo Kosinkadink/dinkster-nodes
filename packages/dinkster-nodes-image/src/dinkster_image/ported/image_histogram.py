@@ -9,10 +9,10 @@ from typing import Any
 from dinkster_api.v1 import (
     HISTOGRAM_TYPE,
     IMAGE_TYPE,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
-    OutputSpec,
+    Output,
     TypeExpr,
     materialize_image,
     with_identity_replacement,
@@ -26,10 +26,12 @@ class ImageHistogram(Node):
             node_type="dinkster.image.image_histogram",
             display_name="Image Histogram",
             category="utilities",
-            inputs=(InputSpec("image", TypeExpr.concrete(IMAGE_TYPE)),),
-            outputs=tuple(
-                OutputSpec(name, TypeExpr.concrete(HISTOGRAM_TYPE))
-                for name in ("rgb", "luminance", "red", "green", "blue")
+            body=(
+                Input("image", TypeExpr.concrete(IMAGE_TYPE)),
+                *tuple(
+                    Output(name, TypeExpr.concrete(HISTOGRAM_TYPE))
+                    for name in ("rgb", "luminance", "red", "green", "blue")
+                ),
             ),
         )
         return with_identity_replacement(schema, "ImageHistogram")

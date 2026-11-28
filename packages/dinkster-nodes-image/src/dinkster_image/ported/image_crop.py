@@ -15,11 +15,11 @@ from dinkster_api.v1 import (
     MASK_TYPE,
     ColorWidget,
     CustomWidgetDescriptor,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
     TypeExpr,
     initialize_inference_process,
     materialize_image,
@@ -50,46 +50,46 @@ class ImageCropToMask(Node):
                 "trellis2",
                 "pixal3d",
             ),
-            inputs=(
-                InputSpec("images", _IMAGE),
-                InputSpec("masks", TypeExpr.concrete(MASK_TYPE)),
-                InputSpec(
+            body=(
+                Input("images", _IMAGE),
+                Input("masks", TypeExpr.concrete(MASK_TYPE)),
+                Input(
                     "width",
                     _INT,
                     default=1024,
                     widget=NumberWidget(min=64, max=4096, step=8),
-                    doc="Output width in pixels.",
+                    tooltip="Output width in pixels.",
                 ),
-                InputSpec(
+                Input(
                     "height",
                     _INT,
                     default=1024,
                     widget=NumberWidget(min=64, max=4096, step=8),
-                    doc="Output height in pixels.",
+                    tooltip="Output height in pixels.",
                 ),
-                InputSpec(
+                Input(
                     "pad_factor",
                     TypeExpr.concrete(CORE_FLOAT),
                     default=1.0,
                     widget=NumberWidget(min=1.0, max=2.0, step=0.01),
-                    doc="Extra margin around the mask bounding box as a multiplier.",
+                    tooltip="Extra margin around the mask bounding box as a multiplier.",
                 ),
-                InputSpec(
+                Input(
                     "grow_mask",
                     _INT,
                     default=0,
                     widget=NumberWidget(min=-32, max=32, step=1),
-                    doc="Grow or shrink the mask by this many pixels before cropping.",
+                    tooltip="Grow or shrink the mask by this many pixels before cropping.",
                 ),
-                InputSpec(
+                Input(
                     "background",
                     TypeExpr.concrete(COLOR_TYPE),
                     default="#000000",
                     widget=ColorWidget(),
-                    doc="Background color behind the masked subject.",
+                    tooltip="Background color behind the masked subject.",
                 ),
+                Output("IMAGE", _IMAGE, label="images"),
             ),
-            outputs=(OutputSpec("IMAGE", _IMAGE, display_name="images"),),
         )
         return with_identity_replacement(schema, "ImageCropToMask")
 
@@ -132,16 +132,18 @@ class ImageCropV2(Node):
             display_name="Crop Image",
             category="image/transform",
             description="Crop an image to the specified dimensions.",
-            inputs=(
-                InputSpec("image", _IMAGE),
-                InputSpec(
+            body=(
+                Input("image", _IMAGE),
+                Input(
                     "crop_region",
                     _BOUNDING_BOX,
                     default={"x": 0, "y": 0, "width": 512, "height": 512},
-                    widget=CustomWidgetDescriptor("BOUNDING_BOX", {"component": "ImageCrop"}),
+                    widget=CustomWidgetDescriptor(
+                        "BOUNDING_BOX", {"component": "ImageCrop"}, reads={"image": "image"}
+                    ),
                 ),
+                Output("IMAGE", _IMAGE, preview=True),
             ),
-            outputs=(OutputSpec("IMAGE", _IMAGE, preview=True),),
             emits_previews=True,
             search_terms=("crop", "cut", "trim"),
         )

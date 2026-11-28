@@ -11,11 +11,11 @@ from dinkster_api.v1 import (
     CORE_INT,
     CORE_STRING,
     GLIGEN_TYPE,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
     StringWidget,
     TypeExpr,
     with_identity_replacement,
@@ -29,17 +29,17 @@ class GLIGENTextBoxApply(Node):
             node_type="dinkster.sd.gligen_text_box_apply",
             display_name="Apply GLIGEN Text Box",
             category="model/conditioning/gligen",
-            inputs=(
-                InputSpec("conditioning_to", TypeExpr.concrete(CONDITIONING_TYPE)),
-                InputSpec("clip", TypeExpr.concrete(CLIP_TYPE)),
-                InputSpec("gligen_textbox_model", TypeExpr.concrete(GLIGEN_TYPE)),
-                InputSpec(
+            body=(
+                Input("conditioning_to", TypeExpr.concrete(CONDITIONING_TYPE)),
+                Input("clip", TypeExpr.concrete(CLIP_TYPE)),
+                Input("gligen_textbox_model", TypeExpr.concrete(GLIGEN_TYPE)),
+                Input(
                     "text",
                     TypeExpr.concrete(CORE_STRING),
                     widget=StringWidget(multiline=True, dynamic_prompts=True),
                 ),
                 *(
-                    InputSpec(
+                    Input(
                         name,
                         TypeExpr.concrete(CORE_INT),
                         default=default,
@@ -52,8 +52,8 @@ class GLIGENTextBoxApply(Node):
                         ("y", 0, 0),
                     )
                 ),
+                Output("CONDITIONING", TypeExpr.concrete(CONDITIONING_TYPE)),
             ),
-            outputs=(OutputSpec("CONDITIONING", TypeExpr.concrete(CONDITIONING_TYPE)),),
         )
         return with_identity_replacement(schema, "GLIGENTextBoxApply")
 

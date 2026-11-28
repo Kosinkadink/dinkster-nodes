@@ -11,17 +11,18 @@ from pathlib import Path
 import pytest
 from dinkster_api.v1 import (
     CORE_STRING,
+    MOUNT_TYPE,
     SVG_TYPE,
     ExportSnapshot,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
-    OutputSpec,
+    Output,
     TypeExpr,
     materialize_svg,
 )
 from dinkster_assets import MountDef, MountTable, digest_bytes
-from dinkster_graph import Graph, GraphNode, Link
+from dinkster_graph import Graph, GraphNode, Link, TypedLiteral
 from dinkster_image.ported.svg_save import SaveSVGNode
 
 from dinkster.compose import PackSpec, ServingComposer
@@ -35,7 +36,7 @@ class SVGSource(Node):
     def define_schema(cls) -> NodeSchema:
         return NodeSchema(
             node_type="svg-save-fixture.source",
-            outputs=(OutputSpec("svg", TypeExpr.concrete(SVG_TYPE)),),
+            body=(Output("svg", TypeExpr.concrete(SVG_TYPE)),),
         )
 
     @classmethod
@@ -48,8 +49,10 @@ class SVGInspect(Node):
     def define_schema(cls) -> NodeSchema:
         return NodeSchema(
             node_type="svg-save-fixture.inspect",
-            inputs=(InputSpec("svg", TypeExpr.concrete(SVG_TYPE)),),
-            outputs=(OutputSpec("result", TypeExpr.concrete(CORE_STRING)),),
+            body=(
+                Input("svg", TypeExpr.concrete(SVG_TYPE)),
+                Output("result", TypeExpr.concrete(CORE_STRING)),
+            ),
             idempotent=False,
         )
 
@@ -141,7 +144,7 @@ def test_svg_save_publishes_ordered_streams_and_submission_metadata(
                         {
                             "svg": Link("source", "svg"),
                             "filename_prefix": "chosen/vector_%batch_num%",
-                            "mount": "alternate",
+                            "mount": TypedLiteral(MOUNT_TYPE, "alternate"),
                         },
                     ),
                     "inspect": GraphNode("svg-save-fixture.inspect", {"svg": Link("save", "svg")}),

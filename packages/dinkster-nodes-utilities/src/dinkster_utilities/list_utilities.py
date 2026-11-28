@@ -7,19 +7,23 @@ from typing import cast
 
 from dinkster_api.v1 import (
     CORE_INT,
-    InputFamilySpec,
-    InputSpec,
+    Group,
+    Input,
+    Item,
+    Members,
     Node,
     NodeSchema,
-    OutputSpec,
+    Numbered,
+    Output,
     TypeExpr,
     Value,
     list_children,
+    member_id,
     with_identity_replacement,
 )
 
 _ITEM = TypeExpr.wildcard()
-_ITEMS = TypeExpr.list_of(_ITEM)
+_JOINED = TypeExpr.variable("T")
 
 
 def _execution_items(value: Value) -> tuple[Value, ...]:
@@ -31,35 +35,49 @@ def _execution_items(value: Value) -> tuple[Value, ...]:
 
 
 class CreateList(Node):
+    """Join values and lists of one type into one flat list.
+
+    A single value adds one item; a list adds its items in order. ComfyUI's
+    CreateList joins the same way, so its family names are kept and it imports
+    as this node.
+    """
+
     @classmethod
     def define_schema(cls) -> NodeSchema:
         schema = NodeSchema(
             node_type="dinkster.utilities.create_list",
             display_name="Create List",
             category="utilities",
-            input_families=(
-                InputFamilySpec(
+            body=(
+                Group(
                     "inputs",
-                    (InputSpec("input", _ITEM),),
+                    value=Input("input", _JOINED, accepts_list=True),
                     min_members=1,
-                    max_members=10,
-                    member_prefix="input",
                     optional_after_minimum=True,
+                    keys=Numbered("input", start=0),
                 ),
+                Output("list", TypeExpr.list_of(_JOINED)),
             ),
-            outputs=(OutputSpec("list", _ITEMS),),
-            search_terms=("Image Iterator", "Text Iterator", "Iterator"),
+            search_terms=(
+                "Image Iterator",
+                "Text Iterator",
+                "Iterator",
+                "flatten",
+                "combine",
+                "merge",
+                "concat",
+            ),
             input_values=True,
         )
         return with_identity_replacement(schema, "CreateList")
 
     @classmethod
     def execute(
-        cls, *, inputs: Mapping[str, object], input_values: Mapping[str, Value]
+        cls, *, inputs: Members[Item], input_values: Mapping[str, Value]
     ) -> Mapping[str, object]:
         items: list[Value] = []
-        for name in inputs:
-            items.extend(_execution_items(input_values[f"inputs.{name}"]))
+        for member in inputs:
+            items.extend(_execution_items(input_values[member_id("inputs", member.key)]))
         return cls.outputs(list=items)
 
 
@@ -70,16 +88,16 @@ class GetItemFromList(Node):
             node_type="dinkster.utilities.get_item_from_list",
             display_name="Get Item From List",
             category="utilities",
-            inputs=(
-                InputSpec("list", _ITEM),
-                InputSpec(
+            body=(
+                Input("list", _ITEM),
+                Input(
                     "index",
                     TypeExpr.concrete(CORE_INT),
                     default=0,
                     accepts_list=True,
                 ),
+                Output("item", _ITEM, label="*"),
             ),
-            outputs=(OutputSpec("item", _ITEM, display_name="*"),),
             input_values=True,
         )
         return with_identity_replacement(schema, "GetItemFromList")

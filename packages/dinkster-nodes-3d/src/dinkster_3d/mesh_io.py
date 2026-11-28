@@ -27,16 +27,20 @@ from dinkster_api.v1 import (
     FILE_3D_TYPE,
     FILE_3D_USDZ_TYPE,
     MESH_TYPE,
+    MOUNT_TYPE,
     AssetError,
     AssetRef,
     AssetWriter,
-    InputSpec,
+    Editor,
+    Input,
     LocalAssetRef,
     MountSnapshotWriter,
     MountWidget,
     Node,
     NodeSchema,
-    OutputSpec,
+    Output,
+    Row,
+    SaveTargetWidget,
     StringWidget,
     TriangleMeshBatch,
     TypeExpr,
@@ -62,8 +66,10 @@ class MeshToFile3D(Node):
                 "carrying its UVs, colors, normals, texture, normal/occlusion/emissive "
                 "maps and material. Supports one item per batch only."
             ),
-            inputs=(InputSpec("mesh", TypeExpr.concrete(MESH_TYPE)),),
-            outputs=(OutputSpec("model_3d", TypeExpr.concrete(FILE_3D_GLB_TYPE)),),
+            body=(
+                Input("mesh", TypeExpr.concrete(MESH_TYPE)),
+                Output("model_3d", TypeExpr.concrete(FILE_3D_GLB_TYPE)),
+            ),
         )
         return with_identity_replacement(schema, "MeshToFile3D")
 
@@ -98,8 +104,8 @@ class SaveGLB(Node):
             display_name="Save 3D Model",
             category="3d",
             search_terms=("export 3d model", "save mesh"),
-            inputs=(
-                InputSpec(
+            body=(
+                Input(
                     "mesh",
                     TypeExpr.union(
                         MESH_TYPE,
@@ -117,21 +123,28 @@ class SaveGLB(Node):
                         FILE_3D_POINT_CLOUD_ANY_TYPE,
                         FILE_3D_TYPE,
                     ),
-                    doc="Mesh or 3D file to save",
+                    tooltip="Mesh or 3D file to save",
                 ),
-                InputSpec(
-                    "filename_prefix",
-                    TypeExpr.concrete(CORE_STRING),
-                    default="3d/ComfyUI",
-                    widget=StringWidget(multiline=False),
+                Row(
+                    rows=(
+                        Input(
+                            "filename_prefix",
+                            TypeExpr.concrete(CORE_STRING),
+                            default="3d/ComfyUI",
+                            widget=StringWidget(multiline=False),
+                        ),
+                        Input(
+                            "mount",
+                            TypeExpr.union(MOUNT_TYPE, CORE_STRING),
+                            required=False,
+                            default=None,
+                            widget=MountWidget(),
+                        ),
+                    )
                 ),
-                InputSpec(
-                    "mount",
-                    TypeExpr.concrete(CORE_STRING),
-                    required=False,
-                    default=None,
-                    widget=MountWidget(),
-                    adjacent_to="filename_prefix",
+                Editor(
+                    "target",
+                    SaveTargetWidget(writes={"mount": "mount", "name": "filename_prefix"}),
                 ),
             ),
             output_node=True,
@@ -285,8 +298,8 @@ class Get3DComponents(Node):
                 "textures and material factors come from the first material. "
                 "Counterpart of MeshToFile3D."
             ),
-            inputs=(
-                InputSpec(
+            body=(
+                Input(
                     "model_3d",
                     TypeExpr.union(
                         FILE_3D_GLB_TYPE,
@@ -295,11 +308,11 @@ class Get3DComponents(Node):
                         FILE_3D_STL_TYPE,
                         FILE_3D_TYPE,
                     ),
-                    doc="3D model file from Load 3D or another 3D node. "
+                    tooltip="3D model file from Load 3D or another 3D node. "
                     "FBX/USDZ are not supported - convert to GLB first.",
                 ),
+                Output("mesh", TypeExpr.concrete(MESH_TYPE)),
             ),
-            outputs=(OutputSpec("mesh", TypeExpr.concrete(MESH_TYPE)),),
         )
         return with_identity_replacement(schema, "Get3DComponents")
 

@@ -15,11 +15,11 @@ from dinkster_api.v1 import (
     AssetWriter,
     ComboWidget,
     ImageDocument,
-    InputSpec,
+    Input,
     MountSnapshotWriter,
     Node,
     NodeSchema,
-    OutputSpec,
+    Output,
     SaveTargetWidget,
     TypeExpr,
     attach_saved_artifact,
@@ -42,8 +42,10 @@ class LoadLayers(Node):
             editor_role="layers-load",
             display_name="Load Layers",
             category="image/io",
-            inputs=(InputSpec("document", ASSET, widget=AssetWidget()),),
-            outputs=(OutputSpec("layers", LAYERS),),
+            body=(
+                Input("document", ASSET, widget=AssetWidget()),
+                Output("layers", LAYERS),
+            ),
         )
 
     @classmethod
@@ -63,18 +65,18 @@ class SaveLayers(Node):
             node_type="dinkster.layers.save",
             display_name="Save Layers",
             category="image/io",
-            inputs=(
-                InputSpec("layers", LAYERS),
-                InputSpec("target", TypeExpr.concrete(SAVE_TARGET_TYPE), widget=SaveTargetWidget()),
-                InputSpec(
+            body=(
+                Input("layers", LAYERS),
+                Input("target", TypeExpr.concrete(SAVE_TARGET_TYPE), widget=SaveTargetWidget()),
+                Input(
                     "format",
                     TypeExpr.concrete(CORE_COMBO),
                     required=False,
                     default="native",
                     widget=ComboWidget(options=("native", "ora", "psd")),
                 ),
+                Output("document", ASSET),
             ),
-            outputs=(OutputSpec("document", ASSET),),
             output_node=True,
             idempotent=False,
         )

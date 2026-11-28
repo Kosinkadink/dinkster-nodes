@@ -14,12 +14,16 @@ from dinkster_api.v1 import (
     IMAGE_TYPE,
     LATENT_TYPE,
     VAE_TYPE,
-    InputFamilySpec,
-    InputSpec,
+    Group,
+    Input,
+    Item,
+    Members,
+    Named,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
+    Section,
     StringWidget,
     TypeExpr,
     initialize_inference_process,
@@ -49,44 +53,34 @@ class TextEncodeMageFlowEdit(Node):
         schema = NodeSchema(
             node_type="dinkster.misc.models.text_encode_mage_flow_edit",
             category="model/conditioning/mage",
-            inputs=(
-                InputSpec("clip", _CLIP),
-                InputSpec(
-                    "prompt", _STRING, widget=StringWidget(multiline=True, dynamic_prompts=True)
-                ),
-                InputSpec(
-                    "negative_prompt",
-                    _STRING,
-                    advanced=True,
-                    widget=StringWidget(multiline=True, dynamic_prompts=True),
-                ),
-                InputSpec("vae", _VAE, required=False),
-                InputSpec("width", _INT, default=0, widget=NumberWidget(min=0, max=8192, step=16)),
-                InputSpec("height", _INT, default=0, widget=NumberWidget(min=0, max=8192, step=16)),
-                InputSpec("batch_size", _INT, default=1, widget=NumberWidget(min=1, max=4096)),
-            ),
-            input_families=(
-                InputFamilySpec(
+            body=(
+                Input("clip", _CLIP),
+                Input("prompt", _STRING, widget=StringWidget(multiline=True, dynamic_prompts=True)),
+                Input("vae", _VAE, required=False),
+                Group(
                     "images",
-                    (InputSpec("image", _IMAGE, required=False),),
+                    value=Input("image", _IMAGE, required=False),
                     min_members=0,
-                    member_names=tuple(f"image_{index}" for index in range(1, 17)),
+                    keys=Named(tuple(f"image_{index}" for index in range(1, 17))),
                 ),
-            ),
-            outputs=(
-                OutputSpec("positive", _CONDITIONING),
-                OutputSpec("negative", _CONDITIONING),
-                OutputSpec("latent", _LATENT),
-            ),
-            input_order=(
-                "clip",
-                "prompt",
-                "negative_prompt",
-                "vae",
-                "images",
-                "width",
-                "height",
-                "batch_size",
+                Input("width", _INT, default=0, widget=NumberWidget(min=0, max=8192, step=16)),
+                Input("height", _INT, default=0, widget=NumberWidget(min=0, max=8192, step=16)),
+                Input("batch_size", _INT, default=1, widget=NumberWidget(min=1, max=4096)),
+                Section(
+                    "advanced",
+                    label="Advanced",
+                    collapsed=True,
+                    rows=(
+                        Input(
+                            "negative_prompt",
+                            _STRING,
+                            widget=StringWidget(multiline=True, dynamic_prompts=True),
+                        ),
+                    ),
+                ),
+                Output("positive", _CONDITIONING),
+                Output("negative", _CONDITIONING),
+                Output("latent", _LATENT),
             ),
         )
         return with_identity_replacement(schema, "TextEncodeMageFlowEdit")
@@ -99,17 +93,13 @@ class TextEncodeMageFlowEdit(Node):
         prompt: str,
         negative_prompt: str = "",
         vae: Any = None,
-        images: Mapping[str, object] | None = None,
+        images: Members[Item] = Members[Item](),
         width: int = 0,
         height: int = 0,
         batch_size: int = 1,
     ) -> Mapping[str, object]:
         references = [
-            materialize_image(image)
-            for _, image in sorted(
-                (images or {}).items(), key=lambda item: int(item[0].rsplit("_", 1)[-1])
-            )
-            if image is not None
+            materialize_image(member.value) for member in images if member.value is not None
         ]
         if width == 0 or height == 0:
             source_height, source_width = references[0].shape[1:3] if references else (1024, 1024)

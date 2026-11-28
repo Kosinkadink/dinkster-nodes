@@ -2,10 +2,10 @@
 
 from dinkster_api.v1 import (
     ASSET_TYPE,
-    CAMERA_INFO_STATE_TYPE,
     COLOR_TYPE,
     LOAD3D_CAMERA_TYPE,
     LOAD3D_MODEL_INFO_TYPE,
+    MOUNT_TYPE,
     VIDEO_TYPE,
     TypeRegistry,
     inference_nodes,
@@ -16,6 +16,7 @@ from dinkster_api.v1 import (
     register_load3d_type,
     register_media_types,
     register_mesh_type,
+    register_mount_type,
     register_splat_type,
     register_video_value_type,
     register_voxel_type,
@@ -93,15 +94,16 @@ NODES = (
 
 
 def register_types(registry: TypeRegistry) -> None:
+    if MOUNT_TYPE not in registry:
+        register_mount_type(registry)
     if ASSET_TYPE not in registry:
         register_asset_type(registry, resolver_from_env())
     register_media_types(registry)
     register_mesh_type(registry)
     register_splat_type(registry)
     register_voxel_type(registry)
-    for type_id in (CAMERA_INFO_STATE_TYPE, COLOR_TYPE):
-        if type_id not in registry:
-            registry.register(type_id)
+    if COLOR_TYPE not in registry:
+        registry.register(COLOR_TYPE)
     if LOAD3D_CAMERA_TYPE not in registry:
         register_load3d_camera_type(registry)
     if LOAD3D_MODEL_INFO_TYPE not in registry:

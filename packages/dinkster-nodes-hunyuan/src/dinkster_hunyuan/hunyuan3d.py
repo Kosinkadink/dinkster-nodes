@@ -11,11 +11,12 @@ from dinkster_api.v1 import (
     LATENT_TYPE,
     VAE_TYPE,
     VOXEL_TYPE,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
+    Section,
     TypeExpr,
     initialize_inference_process,
     materialize_clip_vision_output,
@@ -30,10 +31,10 @@ class Hunyuan3Dv2Conditioning(Node):
         schema = NodeSchema(
             node_type="dinkster.hunyuan.hunyuan3_dv2_conditioning",
             category="model/conditioning/hunyuan 3d",
-            inputs=(InputSpec("clip_vision_output", TypeExpr.concrete(CLIP_VISION_OUTPUT_TYPE)),),
-            outputs=(
-                OutputSpec("positive", TypeExpr.concrete(CONDITIONING_TYPE)),
-                OutputSpec("negative", TypeExpr.concrete(CONDITIONING_TYPE)),
+            body=(
+                Input("clip_vision_output", TypeExpr.concrete(CLIP_VISION_OUTPUT_TYPE)),
+                Output("positive", TypeExpr.concrete(CONDITIONING_TYPE)),
+                Output("negative", TypeExpr.concrete(CONDITIONING_TYPE)),
             ),
         )
         return with_identity_replacement(schema, "Hunyuan3Dv2Conditioning")
@@ -54,13 +55,13 @@ class Hunyuan3Dv2ConditioningMultiView(Node):
         schema = NodeSchema(
             node_type="dinkster.hunyuan.hunyuan3_dv2_conditioning_multi_view",
             category="model/conditioning/hunyuan 3d",
-            inputs=tuple(
-                InputSpec(name, TypeExpr.concrete(CLIP_VISION_OUTPUT_TYPE), required=False)
-                for name in ("front", "left", "back", "right")
-            ),
-            outputs=(
-                OutputSpec("positive", TypeExpr.concrete(CONDITIONING_TYPE)),
-                OutputSpec("negative", TypeExpr.concrete(CONDITIONING_TYPE)),
+            body=(
+                *tuple(
+                    Input(name, TypeExpr.concrete(CLIP_VISION_OUTPUT_TYPE), required=False)
+                    for name in ("front", "left", "back", "right")
+                ),
+                Output("positive", TypeExpr.concrete(CONDITIONING_TYPE)),
+                Output("negative", TypeExpr.concrete(CONDITIONING_TYPE)),
             ),
         )
         return with_identity_replacement(schema, "Hunyuan3Dv2ConditioningMultiView")
@@ -96,25 +97,30 @@ class VAEDecodeHunyuan3D(Node):
             node_type="dinkster.hunyuan.vae_decode_hunyuan3_d",
             display_name="Hunyuan 3D VAE Decode",
             category="model/latent/hunyuan 3d",
-            inputs=(
-                InputSpec("samples", TypeExpr.concrete(LATENT_TYPE)),
-                InputSpec("vae", TypeExpr.concrete(VAE_TYPE)),
-                InputSpec(
-                    "num_chunks",
-                    TypeExpr.concrete(CORE_INT),
-                    default=8000,
-                    widget=NumberWidget(min=1000, max=500000),
-                    advanced=True,
+            body=(
+                Input("samples", TypeExpr.concrete(LATENT_TYPE)),
+                Input("vae", TypeExpr.concrete(VAE_TYPE)),
+                Section(
+                    "advanced",
+                    label="Advanced",
+                    collapsed=True,
+                    rows=(
+                        Input(
+                            "num_chunks",
+                            TypeExpr.concrete(CORE_INT),
+                            default=8000,
+                            widget=NumberWidget(min=1000, max=500000),
+                        ),
+                        Input(
+                            "octree_resolution",
+                            TypeExpr.concrete(CORE_INT),
+                            default=256,
+                            widget=NumberWidget(min=16, max=512),
+                        ),
+                    ),
                 ),
-                InputSpec(
-                    "octree_resolution",
-                    TypeExpr.concrete(CORE_INT),
-                    default=256,
-                    widget=NumberWidget(min=16, max=512),
-                    advanced=True,
-                ),
+                Output("VOXEL", TypeExpr.concrete(VOXEL_TYPE)),
             ),
-            outputs=(OutputSpec("VOXEL", TypeExpr.concrete(VOXEL_TYPE)),),
         )
         return with_identity_replacement(schema, "VAEDecodeHunyuan3D")
 

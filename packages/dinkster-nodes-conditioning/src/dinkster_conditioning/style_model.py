@@ -13,11 +13,11 @@ from dinkster_api.v1 import (
     CORE_FLOAT,
     STYLE_MODEL_TYPE,
     ComboWidget,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
     TypeExpr,
     materialize_clip_vision_output,
     with_identity_replacement,
@@ -33,24 +33,24 @@ class StyleModelApply(Node):
                 display_name="Apply Style Model",
                 category="model/conditioning",
                 search_terms=("style transfer",),
-                inputs=(
-                    InputSpec("conditioning", TypeExpr.concrete(CONDITIONING_TYPE)),
-                    InputSpec("style_model", TypeExpr.concrete(STYLE_MODEL_TYPE)),
-                    InputSpec("clip_vision_output", TypeExpr.concrete(CLIP_VISION_OUTPUT_TYPE)),
-                    InputSpec(
+                body=(
+                    Input("conditioning", TypeExpr.concrete(CONDITIONING_TYPE)),
+                    Input("style_model", TypeExpr.concrete(STYLE_MODEL_TYPE)),
+                    Input("clip_vision_output", TypeExpr.concrete(CLIP_VISION_OUTPUT_TYPE)),
+                    Input(
                         "strength",
                         TypeExpr.concrete(CORE_FLOAT),
                         default=1.0,
                         widget=NumberWidget(min=0.0, max=10.0, step=0.001),
                     ),
-                    InputSpec(
+                    Input(
                         "strength_type",
                         TypeExpr.concrete(CORE_COMBO),
                         default="multiply",
                         widget=ComboWidget(("multiply", "attn_bias")),
                     ),
+                    Output("CONDITIONING", TypeExpr.concrete(CONDITIONING_TYPE)),
                 ),
-                outputs=(OutputSpec("CONDITIONING", TypeExpr.concrete(CONDITIONING_TYPE)),),
             ),
             "StyleModelApply",
         )

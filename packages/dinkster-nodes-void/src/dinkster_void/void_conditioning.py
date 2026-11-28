@@ -13,11 +13,11 @@ from dinkster_api.v1 import (
     MASK_TYPE,
     NOISE_TYPE,
     VAE_TYPE,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
     TypeExpr,
     initialize_inference_process,
     materialize_image,
@@ -47,17 +47,17 @@ class VOIDQuadmaskPreprocess(Node):
             node_type="dinkster.void.void_quadmask_preprocess",
             display_name="VOID Quadmask Preprocessor",
             category="image/mask",
-            inputs=(
-                InputSpec("mask", _MASK),
-                InputSpec(
+            body=(
+                Input("mask", _MASK),
+                Input(
                     "dilate_width",
                     TypeExpr.concrete(CORE_INT),
                     default=0,
                     widget=NumberWidget(min=0, max=50, step=1),
-                    doc="Dilation radius for the primary mask region (0 = no dilation)",
+                    tooltip="Dilation radius for the primary mask region (0 = no dilation)",
                 ),
+                Output("quadmask", _MASK, label="quadmask"),
             ),
-            outputs=(OutputSpec("quadmask", _MASK, display_name="quadmask"),),
         )
         return with_identity_replacement(schema, "VOIDQuadmaskPreprocess")
 
@@ -91,52 +91,52 @@ class VOIDInpaintConditioning(Node):
         schema = NodeSchema(
             node_type="dinkster.void.void_inpaint_conditioning",
             category="model/conditioning/void",
-            inputs=(
-                InputSpec("positive", _CONDITIONING),
-                InputSpec("negative", _CONDITIONING),
-                InputSpec("vae", TypeExpr.concrete(VAE_TYPE)),
-                InputSpec(
-                    "video", TypeExpr.concrete(IMAGE_TYPE), doc="Source video frames [T, H, W, 3]"
+            body=(
+                Input("positive", _CONDITIONING),
+                Input("negative", _CONDITIONING),
+                Input("vae", TypeExpr.concrete(VAE_TYPE)),
+                Input(
+                    "video",
+                    TypeExpr.concrete(IMAGE_TYPE),
+                    tooltip="Source video frames [T, H, W, 3]",
                 ),
-                InputSpec(
+                Input(
                     "quadmask",
                     _MASK,
-                    doc="Preprocessed quadmask from VOIDQuadmaskPreprocess [T, H, W]",
+                    tooltip="Preprocessed quadmask from VOIDQuadmaskPreprocess [T, H, W]",
                 ),
-                InputSpec(
+                Input(
                     "width",
                     TypeExpr.concrete(CORE_INT),
                     default=672,
                     widget=NumberWidget(min=16, max=16384, step=8),
                 ),
-                InputSpec(
+                Input(
                     "height",
                     TypeExpr.concrete(CORE_INT),
                     default=384,
                     widget=NumberWidget(min=16, max=16384, step=8),
                 ),
-                InputSpec(
+                Input(
                     "length",
                     TypeExpr.concrete(CORE_INT),
                     default=45,
                     widget=NumberWidget(min=1, max=16384, step=1),
-                    doc=(
+                    tooltip=(
                         "Number of pixel frames to process. For CogVideoX-Fun-V1.5 "
                         "(patch_size_t=2), latent_t must be even - lengths that produce "
                         "odd latent_t are rounded down (e.g. 49 -> 45)."
                     ),
                 ),
-                InputSpec(
+                Input(
                     "batch_size",
                     TypeExpr.concrete(CORE_INT),
                     default=1,
                     widget=NumberWidget(min=1, max=64),
                 ),
-            ),
-            outputs=(
-                OutputSpec("positive", _CONDITIONING, display_name="positive"),
-                OutputSpec("negative", _CONDITIONING, display_name="negative"),
-                OutputSpec("latent", _LATENT, display_name="latent"),
+                Output("positive", _CONDITIONING, label="positive"),
+                Output("negative", _CONDITIONING, label="negative"),
+                Output("latent", _LATENT, label="latent"),
             ),
         )
         return with_identity_replacement(schema, "VOIDInpaintConditioning")
@@ -218,10 +218,10 @@ class VOIDWarpedNoiseSource(Node):
         schema = NodeSchema(
             node_type="dinkster.void.void_warped_noise_source",
             category="model/latent/void",
-            inputs=(
-                InputSpec("warped_noise", _LATENT, doc="Warped noise latent from VOIDWarpedNoise"),
+            body=(
+                Input("warped_noise", _LATENT, tooltip="Warped noise latent from VOIDWarpedNoise"),
+                Output("NOISE", TypeExpr.concrete(NOISE_TYPE)),
             ),
-            outputs=(OutputSpec("NOISE", TypeExpr.concrete(NOISE_TYPE)),),
         )
         return with_identity_replacement(schema, "VOIDWarpedNoiseSource")
 

@@ -21,10 +21,10 @@ from dinkster_api.v1 import (
     CORE_STRING,
     IMAGE_TYPE,
     VIDEO_TYPE,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
-    OutputSpec,
+    Output,
     TypeExpr,
     audio_window,
     concatenate_video,
@@ -241,12 +241,12 @@ class ComponentSource(Node):
     def define_schema(cls) -> NodeSchema:
         return NodeSchema(
             node_type="video-components-public.source",
-            outputs=(
-                OutputSpec("images", _IMAGE),
-                OutputSpec("audio", _AUDIO),
-                OutputSpec("fps", _FLOAT),
-                OutputSpec("bit_depth", _COMBO),
-                OutputSpec("color_space", _COMBO),
+            body=(
+                Output("images", _IMAGE),
+                Output("audio", _AUDIO),
+                Output("fps", _FLOAT),
+                Output("bit_depth", _COMBO),
+                Output("color_space", _COMBO),
             ),
         )
 
@@ -266,14 +266,14 @@ class ComponentConsumer(Node):
     def define_schema(cls) -> NodeSchema:
         return NodeSchema(
             node_type="video-components-public.consumer",
-            inputs=(
-                InputSpec("images", _IMAGE),
-                InputSpec("audio", _AUDIO),
-                InputSpec("fps", _FLOAT),
-                InputSpec("bit_depth", _COMBO),
-                InputSpec("color_space", _COMBO),
+            body=(
+                Input("images", _IMAGE),
+                Input("audio", _AUDIO),
+                Input("fps", _FLOAT),
+                Input("bit_depth", _COMBO),
+                Input("color_space", _COMBO),
+                Output("summary", _STRING),
             ),
-            outputs=(OutputSpec("summary", _STRING),),
         )
 
     @classmethod
@@ -302,12 +302,12 @@ class ConcatenateSource(Node):
     def define_schema(cls) -> NodeSchema:
         return NodeSchema(
             node_type="video-components-public.concatenate-source",
-            outputs=(
-                OutputSpec("first", TypeExpr.list_of(_VIDEO)),
-                OutputSpec("second", TypeExpr.list_of(_VIDEO)),
-                OutputSpec("replacement", _AUDIO),
-                OutputSpec("expected_with_audio", _VIDEO),
-                OutputSpec("expected_without_audio", _VIDEO),
+            body=(
+                Output("first", TypeExpr.list_of(_VIDEO)),
+                Output("second", TypeExpr.list_of(_VIDEO)),
+                Output("replacement", _AUDIO),
+                Output("expected_with_audio", _VIDEO),
+                Output("expected_without_audio", _VIDEO),
             ),
         )
 
@@ -344,8 +344,11 @@ class ConcatenateConsumer(Node):
     def define_schema(cls) -> NodeSchema:
         return NodeSchema(
             node_type="video-components-public.concatenate-consumer",
-            inputs=(InputSpec("video", _VIDEO), InputSpec("expected", _VIDEO)),
-            outputs=(OutputSpec("summary", _STRING),),
+            body=(
+                Input("video", _VIDEO),
+                Input("expected", _VIDEO),
+                Output("summary", _STRING),
+            ),
         )
 
     @classmethod

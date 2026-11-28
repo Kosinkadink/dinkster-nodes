@@ -4,13 +4,16 @@ import json
 import math
 import pickle
 from pathlib import Path
-from typing import cast
+from typing import Any, cast
 
 import numpy as np
 import pytest
+from dinkster_api.v1 import Record
 from dinkster_image.adjust import ADJUST_OPERATIONS, ImageAdjust
 from dinkster_image.channels import ImageAlphaJoin, ImageChannelMerge, ImageChannelSplit
 from dinkster_image.filters import DITHER_MODES, FILTER_OPERATIONS, ImageFilter
+
+from tests.body_rows import choices, option_ids
 
 GOLDEN = cast(
     "dict[str, object]",
@@ -47,11 +50,8 @@ def test_adjust_and_filter_dynamic_combo_schemas_and_materialized_execution() ->
     image_filter = ImageFilter.define_schema()
     assert adjust.version == image_filter.version == 2
     assert tuple(item.id for item in adjust.inputs) == ("image",)
-    adjust_options = [
-        (option.key, tuple(item.id for item in option.inputs))
-        for option in adjust.combos[0].options
-    ]
-    assert adjust_options == [
+    assert [choice.id for choice in choices(adjust)] == ["operation"]
+    assert list(option_ids(choices(adjust)[0]).items()) == [
         ("invert", ()),
         ("normalize", ("mean", "standard_deviation")),
         ("brightness", ("factor",)),
@@ -64,15 +64,12 @@ def test_adjust_and_filter_dynamic_combo_schemas_and_materialized_execution() ->
         "noise": ("strength", "seed"),
         **{name: ("kernel_size",) for name in FILTER_OPERATIONS[4:]},
     }
-    assert {
-        option.key: tuple(item.id for item in option.inputs)
-        for option in image_filter.combos[0].options
-    } == expected_filter
+    assert option_ids(choices(image_filter)[0]) == expected_filter
 
     source = _image()
     expected = ImageAdjust.execute(image=source, operation="contrast", factor=2.0)
-    materialized = ImageAdjust.execute(
-        **{"image": source, "operation": "contrast", "operation.factor": 2.0}
+    materialized = cast("Any", ImageAdjust.execute)(
+        image=source, operation=Record("contrast", {"factor": 2.0})
     )
     np.testing.assert_array_equal(materialized["image"], expected["image"])
 

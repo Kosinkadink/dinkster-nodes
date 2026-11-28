@@ -3,24 +3,35 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from typing import Any
+from dataclasses import replace
+from typing import Any, ClassVar, cast
 
 from dinkster_api.v1 import (
     CLIP_TYPE,
     CORE_FLOAT,
     MODEL_TYPE,
-    InputSpec,
+    Formula,
+    Group,
+    Input,
+    InputFamilyMapping,
+    InputFamilyMember,
+    Item,
+    MappingSource,
+    Members,
+    Named,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
+    ReplacementCase,
+    ReplacementRule,
     TypeExpr,
     with_identity_replacement,
 )
 
 
-def _coefficient(name: str, *, subtract: bool = False) -> InputSpec:
-    return InputSpec(
+def _coefficient(name: str, *, subtract: bool = False) -> Input:
+    return Input(
         name,
         TypeExpr.concrete(CORE_FLOAT),
         default=1.0,
@@ -34,16 +45,18 @@ def _merge_schema(node_type: str, *, clip: bool = False, coefficient: str = "") 
     type_id = CLIP_TYPE if clip else MODEL_TYPE
     prefix = "clip" if clip else "model"
     inputs = (
-        InputSpec(prefix + "1", TypeExpr.concrete(type_id)),
-        InputSpec(prefix + "2", TypeExpr.concrete(type_id)),
+        Input(prefix + "1", TypeExpr.concrete(type_id)),
+        Input(prefix + "2", TypeExpr.concrete(type_id)),
     )
     if coefficient:
         inputs += (_coefficient(coefficient, subtract=coefficient == "multiplier"),)
     return NodeSchema(
         node_type=node_type,
         category="model/merging",
-        inputs=inputs,
-        outputs=(OutputSpec("CLIP" if clip else "MODEL", TypeExpr.concrete(type_id)),),
+        body=(
+            *inputs,
+            Output("CLIP" if clip else "MODEL", TypeExpr.concrete(type_id)),
+        ),
     )
 
 
@@ -137,44 +150,85 @@ class CLIPMergeAdd(Node):
         return cls.outputs(CLIP=_merge(clip1, clip2, 1.0, 1.0, clip=True))
 
 
-def block_merge_schema(
-    node_type: str,
-    block_names: tuple[str, ...],
-    *,
-    category: str = "model/merging",
-    description: str = "",
-) -> NodeSchema:
-    return NodeSchema(
-        node_type=node_type,
-        category=category,
-        description=description,
-        inputs=(
-            InputSpec("model1", TypeExpr.concrete(MODEL_TYPE)),
-            InputSpec("model2", TypeExpr.concrete(MODEL_TYPE)),
-            *(_coefficient(name) for name in block_names),
-        ),
-        outputs=(OutputSpec("MODEL", TypeExpr.concrete(MODEL_TYPE)),),
-    )
+def _block_key(name: str) -> str:
+    """A block's member key: its prefix with the last dot dropped and dots as underscores."""
+    return name.removesuffix(".").replace(".", "_")
 
 
 class ModelMergeBlocks(Node):
-    @classmethod
-    def define_schema(cls) -> NodeSchema:
-        return with_identity_replacement(
-            block_merge_schema("dinkster.models.model_merge_blocks", ("input", "middle", "out")),
-            "ModelMergeBlocks",
-        )
+    """Merges two models with one ratio per block prefix.
+
+    ``BLOCKS`` lists ComfyUI's input ids, which are the model key prefixes the
+    ratios apply to. Each becomes a member of the fixed ``ratios`` group, in the
+    same order, labelled with its prefix."""
+
+    NODE_TYPE: ClassVar[str] = "dinkster.models.model_merge_blocks"
+    SOURCE: ClassVar[str] = "ModelMergeBlocks"
+    CATEGORY: ClassVar[str] = "model/merging"
+    DESCRIPTION: ClassVar[str] = ""
+    BLOCKS: ClassVar[tuple[str, ...]] = ("input", "middle", "out")
 
     @classmethod
-    def execute(cls, *, model1: Any, model2: Any, **ratios: float) -> Mapping[str, object]:
+    def define_schema(cls) -> NodeSchema:
+        keys = tuple(_block_key(name) for name in cls.BLOCKS)
+        schema = with_identity_replacement(
+            NodeSchema(
+                node_type=cls.NODE_TYPE,
+                category=cls.CATEGORY,
+                description=cls.DESCRIPTION,
+                tables={"blocks": dict(zip(keys, cls.BLOCKS, strict=True))},
+                body=(
+                    Input("model1", TypeExpr.concrete(MODEL_TYPE)),
+                    Input("model2", TypeExpr.concrete(MODEL_TYPE)),
+                    Group(
+                        "ratios",
+                        value=_coefficient("ratio"),
+                        keys=Named(keys),
+                        min_members=len(keys),
+                        max_members=len(keys),
+                        label="Block ratios",
+                        member_label=Formula("blocks[key()]"),
+                    ),
+                    Output("MODEL", TypeExpr.concrete(MODEL_TYPE)),
+                ),
+            ),
+            cls.SOURCE,
+        )
+        # ComfyUI stores each ratio under its block prefix; import each into its member.
+        rule = ReplacementRule(
+            from_type=cls.SOURCE,
+            cases=(
+                ReplacementCase.build(
+                    cls.NODE_TYPE,
+                    inputs={name: MappingSource.copy(name) for name in ("model1", "model2")},
+                    outputs={"MODEL": "MODEL"},
+                    input_families={
+                        "ratios": InputFamilyMapping.from_members(
+                            *(
+                                InputFamilyMember.build(
+                                    key, inputs={"ratio": MappingSource.copy(name)}
+                                )
+                                for key, name in zip(keys, cls.BLOCKS, strict=True)
+                            )
+                        )
+                    },
+                ),
+            ),
+        )
+        return replace(schema, replacements=(rule,))
+
+    @classmethod
+    def execute(cls, *, model1: Any, model2: Any, ratios: Members[Item]) -> Mapping[str, object]:
+        prefixes = dict(zip((_block_key(name) for name in cls.BLOCKS), cls.BLOCKS, strict=True))
+        by_prefix = {prefixes[member.key]: cast("float", member.value) for member in ratios}
         merged = model1.clone()
         patches = model2.get_key_patches("diffusion_model.")
-        default_ratio = next(iter(ratios.values()))
+        default_ratio = next(iter(by_prefix.values()))
         for key in patches:
             ratio = default_ratio
             unet_key = key[len("diffusion_model.") :]
             longest = 0
-            for prefix, candidate in ratios.items():
+            for prefix, candidate in by_prefix.items():
                 if unet_key.startswith(prefix) and longest < len(prefix):
                     ratio = candidate
                     longest = len(prefix)

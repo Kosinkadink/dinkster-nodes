@@ -13,10 +13,10 @@ from dinkster_api.v1 import (
     NOISE_TYPE,
     SAMPLER_TYPE,
     SIGMAS_TYPE,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
-    OutputSpec,
+    Output,
     TypeExpr,
     initialize_inference_process,
     materialize_latent,
@@ -57,18 +57,20 @@ class CustomSamplingSource(Node):
     def define_schema(cls) -> NodeSchema:
         return NodeSchema(
             node_type="custom-sampling-fixture.source",
-            outputs=tuple(
-                OutputSpec(name, TypeExpr.concrete(kind))
-                for name, kind in (
-                    ("model", MODEL_TYPE),
-                    ("positive", CONDITIONING_TYPE),
-                    ("negative", CONDITIONING_TYPE),
-                    ("sampler", SAMPLER_TYPE),
-                    ("sigmas", SIGMAS_TYPE),
-                    ("latent", LATENT_TYPE),
-                    ("noise", NOISE_TYPE),
-                    ("guider", GUIDER_TYPE),
-                )
+            body=(
+                *tuple(
+                    Output(name, TypeExpr.concrete(kind))
+                    for name, kind in (
+                        ("model", MODEL_TYPE),
+                        ("positive", CONDITIONING_TYPE),
+                        ("negative", CONDITIONING_TYPE),
+                        ("sampler", SAMPLER_TYPE),
+                        ("sigmas", SIGMAS_TYPE),
+                        ("latent", LATENT_TYPE),
+                        ("noise", NOISE_TYPE),
+                        ("guider", GUIDER_TYPE),
+                    )
+                ),
             ),
         )
 
@@ -100,13 +102,13 @@ class CustomSamplingConsumer(Node):
     def define_schema(cls) -> NodeSchema:
         return NodeSchema(
             node_type="custom-sampling-fixture.consumer",
-            inputs=(
-                InputSpec("output", TypeExpr.concrete(LATENT_TYPE)),
-                InputSpec("denoised_output", TypeExpr.concrete(LATENT_TYPE)),
-                InputSpec("source", TypeExpr.concrete(LATENT_TYPE)),
-                InputSpec("add_noise", TypeExpr.concrete(CORE_BOOLEAN)),
+            body=(
+                Input("output", TypeExpr.concrete(LATENT_TYPE)),
+                Input("denoised_output", TypeExpr.concrete(LATENT_TYPE)),
+                Input("source", TypeExpr.concrete(LATENT_TYPE)),
+                Input("add_noise", TypeExpr.concrete(CORE_BOOLEAN)),
+                Output("sampled", TypeExpr.concrete(CORE_BOOLEAN)),
             ),
-            outputs=(OutputSpec("sampled", TypeExpr.concrete(CORE_BOOLEAN)),),
         )
 
     @classmethod

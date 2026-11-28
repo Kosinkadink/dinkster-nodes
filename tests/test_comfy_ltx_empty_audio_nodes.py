@@ -32,15 +32,15 @@ def test_ltx_empty_audio_schema_matches_comfy() -> None:
     )
     assert all(item.required for item in schema.inputs)
     assert schema_from_wire(schema_to_wire(schema)) == schema
-    assert tuple((item.default, item.doc) for item in schema.inputs[:3]) == (
+    assert tuple((item.default, item.tooltip) for item in schema.inputs[:3]) == (
         (97, "Number of frames."),
         (25.0, "Number of frames per second."),
         (1, "The number of latent audio samples in the batch."),
     )
     assert (
-        schema.inputs[3].display_name,
-        schema.inputs[3].doc,
-        schema.outputs[0].display_name,
+        schema.inputs[3].label,
+        schema.inputs[3].tooltip,
+        schema.outputs[0].label,
     ) == (
         "Audio VAE",
         "The Audio VAE model to get configuration from.",

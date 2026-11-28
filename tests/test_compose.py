@@ -190,8 +190,8 @@ def test_composed_server_end_to_end(tmp_path: Path) -> None:
             assert data["nodes"]["dinkster.text.string_concatenate"]["pack"] == "dinkster-text"
             blob_size = next(
                 item
-                for item in data["nodes"]["iso.blob_out"]["interface"]
-                if item["role"] == "input" and item["id"] == "size"
+                for item in data["nodes"]["iso.blob_out"]["body"]
+                if item["kind"] == "input" and item["id"] == "size"
             )
             assert blob_size["widget"] == {
                 "type": "isopack.size",
@@ -337,12 +337,16 @@ def test_pack_namespace_compose_reload_execute_and_reject_second_owner(
                             "values.value1": Link("length", "length"),
                         },
                     ),
-                    "combo_default": GraphNode("dinkster.utilities.custom_combo", {"choice": ""}),
+                    "combo_default": GraphNode(
+                        "dinkster.utilities.custom_combo",
+                        {"choice": "", "options": TypedLiteral("list<STRING>", [""])},
+                    ),
                     "combo_index": GraphNode("dinkster.utilities.primitive_int", {"value": 205}),
                     "combo": GraphNode(
                         "dinkster.utilities.custom_combo",
                         {
-                            "choice": "outside-menu",
+                            "choice": "Final",
+                            "options": TypedLiteral("list<STRING>", ["Quick", "Detailed", "Final"]),
                             "index": Link("combo_index", "INT"),
                             "2": TypedLiteral("STRING", "unused sparse option"),
                             "205": Link("text", "STRING"),
@@ -360,21 +364,24 @@ def test_pack_namespace_compose_reload_execute_and_reject_second_owner(
             assert result.outputs["or"]["BOOLEAN"].resolve() is True
             assert result.outputs["combo_default"]["STRING"].resolve() == ""
             assert result.outputs["combo_default"]["INDEX"].resolve() == 0
-            assert result.outputs["combo"]["STRING"].resolve() == "outside-menu"
-            assert result.outputs["combo"]["INDEX"].resolve() == 205
+            assert result.outputs["combo"]["STRING"].resolve() == "Final"
+            assert result.outputs["combo"]["INDEX"].resolve() == 2
             repeated = await engine.run(graph, targets)
             assert repeated.executed == ()
             assert "combo" in repeated.cached
-            assert repeated.outputs["combo"]["INDEX"].resolve() == 205
+            assert repeated.outputs["combo"]["INDEX"].resolve() == 2
+            reordered = TypedLiteral("list<STRING>", ["Final", "Quick", "Detailed"])
+            combo = graph.nodes["combo"]
+            assert isinstance(combo, GraphNode)
             changed = Graph(
                 nodes={
                     **graph.nodes,
-                    "combo_index": GraphNode("dinkster.utilities.primitive_int", {"value": -7}),
+                    "combo": GraphNode(combo.node_type, {**combo.inputs, "options": reordered}),
                 }
             )
             changed_result = await engine.run(changed, ["combo"])
-            assert changed_result.outputs["combo"]["STRING"].resolve() == "outside-menu"
-            assert changed_result.outputs["combo"]["INDEX"].resolve() == -7
+            assert changed_result.outputs["combo"]["STRING"].resolve() == "Final"
+            assert changed_result.outputs["combo"]["INDEX"].resolve() == 0
             assert "combo" in changed_result.executed
             with pytest.raises(
                 CompositionError, match="declared by both 'dinkster-utilities' and 'other-owner'"

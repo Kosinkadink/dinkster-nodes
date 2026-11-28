@@ -18,11 +18,11 @@ from dinkster_api.v1 import (
     SIGMAS_TYPE,
     ComboOption,
     ComboWidget,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
     StringWidget,
     TypeExpr,
     materialize_latent,
@@ -60,11 +60,12 @@ class SplitSigmas(Node):
             NodeSchema(
                 node_type="dinkster.sampling.split_sigmas",
                 category=_CATEGORY,
-                inputs=(
-                    InputSpec("sigmas", _SIGMAS),
-                    InputSpec("step", _INT, default=0, widget=NumberWidget(min=0, max=10_000)),
+                body=(
+                    Input("sigmas", _SIGMAS),
+                    Input("step", _INT, default=0, widget=NumberWidget(min=0, max=10_000)),
+                    Output("high_sigmas", _SIGMAS),
+                    Output("low_sigmas", _SIGMAS),
                 ),
-                outputs=(OutputSpec("high_sigmas", _SIGMAS), OutputSpec("low_sigmas", _SIGMAS)),
             ),
             "SplitSigmas",
         )
@@ -82,16 +83,17 @@ class SplitSigmasDenoise(Node):
             NodeSchema(
                 node_type="dinkster.sampling.split_sigmas_denoise",
                 category=_CATEGORY,
-                inputs=(
-                    InputSpec("sigmas", _SIGMAS),
-                    InputSpec(
+                body=(
+                    Input("sigmas", _SIGMAS),
+                    Input(
                         "denoise",
                         _FLOAT,
                         default=1.0,
                         widget=NumberWidget(min=0.0, max=1.0, step=0.01),
                     ),
+                    Output("high_sigmas", _SIGMAS),
+                    Output("low_sigmas", _SIGMAS),
                 ),
-                outputs=(OutputSpec("high_sigmas", _SIGMAS), OutputSpec("low_sigmas", _SIGMAS)),
             ),
             "SplitSigmasDenoise",
         )
@@ -112,8 +114,10 @@ class FlipSigmas(Node):
             NodeSchema(
                 node_type="dinkster.sampling.flip_sigmas",
                 category=_CATEGORY,
-                inputs=(InputSpec("sigmas", _SIGMAS),),
-                outputs=(OutputSpec("sigmas", _SIGMAS),),
+                body=(
+                    Input("sigmas", _SIGMAS),
+                    Output("sigmas", _SIGMAS),
+                ),
             ),
             "FlipSigmas",
         )
@@ -136,16 +140,16 @@ class SetFirstSigma(Node):
             NodeSchema(
                 node_type="dinkster.sampling.set_first_sigma",
                 category=_CATEGORY,
-                inputs=(
-                    InputSpec("sigmas", _SIGMAS),
-                    InputSpec(
+                body=(
+                    Input("sigmas", _SIGMAS),
+                    Input(
                         "sigma",
                         _FLOAT,
                         default=136.0,
                         widget=NumberWidget(min=0.0, max=20_000.0, step=0.001, round=False),
                     ),
+                    Output("sigmas", _SIGMAS),
                 ),
-                outputs=(OutputSpec("sigmas", _SIGMAS),),
             ),
             "SetFirstSigma",
         )
@@ -165,30 +169,30 @@ class ExtendIntermediateSigmas(Node):
                 node_type="dinkster.sampling.extend_intermediate_sigmas",
                 category=_CATEGORY,
                 search_terms=("interpolate sigmas",),
-                inputs=(
-                    InputSpec("sigmas", _SIGMAS),
-                    InputSpec("steps", _INT, default=2, widget=NumberWidget(min=1, max=100)),
-                    InputSpec(
+                body=(
+                    Input("sigmas", _SIGMAS),
+                    Input("steps", _INT, default=2, widget=NumberWidget(min=1, max=100)),
+                    Input(
                         "start_at_sigma",
                         _FLOAT,
                         default=-1.0,
                         widget=NumberWidget(min=-1.0, max=20_000.0, step=0.01, round=False),
                     ),
-                    InputSpec(
+                    Input(
                         "end_at_sigma",
                         _FLOAT,
                         default=12.0,
                         widget=NumberWidget(min=0.0, max=20_000.0, step=0.01, round=False),
                     ),
-                    InputSpec(
+                    Input(
                         "spacing",
                         _COMBO,
                         widget=ComboWidget(
                             tuple(ComboOption(option) for option in ("linear", "cosine", "sine"))
                         ),
                     ),
+                    Output("sigmas", _SIGMAS),
                 ),
-                outputs=(OutputSpec("sigmas", _SIGMAS),),
             ),
             "ExtendIntermediateSigmas",
         )
@@ -234,26 +238,26 @@ class SamplingPercentToSigma(Node):
             NodeSchema(
                 node_type="dinkster.sampling.sampling_percent_to_sigma",
                 category=_CATEGORY,
-                inputs=(
-                    InputSpec("model", _MODEL),
-                    InputSpec(
+                body=(
+                    Input("model", _MODEL),
+                    Input(
                         "sampling_percent",
                         _FLOAT,
                         default=0.0,
                         widget=NumberWidget(min=0.0, max=1.0, step=0.0001),
                     ),
-                    InputSpec(
+                    Input(
                         "return_actual_sigma",
                         _BOOLEAN,
                         default=False,
-                        doc=(
+                        tooltip=(
                             "Return the actual sigma value instead of the value used for interval "
                             "checks.\n"
                             "This only affects results at 0.0 and 1.0."
                         ),
                     ),
+                    Output("sigma_value", _FLOAT),
                 ),
-                outputs=(OutputSpec("sigma_value", _FLOAT),),
             ),
             "SamplingPercentToSigma",
         )
@@ -280,12 +284,12 @@ class ManualSigmas(Node):
                 node_type="dinkster.sampling.manual_sigmas",
                 category=_CATEGORY,
                 search_terms=("custom noise schedule", "define sigmas"),
-                inputs=(
-                    InputSpec(
+                body=(
+                    Input(
                         "sigmas", _STRING, default="1, 0.5", widget=StringWidget(multiline=False)
                     ),
+                    Output("sigmas", _SIGMAS),
                 ),
-                outputs=(OutputSpec("sigmas", _SIGMAS),),
             ),
             "ManualSigmas",
         )

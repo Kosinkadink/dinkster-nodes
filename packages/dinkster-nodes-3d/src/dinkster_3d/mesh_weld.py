@@ -10,11 +10,11 @@ from typing import Any
 from dinkster_api.v1 import (
     CORE_FLOAT,
     MESH_TYPE,
-    InputSpec,
+    Input,
     Node,
     NodeSchema,
     NumberWidget,
-    OutputSpec,
+    Output,
     TypeExpr,
     materialize_mesh,
     with_identity_replacement,
@@ -67,25 +67,25 @@ class WeldVertices(Node):
                 "unwelded (per-face verts, no shared edges) - pre-pass before FillHoles, "
                 "DecimateMesh, or any topology-aware op. Colors averaged per cluster."
             ),
-            inputs=(
-                InputSpec("mesh", TypeExpr.concrete(MESH_TYPE)),
-                InputSpec(
+            body=(
+                Input("mesh", TypeExpr.concrete(MESH_TYPE)),
+                Input(
                     "epsilon_rel",
                     TypeExpr.concrete(CORE_FLOAT),
                     default=1e-5,
                     widget=NumberWidget(min=0.0, step=1e-6),
-                    doc="Weld tolerance (fraction of bbox diagonal). 1e-5 for float dedup; "
+                    tooltip="Weld tolerance (fraction of bbox diagonal). 1e-5 for float dedup; "
                     "1e-3 for visibly-close-but-distinct verts.",
                 ),
-                InputSpec(
+                Input(
                     "epsilon_abs",
                     TypeExpr.concrete(CORE_FLOAT),
                     default=0.0,
                     widget=NumberWidget(min=0.0, step=1e-6),
-                    doc="Absolute weld tolerance (overrides epsilon_rel when > 0).",
+                    tooltip="Absolute weld tolerance (overrides epsilon_rel when > 0).",
                 ),
+                Output("mesh", TypeExpr.concrete(MESH_TYPE)),
             ),
-            outputs=(OutputSpec("mesh", TypeExpr.concrete(MESH_TYPE)),),
         )
         return with_identity_replacement(schema, "WeldVertices")
 
