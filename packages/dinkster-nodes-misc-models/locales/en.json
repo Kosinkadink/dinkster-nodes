@@ -1,7 +1,7 @@
 {
   "nodes": {
     "dinkster.misc.models.ar_video_i2_v": {
-      "displayName": "dinkster.misc.models.ar_video_i2_v"
+      "displayName": "ARVideoI2V"
     },
     "dinkster.misc.models.anima_ll_lite_apply": {
       "displayName": "Apply Anima LLLite"
@@ -22,28 +22,28 @@
       "displayName": "CLIP Text Encode (PixArt Alpha)"
     },
     "dinkster.misc.models.chroma_radiance_options": {
-      "displayName": "dinkster.misc.models.chroma_radiance_options"
+      "displayName": "ChromaRadianceOptions"
     },
     "dinkster.misc.models.empty_ar_video_latent": {
-      "displayName": "dinkster.misc.models.empty_ar_video_latent"
+      "displayName": "EmptyARVideoLatent"
     },
     "dinkster.misc.models.empty_chroma_radiance_latent_image": {
       "displayName": "EmptyChromaRadianceLatentImage"
     },
     "dinkster.misc.models.empty_mochi_latent_video": {
-      "displayName": "dinkster.misc.models.empty_mochi_latent_video"
+      "displayName": "EmptyMochiLatentVideo"
     },
     "dinkster.misc.models.ideogram4_scheduler": {
       "displayName": "Ideogram 4 Scheduler"
     },
     "dinkster.misc.models.instruct_pix_to_pix_conditioning": {
-      "displayName": "dinkster.misc.models.instruct_pix_to_pix_conditioning"
+      "displayName": "InstructPixToPixConditioning"
     },
     "dinkster.misc.models.kandinsky5_image_to_video": {
-      "displayName": "dinkster.misc.models.kandinsky5_image_to_video"
+      "displayName": "Kandinsky5ImageToVideo"
     },
     "dinkster.misc.models.lotus_conditioning": {
-      "displayName": "dinkster.misc.models.lotus_conditioning"
+      "displayName": "LotusConditioning"
     },
     "dinkster.misc.models.moss_image_control": {
       "displayName": "MOSS-Image Color/Depth Control"
@@ -61,25 +61,25 @@
       "displayName": "SenseNova Sampling Options"
     },
     "dinkster.misc.models.text_encode_boogu_edit": {
-      "displayName": "dinkster.misc.models.text_encode_boogu_edit"
+      "displayName": "TextEncodeBooguEdit"
     },
     "dinkster.misc.models.text_encode_fibo2": {
-      "displayName": "dinkster.misc.models.text_encode_fibo2"
+      "displayName": "TextEncodeFibo2"
     },
     "dinkster.misc.models.text_encode_joy_image_edit": {
-      "displayName": "dinkster.misc.models.text_encode_joy_image_edit"
+      "displayName": "TextEncodeJoyImageEdit"
     },
     "dinkster.misc.models.text_encode_moss_image_edit": {
       "displayName": "Text Encode MOSS-Image Edit"
     },
     "dinkster.misc.models.text_encode_mage_flow_edit": {
-      "displayName": "dinkster.misc.models.text_encode_mage_flow_edit"
+      "displayName": "TextEncodeMageFlowEdit"
     },
     "dinkster.misc.models.text_encode_ming_image_edit": {
       "displayName": "Text Encode Ming Image Edit"
     },
     "dinkster.misc.models.text_encode_z_image_omni": {
-      "displayName": "dinkster.misc.models.text_encode_z_image_omni"
+      "displayName": "TextEncodeZImageOmni"
     },
     "dinkster.misc.models.z_image_fun_controlnet": {
       "displayName": "Apply Fun ControlNet"

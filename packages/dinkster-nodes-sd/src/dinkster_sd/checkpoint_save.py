@@ -40,6 +40,7 @@ class ImageOnlyCheckpointSave(Node):
         string = TypeExpr.concrete(CORE_STRING)
         schema = NodeSchema(
             node_type="dinkster.sd.image_only_checkpoint_save",
+            display_name="ImageOnlyCheckpointSave",
             category="model/merging",
             body=(
                 Input("model", TypeExpr.concrete(MODEL_TYPE)),

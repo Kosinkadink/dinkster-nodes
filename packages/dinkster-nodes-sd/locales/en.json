@@ -25,7 +25,7 @@
       "displayName": "Load Checkpoint Image Only (img2vid model)"
     },
     "dinkster.sd.image_only_checkpoint_save": {
-      "displayName": "dinkster.sd.image_only_checkpoint_save"
+      "displayName": "ImageOnlyCheckpointSave"
     },
     "dinkster.sd.photo_maker_encode": {
       "displayName": "PhotoMaker Encode"
@@ -37,31 +37,31 @@
       "displayName": "SD_4XUpscale_Conditioning"
     },
     "dinkster.sd.sv3_d_conditioning": {
-      "displayName": "dinkster.sd.sv3_d_conditioning"
+      "displayName": "SV3D_Conditioning"
     },
     "dinkster.sd.svd_img2vid_conditioning": {
-      "displayName": "dinkster.sd.svd_img2vid_conditioning"
+      "displayName": "SVD_img2vid_Conditioning"
     },
     "dinkster.sd.skip_layer_guidance_sd3": {
-      "displayName": "dinkster.sd.skip_layer_guidance_sd3"
+      "displayName": "SkipLayerGuidanceSD3"
     },
     "dinkster.sd.stable_cascade_empty_latent_image": {
       "displayName": "Empty Stable Cascade Latent Image"
     },
     "dinkster.sd.stable_cascade_stage_b_conditioning": {
-      "displayName": "dinkster.sd.stable_cascade_stage_b_conditioning"
+      "displayName": "StableCascade_StageB_Conditioning"
     },
     "dinkster.sd.stable_cascade_stage_c_vae_encode": {
       "displayName": "Stable Cascade Stage C VAE Encode"
     },
     "dinkster.sd.stable_cascade_super_resolution_controlnet": {
-      "displayName": "dinkster.sd.stable_cascade_super_resolution_controlnet"
+      "displayName": "StableCascade_SuperResolutionControlnet"
     },
     "dinkster.sd.stable_zero123_conditioning": {
-      "displayName": "dinkster.sd.stable_zero123_conditioning"
+      "displayName": "StableZero123_Conditioning"
     },
     "dinkster.sd.stable_zero123_conditioning_batched": {
-      "displayName": "dinkster.sd.stable_zero123_conditioning_batched"
+      "displayName": "StableZero123_Conditioning_Batched"
     },
     "dinkster.sd.un_clip_checkpoint_loader": {
       "displayName": "Load unCLIP Checkpoint"

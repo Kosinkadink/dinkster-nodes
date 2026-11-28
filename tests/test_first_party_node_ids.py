@@ -18,6 +18,32 @@ from dinkster_workers import load_manifest
 from dinkster_workers.manifest import resolve_entry
 
 
+def test_first_party_nodes_show_names_instead_of_ids() -> None:
+    missing = []
+    for path in Path("packages").glob("dinkster-nodes-*/dinkster-pack.toml"):
+        manifest = load_manifest(path)
+        english = next(
+            (
+                json.loads(catalog.data)
+                for catalog in manifest.locale_catalogs
+                if catalog.locale == "en"
+            ),
+            {},
+        )
+        nodes = resolve_entry(manifest.nodes_entry)
+        assert isinstance(nodes, (list, tuple))
+        for node in nodes:
+            schema = node.schema()
+            name = (
+                english.get("nodes", {})
+                .get(schema.node_type, {})
+                .get("displayName", schema.display_name)
+            )
+            if not name.strip() or name == schema.node_type:
+                missing.append(schema.node_type)
+    assert not missing, f"First-party nodes displayed by id: {sorted(missing)}"
+
+
 def _source_schemas() -> dict[str, NodeSchema]:
     schemas = {}
     for path in Path("packages").glob("dinkster-nodes-*/dinkster-pack.toml"):

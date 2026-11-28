@@ -1,7 +1,7 @@
 {
   "nodes": {
     "dinkster.audio.models.conditioning_stable_audio": {
-      "displayName": "dinkster.audio.models.conditioning_stable_audio"
+      "displayName": "ConditioningStableAudio"
     },
     "dinkster.audio.models.empty_ace_step1_5_latent_audio": {
       "displayName": "Empty Ace Step 1.5 Latent Audio"
@@ -16,10 +16,10 @@
       "displayName": "SheetSage2 Audio to ABC"
     },
     "dinkster.audio.models.text_encode_ace_step_audio": {
-      "displayName": "dinkster.audio.models.text_encode_ace_step_audio"
+      "displayName": "TextEncodeAceStepAudio"
     },
     "dinkster.audio.models.text_encode_ace_step_audio1_5": {
-      "displayName": "dinkster.audio.models.text_encode_ace_step_audio1_5"
+      "displayName": "TextEncodeAceStepAudio1.5"
     },
     "dinkster.audio.models.yu_e2_generate_abc": {
       "displayName": "YuE2 Generate ABC"
